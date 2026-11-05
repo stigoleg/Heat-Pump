@@ -181,11 +181,11 @@ Anslaget for morgendagens forbruk og kostnad bygger på sammenhengen mellom forb
 <details>
 <summary><b>Prisstyring</b></summary>
 
-Slås på under Prognose. I timer Tibber (eller appen, mot snittet siste 72 timer) merker som dyre, senkes ønsket temperatur 1 °C, i svært dyre 2 °C, aldri under en laveste temperatur (standard 18 °C). Valgfritt: +1 °C i opptil to av de billigste timene de fire timene før en dyr periode. Grunnlaget er temperaturen i ukeplanen når den er på, ellers den temperaturen du sist stilte inn selv.
+Slås på under Prognose. I timer Tibber (eller appen, mot snittet siste 72 timer) merker som dyre, senkes ønsket temperatur 1 °C, i svært dyre 2 °C, aldri under en laveste temperatur (standard 18 °C), og høyst åtte timer per døgn (de dyreste; kan endres). Valgfritt: +1 °C i opptil to av de billigste timene de fire timene før en dyr periode. Grunnlaget er temperaturen i ukeplanen når den er på, ellers den temperaturen du sist stilte inn selv.
 
 - Bruker bare publiserte priser, aldri anslaget, og bare i varmemodus. Av/på og modus endres aldri.
-- Høyst én endring i timen, og bare ved skifte i planen. Den står over når feriemodus er på, når pumpen er av, ved sperre fra MELCloud og ti minutter rundt hendelser i ukeplanen.
-- Endrer du temperaturen selv, tar den pause til neste skifte, og din temperatur blir den nye grunntemperaturen.
+- Høyst én endring i timen og fire i løpet av en time, og bare ved skifte i planen. Går en endring ikke gjennom, prøver den én gang til senere i samme periode. Den står over når feriemodus er på, når pumpen er av, ved sperre fra MELCloud og ti minutter rundt hendelser i ukeplanen.
+- Endrer du temperaturen selv (i appen, med fjernkontrollen eller i MELCloud), tar den pause til neste skifte, og din temperatur blir den nye grunntemperaturen. Endringer fra ukeplanen regnes ikke som dine.
 - Når den slås av, før Macen sover og når appen avsluttes, settes temperaturen tilbake først. Skjer ikke det (strømbrudd, krasj), blir temperaturen stående, men aldri lavere enn laveste temperatur. Neste gang appen starter, retter den seg etter planen.
 - Med prisstyring på lukkes ikke appen når vinduet lukkes. Den ligger i menylinjen med pris nå, temperatur, status og neste steg, og der kan du åpne vinduet, slå av prisstyringen eller avslutte.
 - Endringene logges med kilde «Prisstyring» og teller i de 12 endringene per time. Claude kan lese status og plan (`get_prices`), men ikke endre dem.

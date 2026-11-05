@@ -14,10 +14,12 @@ public struct PriceControlSettings: Codable, Sendable, Equatable {
     public var preheat: Bool
     /// The setpoint the user last chose; the base temperature when the weekly plan is off.
     public var comfortTemperature: Double?
+    /// Per local day only this many of the most expensive hours are lowered (pre-heating is not counted).
+    public var maxReducedHoursPerDay: Int
 
     public init(
         enabled: Bool = false, reduceExpensive: Double = 1.0, reduceVeryExpensive: Double = 2.0, minimumTemperature: Double = 18.0,
-        preheat: Bool = false, comfortTemperature: Double? = nil
+        preheat: Bool = false, comfortTemperature: Double? = nil, maxReducedHoursPerDay: Int = 8
     ) {
         self.enabled = enabled
         self.reduceExpensive = reduceExpensive
@@ -25,11 +27,13 @@ public struct PriceControlSettings: Codable, Sendable, Equatable {
         self.minimumTemperature = minimumTemperature
         self.preheat = preheat
         self.comfortTemperature = comfortTemperature
+        self.maxReducedHoursPerDay = maxReducedHoursPerDay
     }
 
     public static let `default` = PriceControlSettings()
     public static let reductionRange: ClosedRange<Double> = 0...4
     public static let minimumRange: ClosedRange<Double> = 16...22
+    public static let reducedHoursRange: ClosedRange<Int> = 1...24
 
     /// Missing keys (settings saved by an older version) take the defaults.
     public init(from decoder: Decoder) throws {
@@ -41,6 +45,7 @@ public struct PriceControlSettings: Codable, Sendable, Equatable {
         minimumTemperature = try c.decodeIfPresent(Double.self, forKey: .minimumTemperature) ?? d.minimumTemperature
         preheat = try c.decodeIfPresent(Bool.self, forKey: .preheat) ?? d.preheat
         comfortTemperature = try c.decodeIfPresent(Double.self, forKey: .comfortTemperature)
+        maxReducedHoursPerDay = try c.decodeIfPresent(Int.self, forKey: .maxReducedHoursPerDay) ?? d.maxReducedHoursPerDay
     }
 
     /// Norwegian reason the values are refused, or nil.
@@ -51,6 +56,7 @@ public struct PriceControlSettings: Codable, Sendable, Equatable {
             return "Senkingen må være 0–4 °C."
         }
         guard Self.minimumRange.contains(minimumTemperature) else { return "Laveste temperatur må være 16–22 °C." }
+        guard Self.reducedHoursRange.contains(maxReducedHoursPerDay) else { return "Antall timer som senkes per døgn må være 1–24." }
         return nil
     }
 
@@ -133,39 +139,25 @@ public enum PriceControlPlanner {
     public static let preheatHours = 2
     public static let preheatRaise = 1.0
 
-    /// Steps for every hour in `hours` that has not ended at `now` and has a base temperature
-    /// (`base` nil: the plan does not apply, for example when the weekly plan has the unit off).
+    /// Steps for the hours in `hours` that have a base temperature (`base` nil: the plan does not
+    /// apply, for example when the weekly plan has the unit off), without the steps that ended by
+    /// `now`. Pass hours from before `now` too: a step keeps the start it was planned with, which is
+    /// how the engine knows it is the same step. The hour under way takes the base in force at
+    /// `now` (a weekly-plan event can fire mid-hour). Per day in `timeZone` only the
+    /// `maxReducedHoursPerDay` most expensive qualifying hours are lowered.
     public static func plan(
-        hours: [PriceControlHour], base: (Date) -> Double?, settings: PriceControlSettings, now: Date
+        hours: [PriceControlHour], base: (Date) -> Double?, settings: PriceControlSettings, now: Date, timeZone: TimeZone = .current
     ) -> [PlannedStep] {
-        let upcoming = hours.filter { $0.start.addingTimeInterval(3600) > now }.sorted { $0.start < $1.start }
-        let expensive: Set<PriceLevel> = [.expensive, .veryExpensive]
-
-        // Hours to pre-heat: the cheapest two non-expensive hours in the four before each expensive block.
-        var preheat = Set<Date>()
-        if settings.preheat {
-            let byStart = Dictionary(upcoming.map { ($0.start, $0) }, uniquingKeysWith: { a, _ in a })
-            for hour in upcoming where hour.level.map(expensive.contains) == true {
-                let previous = byStart[hour.start.addingTimeInterval(-3600)]
-                guard previous?.level.map(expensive.contains) != true else { continue }  // not a block start
-                let window = (1...preheatWindowHours).compactMap { byStart[hour.start.addingTimeInterval(-Double($0) * 3600)] }
-                    .filter { $0.level.map(expensive.contains) != true }
-                for candidate in window.sorted(by: { $0.totalOre < $1.totalOre }).prefix(preheatHours) {
-                    preheat.insert(candidate.start)
-                }
-            }
-        }
-
+        let selection = select(hours: hours, base: base, settings: settings, now: now, timeZone: timeZone)
         var steps: [PlannedStep] = []
-        for hour in upcoming {
-            guard let b = base(hour.start) else { continue }
+        for (hour, b) in selection.hours {
+            guard let b else { continue }
             var kind = PlannedStep.Kind.normal
             var target = b
-            let reduction = settings.reduction(for: hour.level)
-            if reduction > 0, b > settings.minimumTemperature {
-                target = max(b - reduction, settings.minimumTemperature)
+            if selection.lowered.contains(hour.start) {
+                target = max(b - settings.reduction(for: hour.level), settings.minimumTemperature)
                 kind = .reduce
-            } else if preheat.contains(hour.start) {
+            } else if selection.preheat.contains(hour.start) {
                 target = b + preheatRaise
                 kind = .preheat
             }
@@ -187,7 +179,57 @@ public enum PriceControlPlanner {
                         reason: reason(kind: kind, level: hour.level, priceOre: hour.totalOre)))
             }
         }
-        return steps
+        return steps.filter { $0.end > now }
+    }
+
+    /// Expensive hours from `now` on that are not lowered because of the daily limit.
+    public static func hoursOverDailyLimit(
+        hours: [PriceControlHour], base: (Date) -> Double?, settings: PriceControlSettings, now: Date, timeZone: TimeZone = .current
+    ) -> Int {
+        let selection = select(hours: hours, base: base, settings: settings, now: now, timeZone: timeZone)
+        return selection.qualifying.subtracting(selection.lowered).filter { $0.addingTimeInterval(3600) > now }.count
+    }
+
+    /// Hours in order with their base, the hours that would be lowered (`qualifying`), those that
+    /// are within the daily limit (`lowered`), and those to pre-heat.
+    static func select(
+        hours: [PriceControlHour], base: (Date) -> Double?, settings: PriceControlSettings, now: Date, timeZone: TimeZone
+    ) -> (hours: [(PriceControlHour, Double?)], qualifying: Set<Date>, lowered: Set<Date>, preheat: Set<Date>) {
+        let sorted = hours.sorted { $0.start < $1.start }
+        let withBase = sorted.map { hour -> (PriceControlHour, Double?) in
+            let underWay = hour.start <= now && now < hour.start.addingTimeInterval(3600)
+            return (hour, base(underWay ? now : hour.start))
+        }
+        let expensive: Set<PriceLevel> = [.expensive, .veryExpensive]
+
+        // Lowered: per local day, the most expensive hours that would be lowered, up to the limit.
+        let qualifying = withBase.filter { hour, b in
+            guard let b else { return false }
+            return settings.reduction(for: hour.level) > 0 && b > settings.minimumTemperature
+        }.map(\.0)
+        let calendar = WireDate.calendar(timeZone)
+        var lowered = Set<Date>()
+        for (_, day) in Dictionary(grouping: qualifying, by: { calendar.startOfDay(for: $0.start) }) {
+            let chosen = day.sorted { $0.totalOre != $1.totalOre ? $0.totalOre > $1.totalOre : $0.start < $1.start }
+                .prefix(max(settings.maxReducedHoursPerDay, 0))
+            lowered.formUnion(chosen.map(\.start))
+        }
+
+        // Pre-heat: the cheapest two non-expensive hours in the four before each expensive block.
+        var preheat = Set<Date>()
+        if settings.preheat {
+            let byStart = Dictionary(sorted.map { ($0.start, $0) }, uniquingKeysWith: { a, _ in a })
+            for hour in sorted where hour.level.map(expensive.contains) == true {
+                let previous = byStart[hour.start.addingTimeInterval(-3600)]
+                guard previous?.level.map(expensive.contains) != true else { continue }  // not a block start
+                let window = (1...preheatWindowHours).compactMap { byStart[hour.start.addingTimeInterval(-Double($0) * 3600)] }
+                    .filter { $0.level.map(expensive.contains) != true }
+                for candidate in window.sorted(by: { $0.totalOre < $1.totalOre }).prefix(preheatHours) {
+                    preheat.insert(candidate.start)
+                }
+            }
+        }
+        return (withBase, Set(qualifying.map(\.start)), lowered, preheat)
     }
 
     static func rank(_ level: PriceLevel) -> Int { PriceLevel.allCases.firstIndex(of: level) ?? 0 }
@@ -204,19 +246,70 @@ public enum PriceControlPlanner {
 
 /// What the controller remembers between ticks; stored so a restart can reconcile.
 public struct PriceControlMemory: Codable, Sendable, Equatable {
-    /// Setpoint the controller last sent (and still owns), or nil.
+    /// Setpoint the controller sent below or above the base and still owns (to be set back), or nil.
     public var lastSent: Double?
+    /// When the controller last got a setpoint through (sends and restores).
     public var lastSentAt: Date?
-    /// Start of the step the controller has dealt with.
-    public var appliedStepStart: Date?
+    /// The step the controller has dealt with (sent, found in place, or paused for).
+    public var appliedStep: PlannedStep?
     /// The user changed the setpoint: no action until this step boundary.
     public var pausedUntil: Date?
+    /// The setpoint the controller expects the unit to have (sent, set back or found in place);
+    /// another one means someone else changed it.
+    public var expected: Double?
+    /// When `expected` was last set.
+    public var expectedAt: Date?
+    /// Every write the controller attempted (sends and restores, also failed ones) in the last hour.
+    public var writes: [Date]
+    /// The step whose send did not go through, how many attempts failed, and why.
+    public var failedStep: PlannedStep?
+    public var failures: Int
+    public var problem: String?
 
-    public init(lastSent: Double? = nil, lastSentAt: Date? = nil, appliedStepStart: Date? = nil, pausedUntil: Date? = nil) {
+    public init(
+        lastSent: Double? = nil, lastSentAt: Date? = nil, appliedStep: PlannedStep? = nil, pausedUntil: Date? = nil,
+        expected: Double? = nil, expectedAt: Date? = nil, writes: [Date] = []
+    ) {
         self.lastSent = lastSent
         self.lastSentAt = lastSentAt
-        self.appliedStepStart = appliedStepStart
+        self.appliedStep = appliedStep
         self.pausedUntil = pausedUntil
+        self.expected = expected
+        self.expectedAt = expectedAt
+        self.writes = writes
+        self.failures = 0
+    }
+
+    /// Memory saved by an older version decodes with the new fields empty.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        lastSent = try c.decodeIfPresent(Double.self, forKey: .lastSent)
+        lastSentAt = try c.decodeIfPresent(Date.self, forKey: .lastSentAt)
+        appliedStep = try c.decodeIfPresent(PlannedStep.self, forKey: .appliedStep)
+        pausedUntil = try c.decodeIfPresent(Date.self, forKey: .pausedUntil)
+        expected = try c.decodeIfPresent(Double.self, forKey: .expected)
+        expectedAt = try c.decodeIfPresent(Date.self, forKey: .expectedAt)
+        writes = try c.decodeIfPresent([Date].self, forKey: .writes) ?? []
+        failedStep = try c.decodeIfPresent(PlannedStep.self, forKey: .failedStep)
+        failures = try c.decodeIfPresent(Int.self, forKey: .failures) ?? 0
+        problem = try c.decodeIfPresent(String.self, forKey: .problem)
+    }
+
+    /// The setpoint the controller now expects (after a send, a restore or finding it in place).
+    mutating func expect(_ setpoint: Double, at t: Date) {
+        expected = setpoint
+        expectedAt = t
+    }
+
+    mutating func clearFailure() {
+        failedStep = nil
+        failures = 0
+        problem = nil
+    }
+
+    /// Forgets writes older than an hour.
+    mutating func pruneWrites(now t: Date) {
+        writes.removeAll { t.timeIntervalSince($0) >= 3600 }
     }
 }
 
@@ -264,11 +357,14 @@ public struct PriceControlContext: Sendable {
     public var timerEventNear: Date?
     /// When the weekly-plan event in force fired, or nil.
     public var timerFiredAt: Date?
+    /// The setpoint of that event (nil: it sets none).
+    public var timerSetpoint: Double?
     public var now: Date
 
     public init(
         settings: PriceControlSettings, state: DeviceState?, steps: [PlannedStep], blockedReason: String? = nil,
-        holidayActive: Bool = false, frostProtection: Bool = false, timerEventNear: Date? = nil, timerFiredAt: Date? = nil, now: Date
+        holidayActive: Bool = false, frostProtection: Bool = false, timerEventNear: Date? = nil, timerFiredAt: Date? = nil,
+        timerSetpoint: Double? = nil, now: Date
     ) {
         self.settings = settings
         self.state = state
@@ -278,6 +374,7 @@ public struct PriceControlContext: Sendable {
         self.frostProtection = frostProtection
         self.timerEventNear = timerEventNear
         self.timerFiredAt = timerFiredAt
+        self.timerSetpoint = timerSetpoint
         self.now = now
     }
 }
@@ -292,6 +389,8 @@ public struct PriceControlDecision: Sendable, Equatable {
     public var text: String
     public var step: PlannedStep?
     public var comfortTemperature: Double?
+    /// Why the last send for this step did not go through, or nil.
+    public var problem: String?
 }
 
 /// The controller's rules. Pure: the app's runner feeds it the latest state each poll tick and
@@ -301,7 +400,18 @@ public enum PriceControlEngine {
     public static let timerMargin: TimeInterval = 600
     /// A snapshot this long after a send is trusted to show the unit's setpoint.
     public static let confirmGrace: TimeInterval = 120
-    static let tolerance = 0.25
+    /// Most writes (sends and restores) the controller makes in a rolling hour; a restore when
+    /// control is turned off or the app quits is always allowed.
+    public static let maxWritesPerHour = 4
+    /// Attempts per step when a send does not go through (the first and one retry).
+    public static let maxAttemptsPerStep = 2
+
+    /// The same real step: same setpoint, base and kind, overlapping or adjacent in time (a step
+    /// grows when new prices are published and loses its start when it falls out of the window).
+    public static func isSameStep(_ a: PlannedStep?, _ b: PlannedStep?) -> Bool {
+        guard let a, let b else { return false }
+        return a.kind == b.kind && a.target == b.target && a.base == b.base && a.start <= b.end && b.start <= a.end
+    }
 
     public static func evaluate(_ c: PriceControlContext, memory: inout PriceControlMemory) -> PriceControlDecision {
         let step = c.steps.first { $0.contains(c.now) }
@@ -315,20 +425,29 @@ public enum PriceControlEngine {
             decision.text = "Ingen status fra varmepumpen ennå."
             return decision
         }
+        memory.pruneWrites(now: c.now)
+        // Setpoints closer than the unit's step are the same setpoint.
+        let increment = state.setpointIncrement
+        func same(_ a: Double, _ b: Double) -> Bool { abs(a - b) < increment - 0.001 }
 
-        // A setpoint the controller did not send: the user (or Claude) changed it, or the weekly plan did.
+        // A setpoint the controller did not leave: the user (or Claude) changed it, or the weekly plan did.
         let confirmed = !state.hasPendingCommand && memory.lastSentAt.map { state.fetchedAt >= $0.addingTimeInterval(confirmGrace) } ?? true
         if confirmed, state.power, state.mode == .heat, let setpoint = state.setTemperature {
-            if let sent = memory.lastSent, abs(setpoint - sent) >= tolerance {
+            if let expected = memory.expected ?? memory.lastSent, !same(setpoint, expected) {
+                let byPlan = c.timerFiredAt.map { $0 > (memory.expectedAt ?? memory.lastSentAt ?? .distantPast) } == true
+                    && c.timerSetpoint.map { same($0, setpoint) } == true
                 memory.lastSent = nil
-                if let fired = c.timerFiredAt, let at = memory.lastSentAt, fired > at {
-                    memory.appliedStepStart = nil  // the plan set a new base; apply the step again
+                memory.expect(setpoint, at: c.now)
+                memory.clearFailure()
+                if byPlan {
+                    memory.appliedStep = nil  // the plan set a new base; the step is planned from it
+                    memory.pausedUntil = nil
                 } else {
-                    memory.appliedStepStart = step?.start
+                    memory.appliedStep = step
                     memory.pausedUntil = step?.end ?? c.now.addingTimeInterval(3600)
                     decision.comfortTemperature = setpoint
                 }
-            } else if memory.lastSent == nil, c.settings.comfortTemperature != setpoint {
+            } else if memory.expected == nil, memory.lastSent == nil, c.settings.comfortTemperature != setpoint {
                 decision.comfortTemperature = setpoint
             }
         }
@@ -353,14 +472,31 @@ public enum PriceControlEngine {
             decision.text = "Ingen plan for denne timen (mangler pris eller grunntemperatur)."
             return decision
         }
-        if let paused = memory.pausedUntil, paused > c.now {
-            decision.kind = .paused
-            decision.text = "Pause – du endret temperaturen. Fortsetter kl. \(Norwegian.time(paused))."
+        let target = target(for: step, state: state, settings: c.settings)
+        if let paused = memory.pausedUntil {
+            // Until the step the user changed the setpoint in is over (also when it grew).
+            let sameStep = isSameStep(memory.appliedStep, step)
+            if paused > c.now || sameStep {
+                if sameStep {
+                    memory.appliedStep = step
+                    memory.pausedUntil = max(paused, step.end)
+                }
+                decision.kind = .paused
+                decision.text = "Pause – du endret temperaturen. Fortsetter kl. \(Norwegian.time(memory.pausedUntil ?? paused))."
+                return decision
+            }
+            memory.pausedUntil = nil
+        }
+        if isSameStep(memory.appliedStep, step) {
+            memory.appliedStep = step
+            (decision.kind, decision.text) = status(of: step, target: target)
             return decision
         }
-        memory.pausedUntil = nil
-        if memory.appliedStepStart == step.start {
-            (decision.kind, decision.text) = status(of: step)
+        let failedHere = isSameStep(memory.failedStep, step)
+        if !failedHere { memory.clearFailure() }
+        if failedHere, memory.failures >= maxAttemptsPerStep {
+            decision.text = "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
+            decision.problem = memory.problem
             return decision
         }
         if let near = c.timerEventNear {
@@ -372,28 +508,54 @@ public enum PriceControlEngine {
             decision.text = "Varmepumpen har ikke meldt ønsket temperatur."
             return decision
         }
-        let range = state.limits.range(for: .heat)
-        let target = min(max((step.target * 2).rounded() / 2, range.lowerBound), range.upperBound)
-        if abs(setpoint - target) < tolerance {
-            memory.appliedStepStart = step.start
-            memory.lastSent = step.kind == .normal ? nil : target
-            (decision.kind, decision.text) = status(of: step)
+        if same(setpoint, target) {
+            memory.appliedStep = step
+            memory.lastSent = step.kind == .normal ? nil : setpoint
+            memory.expect(setpoint, at: c.now)
+            memory.clearFailure()
+            (decision.kind, decision.text) = status(of: step, target: target)
             return decision
         }
-        if let at = memory.lastSentAt, Int(at.timeIntervalSince1970 / 3600) == Int(c.now.timeIntervalSince1970 / 3600) {
+        // At most one write per clock hour (restores count), and a hard cap per rolling hour.
+        let hour = { (date: Date) in Int(date.timeIntervalSince1970 / 3600) }
+        if let last = memory.writes.max(), hour(last) == hour(c.now) {
+            let next = Date(timeIntervalSince1970: Double(hour(c.now) + 1) * 3600)
+            if failedHere {
+                decision.text = "Kunne ikke endre temperaturen. Prøver igjen kl. \(Norwegian.time(next))."
+                decision.problem = memory.problem
+            } else {
+                decision.kind = .waiting
+                decision.text = "Venter: høyst én endring i timen. Neste kl. \(Norwegian.time(next))."
+            }
+            return decision
+        }
+        if memory.writes.count >= maxWritesPerHour {
             decision.kind = .waiting
-            decision.text = "Venter: høyst én endring i timen."
+            decision.text = "Venter: prisstyringen har gjort \(maxWritesPerHour) endringer den siste timen."
+            decision.problem = failedHere ? memory.problem : nil
             return decision
         }
         decision.target = target
         decision.reason = "Prisstyring: " + (step.kind == .normal ? "tilbake til vanlig temperatur" : step.reason)
-        (decision.kind, decision.text) = status(of: step)
+        (decision.kind, decision.text) = status(of: step, target: target)
         return decision
     }
 
+    /// The setpoint the unit gets for `step`: snapped to the unit's step as `apply` sends it,
+    /// within the heat limits, and a reduction never below the minimum.
+    public static func target(for step: PlannedStep, state: DeviceState, settings: PriceControlSettings) -> Double {
+        var target = state.snappedSetpoint(step.target)
+        if step.kind == .reduce, target < settings.minimumTemperature {
+            let increment = state.setpointIncrement
+            target = (settings.minimumTemperature / increment).rounded(.up) * increment
+        }
+        let range = state.limits.range(for: .heat)
+        return min(max(target, range.lowerBound), range.upperBound)
+    }
+
     /// Status for a step that is in force.
-    public static func status(of step: PlannedStep) -> (PriceControlStatus.Kind, String) {
-        let temperature = TimerEvent.temperatureText(step.target)
+    public static func status(of step: PlannedStep, target: Double? = nil) -> (PriceControlStatus.Kind, String) {
+        let temperature = TimerEvent.temperatureText(target ?? step.target)
         switch step.kind {
         case .normal: return (.normal, "Vanlig temperatur (\(temperature)).")
         case .reduce: return (.lowered, "Senket til \(temperature) – \(step.reason).")
@@ -401,13 +563,18 @@ public enum PriceControlEngine {
         }
     }
 
-    /// The setpoint to send when control stops (off, sleep, quit): the base, when the unit still
-    /// has the setpoint the controller sent. Nil when there is nothing to restore.
+    /// The setpoint to send when control stops (off, sleep, quit): the base, snapped to the unit's
+    /// step, when the controller's last send was a reduction or pre-heating and the unit has not
+    /// confirmed a different setpoint since (MELCloud can still report the old one for a while
+    /// after a send). Nil when there is nothing to restore.
     public static func restoreTarget(memory: PriceControlMemory, state: DeviceState?, base: Double?) -> Double? {
-        guard let sent = memory.lastSent, let base, let setpoint = state?.setTemperature,
-            abs(setpoint - sent) < tolerance, abs(base - sent) >= tolerance
-        else { return nil }
-        return base
+        guard let sent = memory.lastSent, let base, let state else { return nil }
+        let increment = state.setpointIncrement
+        let target = state.snappedSetpoint(base)
+        guard abs(target - sent) >= increment - 0.001 else { return nil }
+        let confirmed = !state.hasPendingCommand && memory.lastSentAt.map { state.fetchedAt >= $0.addingTimeInterval(confirmGrace) } ?? true
+        if confirmed, let setpoint = state.setTemperature, abs(setpoint - sent) >= increment - 0.001 { return nil }
+        return target
     }
 }
 

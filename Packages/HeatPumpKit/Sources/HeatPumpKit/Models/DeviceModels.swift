@@ -322,6 +322,14 @@ public struct DeviceState: Codable, Sendable, Equatable {
         if let errorCode, !Self.noErrorCodes.contains(errorCode) { return true }
         return false
     }
+
+    /// The unit's setpoint step (0.5 °C when it reports none).
+    public var setpointIncrement: Double { temperatureIncrement > 0 ? temperatureIncrement : 0.5 }
+
+    /// `celsius` rounded to the unit's setpoint step, as a change is sent.
+    public func snappedSetpoint(_ celsius: Double) -> Double {
+        (celsius / setpointIncrement).rounded() * setpointIncrement
+    }
 }
 
 /// Minimal identity of a device, as listed by a backend.

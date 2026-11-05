@@ -434,6 +434,9 @@ struct PriceControlSection: View {
             Stepper(value: binding(\.minimumTemperature), in: PriceControlSettings.minimumRange, step: 0.5) {
                 Text("Aldri lavere enn: ") + Text(Norwegian.format("%.1f °C", draft.minimumTemperature)).monospacedDigit()
             }
+            Stepper(value: binding(\.maxReducedHoursPerDay), in: PriceControlSettings.reducedHoursRange) {
+                Text("Senk høyst \(Text(String(draft.maxReducedHoursPerDay)).monospacedDigit()) \(draft.maxReducedHoursPerDay == 1 ? "time" : "timer") per døgn")
+            }
             Toggle(isOn: binding(\.preheat)) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Forvarm litt før dyre timer")
@@ -491,7 +494,14 @@ struct PriceControlSection: View {
                     .font(.callout)
                 }
             }
-            Text("Planen bruker bare publiserte priser, ikke anslaget. Endringene vises under Claude-aktivitet med kilden «Prisstyring».")
+            if let over = plan?.overDailyLimit, over > 0 {
+                Text(
+                    "\(over) dyre " + (over == 1 ? "time" : "timer") + " senkes ikke, fordi høyst \(runner.settings.maxReducedHoursPerDay) "
+                        + (runner.settings.maxReducedHoursPerDay == 1 ? "time" : "timer") + " senkes per døgn."
+                )
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Text("Høyst \(runner.settings.maxReducedHoursPerDay) " + (runner.settings.maxReducedHoursPerDay == 1 ? "time" : "timer") + " senkes per døgn, de dyreste først. Planen bruker bare publiserte priser, ikke anslaget. Endringene vises under Claude-aktivitet med kilden «Prisstyring».")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }

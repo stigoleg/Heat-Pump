@@ -285,12 +285,13 @@ final class AppModel {
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
+            // First (local only): whether price control is on decides what closing the window does.
+            await self?.priceControl.load()
             // Once per install, before anything reads the keychain: items from older versions get
             // the ACL shared with the helper (a read during the swap could miss an item).
             if let keychain { await Task.detached { keychain.migrateAccessIfNeeded() }.value }
             await self?.checkTibberToken()
             if let service = self?.service, service.isDemo { try? await service.seedDemoHistoryIfNeeded() }
-            await self?.priceControl.load()
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh(force: false)

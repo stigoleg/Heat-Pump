@@ -679,8 +679,7 @@ public actor HeatPumpService {
         case .temperature(let celsius):
             guard celsius.isFinite else { return .failure(ValidationFailure("Ugyldig temperatur.")) }
             let mode = state.mode ?? .heat
-            let step = state.temperatureIncrement > 0 ? state.temperatureIncrement : 0.5
-            let snapped = (celsius / step).rounded() * step
+            let snapped = state.snappedSetpoint(celsius)
             let range = state.limits.range(for: mode)
             guard range.contains(snapped) else {
                 return .failure(

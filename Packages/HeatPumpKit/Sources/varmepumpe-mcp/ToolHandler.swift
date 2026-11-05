@@ -229,6 +229,8 @@ struct ToolHandler: Sendable {
             var reduceVeryExpensiveC: Double
             var minimumC: Double
             var preheat: Bool
+            var maxReducedHoursPerDay: Int
+            var hoursOverDailyLimit: Int
             var baseSource: String
             var comfortC: Double?
             var appRunning: Bool
@@ -272,7 +274,8 @@ struct ToolHandler: Sendable {
         let priceControl = PriceControl(
             enabled: control.settings.enabled, reduceExpensiveC: control.settings.reduceExpensive,
             reduceVeryExpensiveC: control.settings.reduceVeryExpensive, minimumC: control.settings.minimumTemperature,
-            preheat: control.settings.preheat, baseSource: control.plan.baseSource.rawValue, comfortC: control.settings.comfortTemperature,
+            preheat: control.settings.preheat, maxReducedHoursPerDay: control.settings.maxReducedHoursPerDay,
+            hoursOverDailyLimit: control.plan.overDailyLimit, baseSource: control.plan.baseSource.rawValue, comfortC: control.settings.comfortTemperature,
             appRunning: control.appRunning, status: control.status?.text, statusKind: control.status?.kind.rawValue,
             statusAt: control.status?.updatedAt, problem: control.status?.problem,
             plan: control.plan.changes.map {
@@ -282,7 +285,8 @@ struct ToolHandler: Sendable {
             },
             planNote: control.plan.note,
             note: "Prisstyringen kjører bare i appen mens Macen er på og våken, og bare i varmemodus. Den senker ønsket "
-                + "temperatur i dyre timer (aldri under minimumC, endrer aldri av/på eller modus) og setter den tilbake etterpå. "
+                + "temperatur i dyre timer (aldri under minimumC, høyst maxReducedHoursPerDay timer per døgn, de dyreste; endrer "
+                + "aldri av/på eller modus) og setter den tilbake etterpå. "
                 + "Planen bygger bare på publiserte priser, ikke på anslaget. Claude kan lese den, men ikke slå den av eller på "
                 + "eller endre innstillingene; det gjør brukeren under Prognose i appen. Endringene vises i endringsloggen med "
                 + "source automation. appRunning false betyr at appen ikke har rapportert de siste minuttene.")

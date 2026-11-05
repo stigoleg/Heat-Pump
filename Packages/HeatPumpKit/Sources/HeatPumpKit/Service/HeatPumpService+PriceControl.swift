@@ -7,6 +7,8 @@ public struct PriceControlPlan: Codable, Sendable, Equatable {
     public var baseSource: PriceControlBaseSource
     /// Why there is no plan, or nil.
     public var note: String?
+    /// Expensive hours ahead left at the base because of the daily limit.
+    public var overDailyLimit: Int = 0
 
     /// Steps that lower or raise the temperature.
     public var changes: [PlannedStep] { steps.filter { $0.kind != .normal } }
@@ -36,6 +38,8 @@ extension HeatPumpService {
     static let priceControlRuntimeKey = "priceControlRuntime"
     /// Hours ahead the plan covers.
     public static let priceControlPlanHours = 36
+    /// Hours before the current one the planner also sees, so a step keeps its start.
+    static let priceControlLookbackHours = 12
     /// Status older than this means the app is not running.
     static let priceControlStaleAfter: TimeInterval = 180
 
@@ -54,6 +58,7 @@ extension HeatPumpService {
         stored.reduceVeryExpensive = settings.reduceVeryExpensive
         stored.minimumTemperature = settings.minimumTemperature
         stored.preheat = settings.preheat
+        stored.maxReducedHoursPerDay = settings.maxReducedHoursPerDay
         try store.saveSetting(stored, key: Self.priceControlKey)
     }
 
@@ -89,26 +94,31 @@ extension HeatPumpService {
     }
 
     /// The plan from the current hour for `priceControlPlanHours` hours, from published prices only.
+    /// The planner also sees the hours since the start of the day (at least the last
+    /// `priceControlLookbackHours`), so steps keep their start and the daily limit counts the whole day.
     public func priceControlPlan(settings: PriceControlSettings? = nil) throws -> PriceControlPlan {
         let settings = try settings ?? priceControlSettings()
         let t = now()
-        let hourStart = WireDate.calendar(timeZone).dateInterval(of: .hour, for: t)?.start ?? t
+        let calendar = WireDate.calendar(timeZone)
+        let hourStart = calendar.dateInterval(of: .hour, for: t)?.start ?? t
+        let from = min(calendar.startOfDay(for: t), hourStart.addingTimeInterval(-Double(Self.priceControlLookbackHours) * 3600))
         let (source, base) = try priceControlBase(settings)
         if try priceSettings().agreement == .norgespris {
             return PriceControlPlan(
                 steps: [], baseSource: source,
                 note: "Med Norgespris er prisen den samme hele døgnet, så prisstyringen har ingenting å styre etter.")
         }
-        let hours = try priceBreakdowns(from: hourStart, to: hourStart.addingTimeInterval(Double(Self.priceControlPlanHours) * 3600))
+        let hours = try priceBreakdowns(from: from, to: hourStart.addingTimeInterval(Double(Self.priceControlPlanHours) * 3600))
             .map { PriceControlHour(start: $0.hour, totalOre: $0.totalOre, level: $0.level) }
-        let steps = PriceControlPlanner.plan(hours: hours, base: base, settings: settings, now: t)
+        let steps = PriceControlPlanner.plan(hours: hours, base: base, settings: settings, now: t, timeZone: timeZone)
+        let over = PriceControlPlanner.hoursOverDailyLimit(hours: hours, base: base, settings: settings, now: t, timeZone: timeZone)
         var note: String?
-        if hours.isEmpty {
+        if !hours.contains(where: { $0.start >= hourStart }) {
             note = "Ingen kjente strømpriser for de neste timene ennå."
         } else if source == .unknown {
             note = "Ingen grunntemperatur ennå: slå på prisstyringen mens varmepumpen står på varme, eller bruk ukeplanen."
         }
-        return PriceControlPlan(steps: steps, baseSource: source, note: note)
+        return PriceControlPlan(steps: steps, baseSource: source, note: note, overDailyLimit: over)
     }
 
     // MARK: Running (app only)
@@ -137,17 +147,27 @@ extension HeatPumpService {
         }
         var status = PriceControlStatus(
             kind: decision.kind, text: decision.text, updatedAt: t, currentStep: decision.step,
-            nextStep: plan.changes.first { $0.start > t }, baseSource: plan.baseSource)
+            nextStep: plan.changes.first { $0.start > t }, baseSource: plan.baseSource, problem: decision.problem)
         if let target = decision.target, let step = decision.step {
-            memory.appliedStepStart = step.start
+            memory.writes.append(t)
             let outcome = try await apply(.temperature(target), source: .automation, reason: decision.reason ?? "Prisstyring")
             if outcome.result == .ok {
-                memory.lastSent = target
+                // `target` is already snapped to the unit's step, so it is what went out.
+                memory.appliedStep = step
+                memory.lastSent = step.kind == .normal ? nil : target
                 memory.lastSentAt = t
+                memory.expect(target, at: t)
+                memory.clearFailure()
             } else {
-                // Not retried in this step (each attempt would use the shared budget and the log).
+                // Not marked as dealt with: retried once later in the step (within the limits).
+                if !PriceControlEngine.isSameStep(memory.failedStep, step) { memory.clearFailure() }
+                memory.failedStep = step
+                memory.failures += 1
+                memory.problem = outcome.message
                 status.kind = .skipped
-                status.text = "Kunne ikke endre temperaturen nå."
+                status.text = memory.failures < PriceControlEngine.maxAttemptsPerStep
+                    ? "Kunne ikke endre temperaturen. Prøver igjen senere i denne perioden."
+                    : "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
                 status.problem = outcome.message
             }
         }
@@ -169,6 +189,7 @@ extension HeatPumpService {
         let holidayActive =
             holiday?.enabled == true && (holiday?.start.map { $0 <= t } ?? true) && (holiday?.end.map { $0 > t } ?? true)
         let timer = try storedWeeklyTimer()
+        let inForce = timer?.event(inForceAt: t, timeZone: timeZone)
         var near: Date?
         if let next = timer?.nextEvent(after: t.addingTimeInterval(-PriceControlEngine.timerMargin), timeZone: timeZone),
             next.date <= t.addingTimeInterval(PriceControlEngine.timerMargin)
@@ -178,32 +199,41 @@ extension HeatPumpService {
         return PriceControlContext(
             settings: settings, state: try store.latestSnapshot()?.state, steps: steps, blockedReason: blocked,
             holidayActive: holidayActive, frostProtection: away?.frost?.enabled == true, timerEventNear: near,
-            timerFiredAt: timer?.event(inForceAt: t, timeZone: timeZone)?.date, now: t)
+            timerFiredAt: inForce?.date, timerSetpoint: inForce?.event.setTemperature, now: t)
     }
 
     /// Turns price control on: the current setpoint becomes the comfort temperature (when the unit
     /// is on in heat mode and the setpoint is not one the controller left behind), then the first
-    /// tick runs.
+    /// tick runs. A setpoint left behind (a restore that did not go through) stays the controller's,
+    /// so it is set back later and never taken for the user's own; the write history is kept.
     @discardableResult
     public func enablePriceControl() async throws -> PriceControlStatus {
         var settings = try priceControlSettings()
-        let leftBehind = try priceControlRuntime().memory.lastSent
-        if let state = try store.latestSnapshot()?.state, state.power, state.mode == .heat, let setpoint = state.setTemperature,
-            leftBehind.map({ abs($0 - setpoint) >= 0.25 }) ?? true
-        {
+        var memory = try priceControlRuntime().memory
+        let state = try store.latestSnapshot()?.state
+        let leftBehind = memory.lastSent.flatMap { sent in
+            state?.setTemperature.map { abs($0 - sent) < (state?.setpointIncrement ?? 0.5) - 0.001 } == true ? sent : nil
+        }
+        if let state, state.power, state.mode == .heat, let setpoint = state.setTemperature, leftBehind == nil {
             settings.comfortTemperature = setpoint
         }
         settings.enabled = true
         try store.saveSetting(settings, key: Self.priceControlKey)
-        try savePriceControlRuntime(PriceControlRuntime())
+        memory.lastSent = leftBehind
+        memory.expected = leftBehind
+        memory.expectedAt = leftBehind == nil ? nil : memory.lastSentAt
+        memory.appliedStep = nil
+        memory.pausedUntil = nil
+        memory.clearFailure()
+        try savePriceControlRuntime(PriceControlRuntime(memory: memory))
         return try await runPriceControl()
     }
 
-    /// Turns price control off and sets the base temperature back first (when the unit still has
-    /// the setpoint the controller sent). Returns the restore's outcome, or nil when none was needed.
+    /// Turns price control off and sets the base temperature back first (when the controller's
+    /// last send lowered or raised it). Returns the restore's outcome, or nil when none was needed.
     @discardableResult
     public func disablePriceControl() async throws -> ChangeOutcome? {
-        let outcome = try await restorePriceControl(reason: "slått av – tilbake til vanlig temperatur")
+        let outcome = try await restorePriceControl(reason: "slått av – tilbake til vanlig temperatur", always: true)
         var settings = try priceControlSettings()
         settings.enabled = false
         try store.saveSetting(settings, key: Self.priceControlKey)
@@ -214,46 +244,57 @@ extension HeatPumpService {
     }
 
     /// Sets the base temperature back (before sleep, on quit, when turned off; `reason` follows
-    /// "Prisstyring: " in the change log) and forgets what the controller sent, so the next tick
-    /// starts over. When the restore does not go through, the memory is kept: the lowered setpoint
-    /// must not be taken for the user's own. Nil when nothing had to be sent.
+    /// "Prisstyring: " in the change log). Counts as one of the controller's writes; unless
+    /// `always` (off, quit), it is not sent when the hourly cap is used up. After it the step is
+    /// applied again, but not within the same clock hour. When the restore does not go through,
+    /// the memory is kept: the lowered setpoint must not be taken for the user's own. Nil when
+    /// nothing was sent.
     @discardableResult
-    public func restorePriceControl(reason: String) async throws -> ChangeOutcome? {
+    public func restorePriceControl(reason: String, always: Bool = false) async throws -> ChangeOutcome? {
         let settings = try priceControlSettings()
         var runtime = try priceControlRuntime()
         let t = now()
         let (_, base) = try priceControlBase(settings)
         let stepBase = runtime.status?.currentStep.flatMap { $0.contains(t) ? $0.base : nil }
         let state = try store.latestSnapshot()?.state
-        let target = PriceControlEngine.restoreTarget(
-            memory: runtime.memory, state: state, base: base(t) ?? stepBase ?? settings.comfortTemperature)
-        var outcome: ChangeOutcome?
-        if let target {
-            outcome = try await apply(.temperature(target), source: .automation, reason: "Prisstyring: " + reason)
+        var memory = runtime.memory
+        memory.pruneWrites(now: t)
+        guard
+            let target = PriceControlEngine.restoreTarget(
+                memory: memory, state: state, base: base(t) ?? stepBase ?? settings.comfortTemperature),
+            always || memory.writes.count < PriceControlEngine.maxWritesPerHour
+        else { return nil }
+        memory.writes.append(t)
+        let outcome = try await apply(.temperature(target), source: .automation, reason: "Prisstyring: " + reason)
+        if outcome.result == .ok {
+            memory.lastSent = nil
+            memory.lastSentAt = t
+            memory.expect(target, at: t)
+            memory.appliedStep = nil
+            memory.pausedUntil = nil
+            memory.clearFailure()
         }
-        if outcome == nil || outcome?.result == .ok {
-            runtime.memory = PriceControlMemory()
-            try savePriceControlRuntime(runtime)
-        }
+        runtime.memory = memory
+        try savePriceControlRuntime(runtime)
         return outcome
     }
 
-    /// The user changed the setpoint in the app: it becomes the comfort temperature, and while
-    /// the controller owns the setpoint it pauses until the next step boundary.
+    /// The user changed the setpoint in the app: it becomes the comfort temperature, and the
+    /// controller pauses until the step in force is over.
     public func notePriceControlManualSetpoint(_ value: Double) throws {
         var settings = try priceControlSettings()
         guard settings.enabled else { return }
+        let t = now()
+        let step = try priceControlPlan(settings: settings).steps.first { $0.contains(t) }
         settings.comfortTemperature = value
         try store.saveSetting(settings, key: Self.priceControlKey)
         var runtime = try priceControlRuntime()
-        if runtime.memory.lastSent != nil {
-            let t = now()
-            let step = try priceControlPlan(settings: settings).steps.first { $0.contains(t) }
-            runtime.memory.lastSent = nil
-            runtime.memory.appliedStepStart = step?.start
-            runtime.memory.pausedUntil = step?.end ?? t.addingTimeInterval(3600)
-            try savePriceControlRuntime(runtime)
-        }
+        runtime.memory.lastSent = nil
+        runtime.memory.expect(value, at: t)
+        runtime.memory.appliedStep = step
+        runtime.memory.pausedUntil = step?.end ?? t.addingTimeInterval(3600)
+        runtime.memory.clearFailure()
+        try savePriceControlRuntime(runtime)
     }
 
     /// Settings, last status and plan, for Claude.

@@ -62,11 +62,13 @@ struct PriceControlTests {
         #expect(steps.last?.end == switchAt.addingTimeInterval(2 * 3600))  // the fifth hour has no base
     }
 
-    @Test func pastHoursAreLeftOut() {
+    @Test func stepsThatEndedAreLeftOutAndAStepUnderWayKeepsItsStart() {
         let steps = PriceControlPlanner.plan(
-            hours: hours([.expensive, .expensive], from: clock.now.addingTimeInterval(-3600)), base: { _ in 21 }, settings: .default,
-            now: clock.now.addingTimeInterval(1))
+            hours: hours([.expensive, .normal, .expensive, .expensive], from: clock.now.addingTimeInterval(-2 * 3600)),
+            base: { _ in 21 }, settings: .default, now: clock.now.addingTimeInterval(3601))
+        #expect(steps.count == 1)
         #expect(steps.first?.start == clock.now)
+        #expect(steps.first?.end == clock.now.addingTimeInterval(2 * 3600))
     }
 
     @Test func weeklyPlanEventInForce() throws {
@@ -117,7 +119,9 @@ struct PriceControlTests {
         // What the runner records after a successful send.
         memory.lastSent = 19
         memory.lastSentAt = clock.now.addingTimeInterval(30)
-        memory.appliedStepStart = clock.now
+        memory.expect(19, at: clock.now.addingTimeInterval(30))
+        memory.appliedStep = first.step
+        memory.writes = [clock.now.addingTimeInterval(30)]
         let later = PriceControlEngine.evaluate(context(set: 19, at: clock.now.addingTimeInterval(600)), memory: &memory)
         #expect(later.target == nil)
         #expect(later.kind == .lowered)
@@ -126,7 +130,9 @@ struct PriceControlTests {
 
     @Test func manualChangePausesUntilTheNextStepAndBecomesComfort() {
         let steps = [step(), step(.normal, target: 21, from: clock.now.addingTimeInterval(2 * 3600))]
-        var memory = PriceControlMemory(lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStepStart: clock.now)
+        var memory = PriceControlMemory(
+            lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStep: steps[0], expected: 19,
+            expectedAt: clock.now.addingTimeInterval(30))
         // Not yet confirmed by the unit: no conclusion.
         let pending = PriceControlEngine.evaluate(
             context(set: 22, steps: steps, at: clock.now.addingTimeInterval(600), pending: true), memory: &memory)
@@ -148,13 +154,27 @@ struct PriceControlTests {
         #expect(memory.pausedUntil == nil)
     }
 
-    @Test func weeklyPlanChangeIsNotAManualOverride() {
-        var memory = PriceControlMemory(lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStepStart: clock.now)
-        var c = context(set: 23, at: clock.now.addingTimeInterval(3700))
-        c.timerFiredAt = clock.now.addingTimeInterval(1200)
-        let decision = PriceControlEngine.evaluate(c, memory: &memory)
-        #expect(decision.kind != .paused)
-        #expect(decision.target == 19)  // the step is applied again (in the next clock hour)
+    @Test func weeklyPlanChangeIsNotAManualOverrideButADifferentSetpointIs() {
+        func evaluate(set: Double) -> (PriceControlDecision, PriceControlMemory) {
+            var memory = PriceControlMemory(
+                lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStep: step(), expected: 19,
+                expectedAt: clock.now.addingTimeInterval(30))
+            var c = context(set: set, steps: [step(target: 21, base: 23)], at: clock.now.addingTimeInterval(1900))
+            c.timerFiredAt = clock.now.addingTimeInterval(1200)
+            c.timerSetpoint = 23
+            return (PriceControlEngine.evaluate(c, memory: &memory), memory)
+        }
+        // The plan's event set 23 °C: not the user, and the step planned from 23 is sent.
+        let (plan, planMemory) = evaluate(set: 23)
+        #expect(plan.kind != .paused)
+        #expect(plan.comfortTemperature == nil)
+        #expect(plan.target == 21)
+        #expect(planMemory.lastSent == nil)
+        // 22 °C is not what the event set: the user changed it after the event.
+        let (manual, manualMemory) = evaluate(set: 22)
+        #expect(manual.kind == .paused)
+        #expect(manual.comfortTemperature == 22)
+        #expect(manualMemory.pausedUntil == clock.now.addingTimeInterval(2 * 3600))
     }
 
     @Test func skipsWhenItMustNotAct() {
@@ -186,7 +206,9 @@ struct PriceControlTests {
     }
 
     @Test func atMostOneChangePerHour() {
-        var memory = PriceControlMemory(lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStepStart: clock.now)
+        var memory = PriceControlMemory(
+            lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30), appliedStep: step(), expected: 19,
+            expectedAt: clock.now.addingTimeInterval(30), writes: [clock.now.addingTimeInterval(30)])
         // A one-hour step boundary inside the same clock hour as the last send is impossible, so
         // simulate a new step starting in the same hour.
         let next = step(.normal, target: 21, from: clock.now.addingTimeInterval(1200), hours: 1)
@@ -294,6 +316,8 @@ struct PriceControlTests {
     @Test func failedRestoreKeepsTheLoweredSetpointFromBecomingComfort() async throws {
         let (service, backend, store) = try await makeService()
         try await service.enablePriceControl()  // 19 sent
+        clock.advance(300)
+        _ = try await service.currentState(force: true)  // the unit confirms 19 (nothing pending)
         try store.recordBlock(until: clock.now.addingTimeInterval(3600), reason: .rateLimited)
         let outcome = try #require(try await service.restorePriceControl(reason: "test"))
         #expect(outcome.result != .ok)
@@ -321,6 +345,233 @@ struct PriceControlTests {
         #expect(overview.plan.changes.first?.target == 19)
         clock.advance(600)
         #expect(try await service.priceControlOverview().appRunning == false)
+    }
+
+    // MARK: Review findings
+
+    /// Normal hours from `clock.now` on (prices published for six hours).
+    func normalHours(_ count: Int = 6) -> [PriceControlHour] {
+        hours(Array(repeating: .normal, count: count))
+    }
+
+    @Test func manualChangeInANormalHourIsKeptPastTheNextWholeHour() {
+        // Weekly plan as base (21 °C): the user raises to 23 at 10:30; at 11:01 the step 10–16 is
+        // still the same step, so nothing is sent.
+        let settings = PriceControlSettings(enabled: true, comfortTemperature: 21)
+        var memory = PriceControlMemory()
+        func tick(_ seconds: TimeInterval, set: Double) -> PriceControlDecision {
+            let t = clock.now.addingTimeInterval(seconds)
+            let steps = PriceControlPlanner.plan(hours: normalHours(), base: { _ in 21 }, settings: settings, now: t)
+            return PriceControlEngine.evaluate(
+                PriceControlContext(settings: settings, state: makeState(at: t, set: set), steps: steps, now: t), memory: &memory)
+        }
+        #expect(tick(300, set: 21).target == nil)
+        let changed = tick(1800, set: 23)
+        #expect(changed.target == nil)
+        #expect(changed.kind == .paused)
+        let nextHour = tick(3660, set: 23)
+        #expect(nextHour.target == nil)
+        #expect(nextHour.kind == .paused)
+        #expect(tick(3 * 3600, set: 23).target == nil)
+    }
+
+    @Test func aMultiHourStepKeepsItsStartAsTheHoursPass() {
+        let input = hours([.veryExpensive, .veryExpensive, .veryExpensive, .normal])
+        let at10 = PriceControlPlanner.plan(hours: input, base: { _ in 21 }, settings: .default, now: clock.now.addingTimeInterval(60))
+        let at11 = PriceControlPlanner.plan(hours: input, base: { _ in 21 }, settings: .default, now: clock.now.addingTimeInterval(3660))
+        #expect(at10.first?.start == clock.now)
+        #expect(at11.first?.start == clock.now)  // as planned, not clipped to the current hour
+        #expect(at11.first?.end == clock.now.addingTimeInterval(3 * 3600))
+    }
+
+    @Test func wholeDegreeUnitDoesNotRatchetTheComfortDown() {
+        // 1.5 °C off 21 on a unit that only takes whole degrees: 19.5 goes out as 20.
+        let settings = PriceControlSettings(enabled: true, reduceExpensive: 1.5, comfortTemperature: 21)
+        let t = clock.now.addingTimeInterval(30)
+        let steps = PriceControlPlanner.plan(
+            hours: [PriceControlHour(start: clock.now, totalOre: 200, level: .expensive)], base: { _ in 21 }, settings: settings, now: t)
+        var state = makeState(at: t, set: 21)
+        state.temperatureIncrement = 1
+        var memory = PriceControlMemory()
+        let first = PriceControlEngine.evaluate(PriceControlContext(settings: settings, state: state, steps: steps, now: t), memory: &memory)
+        let target = try? #require(first.target)
+        guard case .success(.temperature(let sent)) = HeatPumpService.validate(.temperature(target ?? 0), against: state) else {
+            Issue.record("not valid")
+            return
+        }
+        #expect(target == sent)  // what the engine asks for is what goes out
+        memory.lastSent = target
+        memory.lastSentAt = t
+        memory.expected = target
+        memory.expectedAt = t
+        memory.appliedStep = steps.first
+        let later = clock.now.addingTimeInterval(400)
+        var unit = makeState(at: later, set: sent)
+        unit.temperatureIncrement = 1
+        let next = PriceControlEngine.evaluate(PriceControlContext(settings: settings, state: unit, steps: steps, now: later), memory: &memory)
+        #expect(next.comfortTemperature == nil)
+        #expect(next.kind == .lowered)
+    }
+
+    @Test func reenablingAfterAFailedRestoreKeepsTheComfort() async throws {
+        let (service, _, store) = try await makeService()
+        try await service.enablePriceControl()  // 19 sent
+        clock.advance(300)
+        _ = try await service.currentState(force: true)  // confirmed: the unit reports 19, nothing pending
+        try store.recordBlock(until: clock.now.addingTimeInterval(600), reason: .rateLimited)
+        let off = try #require(try await service.disablePriceControl())
+        #expect(off.result != .ok)
+        try await service.enablePriceControl()
+        #expect(try await service.priceControlSettings().comfortTemperature == 21)
+        clock.advance(900)  // the block is over
+        _ = try await service.currentState(force: true)
+        try await service.runPriceControl()
+        #expect(try await service.priceControlSettings().comfortTemperature == 21)
+    }
+
+    @Test func sleepWakeCyclesKeepToOneChangePerHour() async throws {
+        let (service, backend, _) = try await makeService()
+        try await service.enablePriceControl()  // 10:00: 19
+        for _ in 0..<4 {
+            clock.advance(240)
+            _ = try await service.currentState(force: true)
+            _ = try await service.restorePriceControl(reason: "Macen skal sove")
+            clock.advance(240)
+            _ = try await service.currentState(force: true)
+            _ = try await service.runPriceControl()
+        }
+        // Set back once before the first sleep; not lowered again within the same hour.
+        #expect(await backend.appliedChanges.map(\.setTemperature) == [19, 21])
+        // The next hour (still the expensive step) it lowers again.
+        clock.advance(3600 - 8 * 240 + 30)
+        _ = try await service.currentState(force: true)
+        _ = try await service.runPriceControl()
+        #expect(await backend.appliedChanges.map(\.setTemperature) == [19, 21, 19])
+    }
+
+    @Test func aWeeklyPlanEventMidHourSetsTheBaseForTheRestOfTheHour() {
+        // The plan goes from 21 to 23 °C at 10:20; 10–12 are very expensive (−2 °C).
+        let fired = clock.now.addingTimeInterval(1200)
+        let base: (Date) -> Double? = { $0 < fired ? 21 : 23 }
+        let input = hours([.veryExpensive, .veryExpensive, .normal])
+        var memory = PriceControlMemory(lastSent: 19, lastSentAt: clock.now.addingTimeInterval(30))
+        func tick(_ seconds: TimeInterval, set: Double) -> PriceControlDecision {
+            let t = clock.now.addingTimeInterval(seconds)
+            var c = context(set: set, steps: PriceControlPlanner.plan(hours: input, base: base, settings: .default, now: t), at: t)
+            c.timerFiredAt = t >= fired ? fired : nil
+            c.timerSetpoint = t >= fired ? 23 : nil
+            return PriceControlEngine.evaluate(c, memory: &memory)
+        }
+        #expect(tick(1900, set: 23).step?.target == 21)  // after 10:20 the hour is planned from 23
+        let next = tick(3700, set: 23)
+        #expect(next.kind != .paused)
+        #expect(next.target == 21)
+    }
+
+    @Test func aFailedSendIsShownAndRetriedOnceLaterInTheStep() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = CountingBackend(now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        try await service.savePriceSettings(PriceSettings(agreement: .tibber))
+        let today = WireDate.calendar(.gmt).startOfDay(for: clock.now)
+        try store.upsertPrices((0..<24).map { h in
+            let expensive = (10...12).contains(h)
+            return HourPrice(
+                hour: today.addingTimeInterval(Double(h) * 3600), area: "tibber", source: "tibber", spotOre: expensive ? 200 : 80,
+                totalOre: expensive ? 250 : 100, level: expensive ? "VERY_EXPENSIVE" : "NORMAL")
+        })
+        _ = try await service.currentState()
+        await backend.failNext(with: .network("nede"))
+        let first = try await service.enablePriceControl()
+        #expect(first.kind == .skipped)
+        #expect(first.problem != nil)
+        #expect(await backend.appliedChanges().isEmpty)
+        // Same hour: not retried, the problem stays visible (not "Vanlig temperatur").
+        clock.advance(600)
+        _ = try await service.currentState(force: true)
+        let waiting = try await service.runPriceControl()
+        #expect(waiting.kind == .skipped)
+        #expect(waiting.problem != nil)
+        #expect(await backend.applyCalls == 1)
+        // Next hour, same step: one more attempt.
+        clock.advance(3000)
+        _ = try await service.currentState(force: true)
+        let retried = try await service.runPriceControl()
+        #expect(retried.kind == .lowered)
+        #expect(await backend.appliedChanges().map(\.setTemperature) == [19])
+    }
+
+    @Test func disablingRightAfterASendStillRestores() {
+        // MELCloud still reports the old setpoint a minute after the send.
+        let sentAt = clock.now.addingTimeInterval(30)
+        let memory = PriceControlMemory(lastSent: 19, lastSentAt: sentAt)
+        let stale = makeState(at: sentAt.addingTimeInterval(60), set: 21)
+        #expect(PriceControlEngine.restoreTarget(memory: memory, state: stale, base: 21) == 21)
+        // Confirmed later with a setpoint of the user's own: nothing to restore.
+        let own = makeState(at: sentAt.addingTimeInterval(600), set: 22)
+        #expect(PriceControlEngine.restoreTarget(memory: memory, state: own, base: 21) == nil)
+    }
+
+    @Test func atMostFourControllerWritesPerRollingHour() {
+        // Four writes since 10:15 (none in the current clock hour): the step must wait.
+        let writes = [900.0, 1200, 1800, 2400].map { clock.now.addingTimeInterval($0) }
+        var memory = PriceControlMemory(expected: 21, expectedAt: writes[3], writes: writes)
+        let next = step(from: clock.now.addingTimeInterval(3600))
+        let d = PriceControlEngine.evaluate(context(steps: [next], at: clock.now.addingTimeInterval(3600 + 600)), memory: &memory)
+        #expect(d.target == nil)
+        #expect(d.kind == .waiting)
+        // At 11:16 the 10:15 write is more than an hour old.
+        let later = PriceControlEngine.evaluate(context(steps: [next], at: clock.now.addingTimeInterval(3600 + 960)), memory: &memory)
+        #expect(later.target == 19)
+    }
+
+    @Test func aSleepRestoreCountsAgainstTheCapButTurningOffAlwaysRestores() async throws {
+        let (service, backend, _) = try await makeService()
+        try await service.enablePriceControl()  // 19
+        var runtime = try await service.priceControlRuntime()
+        runtime.memory.writes = (0..<4).map { clock.now.addingTimeInterval(Double($0)) }
+        try await service.savePriceControlRuntime(runtime)
+        clock.advance(300)
+        _ = try await service.currentState(force: true)
+        #expect(try await service.restorePriceControl(reason: "Macen skal sove") == nil)
+        #expect(await backend.appliedChanges.map(\.setTemperature) == [19])
+        let off = try #require(try await service.disablePriceControl())
+        #expect(off.result == .ok)
+        #expect(await backend.appliedChanges.map(\.setTemperature) == [19, 21])
+    }
+
+    @Test func onlyTheMostExpensiveHoursPerDayAreLowered() {
+        // Six expensive hours from 10:00 (UTC), at most three per day: the three dearest.
+        let prices: [Double] = [150, 210, 190, 160, 230, 170, 90]
+        let input = hours([.expensive, .veryExpensive, .expensive, .expensive, .veryExpensive, .expensive, .normal], prices: prices)
+        let settings = PriceControlSettings(maxReducedHoursPerDay: 3)
+        let steps = PriceControlPlanner.plan(hours: input, base: { _ in 21 }, settings: settings, now: clock.now, timeZone: .gmt)
+        let lowered = steps.filter { $0.kind == .reduce }.flatMap { step in
+            stride(from: step.start.timeIntervalSince(clock.now) / 3600, to: step.end.timeIntervalSince(clock.now) / 3600, by: 1).map(Int.init)
+        }
+        #expect(lowered == [1, 2, 4])
+        #expect(PriceControlPlanner.hoursOverDailyLimit(hours: input, base: { _ in 21 }, settings: settings, now: clock.now, timeZone: .gmt) == 3)
+        // The limit is per day: the next day has its own three.
+        let twoDays = hours(Array(repeating: .veryExpensive, count: 20))
+        let both = PriceControlPlanner.plan(hours: twoDays, base: { _ in 21 }, settings: settings, now: clock.now, timeZone: .gmt)
+        #expect(both.filter { $0.kind == .reduce }.reduce(0) { $0 + Int($1.end.timeIntervalSince($1.start) / 3600) } == 6)
+        // Pre-heating is not limited.
+        let preheat = PriceControlPlanner.plan(
+            hours: hours([.cheap, .normal, .expensive, .expensive], prices: [40, 60, 150, 160]), base: { _ in 21 },
+            settings: PriceControlSettings(preheat: true, maxReducedHoursPerDay: 1), now: clock.now, timeZone: .gmt)
+        #expect(preheat.map(\.kind) == [.preheat, .normal, .reduce])
+    }
+
+    @Test func dailyLimitSettingDecodesAndValidates() throws {
+        let old = try JSONDecoder().decode(PriceControlSettings.self, from: Data(#"{"enabled":true}"#.utf8))
+        #expect(old.maxReducedHoursPerDay == 8)
+        #expect(PriceControlSettings(maxReducedHoursPerDay: 0).validationProblem() != nil)
+        #expect(PriceControlSettings(maxReducedHoursPerDay: 25).validationProblem() != nil)
+        #expect(PriceControlSettings(maxReducedHoursPerDay: 24).validationProblem() == nil)
+        // Memory saved by the first version still decodes.
+        let memory = try JSONDecoder().decode(PriceControlMemory.self, from: Data(#"{"lastSent":19,"appliedStepStart":0}"#.utf8))
+        #expect(memory.lastSent == 19)
+        #expect(memory.writes.isEmpty)
     }
 
     // MARK: Change source

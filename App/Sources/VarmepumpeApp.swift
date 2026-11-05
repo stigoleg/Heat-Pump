@@ -21,10 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// With price control on, the base temperature is set back first (at most 5 s).
+    /// With price control on, the base temperature is set back first (at most 5 s). Before its
+    /// settings are read, the app cannot know, so it reads them first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         MainActor.assumeIsolated {
-            guard model.keepsRunningInBackground else { return .terminateNow }
+            guard model.keepsRunningInBackground || !model.priceControl.loaded else { return .terminateNow }
             Task { @MainActor in
                 await model.priceControl.restoreBeforeQuit()
                 NSApp.reply(toApplicationShouldTerminate: true)

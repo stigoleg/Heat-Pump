@@ -4,7 +4,9 @@ import Observation
 
 /// Runs price control in the app: one service tick per poll, restore before sleep and on quit,
 /// and an activity that keeps App Nap from pausing the poll while it is on. The rules live in
-/// HeatPumpKit (`PriceControlEngine`, `HeatPumpService.runPriceControl`).
+/// HeatPumpKit (`PriceControlEngine`, `HeatPumpService.runPriceControl`). Ticks, switching,
+/// restores and the user's own setpoint run one at a time (the service is an actor, so its calls
+/// would otherwise interleave at every network wait).
 @MainActor
 @Observable
 final class PriceControlRunner {
@@ -19,6 +21,8 @@ final class PriceControlRunner {
     private(set) var loaded = false
     @ObservationIgnored private var activity: NSObjectProtocol?
     @ObservationIgnored private var sleepObserver: NSObjectProtocol?
+    /// The last queued piece of work; the next one waits for it.
+    @ObservationIgnored private var queue: Task<Void, Never>?
     /// Called after the runner may have sent a setpoint, so the views show the new state at once.
     @ObservationIgnored var afterChange: (@MainActor () async -> Void)?
 
@@ -39,6 +43,18 @@ final class PriceControlRunner {
         }
     }
 
+    /// Runs `work` after everything queued before it.
+    @discardableResult
+    private func serialized<T: Sendable>(_ work: @escaping @Sendable @MainActor () async -> T) async -> T {
+        let previous = queue
+        let task = Task { @MainActor in
+            await previous?.value
+            return await work()
+        }
+        queue = Task { _ = await task.value }
+        return await task.value
+    }
+
     /// Reads settings, last status and the plan (no network).
     func load() async {
         guard let service else { return }
@@ -53,18 +69,20 @@ final class PriceControlRunner {
     func tick() async {
         guard let service else { return }
         if !loaded { await load() }
-        guard enabled, !isBusy else {
+        await serialized { [self] in
+            guard enabled else {
+                plan = try? await service.priceControlPlan()
+                return
+            }
+            do {
+                status = try await service.runPriceControl()
+            } catch {
+                message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+            settings = (try? await service.priceControlSettings()) ?? settings
             plan = try? await service.priceControlPlan()
-            return
+            await afterChange?()
         }
-        do {
-            status = try await service.runPriceControl()
-        } catch {
-            message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-        settings = (try? await service.priceControlSettings()) ?? settings
-        plan = try? await service.priceControlPlan()
-        await afterChange?()
     }
 
     /// Turns price control on or off. Off sets the base temperature back first.
@@ -72,56 +90,73 @@ final class PriceControlRunner {
         guard let service, on != enabled, !isBusy else { return }
         isBusy = true
         defer { isBusy = false }
-        do {
-            if on {
-                status = try await service.enablePriceControl()
-                message = nil
-            } else {
-                let outcome = try await service.disablePriceControl()
-                status = try await service.priceControlStatus()
-                message = outcome.map { $0.result == .ok ? "Prisstyring er av. Temperaturen er satt tilbake." : $0.message }
-                    ?? "Prisstyring er av."
+        await serialized { [self] in
+            guard on != enabled else { return }
+            do {
+                if on {
+                    status = try await service.enablePriceControl()
+                    message = nil
+                } else {
+                    let outcome = try await service.disablePriceControl()
+                    status = try await service.priceControlStatus()
+                    message = outcome.map { $0.result == .ok ? "Prisstyring er av. Temperaturen er satt tilbake." : $0.message }
+                        ?? "Prisstyring er av."
+                }
+            } catch {
+                message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
-        } catch {
-            message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            settings = (try? await service.priceControlSettings()) ?? settings
+            plan = try? await service.priceControlPlan()
+            updateActivity()
+            await afterChange?()
         }
-        settings = (try? await service.priceControlSettings()) ?? settings
-        plan = try? await service.priceControlPlan()
-        updateActivity()
-        await afterChange?()
     }
 
     /// Saves reductions, minimum and pre-heating. Returns a Norwegian error, or nil.
     func save(_ new: PriceControlSettings) async -> String? {
         guard let service else { return nil }
-        do {
-            try await service.savePriceControlSettings(new)
-        } catch {
-            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        return await serialized { [self] () -> String? in
+            do {
+                try await service.savePriceControlSettings(new)
+            } catch {
+                return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+            settings = (try? await service.priceControlSettings()) ?? settings
+            plan = try? await service.priceControlPlan()
+            return nil
         }
-        settings = (try? await service.priceControlSettings()) ?? settings
-        plan = try? await service.priceControlPlan()
-        return nil
     }
 
     /// The user changed the setpoint in the app (Kontroll or the dial).
     func userChangedSetpoint(_ value: Double) async {
         guard enabled, let service else { return }
-        try? await service.notePriceControlManualSetpoint(value)
-        settings = (try? await service.priceControlSettings()) ?? settings
+        await serialized { [self] in
+            try? await service.notePriceControlManualSetpoint(value)
+            settings = (try? await service.priceControlSettings()) ?? settings
+        }
     }
 
-    /// Sets the base temperature back (sleep); the next tick after waking applies the plan again.
+    /// Sets the base temperature back (sleep; within the controller's hourly cap). The next tick
+    /// after waking applies the plan again, but not within the same clock hour.
     func restore(reason: String) async {
         guard let service else { return }
-        _ = try? await service.restorePriceControl(reason: reason)
-        await afterChange?()
+        await serialized { [self] in
+            _ = try? await service.restorePriceControl(reason: reason)
+            await afterChange?()
+        }
     }
 
-    /// Restore before quitting, waiting at most `quitTimeout`.
+    /// Restore before quitting (always sent, after any tick in flight), waiting at most
+    /// `quitTimeout`. Reads the settings first when the app quits before they were loaded.
     func restoreBeforeQuit() async {
-        guard enabled, let service else { return }
-        let work = Task { _ = try? await service.restorePriceControl(reason: "appen avsluttes – tilbake til vanlig temperatur") }
+        guard let service else { return }
+        if !loaded { await load() }
+        guard enabled else { return }
+        let work = Task { @MainActor in
+            await self.serialized {
+                _ = try? await service.restorePriceControl(reason: "appen avsluttes – tilbake til vanlig temperatur", always: true)
+            }
+        }
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await work.value }
             group.addTask { try? await Task.sleep(for: Self.quitTimeout) }
