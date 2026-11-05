@@ -16,6 +16,7 @@ struct ToolHandler: Sendable {
             case "get_error_log": return try await getErrorLog(args)
             case "get_history": return try await getHistory(args)
             case "get_energy": return try await getEnergy(args)
+            case "get_prices": return try await getPrices()
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -108,15 +109,63 @@ struct ToolHandler: Sendable {
             var from: String
             var to: String
             var totalKWh: Double
+            var costNok: Double?
+            var isEstimate: Bool
+            var cost: CostSplit?
+            var agreement: String
             var buckets: [EnergyBucket]
             var note: String
         }
+        _ = try? await service.syncPrices()
         let buckets = try await service.energy(period: period, from: from, to: to)
+        let costs = buckets.compactMap(\.cost)
+        let total = costs.isEmpty ? nil : costs.reduce(CostSplit(), +).rounded()
         return try await output(
             View(
                 period: period.rawValue, from: WireDate.day(from, timeZone: .current), to: WireDate.day(to, timeZone: .current),
-                totalKWh: (buckets.reduce(0) { $0 + $1.totalKWh } * 100).rounded() / 100, buckets: buckets,
-                note: "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data."))
+                totalKWh: (buckets.reduce(0) { $0 + $1.totalKWh } * 100).rounded() / 100,
+                costNok: total.map { ($0.totalNok * 100).rounded() / 100 },
+                isEstimate: buckets.contains { $0.isEstimate }, cost: total,
+                agreement: try await service.priceSettings().agreement.displayName, buckets: buckets,
+                note: "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. "
+                    + "Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. "
+                    + "Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med "
+                    + "døgnets snittpris fordi forbruk per time mangler."))
+    }
+
+    private func getPrices() async throws -> CallTool.Result {
+        let overview = try await service.priceOverview()
+        struct Hour: Encodable {
+            var hour: String
+            var totalOre: Double
+            var energyOre: Double
+            var gridOre: Double
+            var supportOre: Double
+        }
+        struct View: Encodable {
+            var agreement: String
+            var agreementName: String
+            var current: Hour?
+            var cheapestAhead: [Hour]
+            var today: [Hour]
+            var tomorrow: [Hour]?
+            var sync: PriceSync?
+            var note: String
+        }
+        func hour(_ b: PriceBreakdown) -> Hour {
+            func r(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+            return Hour(
+                hour: b.hour.formatted(.iso8601), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
+                supportOre: r(b.supportOre))
+        }
+        return try await output(
+            View(
+                agreement: overview.agreement.rawValue, agreementName: overview.agreementName,
+                current: overview.current.map(hour), cheapestAhead: overview.cheapestAhead.map(hour),
+                today: overview.today.map(hour), tomorrow: overview.tomorrow.isEmpty ? nil : overview.tomorrow.map(hour),
+                sync: overview.sync,
+                note: "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. "
+                    + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med."))
     }
 
     private func getChangeLog(_ args: Arguments) async throws -> CallTool.Result {

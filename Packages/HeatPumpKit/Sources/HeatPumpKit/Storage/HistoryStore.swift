@@ -232,6 +232,23 @@ public final class HistoryStore: Sendable {
                     );
                     """)
         }
+        migrator.registerMigration("v5") { db in
+            try db.execute(
+                sql: """
+                    CREATE TABLE price_hourly (
+                        hour DATETIME NOT NULL,
+                        area TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        spotOre DOUBLE NOT NULL,
+                        totalOre DOUBLE NOT NULL,
+                        PRIMARY KEY(hour, source, area)
+                    );
+                    CREATE TABLE app_settings (
+                        key TEXT PRIMARY KEY,
+                        json TEXT NOT NULL
+                    );
+                    """)
+        }
         return migrator
     }
 
@@ -369,6 +386,56 @@ public final class HistoryStore: Sendable {
             else { return nil }
             let listing = (row["listingJSON"] as String?).flatMap { try? JSONValue.parse(Data($0.utf8)) }
             return RawDevice(deviceId: deviceId, fetchedAt: row["ts"], json: json, listing: listing)
+        }
+    }
+
+    // MARK: Prices
+
+    public func upsertPrices(_ prices: [HourPrice]) throws {
+        try pool.write { db in
+            for p in prices {
+                try db.execute(
+                    sql: """
+                        INSERT INTO price_hourly (hour, area, source, spotOre, totalOre) VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(hour, source, area) DO UPDATE SET spotOre = excluded.spotOre, totalOre = excluded.totalOre
+                        """,
+                    arguments: [p.hour, p.area, p.source, p.spotOre, p.totalOre])
+            }
+        }
+    }
+
+    /// Prices with `from <= hour < to` for one source and area.
+    public func prices(source: String, area: String, from: Date, to: Date) throws -> [HourPrice] {
+        try pool.read { db in
+            try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT hour, area, source, spotOre, totalOre FROM price_hourly
+                    WHERE source = ? AND area = ? AND hour >= ? AND hour < ? ORDER BY hour
+                    """,
+                arguments: [source, area, from, to]
+            ).map {
+                HourPrice(hour: $0["hour"], area: $0["area"], source: $0["source"], spotOre: $0["spotOre"], totalOre: $0["totalOre"])
+            }
+        }
+    }
+
+    // MARK: Settings
+
+    public func setting<T: Decodable>(_ type: T.Type, key: String) throws -> T? {
+        try pool.read { db in
+            guard let json = try String.fetchOne(db, sql: "SELECT json FROM app_settings WHERE key = ?", arguments: [key])
+            else { return nil }
+            return try? JSONDecoder().decode(T.self, from: Data(json.utf8))
+        }
+    }
+
+    public func saveSetting<T: Encodable>(_ value: T, key: String) throws {
+        let json = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try pool.write { db in
+            try db.execute(
+                sql: "INSERT INTO app_settings (key, json) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET json = excluded.json",
+                arguments: [key, json])
         }
     }
 
@@ -576,6 +643,23 @@ public final class HistoryStore: Sendable {
         }
     }
 
+    /// Write requests used in the rolling window, when the oldest of them leaves the window,
+    /// and when the last write went out.
+    public func writeUsage(now: Date, window: TimeInterval = ChangeBudget.window) throws -> (used: [Date], lastWrite: Date?) {
+        try pool.read { db in
+            let used = try Date.fetchAll(
+                db,
+                sql: """
+                    SELECT MIN(ts) AS ts FROM change_log
+                    WHERE ts > ? AND result IN ('pending', 'ok', 'failed')
+                    GROUP BY COALESCE(batchId, id) ORDER BY ts
+                    """,
+                arguments: [now.addingTimeInterval(-window)])
+            let last = try Date.fetchOne(db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [Self.writeKey])
+            return (used, last)
+        }
+    }
+
     public func finishChange(ids: [Int64], result: ChangeResult, error: String? = nil) throws {
         try pool.write { db in
             for id in ids {
@@ -609,14 +693,15 @@ public final class HistoryStore: Sendable {
     /// Atomically decides whether this process may call the network for `key`.
     /// Honours the global block first, then the per-key minimum interval; on `.allowed` the
     /// attempt is recorded so other processes see it immediately.
-    public func reserveFetch(key: String, minInterval: TimeInterval, now: Date) throws -> FetchDecision {
+    /// `melcloud` false for third-party sources (prices), which MELCloud blocks do not stop.
+    public func reserveFetch(key: String, minInterval: TimeInterval, now: Date, melcloud: Bool = true) throws -> FetchDecision {
         try immediate { db in
-            if try Date.fetchOne(
+            if melcloud, try Date.fetchOne(
                 db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
             {
                 return .credentialsRejected
             }
-            if let blocked = try Date.fetchOne(
+            if melcloud, let blocked = try Date.fetchOne(
                 db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
                 blocked > now
             {

@@ -21,6 +21,10 @@ public protocol CredentialProviding: Sendable {
     func loadContextKey() -> String?
     func saveContextKey(_ key: String?) throws
     func deleteAll() throws
+    /// Tibber personal access token (developer.tibber.com), nil when not set.
+    func loadTibberToken() -> String?
+    /// Saves the Tibber token; nil or empty removes it.
+    func saveTibberToken(_ token: String?) throws
 }
 
 /// Keychain-backed credential store shared by the app and the MCP helper.
@@ -37,6 +41,7 @@ public struct KeychainCredentialStore: CredentialProviding {
     public static let service = "com.stigole.varmepumpe"
     static let credentialsAccount = "melcloud-credentials"
     static let contextKeyAccount = "melcloud-context-key"
+    static let tibberTokenAccount = "tibber-token"
 
     private let environment: [String: String]
     private let service: String
@@ -89,6 +94,20 @@ public struct KeychainCredentialStore: CredentialProviding {
             try write(account: Self.contextKeyAccount, data: Data(key.utf8), label: "Varmepumpe – MELCloud-økt")
         } else {
             try delete(account: Self.contextKeyAccount)
+        }
+    }
+
+    public func loadTibberToken() -> String? {
+        guard let data = try? read(account: Self.tibberTokenAccount) else { return nil }
+        let token = String(decoding: data, as: UTF8.self)
+        return token.isEmpty ? nil : token
+    }
+
+    public func saveTibberToken(_ token: String?) throws {
+        if let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+            try write(account: Self.tibberTokenAccount, data: Data(token.utf8), label: "Varmepumpe – Tibber-nøkkel")
+        } else {
+            try delete(account: Self.tibberTokenAccount)
         }
     }
 
@@ -156,6 +175,7 @@ public final class InMemoryCredentialStore: CredentialProviding {
     private struct State {
         var credentials: MELCloudCredentials?
         var contextKey: String?
+        var tibberToken: String?
         var loadCount = 0
         var existenceChecks = 0
     }
@@ -185,6 +205,10 @@ public final class InMemoryCredentialStore: CredentialProviding {
     public func saveCredentials(_ credentials: MELCloudCredentials) throws { state.withLock { $0.credentials = credentials } }
     public func loadContextKey() -> String? { state.withLock { $0.contextKey } }
     public func saveContextKey(_ key: String?) throws { state.withLock { $0.contextKey = key } }
+    public func loadTibberToken() -> String? { state.withLock { $0.tibberToken } }
+    public func saveTibberToken(_ token: String?) throws {
+        state.withLock { $0.tibberToken = token?.isEmpty == true ? nil : token }
+    }
     public func deleteAll() throws {
         state.withLock {
             $0.credentials = nil

@@ -33,6 +33,13 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 - Rengjør luftfilteret hver 2. uke. Skitne filtre gir kondens og kan gi mugg.
 - Lukter det rart, sjekk filtrene først.
 
+## Strømpris
+
+- Når strømmen er dyr noen timer (typisk morgen og ettermiddag), kan du heve ønsket temperatur 0,5–1 °C et par timer før, og senke like mye mens prisen er høy. Huset lagrer litt varme.
+- Unngå store hopp (mer enn 2 °C) og å slå varmepumpen av og på for å spare. Hyppig av/på sliter på kompressoren, og det koster mer å varme opp igjen et nedkjølt hus.
+- Med Norgespris er prisen lik hele døgnet; da sparer du mest på jevn, litt lavere temperatur. Nettleien er likevel lavere om natten og i helgene.
+- Kostnaden appen viser er strøm + nettleiens energiledd − strømstøtte. Kapasitetsleddet (fastleddet) er ikke med, fordi det avhenger av hele husets høyeste forbruk.
+
 ## Sikkerhet
 
 - R32 er et brennbart kjølemiddel. Ved mistanke om lekkasje: slå av, luft ut, ingen åpen flamme, ring forhandleren.

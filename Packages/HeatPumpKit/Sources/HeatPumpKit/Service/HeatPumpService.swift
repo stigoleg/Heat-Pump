@@ -27,9 +27,11 @@ public actor HeatPumpService {
     public nonisolated let timeZone: TimeZone
     /// Credential store used by `saveCredentials` / `signOut` (nil for the mock backend).
     public nonisolated let credentials: (any CredentialProviding)?
-    private let now: @Sendable () -> Date
+    let now: @Sendable () -> Date
     private let sleep: @Sendable (TimeInterval) async -> Void
     private var device: DeviceSummary?
+    /// Builds the price source for the current settings (nil for Norgespris or a missing token).
+    let priceProvider: @Sendable (PriceSettings) -> (any PriceProvider)?
 
     public init(
         backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
@@ -37,8 +39,10 @@ public actor HeatPumpService {
         now: @escaping @Sendable () -> Date = { Date() },
         sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(for: .seconds(max(0, seconds)))
-        }
+        },
+        priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil }
     ) {
+        self.priceProvider = priceProvider
         self.backend = backend
         self.store = store
         self.credentials = credentials
@@ -54,11 +58,20 @@ public actor HeatPumpService {
     ) throws -> HeatPumpService {
         let store = try HistoryStore(path: HistoryStore.defaultPath(environment: environment))
         if isMock(environment: environment) {
-            return HeatPumpService(backend: MockBackend(), store: store)
+            return HeatPumpService(backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() })
         }
         let credentials = KeychainCredentialStore(environment: environment)
         return HeatPumpService(
-            backend: MELCloudClassicBackend(credentials: credentials, rawCache: store), store: store, credentials: credentials)
+            backend: MELCloudClassicBackend(credentials: credentials, rawCache: store), store: store, credentials: credentials,
+            priceProvider: { settings in
+                switch settings.agreement {
+                case .norgespris: return nil
+                case .spot: return HvaKosterStrommenProvider(area: settings.area)
+                case .tibber:
+                    // Read only when prices are actually fetched (at most hourly).
+                    return credentials.loadTibberToken().map { TibberPriceProvider(token: $0) }
+                }
+            })
     }
 
     public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
@@ -558,6 +571,22 @@ public actor HeatPumpService {
         }
     }
 
+    /// Remaining write requests this rolling hour and the earliest time the next may be sent
+    /// (5 s spacing and the 12-per-hour budget, across processes).
+    public func writeBudget() throws -> WriteBudget {
+        let t = now()
+        let usage = try store.writeUsage(now: t)
+        let limit = ChangeBudget.maxChangesPerHour
+        var next: Date?
+        if usage.used.count >= limit {
+            next = usage.used[usage.used.count - limit].addingTimeInterval(ChangeBudget.window)
+        }
+        if let last = usage.lastWrite, t.timeIntervalSince(last) < ChangeBudget.minSpacing {
+            next = max(next ?? .distantPast, last.addingTimeInterval(ChangeBudget.minSpacing))
+        }
+        return WriteBudget(remaining: max(0, limit - usage.used.count), nextAllowed: next)
+    }
+
     /// Logs a change that was not sent (for example declined by the user in an MCP confirmation).
     @discardableResult
     public func logRejection(_ change: DeviceChange, source: ChangeSource, reason: String, error: String) throws -> ChangeOutcome {
@@ -753,6 +782,7 @@ public actor HeatPumpService {
             deviceId: deviceId, fromDay: WireDate.day(from, timeZone: timeZone), toDay: WireDate.day(to, timeZone: timeZone))
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
+        let costs = try dayCosts(days: days)
         var buckets: [String: EnergyBucket] = [:]
         for day in days {
             let key: String
@@ -769,12 +799,20 @@ public actor HeatPumpService {
             bucket.totalKWh += day.totalKWh
             bucket.heatingKWh += day.heatingKWh ?? 0
             bucket.days += 1
+            if let dayCost = costs[day.day] {
+                bucket.cost = (bucket.cost ?? CostSplit()) + dayCost.cost
+                bucket.isEstimate = bucket.isEstimate || dayCost.isEstimate
+            } else if day.totalKWh > 0 {
+                bucket.isEstimate = true
+            }
             buckets[key] = bucket
         }
         return buckets.values.sorted { $0.period < $1.period }.map { bucket in
             var rounded = bucket
             rounded.totalKWh = (bucket.totalKWh * 100).rounded() / 100
             rounded.heatingKWh = (bucket.heatingKWh * 100).rounded() / 100
+            rounded.cost = bucket.cost?.rounded()
+            rounded.costNok = bucket.cost.map { ($0.totalNok * 100).rounded() / 100 }
             return rounded
         }
     }

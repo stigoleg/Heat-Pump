@@ -78,6 +78,13 @@ public struct EnergyBucket: Codable, Sendable, Equatable {
     public var totalKWh: Double
     public var heatingKWh: Double
     public var days: Int
+    /// Total cost in NOK (nil when no prices are known for the period).
+    public var costNok: Double?
+    /// True when part of the cost uses a day's average price instead of hourly use × hourly price,
+    /// or some days in the period lack prices.
+    public var isEstimate: Bool = false
+    /// Cost split into electricity, grid tariff and support.
+    public var cost: CostSplit?
 }
 
 public struct MaintenanceStatus: Codable, Sendable, Equatable {
@@ -115,5 +122,17 @@ public struct TemperatureHistory: Sendable, Equatable {
     public init(points: [TemperaturePoint], fromMELCloud: Bool) {
         self.points = points
         self.fromMELCloud = fromMELCloud
+    }
+}
+
+/// How many writes are left in the rolling hour and when the next one may go out.
+public struct WriteBudget: Codable, Sendable, Equatable {
+    public var remaining: Int
+    /// Set when a write now would be refused (spacing or budget); nil when one may go out now.
+    public var nextAllowed: Date?
+
+    public init(remaining: Int, nextAllowed: Date? = nil) {
+        self.remaining = remaining
+        self.nextAllowed = nextAllowed
     }
 }

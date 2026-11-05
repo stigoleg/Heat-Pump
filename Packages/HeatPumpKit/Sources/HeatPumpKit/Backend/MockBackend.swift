@@ -47,7 +47,8 @@ public actor MockBackend: HeatPumpBackend {
             wifiSignal: -62, hasPendingCommand: false,
             firmware: FirmwareInfo(deployment: nil, updateAborted: false, adaptorType: 4),
             lastServiceDate: nil,
-            energy: EnergyCounters(currentConsumedKWh: 1234.5, totalHeatingKWh: 1180.2, totalCoolingKWh: 54.3),
+            energy: EnergyCounters(
+                currentConsumedKWh: Self.counterKWh(at: t), totalHeatingKWh: 1180.2, totalCoolingKWh: 54.3),
             limits: TemperatureLimits(minHeat: 10, maxHeat: 31, minCoolDry: 16, maxCoolDry: 31, minAuto: 16, maxAuto: 31),
             temperatureIncrement: 0.5, fetchedAt: t)
     }
@@ -125,6 +126,17 @@ public actor MockBackend: HeatPumpBackend {
     public func fetchSignalStrength(deviceId: Int) async throws -> Int? { -62 }
 
     // MARK: Simulation
+
+    /// Lifetime energy counter: the integral of 0.0175 kWh per hour and degree below 17 °C
+    /// (same model as `fetchEnergy`), in 0.1 kWh steps like the real counter.
+    static func counterKWh(at date: Date) -> Double {
+        let anchor = 1_767_225_600.0  // 2026-01-01T00:00:00Z
+        let h = (date.timeIntervalSince1970 - anchor) / 3600
+        let k = 0.0175
+        // 17 - outdoor = 21 - 4 sin(2π(h-8)/24) - 5 sin(2πh/216)
+        let integral = 21 * h + 4 * 24 / (2 * .pi) * cos(2 * .pi * (h - 8) / 24) + 5 * 216 / (2 * .pi) * cos(2 * .pi * h / 216)
+        return ((1000 + k * integral) * 10).rounded(.down) / 10
+    }
 
     /// Winter outdoor temperature: −4 °C mean, ±4 °C daily swing (warmest 14:00), slow weather swing.
     static func outdoorTemperature(at date: Date) -> Double {

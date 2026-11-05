@@ -49,7 +49,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_energy",
-            description: "Energy use in kWh aggregated per day, ISO week or month. MELCloud energy data lags 1.5–3 h and can contain zeros.",
+            description: "Energy use in kWh aggregated per day, ISO week or month, with cost in NOK (costNok, split into electricity/grid tariff/strømstøtte, isEstimate when part of a day is priced at the day's average). MELCloud energy data lags 1.5–3 h and can contain zeros.",
             inputSchema: [
                 "type": "object",
                 "properties": [
@@ -59,6 +59,11 @@ enum ToolCatalog {
                 ],
                 "required": ["period"],
             ],
+            annotations: readOnly),
+        Tool(
+            name: "get_prices",
+            description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy part − strømstøtte. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
+            inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
             name: "get_maintenance_status",
