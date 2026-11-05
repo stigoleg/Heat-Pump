@@ -108,6 +108,7 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 | `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, health, activity) |
 | `VARMEPUMPE_HISTORY_TAB` | Kun utvikling: fanen Historikk åpner på (temperature, energy, energy-kr, operation, power) |
 | `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light` eller `dark` (skjermbilder) |
+| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (konto, strompris, claude, data) |
 
 ## Appikon
 
