@@ -53,6 +53,7 @@ struct RootView: View {
             case .overview: OverviewView()
             case .control: ControlView()
             case .history: HistoryView()
+            case .away: AwayView()
             case .health: HealthView()
             case .activity: ActivityView()
             }

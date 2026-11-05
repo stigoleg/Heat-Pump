@@ -43,6 +43,11 @@ struct HealthView: View {
                     detail: item.nextDue == nil ? "Registrer når du har gjort det" : "neste gang",
                     systemImage: icon(item.status), tint: color(item.status))
             }
+            if let hours = model.live?.sample?.runtimeHours {
+                KPITile(
+                    label: "Driftstid totalt", value: Norwegian.format("%d t", hours), detail: "ifølge innedelen (trolig siden montering)",
+                    systemImage: "hourglass", tint: Theme.Data.orange)
+            }
             KPITile(
                 label: "Feil siste 90 dager", value: "\(model.errorLog.count)",
                 detail: model.errorLog.first.map { "Siste: \(Norwegian.date($0.start))" }, systemImage: "list.bullet.rectangle",

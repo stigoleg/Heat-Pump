@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Sidebar destinations.
 enum Screen: String, CaseIterable, Identifiable, Hashable {
-    case overview, control, history, health, activity
+    case overview, control, history, away, health, activity
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .overview: "Oversikt"
         case .control: "Kontroll"
         case .history: "Historikk"
+        case .away: "Borte hjemmefra"
         case .health: "Helse"
         case .activity: "Claude-aktivitet"
         }
@@ -24,6 +25,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .overview: "house.fill"
         case .control: "slider.horizontal.3"
         case .history: "chart.xyaxis.line"
+        case .away: "suitcase.fill"
         case .health: "heart.fill"
         case .activity: "sparkles"
         }
@@ -35,6 +37,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .overview: .blue
         case .control: .orange
         case .history: .green
+        case .away: .teal
         case .health: .red
         case .activity: .purple
         }
@@ -166,6 +169,17 @@ final class AppModel {
     /// Local readings of the last 60 minutes (power sparkline).
     var recentLocal: [LocalSample] = []
     var localSettings = LocalSettings.default
+    /// MET forecast for the next 48 hours, where it is for, and the estimate for tomorrow.
+    var forecast: [ForecastHour] = []
+    var weatherLocation: WeatherLocation?
+    var weatherFetchedAt: Date?
+    var weatherMessage: String?
+    var tomorrow: TomorrowEstimate?
+    var weatherSettings = WeatherSettings.default
+    /// Frost protection and holiday mode (cached; read from MELCloud at most hourly).
+    var away: AwaySettings?
+    /// MELCloud's weekly timer (cached; read at most every 6 hours).
+    var weeklyTimer: WeeklyTimer?
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 
@@ -234,6 +248,7 @@ final class AppModel {
 
     func start() {
         guard pollTask == nil else { return }
+        Task { await checkTibberToken() }
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
@@ -273,6 +288,15 @@ final class AppModel {
         }
         let sync = try? await service.syncPrices()
         priceMessage = sync?.status == .failed ? sync?.message : nil
+        // Forecast (hourly at most, only when MET's copy expired), Tibber house use (hourly, only
+        // with a token), away settings (hourly) and the weekly timer (6-hourly).
+        let weather = try? await service.syncWeather()
+        weatherMessage = weather?.status == .failed || weather?.status == .noLocation ? weather?.message : nil
+        if hasTibberToken || isDemo { _ = try? await service.syncHouseConsumption() }
+        if stateResult?.state != nil {
+            _ = try? await service.awaySettings()
+            _ = try? await service.weeklyTimer()
+        }
         // Local adapter: one read per poll at most (the service enforces 20 s spacing and back-off).
         if (try? await service.localSettings())?.enabled == true { _ = try? await service.liveStatus(maxAge: 50) }
         await reloadLocal()
@@ -306,6 +330,15 @@ final class AppModel {
             // Stored reading only; never reads the adapter.
             live = try await service.storedLiveStatus()
             recentLocal = try await service.localSamples(from: now.addingTimeInterval(-3600), to: now)
+            let hourStart = calendar.dateInterval(of: .hour, for: now)?.start ?? now
+            let weather = try await service.weatherForecast(from: hourStart, to: hourStart.addingTimeInterval(48 * 3600))
+            forecast = weather.hours
+            weatherLocation = weather.location
+            weatherFetchedAt = weather.fetchedAt
+            weatherSettings = try await service.weatherSettings()
+            tomorrow = try await service.tomorrowEstimate()
+            away = try await service.storedAwaySettings()
+            weeklyTimer = try await service.storedWeeklyTimer()
         } catch {
             lastError = error.localizedDescription
         }
@@ -355,6 +388,74 @@ final class AppModel {
             data.previousHourly = (try? await service.hourlyConsumption(from: previousFrom, to: from)) ?? []
         }
         return data
+    }
+
+    /// Price level of the current hour (nil for Norgespris or without enough history).
+    var currentPriceLevel: PriceLevel? {
+        let hour = Calendar.current.dateInterval(of: .hour, for: Date())?.start
+        return todayPrices.first { $0.hour == hour }?.level
+    }
+
+    /// Forecast for the chart range (temperature tab), from now on.
+    func forecast(until end: Date) async -> [ForecastHour] {
+        guard let service else { return [] }
+        let start = Calendar.current.dateInterval(of: .hour, for: Date())?.start ?? Date()
+        return (try? await service.weatherForecast(from: start, to: end).hours) ?? []
+    }
+
+    /// The house and the heat pump per hour and day (Tibber), for Energi og kostnad.
+    func houseShare(range: HistoryRange) async -> HouseShareSummary? {
+        guard let service else { return nil }
+        let to = Date()
+        // Yesterday is always included so the KPI can be shown for every range.
+        let from = min(range.start(now: to), Calendar.current.startOfDay(for: to).addingTimeInterval(-86_400))
+        guard let summary = try? await service.houseShare(from: from, to: to), !summary.hours.isEmpty else { return nil }
+        return summary
+    }
+
+    /// Stretches of running, rest and defrost from local readings (not for 1 år: too many).
+    func phaseSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
+        guard let service, range != .year else { return [] }
+        let to = Date()
+        return (try? await service.localPhaseSpans(from: range.start(now: to), to: to)) ?? []
+    }
+
+    // MARK: Weather settings
+
+    func saveWeatherSettings(_ settings: WeatherSettings) async -> String? {
+        guard let service else { return startupError }
+        do {
+            try await service.saveWeatherSettings(settings)
+            let sync = try await service.syncWeather()
+            weatherMessage = sync.status == .failed || sync.status == .noLocation ? sync.message : nil
+            await reloadLocal()
+            return sync.status == .failed ? sync.message : nil
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    // MARK: Away
+
+    /// Sends a frost-protection or holiday-mode change after the user confirmed it in a sheet.
+    func applyAway(_ change: AwayChange) async -> ChangeOutcome? {
+        guard let service else { return nil }
+        let outcome = try? await service.applyAway(change, source: .app, reason: "Endret i appen (Borte hjemmefra)")
+        await reloadLocal()
+        await debouncer?.refreshBudget()
+        return outcome
+    }
+
+    /// Reads frost protection and holiday mode (MELCloud at most hourly).
+    func loadAway() async {
+        guard let service else { return }
+        away = try? await service.awaySettings()
+    }
+
+    /// "Hent ukeplan nå": at most every 10 minutes.
+    func refreshWeeklyTimer() async {
+        guard let service else { return }
+        weeklyTimer = try? await service.weeklyTimer(manual: true)
     }
 
     // MARK: Appearance

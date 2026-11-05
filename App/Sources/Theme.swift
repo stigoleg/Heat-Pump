@@ -84,6 +84,46 @@ extension OperationMode {
     }
 }
 
+extension LocalPhase {
+    var tint: Color {
+        switch self {
+        case .defrost: .cyan
+        case .preheat, .warmup: .yellow
+        case .standby, .resting, .off: .secondary
+        case .heating: .orange
+        case .cooling: .blue
+        case .drying: .teal
+        case .fan: .gray
+        case .running: .purple
+        }
+    }
+}
+
+extension LocalPhaseSpan.Kind {
+    var color: Color {
+        switch self {
+        case .running: Color.orange.opacity(0.75)
+        case .rest: Color.gray.opacity(0.35)
+        case .defrost: Color.cyan.opacity(0.85)
+        case .startup: Color.yellow.opacity(0.8)
+        case .off: Color.gray.opacity(0.15)
+        case .unknown: Color.gray.opacity(0.1)
+        }
+    }
+}
+
+extension PriceLevel {
+    var color: Color {
+        switch self {
+        case .veryCheap: .green
+        case .cheap: .mint
+        case .normal: Theme.Data.purple
+        case .expensive: .orange
+        case .veryExpensive: .red
+        }
+    }
+}
+
 extension HealthSeverity {
     var color: Color {
         switch self {
@@ -155,6 +195,11 @@ enum Format {
 
     static func hour(_ date: Date) -> String {
         date.formatted(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute().locale(Norwegian.locale))
+    }
+
+    /// "tor. 14" (weekday and hour).
+    static func weekdayHour(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)).locale(Norwegian.locale))
     }
 
     static func dayMonth(_ date: Date) -> String {

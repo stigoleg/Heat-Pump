@@ -894,7 +894,8 @@ public actor HeatPumpService {
     }
 
     public func fetchStatus() throws -> [FetchStateRow] {
-        try ([Self.stateKey, HistoryStore.globalKey] + ReportKind.allCases.map { "report.\($0.rawValue)" })
+        try ([Self.stateKey, HistoryStore.globalKey] + ReportKind.allCases.map { "report.\($0.rawValue)" }
+            + [Self.awayFetchKey, Self.timerFetchKey])
             .compactMap { try store.fetchState(key: $0) }
     }
 }

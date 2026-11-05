@@ -70,3 +70,23 @@ struct DemoBadge: View {
             .help("Appen kjører med simulerte data (VARMEPUMPE_BACKEND=mock).")
     }
 }
+
+/// Dev only (`VARMEPUMPE_SCROLL_TO`): scrolls a screen to the section with that id once, a moment
+/// after it appears, so screenshots can show sections below the fold without input events.
+struct DevScrollTarget: ViewModifier {
+    let proxy: ScrollViewProxy
+    @State private var done = false
+
+    func body(content: Content) -> some View {
+        content.task {
+            guard !done, let target = ProcessInfo.processInfo.environment["VARMEPUMPE_SCROLL_TO"] else { return }
+            done = true
+            try? await Task.sleep(for: .seconds(3))
+            proxy.scrollTo(target, anchor: .top)
+        }
+    }
+}
+
+extension View {
+    func devScrollTarget(_ proxy: ScrollViewProxy) -> some View { modifier(DevScrollTarget(proxy: proxy)) }
+}

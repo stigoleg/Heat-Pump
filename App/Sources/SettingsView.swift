@@ -12,6 +12,7 @@ struct SettingsView: View {
             Tab("Konto", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
             Tab("Strømpris", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
             Tab("Lokal tilkobling", systemImage: "wifi.router", value: "lokal") { LocalSettingsView() }
+            Tab("Vær", systemImage: "cloud.sun", value: "vaer") { WeatherSettingsView() }
             Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
         }
@@ -153,6 +154,14 @@ struct AccountSettings: View {
                         }
                     }
                 }
+                if let hours = model.live?.sample?.runtimeHours {
+                    LabeledContent("Driftstid totalt (ifølge innedelen)") {
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(Norwegian.format("%d timer", hours)).monospacedDigit()
+                            Text("Innedelens egen teller, lest lokalt. Trolig tid siden montering.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
             } else {
                 Text("Ingen data hentet ennå.").foregroundStyle(.secondary)
             }
@@ -267,6 +276,8 @@ struct DataSettings: View {
         case "report.energy": "Energi"
         case let key where key.hasPrefix("prices."): "Strømpriser"
         case "local": "Lokal tilkobling"
+        case "away": "Frostsikring og feriemodus"
+        case "timer": "Ukeplan"
         default: key
         }
     }

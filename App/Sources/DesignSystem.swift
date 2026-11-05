@@ -253,11 +253,12 @@ struct SettingChip: View {
     var body: some View {
         Button(action: action) {
             Label {
-                Text(title)
+                Text(title).lineLimit(1)
             } icon: {
                 Image(systemName: systemImage).foregroundStyle(tint)
             }
             .font(.callout.weight(.medium))
+            .fixedSize()
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(Theme.surface, in: Capsule())

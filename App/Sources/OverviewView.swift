@@ -7,14 +7,17 @@ struct OverviewView: View {
     @Environment(AppModel.self) private var model
     @State private var history = HistoryData()
     @State private var selected: Date?
+    @State private var selectedForecast: Date?
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 StatusBanner()
                 if let state = model.state {
                     hero(state)
                     last24(state)
+                    weather.id("weather")
                     insight
                 } else if model.startupError == nil {
                     ContentUnavailableView(
@@ -25,6 +28,8 @@ struct OverviewView: View {
             .padding(Theme.Space.xl)
             .frame(maxWidth: 1100, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .devScrollTarget(proxy)
         }
         .task(id: model.revision) { history = await model.history(range: .day) }
     }
@@ -50,17 +55,21 @@ struct OverviewView: View {
                         localAge(local.timestamp, prefix: "Inne målt lokalt").font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                let dialColumn = VStack(spacing: Theme.Space.s) {
+                    dial
+                    phaseLine
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: Theme.Space.xxl) {
-                        dial
+                        dialColumn
                         facts(state)
                     }
                     VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                        dial.frame(maxWidth: .infinity)
+                        dialColumn.frame(maxWidth: .infinity)
                         facts(state)
                     }
                 }
-                HStack(spacing: Theme.Space.s) {
+                let chips = HStack(spacing: Theme.Space.s) {
                     SettingChip(
                         title: mode?.displayName ?? "Modus ukjent – velg modus",
                         systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
@@ -79,7 +88,18 @@ struct OverviewView: View {
                         systemImage: state.offline ? "wifi.slash" : "wifi",
                         tint: state.offline ? Theme.Status.caution : Theme.Status.good
                     ) { model.selection = .control }
-                    Spacer()
+                }
+                // The price chip moves to its own row when the window is narrow.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Space.s) {
+                        chips
+                        priceChip
+                        Spacer(minLength: 0)
+                    }
+                    VStack(alignment: .leading, spacing: Theme.Space.s) {
+                        chips
+                        priceChip
+                    }
                 }
             }
         }
@@ -88,6 +108,32 @@ struct OverviewView: View {
                 StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
                     .padding(Theme.Space.m)
             }
+        }
+    }
+
+    @ViewBuilder private var priceChip: some View {
+        if let level = model.currentPriceLevel {
+            SettingChip(title: level.nowText, systemImage: "bolt.horizontal.fill", tint: level.color) {
+                model.initialHistoryTab = "energy"
+                model.selection = .history
+            }
+            .help("Prisnivå denne timen sammenlignet med de siste dagene")
+        }
+    }
+
+    /// What the unit is doing now (local reading), in plain words: "Avriser – …", "Hviler …", "Varmer".
+    @ViewBuilder private var phaseLine: some View {
+        if let sample = model.liveSample, let phase = sample.phase, phase != .off {
+            Label {
+                Text(phase.statusLine).fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: phase.systemImage).foregroundStyle(phase.tint)
+            }
+            .font(.callout.weight(.medium))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 290)
+            .help(phase.explanation)
+            .accessibilityHint(phase.explanation)
         }
     }
 
@@ -335,6 +381,96 @@ struct OverviewView: View {
         .calmYAxis { Norwegian.format("%.1f", $0) }
         .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
         .chartXSelection(value: $selected)
+    }
+
+    // MARK: Weather
+
+    @ViewBuilder private var weather: some View {
+        let hours = model.forecast
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            SectionHeader(title: "Vær neste 48 t", hint: model.weatherLocation?.displayName) {
+                Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
+            }
+            CardSurface {
+                if hours.count < 2 {
+                    EmptyChart(
+                        title: "Ingen værvarsel ennå",
+                        message: model.weatherMessage ?? "Værvarselet hentes fra MET Norway høyst én gang i timen.",
+                        systemImage: "cloud.sun")
+                } else {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        forecastStrip(hours).frame(height: 90)
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
+                            if let low = hours.min(by: { $0.temperature < $1.temperature }),
+                                let high = hours.max(by: { $0.temperature < $1.temperature })
+                            {
+                                Label(
+                                    Norwegian.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
+                                    systemImage: "thermometer.medium"
+                                )
+                                .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if let tomorrow = model.tomorrow {
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(tomorrow.shortText).font(.callout.weight(.semibold)).monospacedDigit()
+                                    Text(tomorrowDetail(tomorrow)).font(.caption).foregroundStyle(.secondary)
+                                }
+                                .help("Grovt anslag: forbruket mot hvor kaldt det har vært de siste \(tomorrow.basisDays) dagene, morgendagens varsel og strømpriser.")
+                            }
+                        }
+                        .font(.callout)
+                    }
+                }
+            }
+        }
+    }
+
+    private func tomorrowDetail(_ t: TomorrowEstimate) -> String {
+        var text: String
+        if t.kWhLow.rounded() == t.kWhHigh.rounded() {
+            text = "Grovt anslag fra \(t.basisDays) dager med egne målinger"
+        } else {
+            text = Norwegian.format("Usikkert: ca. %.0f–%.0f kWh", t.kWhLow, t.kWhHigh)
+            if let low = t.costLowNok, let high = t.costHighNok { text += Norwegian.format(" · %.0f–%.0f kr", low, high) }
+        }
+        if t.pricesFromToday { text += " · dagens priser brukt" }
+        return text
+    }
+
+    private func forecastStrip(_ hours: [ForecastHour]) -> some View {
+        let temps = hours.map(\.temperature)
+        let low = (temps.min() ?? 0).rounded(.down) - 1
+        let high = (temps.max() ?? 10).rounded(.up) + 1
+        return Chart {
+            ForEach(hours, id: \.time) { h in
+                AreaMark(x: .value("Tid", h.time), yStart: .value("°C", low), yEnd: .value("°C", h.temperature))
+                    .foregroundStyle(ChartKit.areaGradient(Theme.Data.outside))
+                    .interpolationMethod(.monotone)
+                LineMark(x: .value("Tid", h.time), y: .value("°C", h.temperature))
+                    .foregroundStyle(Theme.Data.outside)
+                    .lineStyle(ChartKit.previousStroke)
+                    .interpolationMethod(.monotone)
+            }
+            RuleMark(y: .value("0", 0)).foregroundStyle(Color.secondary.opacity(0.25))
+            if let h = nearest(hours, to: selectedForecast, by: \.time) {
+                RuleMark(x: .value("Valgt", h.time))
+                    .foregroundStyle(Color.secondary.opacity(0.4))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                        ChartTooltip(
+                            title: Format.weekdayHour(h.time),
+                            rows: [
+                                ("Ute", Format.temperature(h.temperature), Theme.Data.outside),
+                                ("Vind", h.windSpeed.map { Norwegian.format("%.0f m/s", $0) } ?? "–", .secondary),
+                            ])
+                    }
+            }
+        }
+        .chartYScale(domain: low...high)
+        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
+        .chartXSelection(value: $selectedForecast)
+        .accessibilityLabel("Temperatur ute neste 48 timer")
     }
 
     // MARK: Insight
