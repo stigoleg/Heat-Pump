@@ -39,6 +39,7 @@ xcodebuild -scheme Varmepumpe -configuration Release -derivedDataPath "$DERIVED"
   -destination 'generic/platform=macOS' \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$SIGN_IDENTITY" DEVELOPMENT_TEAM=49P95434EE \
+  CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   OTHER_CODE_SIGN_FLAGS="$sign_flags" \
   build -quiet
 
@@ -47,6 +48,12 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dvv "$APP" 2>&1 | grep -E "^Authority=Developer|TeamIdentifier=|Timestamp=|Runtime"
 codesign -dvv "$APP/Contents/Helpers/varmepumpe-mcp" 2>&1 | grep -E "^Authority=Developer|Timestamp=|Runtime"
 lipo -archs "$APP/Contents/MacOS/Varmepumpe"
+# Notarization rejects the debugging entitlement.
+for bin in "$APP" "$APP/Contents/Helpers/varmepumpe-mcp"; do
+  if codesign -d --entitlements - "$bin" 2>/dev/null | grep -q get-task-allow; then
+    echo "$bin has com.apple.security.get-task-allow" >&2; exit 1
+  fi
+done
 
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
@@ -64,11 +71,11 @@ if [[ -z ${SKIP_NOTARIZE:-} ]]; then
   fi
   xcrun notarytool submit "$ZIP" "${auth[@]}" --wait --timeout 30m --output-format json > "$OUT/notary.json"
   cat "$OUT/notary.json"
-  status=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$OUT/notary.json")
-  if [[ $status != Accepted ]]; then
+  result=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$OUT/notary.json")
+  if [[ $result != Accepted ]]; then
     id=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$OUT/notary.json")
     xcrun notarytool log "$id" "${auth[@]}" || true
-    echo "Notarization failed: $status" >&2
+    echo "Notarization failed: $result" >&2
     exit 1
   fi
   xcrun stapler staple "$APP"
