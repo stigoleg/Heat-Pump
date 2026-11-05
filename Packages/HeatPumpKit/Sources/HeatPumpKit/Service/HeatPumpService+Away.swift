@@ -17,6 +17,16 @@ extension HeatPumpService {
     public static let timerManualInterval: TimeInterval = 10 * 60
     static let weeklyTimerNote = "Merk: ukeplanen i MELCloud er på, så varmepumpen kan endre seg selv etter planen."
 
+    /// These endpoints are unverified: a 401 or other refusal from them must not stop every other
+    /// MELCloud call for an hour, so only real traffic limits (429, login throttle) become blocks.
+    func handleAwayError(_ error: Error, now t: Date) throws -> Date? {
+        guard let error = error as? HeatPumpError else { return nil }
+        switch error {
+        case .rateLimited, .loginThrottled: return try handleBlock(error, now: t)
+        default: return nil
+        }
+    }
+
     // MARK: Reading
 
     /// Cached settings (or the device listing's copy) without touching the network.
@@ -48,7 +58,7 @@ extension HeatPumpService {
                 try store.recordFetchSuccess(key: Self.awayFetchKey, now: t)
                 return fresh
             } catch {
-                if let error = error as? HeatPumpError { try handleBlock(error, now: t) }
+                _ = try handleAwayError(error, now: t)
                 var fallback = cached ?? AwaySettings()
                 fallback.message = "Kunne ikke lese frostsikring og feriemodus fra MELCloud: "
                     + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
@@ -79,7 +89,7 @@ extension HeatPumpService {
                 try store.recordFetchSuccess(key: Self.timerFetchKey, now: t)
                 return timer
             } catch {
-                if let error = error as? HeatPumpError { try handleBlock(error, now: t) }
+                _ = try handleAwayError(error, now: t)
                 return cached
             }
         }
@@ -146,7 +156,7 @@ extension HeatPumpService {
                 } catch {
                     let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                     try store.finishChange(ids: ids, result: .failed, error: message)
-                    let blocked = try (error as? HeatPumpError).flatMap { try handleBlock($0, now: at) }
+                    let blocked = try handleAwayError(error, now: at)
                     return ChangeOutcome(
                         result: .failed, message: "Endringen feilet: \(message)", field: change.field,
                         oldValue: change.currentValue(in: current), newValue: change.valueDescription, blockedUntil: blocked)

@@ -222,6 +222,36 @@ struct AwayTests {
         #expect(await backend.awayWrites == 0)
     }
 
+    /// MockBackend whose away/timer endpoints answer 401 (as an unsupported endpoint might).
+    actor RefusingBackend: HeatPumpBackend {
+        nonisolated let identifier = "refusing"
+        let inner: MockBackend
+        init(now: @escaping @Sendable () -> Date) { inner = MockBackend(timeZone: .gmt, now: now) }
+        func login() async throws {}
+        func listDevices() async throws -> [DeviceSummary] { try await inner.listDevices() }
+        func fetchState(deviceId: Int) async throws -> DeviceState { try await inner.fetchState(deviceId: deviceId) }
+        func apply(_ changes: ChangeSet) async throws -> DeviceState? { try await inner.apply(changes) }
+        func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] { [] }
+        func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] { [] }
+        func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] { [] }
+        func fetchSignalStrength(deviceId: Int) async throws -> Int? { nil }
+        func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings { throw HeatPumpError.unauthorized }
+        func applyAway(_ change: AwayChange, deviceId: Int) async throws { throw HeatPumpError.unauthorized }
+        func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer { throw HeatPumpError.unauthorized }
+    }
+
+    @Test func refusalsFromTheseEndpointsDoNotBlockMELCloud() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let service = HeatPumpService(backend: RefusingBackend(now: clock.provider), store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        _ = try await service.currentState()
+        let away = try await service.awaySettings()
+        #expect(away.message?.contains("Kunne ikke lese") == true)
+        _ = try await service.weeklyTimer()
+        let outcome = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 8, maximum: 12)), source: .app, reason: "x")
+        #expect(outcome.result == .failed)
+        #expect(try store.blockStatus(now: clock.now) == nil)
+    }
+
     @Test func timerIsReadAtMostEverySixHoursAndNotedOnWrites() async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
