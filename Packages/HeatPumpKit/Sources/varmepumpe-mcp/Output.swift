@@ -163,6 +163,8 @@ struct DeviceInfoView: Encodable {
     var limits: TemperatureLimits
     var energyCounters: EnergyCounters
     var wifiSignalDbm: Int?
+    /// The indoor unit's own minutes counter in hours (local adapter; likely total running time).
+    var runtimeHoursIndoorUnit: Int?
     var knowledge: [String]
 }
 

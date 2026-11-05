@@ -471,6 +471,7 @@ struct ToolHandler: Sendable {
             lastServiceDate: s.lastServiceDate, numberOfFanSpeeds: s.numberOfFanSpeeds,
             hasAutomaticFanSpeed: s.hasAutomaticFanSpeed, temperatureIncrement: s.temperatureIncrement,
             limits: s.limits, energyCounters: s.energy, wifiSignalDbm: s.wifiSignal,
+            runtimeHoursIndoorUnit: (try? await service.storedLiveStatus())?.sample?.runtimeHours,
             knowledge: Knowledge.all().map(\.uri))
         return try await output(view, state: state)
     }
