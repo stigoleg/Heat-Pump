@@ -6,6 +6,11 @@ extension HistoryStore {
 
     /// Replaces the stored forecast from the first new hour on (older hours are kept for a while,
     /// then pruned after 30 days).
+    /// Drops forecast hours from `from` on (the place changed); past hours stay.
+    public func clearForecast(from: Date) throws {
+        try pool.write { db in try db.execute(sql: "DELETE FROM weather_forecast WHERE hour >= ?", arguments: [from]) }
+    }
+
     public func replaceForecast(_ hours: [ForecastHour], fetchedAt: Date) throws {
         guard let first = hours.map(\.time).min() else { return }
         try pool.write { db in

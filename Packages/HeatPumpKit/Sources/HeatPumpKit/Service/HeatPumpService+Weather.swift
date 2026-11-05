@@ -10,6 +10,8 @@ extension HeatPumpService {
     static let weatherMetaKey = "weatherMeta"
     public static let weatherFetchKey = "weather"
     public static let weatherInterval: TimeInterval = 3600
+    /// After a location change the next fetch may come sooner: MET's own minimum spacing.
+    public static let weatherNewLocationInterval: TimeInterval = 600
     /// Days of history used for the degree-day model.
     static let forecastModelDays = 45
 
@@ -20,6 +22,8 @@ extension HeatPumpService {
     }
 
     /// Saves the settings; refuses coordinates outside the globe and an e-mail without "@".
+    /// When the place changes, the stored forecast hours ahead are dropped (they were for the
+    /// old place) so nothing stale is shown until the next fetch.
     public func saveWeatherSettings(_ settings: WeatherSettings) throws {
         var clean = settings
         if (settings.latitude == nil) != (settings.longitude == nil) {
@@ -37,7 +41,9 @@ extension HeatPumpService {
         clean.contactEmail = email.isEmpty ? nil : email
         let place = settings.placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         clean.placeName = place.isEmpty ? nil : place
+        let oldKey = try weatherLocation()?.key
         try store.saveSetting(clean, key: Self.weatherSettingsKey)
+        if try weatherLocation()?.key != oldKey { try store.clearForecast(from: now()) }
     }
 
     /// Typed coordinates win; otherwise the MELCloud building location; the demo uses Oslo.
@@ -72,7 +78,8 @@ extension HeatPumpService {
         if sameLocation, let expires = meta.expires, expires > t, meta.lastError == nil {
             return WeatherSync(status: .upToDate)
         }
-        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: Self.weatherInterval, now: t, melcloud: false) {
+        let minInterval = sameLocation ? Self.weatherInterval : Self.weatherNewLocationInterval
+        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, melcloud: false) {
         case .throttled(let next):
             return WeatherSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:

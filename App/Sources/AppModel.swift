@@ -440,16 +440,32 @@ final class AppModel {
 
     // MARK: Weather settings
 
-    func saveWeatherSettings(_ settings: WeatherSettings) async -> String? {
-        guard let service else { return startupError }
+    /// Reads the stored weather settings (Settings may open before the first reload; saving
+    /// the empty defaults would drop the chosen place).
+    func loadWeatherSettings() async -> WeatherSettings {
+        if let service, let stored = try? await service.weatherSettings() { weatherSettings = stored }
+        return weatherSettings
+    }
+
+    /// Saves and fetches the forecast for the new place when MET allows it. Returns the
+    /// outcome for the Save button.
+    func saveWeatherSettings(_ settings: WeatherSettings) async -> (ok: Bool, text: String) {
+        guard let service else { return (false, startupError ?? "") }
         do {
             try await service.saveWeatherSettings(settings)
             let sync = try await service.syncWeather()
             weatherMessage = sync.status == .failed || sync.status == .noLocation ? sync.message : nil
             await reloadLocal()
-            return sync.status == .failed ? sync.message : nil
+            switch sync.status {
+            case .failed: return (false, sync.message ?? "Lagret, men varselet kunne ikke hentes.")
+            case .skipped:
+                let when = sync.nextAllowed.map { " kl. \(Format.hour($0))" } ?? " snart"
+                return (true, "Lagret. Nytt varsel hentes\(when).")
+            case .fetched, .notModified: return (true, "Lagret, og varselet er oppdatert.")
+            case .upToDate, .noLocation: return (true, "Lagret.")
+            }
         } catch {
-            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }
     }
 

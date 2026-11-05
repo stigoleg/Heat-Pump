@@ -1,4 +1,5 @@
 import HeatPumpKit
+import MapKit
 import SwiftUI
 
 /// Settings → Vær: where the MET forecast is for, and an optional contact e-mail for MET.
@@ -11,6 +12,7 @@ struct WeatherSettingsView: View {
     @State private var loaded = false
     @State private var working = false
     @State private var message: (ok: Bool, text: String)?
+    @State private var showCoordinates = false
 
     var body: some View {
         Form {
@@ -25,22 +27,33 @@ struct WeatherSettingsView: View {
                         Text("Ikke valgt").foregroundStyle(.secondary)
                     }
                 }
+                if loaded {
+                    LocationPicker(
+                        coordinate: chosen, placeName: $placeName, fallback: fallback,
+                        fallbackTitle: model.weatherLocation?.source == .demo ? "Demo" : "Fra MELCloud")
+                }
                 TextField("Navn på stedet (valgfritt)", text: $placeName, prompt: Text("for eksempel Hjemme eller Lillehammer"))
-                LabeledContent("Breddegrad (valgfritt)") {
-                    TextField("Breddegrad", text: $latitude, prompt: Text("for eksempel 60,39"))
-                        .labelsHidden().frame(width: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
+                if chosen.wrappedValue != nil {
+                    Button("Bruk posisjonen fra MELCloud i stedet") {
+                        latitude = ""
+                        longitude = ""
+                    }
                 }
-                LabeledContent("Lengdegrad (valgfritt)") {
-                    TextField("Lengdegrad", text: $longitude, prompt: Text("for eksempel 5,32"))
-                        .labelsHidden().frame(width: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
+                DisclosureGroup("Skriv inn koordinater", isExpanded: $showCoordinates) {
+                    LabeledContent("Breddegrad") {
+                        TextField("Breddegrad", text: $latitude, prompt: Text("for eksempel 60,39"))
+                            .labelsHidden().frame(maxWidth: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
+                    }
+                    LabeledContent("Lengdegrad") {
+                        TextField("Lengdegrad", text: $longitude, prompt: Text("for eksempel 5,32"))
+                            .labelsHidden().frame(maxWidth: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
+                    }
                 }
-                Link("Finn koordinatene på yr.no eller i Kart (høyreklikk på kartet)", destination: URL(string: "https://www.yr.no")!)  // constant literal
-                    .font(.callout)
             } header: {
                 Text("Sted for værvarselet")
             } footer: {
                 Text(
-                    "Uten egne koordinater bruker appen posisjonen til bygget i MELCloud. Koordinatene rundes av til omtrent én kilometer før de sendes til MET, og vises ikke i appen eller til Claude. Skriv dem med komma eller punktum."
+                    "Søk etter adressen eller stedet, eller klikk i kartet. Søket går via Apple Kart. Uten valgt sted brukes posisjonen til bygget i MELCloud. Posisjonen rundes av til omtrent én kilometer før den sendes til MET, og Claude ser bare stedsnavnet. Husk å trykke Lagre."
                 )
             }
 
@@ -77,25 +90,45 @@ struct WeatherSettingsView: View {
         .formStyle(.grouped)
         .task {
             guard !loaded else { return }
-            let s = model.weatherSettings
+            let s = await model.loadWeatherSettings()
             latitude = s.latitude.map { Norwegian.format("%.4f", $0) } ?? ""
             longitude = s.longitude.map { Norwegian.format("%.4f", $0) } ?? ""
             placeName = s.placeName ?? ""
             email = s.contactEmail ?? ""
+            showCoordinates = s.latitude != nil
             loaded = true
         }
     }
 
+    /// The typed coordinates as a map pin; setting it writes the text fields.
+    private var chosen: Binding<CLLocationCoordinate2D?> {
+        Binding {
+            guard let lat = number(latitude), let lon = number(longitude) else { return nil }
+            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        } set: { new in
+            latitude = new.map { Norwegian.format("%.4f", $0.latitude) } ?? ""
+            longitude = new.map { Norwegian.format("%.4f", $0.longitude) } ?? ""
+            message = nil
+        }
+    }
+
+    /// Where the forecast is for without a chosen place (MELCloud building or demo).
+    private var fallback: CLLocationCoordinate2D? {
+        guard let location = model.weatherLocation, location.source != .manual else { return nil }
+        return CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+    }
+
     private func sourceText(_ source: WeatherLocation.Source) -> String {
         switch source {
-        case .manual: "Fra koordinatene under"
+        case .manual: "Valgt her"
         case .melcloud: "Fra bygget i MELCloud"
         case .demo: "Demo"
         }
     }
 
     private func number(_ text: String) -> Double? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: " ", with: "")
         return trimmed.isEmpty ? nil : Double(trimmed)
     }
 
@@ -111,10 +144,6 @@ struct WeatherSettingsView: View {
         working = true
         defer { working = false }
         let settings = WeatherSettings(latitude: lat, longitude: lon, placeName: placeName, contactEmail: email)
-        if let error = await model.saveWeatherSettings(settings) {
-            message = (false, error)
-        } else {
-            message = (true, "Lagret.")
-        }
+        message = await model.saveWeatherSettings(settings)
     }
 }

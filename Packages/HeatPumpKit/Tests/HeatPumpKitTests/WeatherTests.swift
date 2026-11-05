@@ -103,6 +103,30 @@ struct WeatherTests {
         #expect(stored.location?.latitude == 59.91)
     }
 
+    @Test func newPlaceDropsTheOldForecastAndFetchesSooner() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let transport = StubTransport()
+        let service = makeService(store: store, transport: transport)
+        try await service.saveWeatherSettings(WeatherSettings(latitude: 59.91, longitude: 10.75))
+        transport.enqueue("compact", body: try Fixture.data("met_compact"))
+        #expect(try await service.syncWeather().status == .fetched)
+        #expect(try await !service.weatherForecast(from: clock.now, to: .distantFuture).hours.isEmpty)
+
+        // Same place again (only the name): the forecast stays.
+        try await service.saveWeatherSettings(WeatherSettings(latitude: 59.91, longitude: 10.75, placeName: "Hjemme"))
+        #expect(try await !service.weatherForecast(from: clock.now, to: .distantFuture).hours.isEmpty)
+
+        try await service.saveWeatherSettings(WeatherSettings(latitude: 63.43, longitude: 10.39))
+        #expect(try await service.weatherForecast(from: clock.now, to: .distantFuture).hours.isEmpty)
+        // Within MET's 10-minute spacing: wait; after it, fetch at once instead of after an hour.
+        clock.advance(300)
+        #expect(try await service.syncWeather().status == .skipped)
+        clock.advance(400)
+        transport.enqueue("compact", body: try Fixture.data("met_compact"))
+        #expect(try await service.syncWeather().status == .fetched)
+        #expect(transport.requests.count == 2)
+    }
+
     @Test func throttledAnswerIsRemembered() async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let transport = StubTransport()
