@@ -25,12 +25,16 @@ struct KeychainAccessTests {
     @Test func tokenCacheReadsOnce() {
         let cache = TokenCache()
         var reads = 0
-        #expect(cache.value { reads += 1; return nil } == nil)
-        #expect(cache.value { reads += 1; return "x" } == nil)
-        #expect(reads == 1)
+        // A failed read is retried.
+        #expect(cache.value { reads += 1; return .none } == nil)
+        #expect(cache.cached == nil)
+        // "Not stored" is remembered.
+        #expect(cache.value { reads += 1; return .some(nil) } == nil)
+        #expect(cache.value { reads += 1; return .some("x") } == nil)
+        #expect(reads == 2)
         cache.set("ny")
-        #expect(cache.value { reads += 1; return nil } == "ny")
-        #expect(reads == 1)
+        #expect(cache.value { reads += 1; return .none } == "ny")
+        #expect(reads == 2)
     }
 
     @Test func storedEmailDefaultsToCredentials() {

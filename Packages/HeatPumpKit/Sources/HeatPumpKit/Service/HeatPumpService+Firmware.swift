@@ -26,11 +26,12 @@ extension HeatPumpService {
     // MARK: Reading
 
     /// Firmware version, whether an update waits and MELCloud's update list. `force` ("Oppdater
-    /// status") lifts a refusal pause and allows a read every 15 s. Never throws for MELCloud errors;
-    /// they end up in `message`.
-    public func firmwareStatus(force: Bool = false) async throws -> FirmwareStatus {
+    /// status") allows a read every 15 s and, unless `liftRefusal` is false, lifts a refusal pause
+    /// (only a person should do that, not Claude). Never throws for MELCloud errors; they end up
+    /// in `message`.
+    public func firmwareStatus(force: Bool = false, liftRefusal: Bool? = nil) async throws -> FirmwareStatus {
         let t = now()
-        if force { try store.clearKeyRefusal(key: Self.firmwareFetchKey) }
+        if liftRefusal ?? force { try store.clearKeyRefusal(key: Self.firmwareFetchKey) }
         let state = try store.latestSnapshot()?.state
         let cached = try storedFirmwareStatus()
         var status = Self.firmwareBase(state, cached: cached)
@@ -157,16 +158,31 @@ extension HeatPumpService {
             return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
         }
         // A fresh list: the start must be based on what MELCloud offers right now.
-        var status = try await firmwareStatus(force: true)
+        var status = try await firmwareStatus(force: true, liftRefusal: source == .app)
         guard let at = status.fetchedAt, now().timeIntervalSince(at) < Self.firmwareActionMaxAge else {
             return try reject(status.message ?? "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt.")
         }
         if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
-        guard let updateId = status.current?.id else { return try reject("MELCloud oppga ingen id for oppdateringen.") }
+        guard var updateId = status.current?.id else { return try reject("MELCloud oppga ingen id for oppdateringen.") }
         if let approver {
             let decision = await approver.requestApproval(
                 ApprovalRequest(summaries: Self.firmwareApprovalSummaries(version: state?.firmware.version), reason: reason))
             guard decision == .approved else { return try reject(decision.rejectionText) }
+            // The dialog may have been open for minutes and the update cannot be undone: check
+            // everything again against the newest state before sending.
+            let after = try store.latestSnapshot()?.state
+            if let problem = Self.firmwareUnitProblem(after) { return try reject(problem) }
+            if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+            if let block = try store.blockStatus(now: now()) {
+                return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
+            }
+            status = try await firmwareStatus(force: true, liftRefusal: false)
+            guard let again = status.fetchedAt, now().timeIntervalSince(again) < Self.firmwareActionMaxAge else {
+                return try reject(status.message ?? "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt.")
+            }
+            if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
+            guard let id = status.current?.id else { return try reject("MELCloud oppga ingen id for oppdateringen.") }
+            updateId = id
         }
         return try await sendFirmwareAction(
             source: source, reason: reason, old: oldValue, new: newValue,

@@ -248,14 +248,14 @@ final class AppModel {
 
     func start() {
         guard pollTask == nil else { return }
-        if let keychain = service?.credentials as? KeychainCredentialStore {
-            // Once per install: items from older versions get the ACL shared with the helper.
-            Task.detached { keychain.migrateAccessIfNeeded() }
-        }
-        Task { await checkTibberToken() }
+        let keychain = service?.credentials as? KeychainCredentialStore
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
+            // Once per install, before anything reads the keychain: items from older versions get
+            // the ACL shared with the helper (a read during the swap could miss an item).
+            if let keychain { await Task.detached { keychain.migrateAccessIfNeeded() }.value }
+            await self?.checkTibberToken()
             if let service = self?.service, service.isDemo { try? await service.seedDemoHistoryIfNeeded() }
             while !Task.isCancelled {
                 guard let self else { return }

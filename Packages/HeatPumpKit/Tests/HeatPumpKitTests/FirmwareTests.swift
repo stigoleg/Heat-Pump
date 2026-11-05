@@ -214,6 +214,40 @@ struct FirmwareTests {
         #expect(await backend.firmwareApprovals == 0)
     }
 
+    /// Approver that, while "the dialog is open", lets something happen and then approves.
+    final class ApproveAfter: ChangeApprover, @unchecked Sendable {
+        let during: () throws -> Void
+        init(_ during: @escaping () throws -> Void) { self.during = during }
+        func requestApproval(_ request: ApprovalRequest) async -> ApprovalDecision {
+            try? during()
+            return .approved
+        }
+    }
+
+    @Test func blockArrivingWhileTheDialogIsOpenStopsTheStart() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let svc = service(backend, store: store)
+        _ = try await svc.currentState()
+        let approver = ApproveAfter { try store.recordBlock(until: self.clock.now.addingTimeInterval(3600), reason: .rateLimited) }
+        let outcome = try await svc.startFirmwareUpdate(source: .claude, reason: "x", approver: approver)
+        #expect(outcome.result == .rejected)
+        #expect(outcome.blockedUntil != nil)
+        #expect(await backend.firmwareApprovals == 0)
+    }
+
+    @Test func claudeCannotLiftARefusalPause() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let svc = service(backend, store: store)
+        _ = try await svc.currentState()
+        try store.recordKeyRefusal(key: HeatPumpService.firmwareFetchKey, until: clock.now.addingTimeInterval(86_400))
+        let outcome = try await svc.startFirmwareUpdate(source: .claude, reason: "x", approver: RecordingApprover(.approved))
+        #expect(outcome.result == .rejected)
+        #expect(await backend.firmwareReads == 0)
+        #expect(await backend.firmwareApprovals == 0)
+    }
+
     @Test func blockedOrCredentialsRejectedSendsNothing() async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)

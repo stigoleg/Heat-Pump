@@ -119,9 +119,12 @@ public struct KeychainCredentialStore: CredentialProviding {
 
     public func loadTibberToken() -> String? {
         tibberCache.value {
-            guard let data = try? read(account: Self.tibberTokenAccount) else { return nil }
+            // A refused or failed read (Deny, locked keychain) is not cached; "not stored" is.
+            let stored: Data?
+            do { stored = try read(account: Self.tibberTokenAccount) } catch { return .none }
+            guard let data = stored else { return .some(nil) }
             let token = String(decoding: data, as: UTF8.self)
-            return token.isEmpty ? nil : token
+            return .some(token.isEmpty ? nil : token)
         }
     }
 
@@ -149,7 +152,8 @@ public struct KeychainCredentialStore: CredentialProviding {
     /// already carrying the marker are left alone, so later calls touch no secrets. Does
     /// nothing outside an app bundle.
     public func migrateAccessIfNeeded() {
-        guard KeychainAccess.trustedPaths() != nil else { return }
+        // Without a shared access there is nothing to migrate to; leave the items alone.
+        guard KeychainAccess.shared(label: Self.credentialsLabel) != nil else { return }
         let items = [
             (Self.credentialsAccount, Self.credentialsLabel),
             (Self.contextKeyAccount, Self.contextKeyLabel),
@@ -170,8 +174,10 @@ public struct KeychainCredentialStore: CredentialProviding {
                 try delete(account: account)
                 try add(account: account, data: data, label: label, generic: generic)
             } catch {
-                // Put it back with default access rather than lose it.
-                try? add(account: account, data: data, label: label, generic: generic, shared: false)
+                // Put it back with default access rather than lose it, marked so the next launch
+                // does not delete it again (that would drop the helper's "Always Allow" each time).
+                FileHandle.standardError.write(Data("[keychain] migration of \(account) failed: \(error)\n".utf8))
+                try? add(account: account, data: data, label: label, generic: generic, shared: false, marked: true)
             }
         }
     }
@@ -227,7 +233,7 @@ public struct KeychainCredentialStore: CredentialProviding {
         }
     }
 
-    private func add(account: String, data: Data, label: String, generic: Data?, shared: Bool = true) throws {
+    private func add(account: String, data: Data, label: String, generic: Data?, shared: Bool = true, marked: Bool = false) throws {
         var add = baseQuery(account: account)
         add[kSecValueData as String] = data
         add[kSecAttrLabel as String] = label
@@ -235,6 +241,8 @@ public struct KeychainCredentialStore: CredentialProviding {
         if let generic { add[kSecAttrGeneric as String] = generic }
         if shared, let access = KeychainAccess.shared(label: label) {
             add[kSecAttrAccess as String] = access
+            add[kSecAttrComment as String] = KeychainAccess.marker
+        } else if marked {
             add[kSecAttrComment as String] = KeychainAccess.marker
         }
         let status = SecItemAdd(add as CFDictionary, nil)
@@ -253,9 +261,10 @@ final class TokenCache: Sendable {
 
     var cached: String?? { state.withLock { $0 } }
 
-    func value(_ load: () -> String?) -> String? {
+    /// `load` returns `.none` when the read failed; that is not cached, so the next call retries.
+    func value(_ load: () -> String??) -> String? {
         if let cached = state.withLock({ $0 }) { return cached }
-        let loaded = load()
+        guard let loaded = load() else { return nil }
         state.withLock { $0 = .some(loaded) }
         return loaded
     }
