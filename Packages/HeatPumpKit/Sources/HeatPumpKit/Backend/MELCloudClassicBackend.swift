@@ -205,6 +205,42 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         listing = nil
     }
 
+    // MARK: Frost protection, holiday mode, weekly timer (unverified endpoints; shapes logged)
+
+    private func settingsQuery(_ deviceId: Int) -> [URLQueryItem] {
+        [URLQueryItem(name: "id", value: String(deviceId)), URLQueryItem(name: "tableName", value: "DeviceLocation")]
+    }
+
+    public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
+        let frostJSON = try await authorizedJSON("GET", "FrostProtection/GetSettings", query: settingsQuery(deviceId))
+        Self.diagnose("FrostProtection/GetSettings response: \(MELCloudClassicParser.redactedShape(frostJSON))")
+        let holidayJSON = try await authorizedJSON("GET", "HolidayMode/GetSettings", query: settingsQuery(deviceId))
+        Self.diagnose("HolidayMode/GetSettings response: \(MELCloudClassicParser.redactedShape(holidayJSON))")
+        return AwaySettings(
+            frost: try MELCloudClassicParser.frostProtection(frostJSON), holiday: try MELCloudClassicParser.holidayMode(holidayJSON),
+            fetchedAt: now(), source: "melcloud")
+    }
+
+    public func applyAway(_ change: AwayChange, deviceId: Int) async throws {
+        let (path, body): (String, JSONValue) =
+            switch change {
+            case .frostProtection(let fp): ("FrostProtection/Update", MELCloudClassicParser.frostProtectionBody(fp, deviceId: deviceId))
+            case .holidayMode(let hm): ("HolidayMode/Update", MELCloudClassicParser.holidayModeBody(hm, deviceId: deviceId))
+            }
+        let response = try await authorizedJSON("POST", path, body: body)
+        Self.diagnose("\(path) response: \(MELCloudClassicParser.redactedShape(response))")
+        try MELCloudClassicParser.checkMutation(response)
+    }
+
+    public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
+        let json = try await authorizedJSON("GET", "Timer/Get2", query: [URLQueryItem(name: "deviceId", value: String(deviceId))])
+        Self.diagnose("Timer/Get2 response: \(MELCloudClassicParser.redactedShape(json))")
+        try MELCloudClassicParser.throwIfAttributeErrors(json)
+        var timer = MELCloudClassicParser.weeklyTimer(json)
+        timer.fetchedAt = now()
+        return timer
+    }
+
     // MARK: Internals
 
     /// Newest device object from memory or the shared cache (another process may be newer).

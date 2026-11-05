@@ -96,6 +96,12 @@ public protocol HeatPumpBackend: Sendable {
     /// Norwegian reason the backend would refuse `changes` without contacting the unit, or nil.
     /// With `requireBase` a missing device object counts as a reason.
     func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String?
+    /// Frost protection and holiday mode for the device (two reads).
+    func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings
+    /// Writes frost protection or holiday mode.
+    func applyAway(_ change: AwayChange, deviceId: Int) async throws
+    /// The weekly timer (read-only).
+    func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer
 }
 
 extension HeatPumpBackend {
@@ -103,4 +109,8 @@ extension HeatPumpBackend {
     public var requiresFreshStateForWrites: Bool { false }
     public func writeBaseFetchedAt(deviceId: Int) async -> Date? { nil }
     public func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String? { nil }
+    public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings { throw HeatPumpError.validation(unsupported) }
+    public func applyAway(_ change: AwayChange, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
+    public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer { throw HeatPumpError.validation(unsupported) }
+    private var unsupported: String { "Støttes ikke av denne tilkoblingen." }
 }

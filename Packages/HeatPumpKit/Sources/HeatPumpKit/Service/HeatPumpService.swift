@@ -28,7 +28,7 @@ public actor HeatPumpService {
     /// Credential store used by `saveCredentials` / `signOut` (nil for the mock backend).
     public nonisolated let credentials: (any CredentialProviding)?
     let now: @Sendable () -> Date
-    private let sleep: @Sendable (TimeInterval) async -> Void
+    let sleep: @Sendable (TimeInterval) async -> Void
     private var device: DeviceSummary?
     /// Builds the price source for the current settings (nil for Norgespris or a missing token).
     let priceProvider: @Sendable (PriceSettings) -> (any PriceProvider)?
@@ -248,7 +248,7 @@ public actor HeatPumpService {
 
     /// Records blocks for rate-limit and credential errors. Returns the block end, if timed.
     @discardableResult
-    private func handleBlock(_ error: HeatPumpError, now: Date) throws -> Date? {
+    func handleBlock(_ error: HeatPumpError, now: Date) throws -> Date? {
         switch error {
         case .rateLimited(let until):
             try store.recordBlock(until: until, reason: .rateLimited)
@@ -564,10 +564,12 @@ public actor HeatPumpService {
                     }
                     // Not confirmed by the unit yet: the next refresh fetches again.
                     try store.markLatestSnapshotStale(deviceId: base.deviceId)
+                    // With MELCloud's weekly timer on, the unit may change again by itself.
+                    let timerNote = (try? storedWeeklyTimer())??.enabled == true ? " " + Self.weeklyTimerNote : ""
                     let outcomes = request.map { change in
                         ChangeOutcome(
                             result: .ok,
-                            message: "Sendt: \(change.displaySummary). Det kan ta opptil et par minutter før varmepumpen bekrefter.",
+                            message: "Sendt: \(change.displaySummary). Det kan ta opptil et par minutter før varmepumpen bekrefter." + timerNote,
                             field: change.field, oldValue: change.currentValue(in: base), newValue: change.valueDescription)
                     }
                     return (outcomes, expected)

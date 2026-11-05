@@ -27,6 +27,10 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 
 - Mange Mitsubishi-modeller har en egen «10 °C varme»-funksjon for frostsikring. **Usikkert:** Bruksanvisningen for MSZ-RW nevner ikke en slik funksjon, og laveste ønsket temperatur i MELCloud avhenger av enheten. Sjekk minimumsverdien i appen før du stoler på lav vedlikeholdsvarme.
 - Ikke bruk varmepumpen som eneste frostsikring hvis strømbrudd eller nettbrudd kan gi skader. Den starter automatisk igjen etter strømbrudd (automatisk omstart), men du får ikke beskjed om den har stoppet.
+- **Frostsikring i MELCloud** (appen: «Borte hjemmefra»): når den er på, holder varmepumpen rommet mellom en laveste og høyeste temperatur selv om den ellers står av. Laveste kan være 4–14 °C, høyeste 6–16 °C, og høyeste må være minst 2 °C over laveste. 8–12 °C er et vanlig valg for et hus eller en hytte som står tom.
+- **Feriemodus**: velg start og slutt. I perioden følger varmepumpen frostsikringens område i stedet for de vanlige innstillingene, og går tilbake til dem etterpå. Slå på frostsikring med et fornuftig område før du bruker feriemodus.
+- Begge deler er større endringer enn å justere temperaturen, så appen ber deg bekrefte, og Claude må få godkjenning i vinduet på Macen. Funksjonene er ikke testet mot denne kontoen ennå: gjør den første endringen selv i appen og sjekk i MELCloud-appen at den er registrert.
+- **Ukeplan**: er ukeplanen i MELCloud slått på, kan varmepumpen endre temperatur eller slå seg av og på etter planen. Appen viser planen, men kan ikke endre den.
 
 ## Fukt og lukt
 

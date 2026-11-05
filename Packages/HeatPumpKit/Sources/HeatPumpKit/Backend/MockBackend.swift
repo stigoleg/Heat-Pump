@@ -18,6 +18,11 @@ public actor MockBackend: HeatPumpBackend {
     private var vaneVertical: VaneVertical = .auto
     private var vaneHorizontal: VaneHorizontal = .position3
     public private(set) var appliedChanges: [ChangeSet] = []
+    public private(set) var frost = FrostProtection(enabled: false, minimum: 8, maximum: 12, defined: true)
+    public private(set) var holiday = HolidayMode(enabled: false, defined: false)
+    public private(set) var awayReads = 0
+    public private(set) var awayWrites = 0
+    public private(set) var timerReads = 0
 
     public init(timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.now = now
@@ -128,6 +133,38 @@ public actor MockBackend: HeatPumpBackend {
     }
 
     public func fetchSignalStrength(deviceId: Int) async throws -> Int? { -62 }
+
+    public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
+        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        awayReads += 1
+        return AwaySettings(frost: frost, holiday: holiday, fetchedAt: now(), source: "melcloud")
+    }
+
+    public func applyAway(_ change: AwayChange, deviceId: Int) async throws {
+        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        awayWrites += 1
+        switch change {
+        case .frostProtection(let value): frost = value
+        case .holidayMode(let value): holiday = value
+        }
+    }
+
+    /// A simple weekday plan in the wire shape, decoded by the same tolerant parser as the real one.
+    public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
+        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        timerReads += 1
+        var events: [JSONValue] = []
+        for day in 1...5 {
+            events.append(.object(["Day": .number(Double(day)), "Time": .string("06:30"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(21)]))
+            events.append(.object(["Day": .number(Double(day)), "Time": .string("22:30"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(19)]))
+        }
+        for day in [6, 0] {
+            events.append(.object(["Day": .number(Double(day)), "Time": .string("08:00"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(21.5)]))
+        }
+        var timer = MELCloudClassicParser.weeklyTimer(.object(["Enabled": .bool(true), "Seasons": .array([.object(["Events": .array(events)])])]))
+        timer.fetchedAt = now()
+        return timer
+    }
 
     // MARK: Simulation
 

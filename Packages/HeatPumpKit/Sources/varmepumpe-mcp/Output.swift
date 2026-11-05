@@ -103,6 +103,10 @@ struct StatusView: Encodable {
     var refreshed: Bool
     var stale: Bool
     var refreshError: String?
+    var iSee: Bool?
+    /// MELCloud's weekly timer: on/off and the next known event (cached, read at most every 6 h).
+    var weeklyTimerEnabled: Bool?
+    var nextTimerEvent: String?
 
     init(_ result: StateResult) {
         refreshed = result.refreshed
@@ -115,6 +119,7 @@ struct StatusView: Encodable {
         power = s.power
         mode = s.mode?.key
         modeName = s.mode?.displayName
+        iSee = s.iSee
         setTemperature = s.setTemperature
         roomTemperature = s.roomTemperature
         outdoorTemperature = s.outdoorTemperature

@@ -20,6 +20,8 @@ struct ToolHandler: Sendable {
             case "get_live_status": return try await getLiveStatus()
             case "get_forecast": return try await getForecast()
             case "get_house_consumption": return try await getHouseConsumption(args)
+            case "get_away_settings": return try await getAwaySettings()
+            case "set_frost_protection", "set_holiday_mode": return try await writeAway(params.name, args)
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -54,7 +56,17 @@ struct ToolHandler: Sendable {
 
     private func getStatus() async throws -> CallTool.Result {
         let state = try await service.currentState()
-        return try await output(StatusView(state), state: state)
+        var view = StatusView(state)
+        if state.state != nil, let timer = try? await service.weeklyTimer() {
+            view.weeklyTimerEnabled = timer.enabled
+            if let next = timer.nextEvent(after: Date(), timeZone: .current) {
+                view.nextTimerEvent = "\(next.event.weekdayName) \(next.event.timeText): \(next.event.summary)"
+            }
+            if timer.enabled == true {
+                view.summary += " Ukeplanen i MELCloud er på; varmepumpen kan endre seg selv etter planen."
+            }
+        }
+        return try await output(view, state: state)
     }
 
     private func getHealthReport() async throws -> CallTool.Result {
@@ -280,6 +292,92 @@ struct ToolHandler: Sendable {
                     : "Andelen regnes bare over timer der både huset og varmepumpen har tall (minst 20 timer for et døgn). "
                         + "houseCostNokFromTibber er Tibbers egen kostnad for hele huset (kontrolltall); appens egen "
                         + "kostnadsberegning for varmepumpen (get_energy) er uendret."))
+    }
+
+    private func getAwaySettings() async throws -> CallTool.Result {
+        let away = try await service.awaySettings()
+        let timer = try await service.weeklyTimer()
+        struct Frost: Encodable {
+            var enabled: Bool
+            var minimum: Double
+            var maximum: Double
+            var summary: String
+        }
+        struct Holiday: Encodable {
+            var enabled: Bool
+            var start: String?
+            var end: String?
+            var summary: String
+        }
+        struct Event: Encodable {
+            var weekday: String
+            var time: String
+            var action: String
+        }
+        struct Timer: Encodable {
+            var enabled: Bool?
+            var eventCount: Int
+            var decoded: Bool
+            var events: [Event]
+            var next: String?
+            var fetchedAt: Date?
+        }
+        struct View: Encodable {
+            var frostProtection: Frost?
+            var holidayMode: Holiday?
+            var fetchedAt: Date?
+            var source: String
+            var pendingConfirmation: Bool
+            var message: String?
+            var weeklyTimer: Timer?
+            var note: String
+        }
+        let iso = Date.ISO8601FormatStyle(timeZone: .current)
+        let next = timer?.nextEvent(after: Date(), timeZone: .current)
+        return try await output(
+            View(
+                frostProtection: away.frost.map { Frost(enabled: $0.enabled, minimum: $0.minimum, maximum: $0.maximum, summary: $0.summary) },
+                holidayMode: away.holiday.map {
+                    Holiday(enabled: $0.enabled, start: $0.start?.formatted(iso), end: $0.end?.formatted(iso), summary: $0.summary)
+                },
+                fetchedAt: away.fetchedAt, source: away.source, pendingConfirmation: away.pendingSince != nil, message: away.message,
+                weeklyTimer: timer.map { t in
+                    Timer(
+                        enabled: t.enabled, eventCount: t.eventCount, decoded: t.decoded,
+                        events: t.events.map { Event(weekday: $0.weekdayName, time: $0.timeText, action: $0.summary) },
+                        next: next.map { "\($0.event.weekdayName) \($0.event.timeText): \($0.event.summary)" }, fetchedAt: t.fetchedAt)
+                },
+                note: "Frostsikring holder rommet mellom minimum og maksimum når varmepumpen ellers er av. Feriemodus gjør at "
+                    + "varmepumpen følger frostsikringen i perioden. Endepunktene er ikke verifisert mot denne kontoen ennå; "
+                    + "den første endringen bør brukeren gjøre selv i appen. Ukeplanen kan bare leses her; hendelsenes format er "
+                    + "ikke dokumentert (decoded=false betyr at bare antallet er kjent)."))
+    }
+
+    private func writeAway(_ tool: String, _ args: Arguments) async throws -> CallTool.Result {
+        guard let reason = args.string("reason")?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty else {
+            throw ArgumentError(message: "reason er påkrevd for alle endringer")
+        }
+        guard let enabled = args.bool("enabled") else { throw ArgumentError(message: "enabled (true/false) mangler") }
+        // Current values for the log (old → new); MELCloud is read at most hourly.
+        let current = try await service.awaySettings()
+        let change: AwayChange
+        if tool == "set_frost_protection" {
+            change = .frostProtection(
+                FrostProtection(
+                    enabled: enabled, minimum: args.double("minimum") ?? current.frost?.minimum ?? 8,
+                    maximum: args.double("maximum") ?? current.frost?.maximum ?? 12))
+        } else {
+            for key in ["start", "end"] {
+                if let text = args.string(key), args.date(key) == nil { throw ArgumentError(message: "Ugyldig dato i \(key): \(text)") }
+            }
+            change = .holidayMode(
+                HolidayMode(
+                    enabled: enabled, start: args.date("start") ?? (enabled ? nil : current.holiday?.start),
+                    end: args.date("end") ?? (enabled ? nil : current.holiday?.end)))
+        }
+        // Same native approval dialog as the other set_* tools; never bypassed.
+        let outcome = try await service.applyAway(change, source: .claude, reason: reason, approver: approver)
+        return try await output(outcome, isError: outcome.result != .ok)
     }
 
     private func getLiveStatus() async throws -> CallTool.Result {

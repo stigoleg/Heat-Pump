@@ -87,6 +87,11 @@ enum ToolCatalog {
             ],
             annotations: readOnly),
         Tool(
+            name: "get_away_settings",
+            description: "Frost protection (keeps the room between a minimum and maximum temperature while the unit is otherwise off; 4–14 °C / 6–16 °C, max at least 2 °C above min) and holiday mode (start/end; the unit follows frost protection in that period) as MELCloud reports them, plus MELCloud's weekly timer (read-only: enabled, events per weekday when they can be decoded, next event). Read from MELCloud at most hourly (timer every 6 h); cached otherwise.",
+            inputSchema: ["type": "object", "properties": [:]],
+            annotations: readOnly),
+        Tool(
             name: "get_maintenance_status",
             description: "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",
             inputSchema: ["type": "object", "properties": [:]],
@@ -169,6 +174,34 @@ enum ToolCatalog {
                     "reason": reasonProperty,
                 ],
                 "required": ["reason"],
+            ],
+            annotations: writeAnnotations()),
+        Tool(
+            name: "set_frost_protection",
+            description: "Switch MELCloud frost protection on or off and set its range (whole °C; minimum 4–14, maximum 6–16, maximum at least 2 above minimum). Useful before leaving a cold house or cabin. \(writeWarning) Counts toward the 12 writes per hour.",
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "enabled": ["type": "boolean"],
+                    "minimum": ["type": "number", "minimum": 4, "maximum": 14, "description": "°C (default: current or 8)."],
+                    "maximum": ["type": "number", "minimum": 6, "maximum": 16, "description": "°C (default: current or 12)."],
+                    "reason": reasonProperty,
+                ],
+                "required": ["enabled", "reason"],
+            ],
+            annotations: writeAnnotations()),
+        Tool(
+            name: "set_holiday_mode",
+            description: "Switch MELCloud holiday mode on (with start and end, local time) or off. While on, the unit holds the frost-protection range instead of its normal settings, so check get_away_settings first. \(writeWarning) Counts toward the 12 writes per hour.",
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "enabled": ["type": "boolean"],
+                    "start": ["type": "string", "description": "ISO 8601 local date-time, e.g. 2026-12-20T10:00 (required when enabled)."],
+                    "end": ["type": "string", "description": "ISO 8601 local date-time (required when enabled; at most a year after start)."],
+                    "reason": reasonProperty,
+                ],
+                "required": ["enabled", "reason"],
             ],
             annotations: writeAnnotations()),
         Tool(
