@@ -277,16 +277,17 @@ struct WeeklyTimerTests {
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
         let service = makeService(store: store, backend: backend)
         _ = try await service.currentState()
-        var timer = try #require(try await service.weeklyTimer())
+        let base = try #require(try await service.weeklyTimer())
+        var timer = base
         #expect(timer.decoded)
         #expect(timer.summary == "På, 14 hendelser")
         timer.put(newEvent(12 * 60, 20), on: [3])
         let budget = try await service.writeBudget().remaining
-        let outcome = try await service.saveWeeklyTimer(timer, source: .app, reason: "Endret i appen (Ukeplan)")
+        let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "Endret i appen (Ukeplan)")
         #expect(outcome.result == .ok)
         #expect(outcome.message.contains("MELCloud viser den samme planen"))
         #expect(await backend.timerWrites == 1)
-        #expect(await backend.timerReads == 2)  // read back once
+        #expect(await backend.timerReads == 3)  // fresh read before sending, read back once
         let stored = try #require(try await service.storedWeeklyTimer())
         #expect(stored.eventCount == 15)
         #expect(stored.seasons[0].events(on: 3).map(\.timeText) == ["06:30", "12:00", "22:30"])
@@ -298,13 +299,18 @@ struct WeeklyTimerTests {
         #expect(record.newValue == "På, 15 hendelser")
         #expect(record.result == .ok)
         #expect(record.displaySummary == "Ukeplan: På, 15 hendelser")
-        // A second save right after cannot read back (30 s) and says so.
+        // Within 15 s the fresh read is not repeated, so nothing is sent.
         clock.advance(6)
         timer.enabled = false
-        let second = try await service.saveWeeklyTimer(timer, source: .app, reason: "x")
+        let tooSoon = try await service.saveWeeklyTimer(timer, base: stored, source: .app, reason: "x")
+        #expect(tooSoon.result == .rejected)
+        #expect(tooSoon.message.contains("nettopp hentet"))
+        // A second save later cannot read back (30 s) and says so.
+        clock.advance(10)
+        let second = try await service.saveWeeklyTimer(timer, base: stored, source: .app, reason: "x")
         #expect(second.result == .ok)
         #expect(second.message.contains("bekrefter ved neste henting"))
-        #expect(await backend.timerReads == 2)
+        #expect(await backend.timerReads == 4)
         #expect(try await service.storedWeeklyTimer()?.enabled == false)
     }
 
@@ -313,25 +319,28 @@ struct WeeklyTimerTests {
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
         let service = makeService(store: store, backend: backend)
         // No status yet.
-        let none = try await service.saveWeeklyTimer(try timer(), source: .app, reason: "x")
+        let none = try await service.saveWeeklyTimer(try timer(), base: try timer(), source: .app, reason: "x")
         #expect(none.result == .rejected)
         _ = try await service.currentState()
-        // Not read yet (nothing decoded to base an edit on).
-        let unread = try await service.saveWeeklyTimer(try timer(), source: .app, reason: "x")
+        // Based on a plan that could not be decoded.
+        let unreadable = WeeklyTimer(enabled: true, seasons: [], eventCount: 3, decoded: false)
+        let unread = try await service.saveWeeklyTimer(try timer(), base: unreadable, source: .app, reason: "x")
         #expect(unread.result == .rejected)
         #expect(unread.message.contains("kunne ikke leses"))
-        var timer = try #require(try await service.weeklyTimer())
+        let base = try #require(try await service.weeklyTimer())
+        var timer = base
         var tooCold = timer
         tooCold.put(newEvent(600, 8), on: [2])
-        let cold = try await service.saveWeeklyTimer(tooCold, source: .app, reason: "x")
+        let cold = try await service.saveWeeklyTimer(tooCold, base: base, source: .app, reason: "x")
         #expect(cold.result == .rejected)
         #expect(cold.message.contains("Temperaturen tirsdag kl. 10:00"))
         timer.seasons[0].events = []
         timer.enabled = true
-        let empty = try await service.saveWeeklyTimer(timer, source: .app, reason: "x")
+        let empty = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "x")
         #expect(empty.result == .rejected)
         #expect(empty.message.contains("uten hendelser"))
         #expect(await backend.timerWrites == 0)
+        #expect(await backend.timerReads == 1)  // validation refusals do not even read
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
         let log = try await service.changeLog(limit: 10, source: nil)
         #expect(log.count == 4)
@@ -343,12 +352,95 @@ struct WeeklyTimerTests {
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
         let service = makeService(store: store, backend: backend)
         _ = try await service.currentState()
-        var timer = try #require(try await service.weeklyTimer())
+        let base = try #require(try await service.weeklyTimer())
+        var timer = base
         for minute in stride(from: 0, to: 6 * 60, by: 30) { timer.put(newEvent(minute, 20), on: TimerEvent.allDays) }
-        let outcome = try await service.saveWeeklyTimer(timer, source: .app, reason: "x")
+        let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "x")
         #expect(outcome.result == .failed)
         #expect(outcome.message.contains("mer enn 50 hendelser"))
         #expect(await backend.timerWrites == 0)
+    }
+
+    @Test func planChangedInMELCloudIsNotOverwritten() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        let base = try #require(try await service.weeklyTimer())
+        var draft = base
+        draft.put(newEvent(12 * 60, 20), on: [3])
+        // Someone changes Monday 06:30 to 22 °C in the MELCloud app meanwhile.
+        var elsewhere = base
+        elsewhere.seasons[0].events[0].setTemperature = 22
+        await backend.replaceTimer(.object([
+            "Enabled": .bool(true), "Seasons": MELCloudClassicParser.timerSetBody(timer: elsewhere, deviceId: 1)["Seasons"]!,
+        ]))
+        let refused = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(refused.result == .rejected)
+        #expect(refused.message == "Ikke sendt: " + HeatPumpService.timerChangedMessage)
+        #expect(await backend.timerWrites == 0)
+        #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
+        let record = try #require(try await service.changeLog(limit: 1, source: nil).first)
+        #expect(record.result == .rejected)
+        #expect(record.error == HeatPumpService.timerChangedMessage)
+        // The fresh plan is cached, so "Hent planen på nytt" starts from it, and that save goes through.
+        let fresh = try #require(try await service.storedWeeklyTimer())
+        #expect(fresh.seasons[0].events[0].setTemperature == 22)
+        var redo = fresh
+        redo.put(newEvent(12 * 60, 20), on: [3])
+        clock.advance(16)
+        let saved = try await service.saveWeeklyTimer(redo, base: fresh, source: .app, reason: "x")
+        #expect(saved.result == .ok)
+        #expect(await backend.timerWrites == 1)
+        // Only on/off and the plan count, not when it was read.
+        var later = fresh
+        later.fetchedAt = clock.now
+        #expect(later.hasSameContent(as: fresh))
+        later.enabled = false
+        #expect(!later.hasSameContent(as: fresh))
+    }
+
+    @Test func failedFreshReadSendsNothing() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        let base = try #require(try await service.weeklyTimer())
+        var draft = base
+        draft.put(newEvent(12 * 60, 20), on: [3])
+        await backend.failNextTimerRead(with: .http(status: 500))
+        let failed = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(failed.result == .rejected)
+        #expect(failed.message.contains("Kunne ikke lese ukeplanen fra MELCloud før lagring"))
+        #expect(await backend.timerWrites == 0)
+        // A refusal pauses timer reads, and saves are refused without reading during the pause.
+        clock.advance(16)
+        await backend.failNextTimerRead(with: .http(status: 403))
+        _ = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(try await service.endpointRefusedUntil(HeatPumpService.timerFetchKey) != nil)
+        clock.advance(16)
+        let reads = await backend.timerReads
+        let paused = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(paused.result == .rejected)
+        #expect(paused.message.contains("tillot ikke å lese ukeplanen"))
+        #expect(await backend.timerReads == reads)
+        #expect(await backend.timerWrites == 0)
+        #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
+        #expect(try await service.changeLog(limit: 10, source: nil).allSatisfy { $0.result == .rejected })
+    }
+
+    @Test func pageOpenReadsAPlanOlderThanTenMinutes() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        _ = try await service.weeklyTimer()
+        clock.advance(5 * 60)
+        _ = try await service.weeklyTimer(maxAge: HeatPumpService.timerManualInterval)
+        #expect(await backend.timerReads == 1)
+        clock.advance(6 * 60)
+        _ = try await service.weeklyTimer(maxAge: HeatPumpService.timerManualInterval)
+        #expect(await backend.timerReads == 2)
     }
 
     // MARK: HTTP

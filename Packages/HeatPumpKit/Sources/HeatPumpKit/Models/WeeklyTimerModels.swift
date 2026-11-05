@@ -236,6 +236,13 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// Number of events in all seasons (counted from the seasons when they were decoded).
     public var totalEvents: Int { decoded ? seasons.reduce(0) { $0 + $1.events.count } : eventCount }
 
+    /// Same plan as MELCloud would get it (on/off and every season with its events as sent),
+    /// regardless of when it was read.
+    public func hasSameContent(as other: WeeklyTimer) -> Bool {
+        decoded && other.decoded && (enabled == true) == (other.enabled == true)
+            && seasons.map(MELCloudClassicParser.timerSeasonJSON) == other.seasons.map(MELCloudClassicParser.timerSeasonJSON)
+    }
+
     /// "På, 6 hendelser" (change log and dialogs).
     public var summary: String {
         let state = enabled == true ? "På" : enabled == false ? "Av" : "Ukjent"

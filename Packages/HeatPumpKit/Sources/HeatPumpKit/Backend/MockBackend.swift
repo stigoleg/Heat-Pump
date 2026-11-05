@@ -158,9 +158,21 @@ public actor MockBackend: HeatPumpBackend {
     /// The weekly timer in the wire shape (`Timer/Get2`); a save replaces it, so a read returns it.
     private var timerJSON: JSONValue = MockBackend.initialTimer()
 
+    /// Error for the next timer read (tests).
+    private var timerReadError: HeatPumpError?
+
+    public func failNextTimerRead(with error: HeatPumpError) { timerReadError = error }
+
+    /// Replaces the plan as if it had been changed in the MELCloud app (tests).
+    public func replaceTimer(_ json: JSONValue) { timerJSON = json }
+
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
         guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
         timerReads += 1
+        if let error = timerReadError {
+            timerReadError = nil
+            throw error
+        }
         var timer = MELCloudClassicParser.weeklyTimer(timerJSON)
         timer.fetchedAt = now()
         return timer

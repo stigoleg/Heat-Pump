@@ -503,6 +503,14 @@ final class AppModel {
     /// When MELCloud refused to let the account read the weekly timer (reads paused until then).
     var timerRefusedUntil: Date?
 
+    /// The Ukeplan page: reads the plan when the cached copy is older than 10 minutes (blocks and a
+    /// refusal pause still apply), so editing starts from a fresh plan.
+    func loadWeeklyTimerForEditing() async {
+        guard let service else { return }
+        if let timer = try? await service.weeklyTimer(maxAge: HeatPumpService.timerManualInterval) { weeklyTimer = timer }
+        timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
+    }
+
     /// "Hent ukeplan nå": at most every 10 minutes; lifts a refusal pause.
     func refreshWeeklyTimer() async {
         guard let service else { return }
@@ -510,12 +518,13 @@ final class AppModel {
         timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
     }
 
-    /// Saves the edited weekly timer in MELCloud after the user confirmed the differences.
-    func saveWeeklyTimer(_ timer: WeeklyTimer) async -> (ok: Bool, message: String) {
+    /// Saves the edited weekly timer in MELCloud after the user confirmed the differences. `base` is
+    /// the plan the edit started from; nothing is sent if MELCloud's plan differs from it now.
+    func saveWeeklyTimer(_ timer: WeeklyTimer, base: WeeklyTimer) async -> (ok: Bool, message: String) {
         guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
         let result: (Bool, String)
         do {
-            let outcome = try await service.saveWeeklyTimer(timer, source: .app, reason: "Endret i appen (Ukeplan)")
+            let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "Endret i appen (Ukeplan)")
             result = (outcome.result == .ok, outcome.message)
         } catch {
             result = (false, "Ukeplanen kunne ikke lagres: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))

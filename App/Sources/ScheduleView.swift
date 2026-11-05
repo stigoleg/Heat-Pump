@@ -15,6 +15,7 @@ struct ScheduleView: View {
     @State private var outcome: (ok: Bool, message: String)?
     @State private var sending = false
     @State private var fetching = false
+    @State private var confirmingReload = false
     @State private var width: CGFloat = 1000
 
     /// Seven columns from this content width; a list of days below it.
@@ -40,7 +41,11 @@ struct ScheduleView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width - 2 * Theme.Space.xl }) { width = $0 }
         }
-        .task { sync(force: true) }
+        .task {
+            sync(force: true)
+            await model.loadWeeklyTimerForEditing()
+            sync(force: false)
+        }
         .onChange(of: model.weeklyTimer) { _, _ in sync(force: false) }
         .sheet(item: $editor) { item in
             EventEditorSheet(
@@ -58,6 +63,12 @@ struct ScheduleView: View {
                 })
         }
         .sheet(isPresented: $confirming) { confirmSheet }
+        .confirmationDialog("Hente planen på nytt?", isPresented: $confirmingReload) {
+            Button("Forkast endringene og hent planen", role: .destructive) { Task { await reload() } }
+            Button("Avbryt", role: .cancel) {}
+        } message: {
+            Text("Endringene du har gjort her forsvinner. Planen hentes fra MELCloud, og du kan gjøre endringene igjen.")
+        }
         .confirmationDialog(
             "Bruke malen «\(template?.title ?? "")»?", isPresented: Binding(get: { template != nil }, set: { if !$0 { template = nil } }),
             presenting: template
@@ -77,13 +88,17 @@ struct ScheduleView: View {
         return !draft.differences(from: base).isEmpty
     }
 
-    /// Takes the stored plan as base; the draft follows unless the user has unsaved edits.
+    /// MELCloud's plan (as last read) is no longer the one the draft was made from.
+    private var changedElsewhere: Bool {
+        guard hasChanges, let base, let latest = model.weeklyTimer else { return false }
+        return !latest.hasSameContent(as: base)
+    }
+
+    /// Takes the stored plan as base and draft, unless the user has unsaved edits: then both stay,
+    /// so a save is checked against the plan the edits were made on.
     private func sync(force: Bool) {
         guard let timer = model.weeklyTimer else { return }
-        guard force || !hasChanges else {
-            base = timer
-            return
-        }
+        guard force || !hasChanges else { return }
         base = timer
         var copy = timer
         if copy.decoded { copy.ensureSeason() }
@@ -94,6 +109,14 @@ struct ScheduleView: View {
     private func discard() {
         outcome = nil
         sync(force: true)
+    }
+
+    /// "Hent planen på nytt": reads the plan (the save attempt usually just did) and drops the draft.
+    private func reload() async {
+        fetching = true
+        await model.loadWeeklyTimerForEditing()
+        fetching = false
+        discard()
     }
 
     /// A new event starts from the unit's current settings.
@@ -296,6 +319,14 @@ struct ScheduleView: View {
 
     @ViewBuilder private func saveBar(_ draft: WeeklyTimer) -> some View {
         let problem = draft.validationProblem(limits: model.state?.limits)
+        if changedElsewhere || outcome?.message.contains(HeatPumpService.timerChangedMessage) == true {
+            InsightCard(
+                title: "Planen er endret i MELCloud",
+                detail: "Planen i MELCloud er ikke lenger den du begynte å redigere, så appen lagrer ikke over den. Hent planen på nytt og gjør endringene igjen.",
+                systemImage: "arrow.triangle.2.circlepath", tint: Theme.Status.caution)
+            Button("Hent planen på nytt…") { confirmingReload = true }
+                .disabled(fetching || sending)
+        }
         if hasChanges {
             if let problem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(Theme.Status.caution)
@@ -359,10 +390,10 @@ struct ScheduleView: View {
                     .keyboardShortcut(.cancelAction)
                 Button("Lagre i MELCloud") {
                     confirming = false
-                    guard let draft else { return }
+                    guard let draft, let base else { return }
                     sending = true
                     Task {
-                        outcome = await model.saveWeeklyTimer(draft)
+                        outcome = await model.saveWeeklyTimer(draft, base: base)
                         sending = false
                         if outcome?.ok == true { sync(force: true) }
                     }
