@@ -26,7 +26,7 @@ Driftslampen (POWER) på innedelen blinker et antall ganger, så er den av i 2,5
 | 7 | Styrekort i utedel | Kortet klarer ikke å lese minnet sitt. |
 | 14 eller flere | Annen feil | Blant annet følere, ventiler eller stoppventil. Ikke start igjen før det er reparert. |
 
-Servicehåndboken har i tillegg en «feilminne»-funksjon (§10-2.4) som teknikeren kan bruke. Der betyr 1 blink romføler, 2 blink rørføler, 3 blink seriesignal fra utedel, 11 blink viftemotor og 12 blink styrekort. Tabellen for utedelen (§10-2.5) står i servicehåndboken for utedelen, som vi ikke har.
+Servicehåndboken har i tillegg en «feilminne»-funksjon (§10-2.4) som teknikeren kan bruke. Der betyr 1 blink romføler, 2 blink rørføler, 3 blink seriesignal fra utedel, 11 blink viftemotor og 12 blink styrekort. §10-2.5 i samme håndbok er feilminnetabellen for luftrenseren (AIR PURIFYING) og i-see-sensoren, ikke for utedelen. Feilminnetabellen for utedelen står i servicehåndboken for utedelen, som vi ikke har.
 
 ## Hva du gjør
 

@@ -6,8 +6,9 @@ import Foundation
 /// `LastCommunication`/`NextCommunication` are UTC; report and error-log
 /// timestamps are building-local wall clock. The caller picks the zone.
 public enum WireDate {
+    /// Total parser: any input returns a date or nil, never traps.
     public static func parse(_ text: String?, timeZone: TimeZone) -> Date? {
-        guard var text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        guard var text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty, text.count <= 64 else { return nil }
         // Explicit offsets are honoured when present.
         if text.hasSuffix("Z") || text.range(of: #"[+-]\d{2}:\d{2}$"#, options: .regularExpression) != nil {
             if let date = try? Date(text, strategy: .iso8601) { return date }
@@ -16,26 +17,30 @@ public enum WireDate {
             }
             text = String(text.dropLast(text.hasSuffix("Z") ? 1 : 6))
         }
-        let parts = text.split(separator: "T", maxSplits: 1).map(String.init)
-        let dateParts = parts[0].split(separator: "-").compactMap { Int($0) }
-        guard dateParts.count == 3 else { return nil }
+        let parts = text.split(separator: "T", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+        guard let datePart = parts.first else { return nil }
+        let dateParts = datePart.split(separator: "-", omittingEmptySubsequences: false).map { Int($0) }
+        guard dateParts.count == 3, let year = dateParts[0], let month = dateParts[1], let day = dateParts[2],
+            (1...12).contains(month), (1...31).contains(day), year <= 9999
+        else { return nil }
         // Year-1 sentinel means "never set".
-        if dateParts[0] <= 1 { return nil }
-        var components = DateComponents()
-        components.year = dateParts[0]
-        components.month = dateParts[1]
-        components.day = dateParts[2]
-        components.hour = 0
-        components.minute = 0
-        components.second = 0
+        if year <= 1 { return nil }
+        var components = DateComponents(year: year, month: month, day: day, hour: 0, minute: 0, second: 0)
         if parts.count == 2 {
-            let timeAndFraction = parts[1].split(separator: ".", maxSplits: 1).map(String.init)
-            let timeParts = timeAndFraction[0].split(separator: ":").compactMap { Int($0) }
-            guard timeParts.count >= 2 else { return nil }
-            components.hour = timeParts[0]
-            components.minute = timeParts[1]
-            components.second = timeParts.count > 2 ? timeParts[2] : 0
-            if timeAndFraction.count == 2, let fraction = Double("0." + timeAndFraction[1]) {
+            let timeAndFraction = parts[1].split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)
+            guard let clock = timeAndFraction.first else { return nil }
+            let timeParts = clock.split(separator: ":", omittingEmptySubsequences: false).map { Int($0) }
+            guard (2...3).contains(timeParts.count), let hour = timeParts[0], let minute = timeParts[1],
+                (0...23).contains(hour), (0...59).contains(minute)
+            else { return nil }
+            let second = timeParts.count == 3 ? timeParts[2] : 0
+            guard let second, (0...60).contains(second) else { return nil }
+            components.hour = hour
+            components.minute = minute
+            components.second = second
+            if timeAndFraction.count == 2 {
+                let digits = timeAndFraction[1]
+                guard !digits.isEmpty, digits.allSatisfy(\.isASCII), let fraction = Double("0." + digits) else { return nil }
                 components.nanosecond = Int(fraction * 1_000_000_000)
             }
         }

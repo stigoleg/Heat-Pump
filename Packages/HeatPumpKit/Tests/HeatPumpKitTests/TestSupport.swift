@@ -26,6 +26,8 @@ final class TestClock: Sendable {
     var now: Date { current.withLock { $0 } }
     func advance(_ seconds: TimeInterval) { current.withLock { $0 = $0.addingTimeInterval(seconds) } }
     var provider: @Sendable () -> Date { { self.now } }
+    /// Sleeper for `HeatPumpService` that advances this clock instead of waiting.
+    var sleeper: @Sendable (TimeInterval) async -> Void { { self.advance($0) } }
 }
 
 func temporaryDatabasePath() -> String {
@@ -41,6 +43,7 @@ actor CountingBackend: HeatPumpBackend {
     private(set) var fetchStateCalls = 0
     private(set) var applyCalls = 0
     private(set) var reportCalls = 0
+    private(set) var energyRanges: [DateInterval] = []
     var nextError: HeatPumpError?
 
     init(now: @escaping @Sendable () -> Date) {
@@ -48,6 +51,7 @@ actor CountingBackend: HeatPumpBackend {
     }
 
     func failNext(with error: HeatPumpError?) { nextError = error }
+    func appliedChanges() async -> [ChangeSet] { await inner.appliedChanges }
 
     private func maybeThrow() throws {
         if let error = nextError {
@@ -79,6 +83,7 @@ actor CountingBackend: HeatPumpBackend {
     }
     func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] {
         reportCalls += 1
+        energyRanges.append(range)
         return try await inner.fetchEnergy(deviceId: deviceId, range: range)
     }
     func fetchSignalStrength(deviceId: Int) async throws -> Int? { -62 }

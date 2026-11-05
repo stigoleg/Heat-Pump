@@ -152,7 +152,7 @@ enum ToolCatalog {
                 "type": "object",
                 "properties": [
                     "kind": ["type": "string", "enum": .array(MaintenanceKind.allCases.map { .string($0.rawValue) })],
-                    "date": ["type": "string", "description": "ISO 8601 date or date-time (default: now)."],
+                    "date": ["type": "string", "description": "ISO 8601 date or date-time, not in the future (default: now)."],
                     "note": ["type": "string"],
                     "reason": reasonProperty,
                 ],
@@ -172,7 +172,7 @@ struct Arguments {
     func bool(_ key: String) -> Bool? { raw[key]?.boolValue }
     func int(_ key: String) -> Int? {
         if let value = raw[key]?.intValue { return value }
-        if let value = raw[key]?.doubleValue, value == value.rounded() { return Int(value) }
+        if let value = raw[key]?.doubleValue { return Int(exactly: value) }
         return raw[key]?.stringValue.flatMap(Int.init)
     }
     func double(_ key: String) -> Double? {

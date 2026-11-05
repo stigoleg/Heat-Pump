@@ -38,8 +38,8 @@ public enum JSONValue: Sendable, Equatable, Codable {
         case .bool(let value): try container.encode(value)
         case .number(let value):
             // Whole numbers go out as integers (IDs, flags, enum values).
-            if value == value.rounded(), abs(value) < 1e15 {
-                try container.encode(Int(value))
+            if let whole = Int(exactly: value), abs(whole) < 1_000_000_000_000_000 {
+                try container.encode(whole)
             } else {
                 try container.encode(value)
             }
@@ -83,8 +83,8 @@ public enum JSONValue: Sendable, Equatable, Codable {
     }
 
     public var int: Int? {
-        guard let value = double, value.isFinite else { return nil }
-        return Int(value.rounded())
+        guard let value = double else { return nil }
+        return Int(exactly: value.rounded())
     }
 
     public var bool: Bool? {
@@ -105,7 +105,8 @@ public enum JSONValue: Sendable, Equatable, Codable {
         switch self {
         case .string(let value): return value
         case .number(let value):
-            return value == value.rounded() ? String(Int(value)) : String(value)
+            if let whole = Int(exactly: value) { return String(whole) }
+            return String(value)
         case .bool(let value): return String(value)
         default: return nil
         }

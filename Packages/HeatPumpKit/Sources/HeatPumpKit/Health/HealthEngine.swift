@@ -12,11 +12,13 @@ public struct HealthInput: Sendable {
     public var maintenance: [MaintenanceRecord]
     public var now: Date
     public var timeZone: TimeZone
+    /// Set while MELCloud blocks our requests; explains why data is old.
+    public var blockedUntil: Date?
 
     public init(
         latestState: DeviceState?, snapshots: [DeviceState] = [], temperaturePoints: [TemperaturePoint] = [],
         errorEvents: [ErrorLogEntry] = [], energyDays: [EnergyDay] = [], maintenance: [MaintenanceRecord] = [],
-        now: Date, timeZone: TimeZone = .current
+        now: Date, timeZone: TimeZone = .current, blockedUntil: Date? = nil
     ) {
         self.latestState = latestState
         self.snapshots = snapshots
@@ -26,6 +28,7 @@ public struct HealthInput: Sendable {
         self.maintenance = maintenance
         self.now = now
         self.timeZone = timeZone
+        self.blockedUntil = blockedUntil
     }
 }
 
@@ -33,6 +36,8 @@ public struct HealthInput: Sendable {
 public enum HealthEngine {
     public enum Threshold {
         public static let offlineAfter: TimeInterval = 3600
+        /// Our own data older than this is reported as old instead of judging the unit.
+        public static let staleDataAfter: TimeInterval = 3600
         public static let wifiWarning = -80
         public static let wifiInfo = -70
         public static let setpointGap = 1.5
@@ -52,7 +57,7 @@ public enum HealthEngine {
         var findings: [HealthFinding] = []
         if let state = input.latestState {
             findings += activeError(state)
-            findings += connectivity(state, now: input.now)
+            findings += connectivity(state, now: input.now, blockedUntil: input.blockedUntil)
             findings += wifi(state)
             findings += setpointNotReached(input)
             findings += firmware(state)
@@ -80,25 +85,47 @@ public enum HealthEngine {
 
     static func activeError(_ state: DeviceState) -> [HealthFinding] {
         guard state.hasActiveError else { return [] }
-        let entry = ErrorCatalog.lookup(errorCode: state.errorCode)
-        let code = state.errorCode.map { "Feilkode \($0)." } ?? "MELCloud melder feil uten kode."
+        guard let code = state.errorCode, !DeviceState.noErrorCodes.contains(code) else {
+            // HasError without a real code: real but unspecific, so not critical.
+            return [
+                HealthFinding(
+                    code: "error_flag", severity: .warning, title: "MELCloud melder en feil uten feilkode",
+                    detail: "Varmepumpen har satt et feilflagg, men MELCloud oppgir ingen feilkode. Vi vet derfor ikke hva feilen gjelder.",
+                    recommendation: "Se etter om driftslampen på innedelen blinker, og tell antall blink. Blinker den, slå av varmepumpen og ring forhandleren. Blinker den ikke og varmen virker, følg med på om feilen forsvinner ved neste oppdatering.")
+            ]
+        }
+        let entry = ErrorCatalog.lookup(errorCode: code)
         return [
             HealthFinding(
                 code: "active_error", severity: .critical, title: "Varmepumpen melder feil nå",
-                detail: "\(code) \(entry.title): \(entry.explanation)"
+                detail: "Feilkode \(code). \(entry.title): \(entry.explanation)"
                     + (entry.confidence == .low || entry.confidence == .unknown ? " \(ErrorCatalog.caveat)" : ""),
                 recommendation: "Sjekk om driftslampen på innedelen blinker, og tell antall blink. " + entry.recommendation)
         ]
     }
 
-    static func connectivity(_ state: DeviceState, now: Date) -> [HealthFinding] {
-        let silentFor = state.lastCommunication.map { now.timeIntervalSince($0) }
+    /// Judges connectivity at the time of the snapshot. When our own data is old (MELCloud
+    /// blocks us, no internet), only says the data is old: the unit may be perfectly fine.
+    static func connectivity(_ state: DeviceState, now: Date, blockedUntil: Date?) -> [HealthFinding] {
+        let dataAge = now.timeIntervalSince(state.fetchedAt)
+        if dataAge > Threshold.staleDataAfter {
+            let why =
+                blockedUntil.map { "MELCloud har midlertidig stengt for oppdateringer til \(Norwegian.dateTime($0))." }
+                ?? "Det har ikke lyktes å hente ny status (for eksempel uten internett)."
+            return [
+                HealthFinding(
+                    code: "stale_data", severity: .info, title: "Dataene er gamle",
+                    detail: "Siste status er fra \(Norwegian.dateTime(state.fetchedAt)). \(why) Vurderingene under gjelder det tidspunktet.",
+                    recommendation: "Ingen tiltak på varmepumpen. Appen henter ny status automatisk når det er mulig.")
+            ]
+        }
+        let silentFor = state.lastCommunication.map { state.fetchedAt.timeIntervalSince($0) }
         guard state.offline || (silentFor ?? 0) > Threshold.offlineAfter else { return [] }
         let since = state.lastCommunication.map { "Siste kontakt: \(Norwegian.dateTime($0))." } ?? ""
         return [
             HealthFinding(
                 code: "offline", severity: .warning, title: "Varmepumpen har ikke kontakt med MELCloud",
-                detail: "Wi-Fi-modulen har ikke rapportert inn på over en time. \(since) Varmepumpen kan fortsatt varme som normalt, men vi ser ikke hva den gjør.",
+                detail: "Wi-Fi-modulen hadde ikke rapportert inn på over en time da status ble hentet. \(since) Varmepumpen kan fortsatt varme som normalt, men vi ser ikke hva den gjør.",
                 recommendation: "Sjekk at ruteren og internett virker, og at varmepumpen har strøm. Hjelper ikke det, slå av sikringen til varmepumpen i ett minutt og slå den på igjen.")
         ]
     }
@@ -186,7 +213,7 @@ public enum HealthEngine {
                         + "Én enkelt kort feil som har gått over av seg selv er ofte ufarlig. " + (entry.confidence == .melcloud ? "" : ErrorCatalog.caveat))
             ]
         }
-        let latest = input.errorEvents.max { $0.start < $1.start }!
+        guard let latest = input.errorEvents.max(by: { $0.start < $1.start }) else { return [] }
         return [
             HealthFinding(
                 code: "old_error_log", severity: .info, title: "Eldre feil i feilloggen",

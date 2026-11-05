@@ -44,7 +44,7 @@ struct HealthEngineTests {
     }
 
     @Test func activeErrorIsCritical() {
-        let byFlag = evaluate(state: makeState(at: now, hasError: true, errorCode: 8000))
+        let byFlag = evaluate(state: makeState(at: now, hasError: true, errorCode: 9999))
         #expect(finding("active_error", in: byFlag)?.severity == .critical)
         #expect(byFlag.overall == .critical)
         let byCode = evaluate(state: makeState(at: now, hasError: false, errorCode: 5101))
@@ -171,7 +171,7 @@ struct HealthEngineTests {
 
     @Test func findingsSortedBySeverity() {
         let report = evaluate(
-            state: makeState(at: now, hasError: true, wifi: -75),
+            state: makeState(at: now, hasError: true, errorCode: 9999, wifi: -75),
             errors: [ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-86_400), message: "x")],
             maintenance: [])
         let severities = report.findings.map(\.severity)

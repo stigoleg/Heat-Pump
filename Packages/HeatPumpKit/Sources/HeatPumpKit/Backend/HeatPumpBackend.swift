@@ -15,6 +15,11 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
     case changeBudgetExceeded(nextAllowed: Date)
     case blocked(until: Date)
     case rejectedByUser
+    /// MELCloud still answers 401 after a fresh login.
+    case unauthorized
+    /// Earlier login was refused; network calls stay stopped until new credentials are saved.
+    case credentialsRejected
+    case writeTooSoon(nextAllowed: Date)
 
     public var errorDescription: String? {
         switch self {
@@ -45,7 +50,21 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
             "Nettverkskall er stoppet til \(Norwegian.dateTime(until)) fordi MELCloud har begrenset trafikken."
         case .rejectedByUser:
             "Endringen ble avvist av brukeren."
+        case .unauthorized:
+            "MELCloud avviser tilgangen selv etter ny innlogging. Henting er satt på pause i en time."
+        case .credentialsRejected:
+            "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
+        case .writeTooSoon(let next):
+            "En annen endring ble nettopp sendt. Prøv igjen etter \(Norwegian.time(next))."
         }
+    }
+}
+
+extension HeatPumpError {
+    /// MELCloud refused the e-mail/password (retrying would risk an account-wide login throttle).
+    public var isCredentialProblem: Bool {
+        if case .invalidCredentials = self { return true }
+        return self == .credentialsRejected
     }
 }
 

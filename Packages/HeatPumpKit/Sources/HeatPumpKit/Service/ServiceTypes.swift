@@ -15,6 +15,8 @@ public struct StateResult: Codable, Sendable, Equatable {
     public var nextRefreshAllowed: Date?
     /// Norwegian error text from the last refresh attempt, if it failed.
     public var error: String?
+    /// True when credentials are missing or MELCloud refused them; show the login screen.
+    public var needsLogin: Bool = false
 }
 
 public struct ChangeOutcome: Codable, Sendable, Equatable {

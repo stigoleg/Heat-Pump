@@ -20,7 +20,7 @@ Dette er fakta om varmepumpen, hentet fra typeskiltet og bruksanvisningen. Serie
 
 ## Driftsområde (fra bruksanvisningen)
 
-- Oppvarming: garantert ned til −30 °C ute (tørr temperatur). Innetemperatur 20–27 °C er merkeområdet.
+- Oppvarming: garantert driftsområde er −30 °C til 24 °C ute (tørr temperatur) og 20–27 °C inne. Merkeeffekten er målt ved 20 °C inne og 7 °C ute.
 - Kjøling: −10 °C til 46 °C ute.
 - Ved svært lave utetemperaturer faller varmeeffekten. Det er normalt.
 

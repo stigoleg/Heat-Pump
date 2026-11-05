@@ -141,11 +141,24 @@ public struct TemperatureLimits: Codable, Sendable, Equatable {
         self.maxAuto = maxAuto
     }
 
+    /// Allowed setpoints for a mode. Falls back to the MELCloud defaults when the device
+    /// reports nonsense (non-finite, min above max, e.g. `MaxTempAutomatic` = 0).
     public func range(for mode: OperationMode) -> ClosedRange<Double> {
+        let fallback = Self.defaults(for: mode)
+        let (low, high): (Double, Double) =
+            switch mode {
+            case .heat, .fan: (minHeat, maxHeat)
+            case .cool, .dry: (minCoolDry, maxCoolDry)
+            case .auto: (minAuto, maxAuto)
+            }
+        guard low.isFinite, high.isFinite, low < high, low >= 0, high <= 40 else { return fallback }
+        return low...high
+    }
+
+    static func defaults(for mode: OperationMode) -> ClosedRange<Double> {
         switch mode {
-        case .heat, .fan: minHeat...maxHeat
-        case .cool, .dry: minCoolDry...maxCoolDry
-        case .auto: minAuto...maxAuto
+        case .heat, .fan: 10...31
+        case .cool, .dry, .auto: 16...31
         }
     }
 }
@@ -358,6 +371,40 @@ public enum DeviceChange: Sendable, Equatable {
         case .fanSpeed(let speed): speed == 0 ? "Sett viftehastighet til auto" : "Sett viftehastighet til \(speed)"
         case .vaneVertical(let vane): "Sett vertikalt spjeld til \(vane.displayName)"
         case .vaneHorizontal(let vane): "Sett horisontalt spjeld til \(vane.displayName)"
+        }
+    }
+
+    /// `state` with this change applied (what MELCloud should report after it is accepted).
+    public func applied(to state: DeviceState) -> DeviceState {
+        var next = state
+        switch self {
+        case .power(let on): next.power = on
+        case .mode(let mode): next.mode = mode
+        case .temperature(let celsius): next.setTemperature = celsius
+        case .fanSpeed(let speed): next.fanSpeed = speed
+        case .vaneVertical(let vane): next.vaneVertical = vane
+        case .vaneHorizontal(let vane): next.vaneHorizontal = vane
+        }
+        return next
+    }
+
+    var isVane: Bool {
+        switch self {
+        case .vaneVertical, .vaneHorizontal: true
+        default: false
+        }
+    }
+
+    /// Order used when validating a batch: mode before setpoint, so the setpoint is checked
+    /// against the mode that will be active.
+    var validationOrder: Int {
+        switch self {
+        case .power: 0
+        case .mode: 1
+        case .fanSpeed: 2
+        case .vaneVertical: 3
+        case .vaneHorizontal: 4
+        case .temperature: 5
         }
     }
 

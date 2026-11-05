@@ -228,10 +228,22 @@ enum MELCloudClassicParser {
         }
     }
 
+    /// Longest range requested from `EnergyCost/Report`, chosen so MELCloud answers with
+    /// daily buckets (longer ranges may come back per month).
+    static let maxEnergyRangeDays = 28
+
+    /// `EnergyCost/Report` `LabelType` values that mean monthly buckets.
+    static let monthlyLabelTypes: Set<Int> = [2, 3]
+
     /// `EnergyCost/Report` for ATA: per-mode arrays aligned with `Labels`.
-    /// When the bucket count equals the number of days requested, buckets map to consecutive days;
-    /// otherwise numeric labels are read as day-of-month within the requested range.
+    ///
+    /// Only daily data is accepted. Monthly `LabelType`s are dropped. Buckets map to
+    /// consecutive days when their count equals the number of days requested; otherwise
+    /// `raw` (1) numeric labels are read as day-of-month, which is unambiguous only for
+    /// ranges up to 28 days. Anything else is dropped rather than guessed.
     static func energy(_ json: JSONValue, range: DateInterval, timeZone: TimeZone) -> [EnergyDay] {
+        let labelType = json["LabelType"]?.int
+        if let labelType, monthlyLabelTypes.contains(labelType) { return [] }
         let modes = ["Heating", "Cooling", "Auto", "Dry", "Fan", "Other"]
         let arrays = Dictionary(uniqueKeysWithValues: modes.map { ($0, json[$0]?.array?.map { $0.double ?? 0 } ?? []) })
         let bucketCount = arrays.values.map(\.count).max() ?? 0
@@ -239,19 +251,24 @@ enum MELCloudClassicParser {
         let calendar = WireDate.calendar(timeZone)
         let firstDay = calendar.startOfDay(for: range.start)
         let dayCount = (calendar.dateComponents([.day], from: firstDay, to: calendar.startOfDay(for: range.end)).day ?? 0) + 1
-        let labels = json["Labels"]?.array?.compactMap(\.int) ?? []
+        guard dayCount > 0 else { return [] }
+        let labels = json["Labels"]?.array?.map(\.int) ?? []
+
+        let dates: [Date?]
+        if bucketCount == dayCount {
+            dates = (0..<bucketCount).map { calendar.date(byAdding: .day, value: $0, to: firstDay) }
+        } else if labelType == 1, labels.count == bucketCount, dayCount <= maxEnergyRangeDays {
+            let daysInRange = (0..<dayCount).compactMap { calendar.date(byAdding: .day, value: $0, to: firstDay) }
+            dates = labels.map { label in
+                guard let label else { return nil }
+                return daysInRange.first { calendar.component(.day, from: $0) == label }
+            }
+        } else {
+            return []
+        }
 
         var days: [EnergyDay] = []
-        for index in 0..<bucketCount {
-            let date: Date?
-            if bucketCount == dayCount || labels.count != bucketCount {
-                date = calendar.date(byAdding: .day, value: index, to: firstDay)
-            } else {
-                // Find the day in range whose day-of-month matches the label.
-                date = (0..<dayCount).lazy
-                    .compactMap { calendar.date(byAdding: .day, value: $0, to: firstDay) }
-                    .first { calendar.component(.day, from: $0) == labels[index] }
-            }
+        for (index, date) in dates.enumerated() {
             guard let date else { continue }
             func at(_ mode: String) -> Double {
                 let a = arrays[mode] ?? []

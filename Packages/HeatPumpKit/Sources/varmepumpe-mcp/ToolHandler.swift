@@ -207,12 +207,7 @@ struct ToolHandler: Sendable {
             return try await output(outcomes, isError: true)
         }
 
-        var outcomes: [ChangeOutcome] = []
-        for change in requested {
-            let outcome = try await service.apply(change, source: .claude, reason: reason)
-            outcomes.append(outcome)
-            if outcome.result != .ok { break }
-        }
+        let outcomes = try await service.apply(requested, source: .claude, reason: reason)
         return try await output(outcomes, isError: outcomes.contains { $0.result != .ok })
     }
 
@@ -256,7 +251,8 @@ struct ToolHandler: Sendable {
         if let text = args.string("date"), args.date("date") == nil {
             throw ArgumentError(message: "Ugyldig dato: \(text)")
         }
-        let record = try await service.recordMaintenance(kind: kind, date: args.date("date"), note: args.string("note"))
+        let record = try await service.recordMaintenance(
+            kind: kind, date: args.date("date"), note: args.string("note"), reason: args.string("reason"))
         return try await output(record)
     }
 }

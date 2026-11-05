@@ -91,7 +91,7 @@ struct ClassicBackendTests {
         transport.enqueue("/Login/ClientLogin", body: try Fixture.data("login_success"))
         transport.enqueue("/User/ListDevices", status: 401, body: Data())
         let backend = makeBackend(transport, contextKey: "EXPIRED")
-        await #expect(throws: HeatPumpError.http(status: 401)) { try await backend.listDevices() }
+        await #expect(throws: HeatPumpError.unauthorized) { try await backend.listDevices() }
     }
 
     @Test func tooManyRequestsMapsToRateLimited() async throws {

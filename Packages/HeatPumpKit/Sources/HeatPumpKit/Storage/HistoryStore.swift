@@ -6,17 +6,25 @@ public enum FetchDecision: Sendable, Equatable {
     case allowed
     case throttled(nextAllowed: Date)
     case blocked(until: Date)
+    /// MELCloud refused the stored e-mail/password; no network until new credentials are saved.
+    case credentialsRejected
 }
 
 /// Outcome of reserving a slot in the rolling change budget.
 public enum ChangeReservation: Sendable, Equatable {
-    case reserved(id: Int64)
+    /// Row ids in the order the records were given; all share one batch.
+    case reserved(ids: [Int64])
     case exceeded(nextAllowed: Date)
+    /// Another write (from any process) went out less than `ChangeBudget.minSpacing` ago.
+    case tooSoon(nextAllowed: Date)
 }
 
 public enum ChangeBudget {
+    /// Maximum `Device/SetAta` requests per rolling window, across processes.
     public static let maxChangesPerHour = 12
     public static let window: TimeInterval = 3600
+    /// Minimum time between two write requests, across processes.
+    public static let minSpacing: TimeInterval = 5
 }
 
 public struct FetchStateRow: Sendable, Equatable {
@@ -32,6 +40,12 @@ public struct FetchStateRow: Sendable, Equatable {
 public final class HistoryStore: Sendable {
     /// `fetch_state` key holding the global MELCloud block (HTTP 429 / login throttle).
     public static let globalKey = "global"
+    /// `fetch_state` key set while MELCloud refuses the stored credentials.
+    public static let credentialsKey = "credentials"
+    /// `fetch_state` key whose `lastAttempt` is the last write request.
+    public static let writeKey = "write"
+    /// Stored as `blockedUntil` for blocks that only end on user action.
+    static let indefinite = Date(timeIntervalSince1970: 253_402_300_799)  // 9999-12-31
 
     public let path: String
     private let pool: DatabasePool
@@ -139,6 +153,17 @@ public final class HistoryStore: Sendable {
                     );
                     """)
         }
+        migrator.registerMigration("v2") { db in
+            try db.execute(
+                sql: """
+                    ALTER TABLE change_log ADD COLUMN batchId INTEGER;
+                    CREATE TABLE expected_state (
+                        deviceId INTEGER PRIMARY KEY,
+                        ts DATETIME NOT NULL,
+                        stateJSON TEXT NOT NULL
+                    );
+                    """)
+        }
         return migrator
     }
 
@@ -150,7 +175,8 @@ public final class HistoryStore: Sendable {
                 result = try body(db)
                 return .commit
             }
-            return result!
+            guard let result else { throw DatabaseError(resultCode: .SQLITE_ERROR, message: "transaction produced no result") }
+            return result
         }
     }
 
@@ -222,6 +248,32 @@ public final class HistoryStore: Sendable {
                         (SELECT id FROM snapshots WHERE deviceId = ? ORDER BY ts DESC, id DESC LIMIT 1)
                     """,
                 arguments: [deviceId])
+        }
+    }
+
+    // MARK: Expected state
+
+    /// State as it should be after changes accepted by MELCloud, written at `at`.
+    /// Used for validation until a snapshot newer than `at` arrives.
+    public func saveExpectedState(_ state: DeviceState, at: Date) throws {
+        let json = String(decoding: try Self.encoder.encode(state), as: UTF8.self)
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO expected_state (deviceId, ts, stateJSON) VALUES (?, ?, ?)
+                    ON CONFLICT(deviceId) DO UPDATE SET ts = excluded.ts, stateJSON = excluded.stateJSON
+                    """,
+                arguments: [state.deviceId, at, json])
+        }
+    }
+
+    public func expectedState(deviceId: Int) throws -> (state: DeviceState, at: Date)? {
+        try pool.read { db in
+            guard let row = try Row.fetchOne(
+                db, sql: "SELECT ts, stateJSON FROM expected_state WHERE deviceId = ?", arguments: [deviceId]),
+                let state = Self.decodeState(row["stateJSON"])
+            else { return nil }
+            return (state, row["ts"])
         }
     }
 
@@ -369,40 +421,72 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    private static func insertChange(_ record: ChangeRecord, db: Database) throws {
+    private static func insertChange(_ record: ChangeRecord, batchId: Int64? = nil, db: Database) throws {
         try db.execute(
-            sql: "INSERT INTO change_log (ts, source, field, old, new, reason, result, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            sql: "INSERT INTO change_log (ts, source, field, old, new, reason, result, error, batchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             arguments: [
                 record.timestamp, record.source.rawValue, record.field, record.oldValue, record.newValue,
-                record.reason, record.result.rawValue, record.error,
+                record.reason, record.result.rawValue, record.error, batchId,
             ])
     }
 
-    /// Atomically checks the rolling budget and, if room, inserts `record` as `pending`.
-    /// Pending, ok and failed rows count (all of them reached or may have reached MELCloud); rejected rows do not.
+    /// Atomically checks write spacing and the rolling budget and, if both allow, inserts
+    /// `records` as `pending` rows sharing one batch (= one write request).
+    /// The budget counts batches with pending, ok or failed rows (they reached or may have
+    /// reached MELCloud); rejected rows do not count.
     public func reserveChange(
-        _ record: ChangeRecord, limit: Int = ChangeBudget.maxChangesPerHour, window: TimeInterval = ChangeBudget.window
+        _ records: [ChangeRecord], limit: Int = ChangeBudget.maxChangesPerHour, window: TimeInterval = ChangeBudget.window,
+        minSpacing: TimeInterval = ChangeBudget.minSpacing
     ) throws -> ChangeReservation {
-        try immediate { db in
-            let since = record.timestamp.addingTimeInterval(-window)
+        guard let first = records.first else { return .reserved(ids: []) }
+        let now = first.timestamp
+        return try immediate { db in
+            if let last = try Date.fetchOne(
+                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [Self.writeKey]),
+                now.timeIntervalSince(last) < minSpacing
+            {
+                return .tooSoon(nextAllowed: last.addingTimeInterval(minSpacing))
+            }
             let used = try Date.fetchAll(
                 db,
-                sql: "SELECT ts FROM change_log WHERE ts > ? AND result IN ('pending', 'ok', 'failed') ORDER BY ts",
-                arguments: [since])
+                sql: """
+                    SELECT MIN(ts) AS ts FROM change_log
+                    WHERE ts > ? AND result IN ('pending', 'ok', 'failed')
+                    GROUP BY COALESCE(batchId, id) ORDER BY ts
+                    """,
+                arguments: [now.addingTimeInterval(-window)])
             if used.count >= limit {
-                let oldestCounting = used[used.count - limit]
-                return .exceeded(nextAllowed: oldestCounting.addingTimeInterval(window))
+                return .exceeded(nextAllowed: used[used.count - limit].addingTimeInterval(window))
             }
-            var pending = record
-            pending.result = .pending
-            try Self.insertChange(pending, db: db)
-            return .reserved(id: db.lastInsertedRowID)
+            var ids: [Int64] = []
+            var batchId: Int64?
+            for record in records {
+                var pending = record
+                pending.result = .pending
+                try Self.insertChange(pending, batchId: batchId, db: db)
+                let id = db.lastInsertedRowID
+                if batchId == nil {
+                    batchId = id
+                    try db.execute(sql: "UPDATE change_log SET batchId = ? WHERE id = ?", arguments: [id, id])
+                }
+                ids.append(id)
+            }
+            try db.execute(
+                sql: """
+                    INSERT INTO fetch_state (key, lastAttempt) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt
+                    """,
+                arguments: [Self.writeKey, now])
+            return .reserved(ids: ids)
         }
     }
 
-    public func finishChange(id: Int64, result: ChangeResult, error: String? = nil) throws {
+    public func finishChange(ids: [Int64], result: ChangeResult, error: String? = nil) throws {
         try pool.write { db in
-            try db.execute(sql: "UPDATE change_log SET result = ?, error = ? WHERE id = ?", arguments: [result.rawValue, error, id])
+            for id in ids {
+                try db.execute(
+                    sql: "UPDATE change_log SET result = ?, error = ? WHERE id = ?", arguments: [result.rawValue, error, id])
+            }
         }
     }
 
@@ -432,6 +516,11 @@ public final class HistoryStore: Sendable {
     /// attempt is recorded so other processes see it immediately.
     public func reserveFetch(key: String, minInterval: TimeInterval, now: Date) throws -> FetchDecision {
         try immediate { db in
+            if try Date.fetchOne(
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
+            {
+                return .credentialsRejected
+            }
             if let blocked = try Date.fetchOne(
                 db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
                 blocked > now
@@ -475,6 +564,31 @@ public final class HistoryStore: Sendable {
                              THEN excluded.blockedUntil ELSE blockedUntil END
                     """,
                 arguments: [Self.globalKey, until])
+        }
+    }
+
+    /// Stops all network calls until `clearCredentialsRejected()` (new credentials saved).
+    public func recordCredentialsRejected(now: Date) throws {
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO fetch_state (key, lastAttempt, blockedUntil) VALUES (?, ?, ?)
+                    ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt, blockedUntil = excluded.blockedUntil
+                    """,
+                arguments: [Self.credentialsKey, now, Self.indefinite])
+        }
+    }
+
+    public func clearCredentialsRejected() throws {
+        try pool.write { db in
+            try db.execute(sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey])
+        }
+    }
+
+    public func credentialsRejected() throws -> Bool {
+        try pool.read { db in
+            try Date.fetchOne(
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
         }
     }
 

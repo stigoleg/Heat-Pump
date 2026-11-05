@@ -33,7 +33,7 @@ public struct URLSessionTransport: HTTPTransport {
 public actor MELCloudClassicBackend: HeatPumpBackend {
     public nonisolated let identifier = "melcloud-classic"
 
-    public static let baseURL = URL(string: "https://app.melcloud.com/Mitsubishi.Wifi.Client")!
+    public static let baseURL = URL(string: "https://app.melcloud.com/Mitsubishi.Wifi.Client")!  // constant literal
     static let appVersion = "1.19.1.1"
     /// MELCloud language code for Norwegian; affects the language of `ErrorMessage` texts.
     static let languageNorwegian = 13
@@ -160,21 +160,34 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         return devices
     }
 
-    /// Sends an authenticated request; on HTTP 401 logs in again once and retries.
+    /// Sends an authenticated request. On HTTP 401 it first tries the ContextKey from the
+    /// keychain (another process may have logged in already; logging in again would
+    /// invalidate that key), then logs in once. A 401 after a fresh login is `.unauthorized`.
     private func authorizedJSON(
         _ method: String, _ path: String, query: [URLQueryItem] = [], body: JSONValue? = nil
     ) async throws -> JSONValue {
+        if contextKey == nil { contextKey = credentials.loadContextKey() }
         if contextKey == nil { try await login() }
-        var retried = false
+        var triedStoredKey = false
+        var loggedIn = false
         while true {
+            let usedKey = contextKey
             let request = try makeRequest(method, path, query: query, body: body, authenticated: true)
             let (data, response) = try await transport.send(request)
-            if response.statusCode == 401 && !retried {
-                retried = true
-                contextKey = nil
-                try? credentials.saveContextKey(nil)
-                try await login()
-                continue
+            if response.statusCode == 401 {
+                if !triedStoredKey {
+                    triedStoredKey = true
+                    if let stored = credentials.loadContextKey(), stored != usedKey {
+                        contextKey = stored
+                        continue
+                    }
+                }
+                if !loggedIn {
+                    loggedIn = true
+                    try await login()
+                    continue
+                }
+                throw HeatPumpError.unauthorized
             }
             try checkStatus(response)
             return try parse(data)
@@ -204,9 +217,11 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     private func makeRequest(
         _ method: String, _ path: String, query: [URLQueryItem] = [], body: JSONValue?, authenticated: Bool
     ) throws -> URLRequest {
-        var components = URLComponents(url: Self.baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
+        guard var components = URLComponents(url: Self.baseURL.appending(path: path), resolvingAgainstBaseURL: false)
+        else { throw HeatPumpError.network("Ugyldig adresse") }
         if !query.isEmpty { components.queryItems = query }
-        var request = URLRequest(url: components.url!)
+        guard let url = components.url else { throw HeatPumpError.network("Ugyldig adresse") }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")

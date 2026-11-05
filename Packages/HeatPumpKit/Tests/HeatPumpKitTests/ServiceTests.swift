@@ -84,8 +84,8 @@ struct CoordinationTests {
         let clock = TestClock()
         let backendA = CountingBackend(now: clock.provider)
         let backendB = CountingBackend(now: clock.provider)
-        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
-        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
+        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
 
         let first = try await serviceA.currentState(force: true)
         #expect(first.refreshed)
@@ -104,7 +104,7 @@ struct CoordinationTests {
     @Test func cacheServedWithinMaxAge() async throws {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
-        let service = HeatPumpService(backend: backend, store: try HistoryStore(path: temporaryDatabasePath()), timeZone: .gmt, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: try HistoryStore(path: temporaryDatabasePath()), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()
         clock.advance(300)
         let cached = try await service.currentState()
@@ -120,8 +120,8 @@ struct CoordinationTests {
         let clock = TestClock()
         let backendA = CountingBackend(now: clock.provider)
         let backendB = CountingBackend(now: clock.provider)
-        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
-        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
+        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await serviceA.currentState()
 
         clock.advance(700)
@@ -152,7 +152,7 @@ struct CoordinationTests {
     @Test func historySyncAtMostHourly() async throws {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
-        let service = HeatPumpService(backend: backend, store: try HistoryStore(path: temporaryDatabasePath()), timeZone: .gmt, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: try HistoryStore(path: temporaryDatabasePath()), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         let first = try await service.syncHistory()
         #expect(first.allSatisfy { $0.status == .fetched })
         #expect(await backend.reportCalls == 3)
@@ -173,7 +173,7 @@ struct ChangeTests {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
         let store = try HistoryStore(path: temporaryDatabasePath())
-        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()
         let outcome = try await service.apply(.temperature(21.3), source: .claude, reason: "Litt kaldt")
         #expect(outcome.result == .ok)
@@ -195,7 +195,7 @@ struct ChangeTests {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
         let store = try HistoryStore(path: temporaryDatabasePath())
-        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()
         let outcome = try await service.apply(.temperature(35), source: .app, reason: "for varmt")
         #expect(outcome.result == .rejected)
@@ -207,7 +207,7 @@ struct ChangeTests {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
         let store = try HistoryStore(path: temporaryDatabasePath())
-        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()
         await backend.failNext(with: .http(status: 500))
         let outcome = try await service.apply(.power(false), source: .app, reason: "test")
@@ -222,8 +222,8 @@ struct ChangeTests {
         let clock = TestClock()
         let backendA = CountingBackend(now: clock.provider)
         let backendB = CountingBackend(now: clock.provider)
-        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
-        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider)
+        let serviceA = HeatPumpService(backend: backendA, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        let serviceB = HeatPumpService(backend: backendB, store: try HistoryStore(path: path), timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await serviceA.currentState()
         for i in 0..<12 {
             let service = i.isMultiple(of: 2) ? serviceA : serviceB
@@ -247,8 +247,9 @@ struct ChangeTests {
         for _ in 0..<20 {
             try store.logChange(ChangeRecord(timestamp: t, source: .claude, field: "power", oldValue: "on", newValue: "off", reason: "x", result: .rejected))
         }
-        let reservation = try store.reserveChange(
-            ChangeRecord(timestamp: t, source: .app, field: "power", oldValue: "on", newValue: "off", reason: "y", result: .pending))
+        let reservation = try store.reserveChange([
+            ChangeRecord(timestamp: t, source: .app, field: "power", oldValue: "on", newValue: "off", reason: "y", result: .pending)
+        ])
         guard case .reserved = reservation else { Issue.record("expected reservation, got \(reservation)"); return }
     }
 
@@ -256,7 +257,7 @@ struct ChangeTests {
         let clock = TestClock()
         let service = HeatPumpService(
             backend: CountingBackend(now: clock.provider), store: try HistoryStore(path: temporaryDatabasePath()),
-            timeZone: .gmt, now: clock.provider)
+            timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         try await service.recordMaintenance(kind: .airFilter, date: clock.now.addingTimeInterval(-20 * 86_400), note: "støvsuget")
         let status = try await service.maintenanceStatus()
         let air = try #require(status.first { $0.kind == .airFilter })

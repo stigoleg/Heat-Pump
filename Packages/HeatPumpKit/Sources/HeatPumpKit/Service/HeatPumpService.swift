@@ -15,21 +15,34 @@ public actor HeatPumpService {
     public static let defaultLoginBlock: TimeInterval = 30 * 60
 
     static let stateKey = "state"
+    /// Global block after a persistent 401 (login works but MELCloud still refuses).
+    public static let unauthorizedBlock: TimeInterval = 3600
+    /// Longest a write waits for the cross-process spacing before giving up.
+    public static let maxWriteWait: TimeInterval = 10
 
     public nonisolated let backend: any HeatPumpBackend
     public nonisolated let store: HistoryStore
     public nonisolated let timeZone: TimeZone
+    /// Credential store used by `saveCredentials` / `signOut` (nil for the mock backend).
+    public nonisolated let credentials: (any CredentialProviding)?
     private let now: @Sendable () -> Date
+    private let sleep: @Sendable (TimeInterval) async -> Void
     private var device: DeviceSummary?
 
     public init(
-        backend: any HeatPumpBackend, store: HistoryStore, timeZone: TimeZone = .current,
-        now: @escaping @Sendable () -> Date = { Date() }
+        backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
+        timeZone: TimeZone = .current,
+        now: @escaping @Sendable () -> Date = { Date() },
+        sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(for: .seconds(max(0, seconds)))
+        }
     ) {
         self.backend = backend
         self.store = store
+        self.credentials = credentials
         self.timeZone = timeZone
         self.now = now
+        self.sleep = sleep
     }
 
     /// Backend from `VARMEPUMPE_BACKEND` (`mock` or default MELCloud Classic), DB from
@@ -38,11 +51,37 @@ public actor HeatPumpService {
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> HeatPumpService {
         let store = try HistoryStore(path: HistoryStore.defaultPath(environment: environment))
-        let backend: any HeatPumpBackend =
-            environment["VARMEPUMPE_BACKEND"]?.lowercased() == "mock"
-            ? MockBackend()
-            : MELCloudClassicBackend(credentials: KeychainCredentialStore(environment: environment))
-        return HeatPumpService(backend: backend, store: store)
+        if isMock(environment: environment) {
+            return HeatPumpService(backend: MockBackend(), store: store)
+        }
+        let credentials = KeychainCredentialStore(environment: environment)
+        return HeatPumpService(
+            backend: MELCloudClassicBackend(credentials: credentials), store: store, credentials: credentials)
+    }
+
+    public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
+        environment["VARMEPUMPE_BACKEND"]?.lowercased() == "mock"
+    }
+
+    // MARK: Credentials
+
+    public func hasCredentials() -> Bool {
+        guard let credentials else { return true }
+        return ((try? credentials.loadCredentials()) ?? nil) != nil
+    }
+
+    /// Saves new credentials and lifts a "credentials rejected" stop. Does not call the network.
+    public func saveCredentials(_ new: MELCloudCredentials) throws {
+        guard let credentials else { return }
+        try credentials.saveCredentials(new)
+        try store.clearCredentialsRejected()
+        device = nil
+    }
+
+    /// Removes credentials and session from the keychain.
+    public func signOut() throws {
+        try credentials?.deleteAll()
+        device = nil
     }
 
     // MARK: State
@@ -56,6 +95,12 @@ public actor HeatPumpService {
             return result(cached.state, now: t, refreshed: false, stale: false)
         }
         switch try store.reserveFetch(key: Self.stateKey, minInterval: Self.minRefreshInterval, now: t) {
+        case .credentialsRejected:
+            var r = result(
+                cached?.state, now: t, refreshed: false, stale: true,
+                error: HeatPumpError.credentialsRejected.errorDescription)
+            r.needsLogin = true
+            return r
         case .blocked(let until):
             return result(cached?.state, now: t, refreshed: false, stale: true, blockedUntil: until)
         case .throttled(let next):
@@ -72,9 +117,12 @@ public actor HeatPumpService {
                 return result(state, now: now(), refreshed: true, stale: false)
             } catch let error as HeatPumpError {
                 let blocked = try handleBlock(error, now: t)
-                return result(
+                var r = result(
                     cached?.state, now: t, refreshed: false, stale: true, blockedUntil: blocked,
-                    error: error.errorDescription)
+                    error: (error.isCredentialProblem ? HeatPumpError.credentialsRejected : error).errorDescription)
+                r.needsLogin = error.isCredentialProblem || error == .missingCredentials
+                if error == .missingCredentials { r.error = error.errorDescription }
+                return r
             }
         }
     }
@@ -99,10 +147,11 @@ public actor HeatPumpService {
             state: state, fetchedAt: state?.fetchedAt,
             dataAgeSeconds: state.map { max(0, Int(now.timeIntervalSince($0.fetchedAt))) },
             refreshed: refreshed, stale: stale, blockedUntil: blockedUntil ?? (try? store.blockedUntil(now: now)) ?? nil,
-            nextRefreshAllowed: nextRefreshAllowed, error: error)
+            nextRefreshAllowed: nextRefreshAllowed, error: error,
+            needsLogin: (try? store.credentialsRejected()) ?? false)
     }
 
-    /// Records a global block for rate-limit style errors. Returns the block end, if any.
+    /// Records blocks for rate-limit and credential errors. Returns the block end, if timed.
     @discardableResult
     private func handleBlock(_ error: HeatPumpError, now: Date) throws -> Date? {
         switch error {
@@ -113,6 +162,15 @@ public actor HeatPumpService {
             let end = until ?? now.addingTimeInterval(Self.defaultLoginBlock)
             try store.recordBlock(until: end)
             return end
+        case .unauthorized:
+            let end = now.addingTimeInterval(Self.unauthorizedBlock)
+            try store.recordBlock(until: end)
+            return end
+        case .invalidCredentials:
+            // Every further login attempt with the same password risks an account-wide
+            // throttle that also hits the official app; stop until the user saves new ones.
+            try store.recordCredentialsRejected(now: now)
+            return nil
         default:
             return nil
         }
@@ -124,6 +182,12 @@ public actor HeatPumpService {
     /// fetched at most once per hour across processes.
     public func syncHistory() async throws -> [ReportSync] {
         let t = now()
+        if try store.credentialsRejected() {
+            return ReportKind.allCases.map {
+                ReportSync(kind: $0, status: .blocked, count: 0,
+                           message: HeatPumpError.credentialsRejected.errorDescription, nextAllowed: nil)
+            }
+        }
         var deviceState = try store.latestSnapshot()?.state
         if deviceState == nil { deviceState = try await currentState().state }
         guard let state = deviceState else {
@@ -135,6 +199,10 @@ public actor HeatPumpService {
         for kind in ReportKind.allCases {
             let key = "report.\(kind.rawValue)"
             switch try store.reserveFetch(key: key, minInterval: Self.reportInterval, now: t) {
+            case .credentialsRejected:
+                results.append(
+                    ReportSync(kind: kind, status: .blocked, count: 0,
+                               message: HeatPumpError.credentialsRejected.errorDescription, nextAllowed: nil))
             case .blocked(let until):
                 results.append(ReportSync(kind: kind, status: .blocked, count: 0, message: nil, nextAllowed: until))
             case .throttled(let next):
@@ -146,13 +214,19 @@ public actor HeatPumpService {
                     results.append(ReportSync(kind: kind, status: .fetched, count: count, message: nil, nextAllowed: nil))
                 } catch let error as HeatPumpError {
                     let blocked = try handleBlock(error, now: t)
+                    let stopped = blocked != nil || error.isCredentialProblem
                     results.append(
-                        ReportSync(kind: kind, status: blocked == nil ? .failed : .blocked, count: 0,
+                        ReportSync(kind: kind, status: stopped ? .blocked : .failed, count: 0,
                                    message: error.errorDescription, nextAllowed: blocked))
                 }
             }
         }
         return results
+    }
+
+    /// Interval from `from` to `to`, or nil when it would be empty/negative (DateInterval traps on that).
+    private func interval(_ from: Date, _ to: Date) -> DateInterval? {
+        from < to ? DateInterval(start: from, end: to) : nil
     }
 
     private func fetchReport(_ kind: ReportKind, deviceId: Int, key: String, now t: Date) async throws -> Int {
@@ -161,25 +235,30 @@ public actor HeatPumpService {
         case .errorLog:
             let lastSuccess = try store.fetchState(key: key)?.lastSuccess
             let from = max(earliest, (lastSuccess ?? earliest).addingTimeInterval(-86_400))
-            let entries = try await backend.fetchErrorLog(deviceId: deviceId, range: DateInterval(start: from, end: t))
+            guard let range = interval(from, t) else { return 0 }
+            let entries = try await backend.fetchErrorLog(deviceId: deviceId, range: range)
             try store.upsertErrorEvents(entries)
             return entries.count
         case .temperatureLog:
             let latest = try store.latestTemperaturePointDate(deviceId: deviceId)
             let from = max(t.addingTimeInterval(-30 * 86_400), latest ?? .distantPast)
-            let points = try await backend.fetchTemperatureLog(deviceId: deviceId, range: DateInterval(start: from, end: t))
+            guard let range = interval(from, t) else { return 0 }
+            let points = try await backend.fetchTemperatureLog(deviceId: deviceId, range: range)
             try store.upsertTemperaturePoints(points, deviceId: deviceId)
             return points.count
         case .energy:
-            // Re-fetch the last two stored days: MELCloud fills energy data in late.
+            // One request of at most 28 days so MELCloud answers per day. The last two stored
+            // days are fetched again because MELCloud fills energy data in late.
             let calendar = WireDate.calendar(timeZone)
-            var from = calendar.startOfDay(for: t.addingTimeInterval(-60 * 86_400))
+            let maxDays = MELCloudClassicParser.maxEnergyRangeDays - 1
+            var from = calendar.startOfDay(for: t.addingTimeInterval(-Double(maxDays) * 86_400))
             if let latest = try store.latestEnergyDay(deviceId: deviceId),
                 let date = WireDate.parse(latest, timeZone: timeZone)
             {
                 from = max(from, date.addingTimeInterval(-2 * 86_400))
             }
-            let days = try await backend.fetchEnergy(deviceId: deviceId, range: DateInterval(start: from, end: t))
+            guard let range = interval(from, t) else { return 0 }
+            let days = try await backend.fetchEnergy(deviceId: deviceId, range: range)
             try store.upsertEnergyDays(days, deviceId: deviceId, now: t)
             return days.count
         }
@@ -187,55 +266,150 @@ public actor HeatPumpService {
 
     // MARK: Changes
 
+    /// State to validate against: the expected state after accepted changes when it is newer
+    /// than the latest snapshot, otherwise the latest snapshot.
+    public func effectiveState() throws -> DeviceState? {
+        let snapshot = try store.latestSnapshot()?.state
+        guard let deviceId = snapshot?.deviceId ?? device?.deviceId,
+            let expected = try store.expectedState(deviceId: deviceId)
+        else { return snapshot }
+        if let snapshot, snapshot.fetchedAt > expected.at { return snapshot }
+        return expected.state
+    }
+
     /// Validates, budgets, sends and logs one change. Never throws for business reasons;
     /// the outcome says whether it was sent (`ok`), failed, or was rejected.
     public func apply(_ change: DeviceChange, source: ChangeSource, reason: String) async throws -> ChangeOutcome {
+        let outcomes = try await apply([change], source: source, reason: reason)
+        return outcomes.first ?? ChangeOutcome(result: .rejected, message: "Ingen endring.", field: change.field)
+    }
+
+    /// Validates and sends several changes. Everything except a second vane axis goes out as
+    /// one `SetAta` request (combined EffectiveFlags); vanes are one axis per request.
+    /// If any change is invalid, nothing is sent and all are logged as rejected.
+    public func apply(_ changes: [DeviceChange], source: ChangeSource, reason: String) async throws -> [ChangeOutcome] {
+        guard !changes.isEmpty else { return [] }
         let t = now()
-        var state = try store.latestSnapshot()?.state
-        if state == nil { state = try await currentState().state }
-        let oldValue = change.currentValue(in: state)
-        guard let state else {
-            return try reject(change, source: source, reason: reason, oldValue: nil, error: "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres.", now: t)
+        var base = try effectiveState()
+        if base == nil {
+            _ = try await currentState()
+            base = try effectiveState()
         }
-        let normalized: DeviceChange
-        switch Self.validate(change, against: state) {
-        case .failure(let message):
-            return try reject(change, source: source, reason: reason, oldValue: oldValue, error: message.description, now: t)
-        case .success(let value):
-            normalized = value
+        guard let start = base else {
+            return try rejectAll(
+                changes, source: source, reason: reason, state: nil,
+                error: "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres.", now: t)
+        }
+
+        // Validate in dependency order against the state as it will be.
+        var projected = start
+        var normalized: [DeviceChange] = []
+        for change in changes.sorted(by: { $0.validationOrder < $1.validationOrder }) {
+            switch Self.validate(change, against: projected) {
+            case .failure(let message):
+                return try rejectAll(changes, source: source, reason: reason, state: start, error: message.description, now: t)
+            case .success(let value):
+                normalized.append(value)
+                projected = value.applied(to: projected)
+            }
+        }
+        if try store.credentialsRejected() {
+            return try rejectAll(
+                normalized, source: source, reason: reason, state: start,
+                error: HeatPumpError.credentialsRejected.errorDescription ?? "", now: t)
         }
         if let until = try store.blockedUntil(now: t) {
-            var outcome = try reject(
-                normalized, source: source, reason: reason, oldValue: oldValue,
+            var outcomes = try rejectAll(
+                normalized, source: source, reason: reason, state: start,
                 error: HeatPumpError.blocked(until: until).errorDescription ?? "Blokkert", now: t)
-            outcome.blockedUntil = until
-            return outcome
+            for i in outcomes.indices { outcomes[i].blockedUntil = until }
+            return outcomes
         }
-        let pending = ChangeRecord(
-            timestamp: t, source: source, field: normalized.field, oldValue: oldValue,
-            newValue: normalized.valueDescription, reason: reason, result: .pending)
-        switch try store.reserveChange(pending) {
-        case .exceeded(let next):
-            var outcome = try reject(
-                normalized, source: source, reason: reason, oldValue: oldValue,
-                error: HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", now: t)
-            outcome.nextAllowed = next
-            return outcome
-        case .reserved(let id):
-            do {
-                try await backend.apply(Self.changeSet(normalized, for: state))
-                try store.finishChange(id: id, result: .ok)
-                try store.markLatestSnapshotStale(deviceId: state.deviceId)
-                return ChangeOutcome(
-                    result: .ok, message: "Sendt: \(normalized.displaySummary). Det kan ta opptil et par minutter før varmepumpen bekrefter.",
-                    field: normalized.field, oldValue: oldValue, newValue: normalized.valueDescription)
-            } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                try store.finishChange(id: id, result: .failed, error: message)
-                let blocked = try (error as? HeatPumpError).flatMap { try handleBlock($0, now: t) }
-                return ChangeOutcome(
-                    result: .failed, message: "Endringen feilet: \(message)", field: normalized.field,
-                    oldValue: oldValue, newValue: normalized.valueDescription, blockedUntil: blocked)
+
+        // Split into requests: one with everything but a second vane axis, then that axis.
+        var first = normalized.filter { !$0.isVane }
+        var requests: [[DeviceChange]] = []
+        let vanes = normalized.filter(\.isVane)
+        if let firstVane = vanes.first { first.append(firstVane) }
+        if !first.isEmpty { requests.append(first) }
+        if vanes.count > 1 { requests.append(Array(vanes.dropFirst())) }
+
+        var outcomes: [ChangeOutcome] = []
+        var current = start
+        for (index, request) in requests.enumerated() {
+            let sent = try await send(request, base: current, source: source, reason: reason)
+            outcomes += sent.outcomes
+            current = sent.state
+            if sent.outcomes.contains(where: { $0.result != .ok }) {
+                // Do not send the rest; log it as not sent.
+                for remaining in requests.dropFirst(index + 1) {
+                    outcomes += try rejectAll(
+                        remaining, source: source, reason: reason, state: current,
+                        error: "Ikke sendt fordi forrige del av endringen ikke gikk gjennom.", now: now())
+                }
+                break
+            }
+        }
+        return outcomes
+    }
+
+    /// Reserves spacing + budget for one request (waiting briefly if another write just went
+    /// out), sends it and logs the result.
+    private func send(
+        _ request: [DeviceChange], base: DeviceState, source: ChangeSource, reason: String
+    ) async throws -> (outcomes: [ChangeOutcome], state: DeviceState) {
+        var waited: TimeInterval = 0
+        while true {
+            let t = now()
+            let records = request.map {
+                ChangeRecord(
+                    timestamp: t, source: source, field: $0.field, oldValue: $0.currentValue(in: base),
+                    newValue: $0.valueDescription, reason: reason, result: .pending)
+            }
+            switch try store.reserveChange(records) {
+            case .tooSoon(let next):
+                let wait = max(0, next.timeIntervalSince(t))
+                if waited + wait > Self.maxWriteWait {
+                    let outcomes = try rejectAll(
+                        request, source: source, reason: reason, state: base,
+                        error: HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", now: t)
+                    return (outcomes.map { var o = $0; o.nextAllowed = next; return o }, base)
+                }
+                waited += wait
+                await sleep(wait + 0.05)
+                continue
+            case .exceeded(let next):
+                let outcomes = try rejectAll(
+                    request, source: source, reason: reason, state: base,
+                    error: HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", now: t)
+                return (outcomes.map { var o = $0; o.nextAllowed = next; return o }, base)
+            case .reserved(let ids):
+                var changeSet = ChangeSet(deviceId: base.deviceId, buildingId: base.buildingId)
+                for change in request { Self.merge(change, into: &changeSet) }
+                do {
+                    try await backend.apply(changeSet)
+                    try store.finishChange(ids: ids, result: .ok)
+                    let expected = request.reduce(base) { $1.applied(to: $0) }
+                    try store.saveExpectedState(expected, at: t)
+                    try store.markLatestSnapshotStale(deviceId: base.deviceId)
+                    let outcomes = request.map { change in
+                        ChangeOutcome(
+                            result: .ok,
+                            message: "Sendt: \(change.displaySummary). Det kan ta opptil et par minutter før varmepumpen bekrefter.",
+                            field: change.field, oldValue: change.currentValue(in: base), newValue: change.valueDescription)
+                    }
+                    return (outcomes, expected)
+                } catch {
+                    let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    try store.finishChange(ids: ids, result: .failed, error: message)
+                    let blocked = try (error as? HeatPumpError).flatMap { try handleBlock($0, now: t) }
+                    let outcomes = request.map { change in
+                        ChangeOutcome(
+                            result: .failed, message: "Endringen feilet: \(message)", field: change.field,
+                            oldValue: change.currentValue(in: base), newValue: change.valueDescription, blockedUntil: blocked)
+                    }
+                    return (outcomes, base)
+                }
             }
         }
     }
@@ -243,20 +417,34 @@ public actor HeatPumpService {
     /// Logs a change that was not sent (for example declined by the user in an MCP confirmation).
     @discardableResult
     public func logRejection(_ change: DeviceChange, source: ChangeSource, reason: String, error: String) throws -> ChangeOutcome {
-        let oldValue = change.currentValue(in: try store.latestSnapshot()?.state)
-        return try reject(change, source: source, reason: reason, oldValue: oldValue, error: error, now: now())
+        let outcomes = try rejectAll([change], source: source, reason: reason, state: try effectiveState(), error: error, now: now())
+        return outcomes.first ?? ChangeOutcome(result: .rejected, message: "Ikke sendt: \(error)", field: change.field)
     }
 
-    private func reject(
-        _ change: DeviceChange, source: ChangeSource, reason: String, oldValue: String?, error: String, now t: Date
-    ) throws -> ChangeOutcome {
-        try store.logChange(
-            ChangeRecord(
-                timestamp: t, source: source, field: change.field, oldValue: oldValue,
-                newValue: change.valueDescription, reason: reason, result: .rejected, error: error))
-        return ChangeOutcome(
-            result: .rejected, message: "Ikke sendt: \(error)", field: change.field, oldValue: oldValue,
-            newValue: change.valueDescription)
+    private func rejectAll(
+        _ changes: [DeviceChange], source: ChangeSource, reason: String, state: DeviceState?, error: String, now t: Date
+    ) throws -> [ChangeOutcome] {
+        try changes.map { change in
+            let oldValue = change.currentValue(in: state)
+            try store.logChange(
+                ChangeRecord(
+                    timestamp: t, source: source, field: change.field, oldValue: oldValue,
+                    newValue: change.valueDescription, reason: reason, result: .rejected, error: error))
+            return ChangeOutcome(
+                result: .rejected, message: "Ikke sendt: \(error)", field: change.field, oldValue: oldValue,
+                newValue: change.valueDescription)
+        }
+    }
+
+    static func merge(_ change: DeviceChange, into set: inout ChangeSet) {
+        switch change {
+        case .power(let on): set.power = on
+        case .mode(let mode): set.mode = mode
+        case .temperature(let celsius): set.setTemperature = celsius
+        case .fanSpeed(let speed): set.fanSpeed = speed
+        case .vaneVertical(let vane): set.vaneVertical = vane
+        case .vaneHorizontal(let vane): set.vaneHorizontal = vane
+        }
     }
 
     /// Checks a change against the device's limits. Setpoints are rounded to the device step
@@ -295,24 +483,28 @@ public actor HeatPumpService {
         init(_ description: String) { self.description = description }
     }
 
-    static func changeSet(_ change: DeviceChange, for state: DeviceState) -> ChangeSet {
-        var set = ChangeSet(deviceId: state.deviceId, buildingId: state.buildingId)
-        switch change {
-        case .power(let on): set.power = on
-        case .mode(let mode): set.mode = mode
-        case .temperature(let celsius): set.setTemperature = celsius
-        case .fanSpeed(let speed): set.fanSpeed = speed
-        case .vaneVertical(let vane): set.vaneVertical = vane
-        case .vaneHorizontal(let vane): set.vaneHorizontal = vane
-        }
-        return set
-    }
-
     // MARK: Maintenance
 
+    /// Allowed clock skew for "now" maintenance dates.
+    static let maintenanceFutureTolerance: TimeInterval = 5 * 60
+
+    /// Records a maintenance task. Rejects dates in the future; `reason` (why it was
+    /// recorded, e.g. from Claude) is kept in the note.
     @discardableResult
-    public func recordMaintenance(kind: MaintenanceKind, date: Date? = nil, note: String? = nil) throws -> MaintenanceRecord {
-        try store.insertMaintenance(MaintenanceRecord(kind: kind, timestamp: date ?? now(), note: note))
+    public func recordMaintenance(
+        kind: MaintenanceKind, date: Date? = nil, note: String? = nil, reason: String? = nil
+    ) throws -> MaintenanceRecord {
+        let t = now()
+        let when = date ?? t
+        guard when <= t.addingTimeInterval(Self.maintenanceFutureTolerance) else {
+            throw HeatPumpError.validation("Datoen kan ikke være frem i tid.")
+        }
+        let parts = [note, reason.map { "Begrunnelse: \($0)" }].compactMap { text -> String? in
+            guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+            return text
+        }
+        return try store.insertMaintenance(
+            MaintenanceRecord(kind: kind, timestamp: when, note: parts.isEmpty ? nil : parts.joined(separator: "\n")))
     }
 
     public func maintenanceStatus() throws -> [MaintenanceStatus] {
@@ -356,7 +548,7 @@ public actor HeatPumpService {
                     deviceId: $0, fromDay: WireDate.day(since, timeZone: timeZone), toDay: WireDate.day(t, timeZone: timeZone))
             } ?? [],
             maintenance: try store.maintenanceRecords(limit: 500),
-            now: t, timeZone: timeZone)
+            now: t, timeZone: timeZone, blockedUntil: try store.blockedUntil(now: t))
         return HealthEngine.evaluate(input)
     }
 
