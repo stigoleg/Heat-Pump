@@ -9,6 +9,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Dev only (screenshots): VARMEPUMPE_APPEARANCE=dark|light.
+        switch ProcessInfo.processInfo.environment["VARMEPUMPE_APPEARANCE"] {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: break
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         MainActor.assumeIsolated { model.stop() }
     }
@@ -29,6 +38,7 @@ struct VarmepumpeApp: App {
                 .task { model.start() }
                 .onDisappear { model.stop() }
         }
+        .defaultSize(width: 1180, height: 860)
         .commands {
             CommandGroup(after: .toolbar) {
                 Button("Oppdater nå") {

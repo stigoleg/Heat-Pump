@@ -6,10 +6,11 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Tab("Konto", systemImage: "person.crop.circle") { AccountSettings() }
+            Tab("Strømpris", systemImage: "bolt.horizontal.circle") { PriceSettingsView() }
             Tab("Claude", systemImage: "sparkles") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive") { DataSettings() }
         }
-        .frame(width: 560, height: 440)
+        .frame(width: 600, height: 560)
     }
 }
 
@@ -170,7 +171,126 @@ struct DataSettings: View {
         case "report.errorLog": "Feillogg"
         case "report.temperatureLog": "Temperaturlogg"
         case "report.energy": "Energi"
+        case let key where key.hasPrefix("prices."): "Strømpriser"
         default: key
+        }
+    }
+}
+
+/// Price agreement, grid tariff and Tibber token.
+struct PriceSettingsView: View {
+    @Environment(AppModel.self) private var model
+    @State private var draft = PriceSettings.default
+    @State private var token = ""
+    @State private var tokenStored = false
+    @State private var testing = false
+    @State private var testResult: String?
+    @State private var loaded = false
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(selection: $draft.agreement) {
+                    ForEach(PriceAgreementKind.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                } label: {
+                    Label { Text("Strømavtale") } icon: { IconBadge(systemImage: "bolt.fill", color: .yellow) }
+                }
+                switch draft.agreement {
+                case .norgespris:
+                    LabeledContent("Pris inkl. mva") {
+                        HStack {
+                            TextField("øre/kWh", value: $draft.norgesprisOre, format: .number.precision(.fractionLength(0...2)))
+                                .labelsHidden().frame(width: 80).multilineTextAlignment(.trailing)
+                            Text("øre/kWh")
+                        }
+                    }
+                case .tibber:
+                    SecureField("Tibber-nøkkel (personal access token)", text: $token, prompt: Text(tokenStored ? "Lagret i nøkkelringen" : "Lim inn nøkkelen"))
+                    HStack {
+                        Button("Lagre og test") {
+                            Task {
+                                testing = true
+                                testResult = await model.saveAndTestTibberToken(token)
+                                tokenStored = model.hasTibberToken
+                                token = ""
+                                testing = false
+                            }
+                        }
+                        .disabled(token.isEmpty || testing)
+                        if testing { ProgressView().controlSize(.small) }
+                        Spacer()
+                        Link("Hent nøkkel på developer.tibber.com", destination: URL(string: "https://developer.tibber.com/settings/access-token")!)
+                            .font(.callout)
+                    }
+                    if let testResult { Text(testResult).font(.callout).foregroundStyle(.secondary) }
+                case .spot:
+                    Picker("Prisområde", selection: $draft.area) {
+                        ForEach(PriceArea.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    LabeledContent("Påslag fra strømselskapet") {
+                        HStack {
+                            TextField("øre/kWh", value: $draft.markupOre, format: .number.precision(.fractionLength(0...2)))
+                                .labelsHidden().frame(width: 80).multilineTextAlignment(.trailing)
+                            Text("øre/kWh inkl. mva")
+                        }
+                    }
+                }
+            } header: {
+                Text("Strømpris")
+            } footer: {
+                Text(agreementFooter)
+            }
+
+            Section {
+                LabeledContent("Dag (hverdager 06–22)") { oreField($draft.grid.dayOre) }
+                LabeledContent("Natt, helg og helligdager") { oreField($draft.grid.nightOre) }
+                Button("Bruk Elvias satser") { draft.grid = .elvia2026 }
+                    .disabled(draft.grid == .elvia2026)
+            } header: {
+                Text("Nettleie – energiledd")
+            } footer: {
+                Text(
+                    "Kilde: \(GridTariff.elviaSource), per \(GridTariff.elviaAsOf). Satsene er inkludert forbruksavgift, Enova-påslag og mva. Kapasitetsleddet (fastleddet) er ikke med: det avhenger av hele husets høyeste forbruk, så det kan ikke fordeles på varmepumpen."
+                )
+            }
+
+            Section {
+                HStack {
+                    if let message = model.priceMessage {
+                        Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Theme.Status.caution)
+                    }
+                    Spacer()
+                    Button("Lagre") { Task { await model.savePriceSettings(draft) } }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(draft == model.priceSettings)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .task {
+            guard !loaded else { return }
+            loaded = true
+            draft = model.priceSettings
+            tokenStored = model.hasTibberToken
+        }
+    }
+
+    private var agreementFooter: String {
+        switch draft.agreement {
+        case .norgespris:
+            "Norgespris er en fast pris per kWh fra staten. Med Norgespris får du ikke strømstøtte."
+        case .tibber:
+            "Timeprisene hentes fra Tibber-kontoen din (høyst én gang i timen). Nøkkelen lagres i nøkkelringen. Strømstøtte trekkes fra: staten dekker 90 % av timeprisen over 96,25 øre/kWh inkl. mva (2026)."
+        case .spot:
+            "Timeprisene hentes fra hvakosterstrommen.no (høyst én gang i timen) og tillegges mva. Strømstøtte trekkes fra: staten dekker 90 % av timeprisen over 96,25 øre/kWh inkl. mva (2026)."
+        }
+    }
+
+    private func oreField(_ value: Binding<Double>) -> some View {
+        HStack {
+            TextField("øre/kWh", value: value, format: .number.precision(.fractionLength(0...2)))
+                .labelsHidden().frame(width: 80).multilineTextAlignment(.trailing)
+            Text("øre/kWh")
         }
     }
 }

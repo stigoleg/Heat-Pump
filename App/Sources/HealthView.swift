@@ -7,14 +7,19 @@ struct HealthView: View {
     @State private var document: KnowledgeDocumentItem?
 
     var body: some View {
-        List {
-            findings
-            errorLog
-            maintenance
-            knowledge
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                StatusBanner()
+                kpis
+                findings
+                errorLog
+                maintenance
+                knowledge
+            }
+            .padding(Theme.Space.xl)
+            .frame(maxWidth: 1000, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .listStyle(.inset)
-        .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(inset: 16) }
         .sheet(item: $recording) { kind in
             RecordMaintenanceSheet(kind: kind)
         }
@@ -23,66 +28,73 @@ struct HealthView: View {
         }
     }
 
-    @ViewBuilder private var findings: some View {
-        if let report = model.health {
-            ForEach(HealthSeverity.allCases.reversed(), id: \.self) { severity in
-                let group = report.findings.filter { $0.severity == severity }
-                if !group.isEmpty {
-                    Section {
-                        ForEach(group) { finding in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label(finding.title, systemImage: severity.systemImage)
-                                    .font(.headline)
-                                    .foregroundStyle(severity == .ok ? Color.primary : severity.color)
-                                Text(finding.detail)
-                                Text("Råd: \(finding.recommendation)")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 6)
-                            .textSelection(.enabled)
-                        }
-                    } header: {
-                        Text(sectionTitle(severity))
-                    }
-                }
+    private var kpis: some View {
+        KPIRow {
+            if let report = model.health {
+                KPITile(
+                    label: "Helse", value: report.overall == .ok ? "Alt OK" : report.overall.displayName,
+                    detail: "\(report.findings.filter { $0.severity != .ok }.count) ting å se på",
+                    systemImage: report.overall.systemImage, tint: report.overall.color)
             }
+            ForEach(model.maintenance.filter { $0.recommendedIntervalDays != nil }, id: \.kind) { item in
+                KPITile(
+                    label: item.displayName,
+                    value: item.nextDue.map { Format.dayMonth($0) } ?? "Ikke registrert",
+                    detail: item.nextDue == nil ? "Registrer når du har gjort det" : "neste gang",
+                    systemImage: icon(item.status), tint: color(item.status))
+            }
+            KPITile(
+                label: "Feil siste 90 dager", value: "\(model.errorLog.count)",
+                detail: model.errorLog.first.map { "Siste: \(Norwegian.date($0.start))" }, systemImage: "list.bullet.rectangle",
+                tint: model.errorLog.isEmpty ? Theme.Status.good : Theme.Status.caution)
         }
     }
 
-    private func sectionTitle(_ severity: HealthSeverity) -> String {
-        switch severity {
-        case .critical: "Kritisk – gjør noe nå"
-        case .warning: "Advarsler"
-        case .info: "Til informasjon"
-        case .ok: "I orden"
+    @ViewBuilder private var findings: some View {
+        if let report = model.health {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                SectionHeader("Funn", hint: "Viktigst først")
+                ForEach(report.findings) { finding in
+                    InsightCard(
+                        title: finding.title, detail: finding.detail + "\nRåd: " + finding.recommendation,
+                        systemImage: finding.severity.systemImage, tint: finding.severity.color)
+                    .textSelection(.enabled)
+                }
+            }
         }
     }
 
     private var errorLog: some View {
-        Section {
-            if model.errorLog.isEmpty {
-                Text("Ingen feil registrert de siste 90 dagene.").foregroundStyle(.secondary)
-            }
-            ForEach(Array(model.errorLog.enumerated()), id: \.offset) { _, entry in
-                let explanation = ErrorCatalog.lookup(errorCode: entry.code.flatMap(Int.init), message: entry.message)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(entry.message).font(.body.weight(.medium))
-                        Spacer()
-                        Text(entry.start.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(Norwegian.locale)))
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            SectionHeader("Feillogg", hint: "90 dager")
+            CardSurface {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    if model.errorLog.isEmpty {
+                        Label("Ingen feil registrert de siste 90 dagene.", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
-                    Text(entry.end.map { "Gikk over \(Norwegian.dateTime($0))" } ?? "Ikke registrert som avsluttet")
-                        .font(.caption).foregroundStyle(.secondary)
-                    if explanation.confidence != .melcloud || explanation.explanation.contains("Mulig tolkning") {
-                        Text(explanation.explanation).font(.callout)
+                    ForEach(Array(model.errorLog.enumerated()), id: \.offset) { index, entry in
+                        let explanation = ErrorCatalog.lookup(errorCode: entry.code.flatMap(Int.init), message: entry.message)
+                        if index > 0 { Divider() }
+                        HStack(alignment: .top, spacing: Theme.Space.m) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Status.caution)
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(entry.message).font(.body.weight(.medium))
+                                    Spacer()
+                                    Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                }
+                                Text(entry.end.map { "Gikk over \(Norwegian.dateTime($0))" } ?? "Ikke registrert som avsluttet")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                if explanation.confidence != .melcloud || explanation.explanation.contains("Mulig tolkning") {
+                                    Text(explanation.explanation).font(.callout)
+                                }
+                                Text(confidenceNote(explanation.confidence)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    Text(confidenceNote(explanation.confidence)).font(.caption).foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 4)
             }
-        } header: {
-            Text("Feillogg (90 dager)")
         }
     }
 
@@ -95,23 +107,24 @@ struct HealthView: View {
     }
 
     private var maintenance: some View {
-        Section {
-            ForEach(model.maintenance, id: \.kind) { item in
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: icon(item.status)).foregroundStyle(color(item.status))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.displayName).font(.body.weight(.medium))
-                        Text(detail(item)).font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            SectionHeader("Vedlikehold", hint: "Luftfilter hver 2. uke, luktfilter hver 3. måned")
+            CardSurface {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    ForEach(Array(model.maintenance.enumerated()), id: \.offset) { index, item in
+                        if index > 0 { Divider() }
+                        HStack(alignment: .center, spacing: Theme.Space.m) {
+                            Image(systemName: icon(item.status)).foregroundStyle(color(item.status)).frame(width: 20)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.displayName).font(.body.weight(.medium))
+                                Text(detail(item)).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Registrer utført") { recording = item.kind }
+                        }
                     }
-                    Spacer()
-                    Button("Registrer utført") { recording = item.kind }
                 }
-                .padding(.vertical, 4)
             }
-        } header: {
-            Text("Vedlikehold")
-        } footer: {
-            Text("Bruksanvisningen anbefaler å rengjøre luftfilteret hver 2. uke og luktfilteret/luftrenseren hver 3. måned.")
         }
     }
 
@@ -146,7 +159,8 @@ struct HealthView: View {
     }
 
     private var knowledge: some View {
-        Section("Les mer") {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionHeader("Les mer")
             ForEach(Knowledge.all(), id: \.name) { doc in
                 Button {
                     document = KnowledgeDocumentItem(document: doc)

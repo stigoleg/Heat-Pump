@@ -334,6 +334,11 @@ public actor HeatPumpService {
 
     // MARK: Changes
 
+    /// Latest stored state without touching the network (for example right after a write).
+    public func cachedState() throws -> DeviceState? {
+        try store.latestSnapshot()?.state
+    }
+
     /// State to validate against: the expected state after accepted changes when it is newer
     /// than the latest snapshot, otherwise the latest snapshot.
     public func effectiveState() throws -> DeviceState? {

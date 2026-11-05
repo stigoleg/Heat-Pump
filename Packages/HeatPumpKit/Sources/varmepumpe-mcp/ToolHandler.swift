@@ -155,7 +155,7 @@ struct ToolHandler: Sendable {
         func hour(_ b: PriceBreakdown) -> Hour {
             func r(_ v: Double) -> Double { (v * 10).rounded() / 10 }
             return Hour(
-                hour: b.hour.formatted(.iso8601), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
+                hour: b.hour.formatted(Date.ISO8601FormatStyle(timeZone: .current)), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
                 supportOre: r(b.supportOre))
         }
         return try await output(

@@ -8,7 +8,12 @@ struct RootView: View {
         @Bindable var model = model
         NavigationSplitView {
             List(Screen.allCases, selection: $model.selection) { screen in
-                Label(screen.title, systemImage: screen.systemImage).tag(screen)
+                Label {
+                    Text(screen.title)
+                } icon: {
+                    IconBadge(systemImage: screen.systemImage, color: screen.color)
+                }
+                .tag(screen)
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)
             .safeAreaInset(edge: .bottom) {

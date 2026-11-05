@@ -214,3 +214,20 @@ extension HeatPumpService {
         return result
     }
 }
+
+extension HeatPumpService {
+    /// Demo mode only: fills the last 48 hours with simulated snapshots (every 15 minutes) so
+    /// charts, hourly cost and power estimates have data on first launch. Does nothing when the
+    /// database already has older snapshots or the backend is not the mock.
+    public func seedDemoHistoryIfNeeded() async throws {
+        guard let mock = backend as? MockBackend else { return }
+        let t = now()
+        let existing = try store.snapshots(deviceId: MockBackend.deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
+        guard existing.isEmpty else { return }
+        var at = t.addingTimeInterval(-48 * 3600)
+        while at < t.addingTimeInterval(-60) {
+            try store.insertSnapshot(await mock.state(at: at))
+            at = at.addingTimeInterval(15 * 60)
+        }
+    }
+}

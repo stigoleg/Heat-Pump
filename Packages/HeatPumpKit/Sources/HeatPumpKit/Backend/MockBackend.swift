@@ -32,7 +32,11 @@ public actor MockBackend: HeatPumpBackend {
 
     public func fetchState(deviceId: Int) async throws -> DeviceState {
         guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
-        let t = now()
+        return state(at: now())
+    }
+
+    /// Simulated state at any time (also used to seed demo history).
+    public func state(at t: Date) -> DeviceState {
         let outdoor = Self.outdoorTemperature(at: t)
         return DeviceState(
             deviceId: Self.deviceId, buildingId: Self.buildingId, name: "Stue (simulert)",

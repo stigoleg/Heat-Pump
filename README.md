@@ -66,6 +66,22 @@ Valgt løsning: vanlig nøkkelring-element i innloggingsnøkkelringen. Den funge
 
 Kun for utvikling: miljøvariablene `MELCLOUD_EMAIL` og `MELCLOUD_PASSWORD` brukes i stedet for nøkkelringen når begge er satt. Ikke bruk dette i daglig drift.
 
+## Strømpris og kostnad
+
+Velg strømavtale under **Innstillinger → Strømpris**:
+
+- **Norgespris**: fast pris per kWh (standard 50 øre inkl. mva, kan endres). Ingen strømstøtte.
+- **Spotpris via Tibber**: lag en personlig nøkkel på <https://developer.tibber.com/settings/access-token>, lim den inn og trykk **Lagre og test**. Nøkkelen lagres i nøkkelringen (tjeneste `com.stigole.varmepumpe`, konto `tibber-token`) og brukes bare når timepriser hentes.
+- **Spotpris uten Tibber**: timepriser fra hvakosterstrommen.no for valgt prisområde (NO1–NO5), med påslaget fra strømselskapet. Mva legges til (ikke i NO4).
+
+Nettleiens energiledd er forhåndsutfylt med Elvias satser for husholdninger fra 1. juli 2026 (dag 46,40 øre, natt/helg/helligdag 31,40 øre, inkl. avgifter og mva) og kan endres. Kapasitetsleddet er ikke med, fordi det avhenger av hele husets høyeste forbruk. For spotavtaler trekkes strømstøtte fra: staten dekker 90 % av timeprisen over 77 øre/kWh eks. mva (96,25 øre inkl. mva) i 2026.
+
+Kostnad per døgn = forbruk × (strøm + nettleie − støtte). Har appen forbruk per time (fra strømmåleren i pumpen, målt mens appen er åpen), brukes timeprisen for hver time. Ellers prises døgnets kWh med døgnets snittpris, og beløpet merkes «anslag». Priser hentes høyst én gang i timen, morgendagens priser først etter kl. 13.30.
+
+## Endringer sendes automatisk
+
+Endringer i Kontroll og på termostaten på Oversikt sendes automatisk omtrent 2 sekunder etter siste justering (for glidebryter og termostathjul: etter at du slipper). Flere justeringer samles i én sending. Stiller du tilbake til nåværende verdi, sendes ingenting. Merket øverst viser «Endret…», «Sender…», «Sendt – venter på pumpen», «Bekreftet» eller «Feil: …». Er grensen på 12 sendinger per time nådd, venter endringen og sendes når det er lov igjen. Når færre enn 4 sendinger gjenstår denne timen, vises antallet.
+
 ## Data
 
 Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite` (WAL-modus), delt mellom appen og MCP-serveren. `VARMEPUMPE_DB_PATH` overstyrer stien.
@@ -74,7 +90,7 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 
 - **Lese fritt, skrive bare med godkjenning.** Når Claude kaller et `set_*`-verktøy, viser MCP-serveren selv et vindu på Macen: «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. **Avvis** (standardknappen, også Return og Esc), ingen svar innen 120 sekunder, eller at vinduet ikke kan vises (ingen grafisk økt), gjør at endringen ikke sendes. Dette gjelder uansett klient og tillatelsesmodus i Claude Code. Avviste endringer logges.
 - Alle endringer logges med kilde (app eller claude), gammel og ny verdi, begrunnelse og resultat.
-- Maks 12 sendinger per time og minst 5 sekunder mellom to sendinger, til sammen for appen og Claude. Flere endringer fra Kontroll-skjermen sendes samlet som én sending.
+- Maks 12 sendinger per time og minst 5 sekunder mellom to sendinger, til sammen for appen og Claude. Endringer fra appen sendes automatisk og samlet som én sending.
 - Godtar ikke MELCloud e-post eller passord, stopper all henting til ny innlogging er lagret, så kontoen ikke blir sperret.
 - Status hentes fra MELCloud høyst én gang i minuttet, og ellers fra lageret når dataene er yngre enn 10 minutter. Historikk hentes høyst én gang i timen per rapporttype.
 - Svarer MELCloud med «for mye trafikk» (HTTP 429), stopper alle nettverkskall i begge programmer til blokkeringen er over (Retry-After, ellers 2 timer).
@@ -90,3 +106,9 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Kun utvikling: innlogging uten nøkkelring |
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun utvikling og tester: svarer automatisk i stedet for godkjenningsvinduet. Virker bare sammen med `VARMEPUMPE_BACKEND=mock`; med ekte MELCloud ignoreres den. |
 | `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, health, activity) |
+| `VARMEPUMPE_HISTORY_TAB` | Kun utvikling: fanen Historikk åpner på (temperature, energy, energy-kr, operation, power) |
+| `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light` eller `dark` (skjermbilder) |
+
+## Appikon
+
+Kilden er `App/Icon/AppIcon.svg`. Kjør `App/Icon/render.sh` (krever `rsvg-convert`, `brew install librsvg`) for å lage alle størrelser i `App/Assets.xcassets/AppIcon.appiconset`.

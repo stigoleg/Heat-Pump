@@ -1,6 +1,7 @@
 import Foundation
 import HeatPumpKit
 import Observation
+import SwiftUI
 
 /// Sidebar destinations.
 enum Screen: String, CaseIterable, Identifiable, Hashable {
@@ -20,23 +21,35 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
 
     var systemImage: String {
         switch self {
-        case .overview: "house"
+        case .overview: "house.fill"
         case .control: "slider.horizontal.3"
         case .history: "chart.xyaxis.line"
-        case .health: "heart.text.square"
+        case .health: "heart.fill"
         case .activity: "sparkles"
+        }
+    }
+
+    /// Badge colour in the sidebar.
+    var color: Color {
+        switch self {
+        case .overview: .blue
+        case .control: .orange
+        case .history: .green
+        case .health: .red
+        case .activity: .purple
         }
     }
 }
 
 enum HistoryRange: String, CaseIterable, Identifiable {
-    case day, week, month
+    case day, week, month, year
     var id: String { rawValue }
     var title: String {
         switch self {
         case .day: "24 t"
         case .week: "7 d"
         case .month: "30 d"
+        case .year: "1 år"
         }
     }
     var seconds: TimeInterval {
@@ -44,6 +57,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
         case .day: 86_400
         case .week: 7 * 86_400
         case .month: 30 * 86_400
+        case .year: 365 * 86_400
         }
     }
 }
@@ -57,9 +71,20 @@ struct SeriesPoint: Identifiable {
 }
 
 struct HistoryData {
-    var temperatures: [SeriesPoint] = []
+    var temperatures: [TemperaturePoint] = []
+    /// False when MELCloud's temperature log is empty and only the app's own readings are shown.
+    var fromMELCloud = true
     var power: [HistoryPoint] = []
     var modes: [HistoryPoint] = []
+}
+
+/// Energy and cost for one period, with the previous period for comparison.
+struct EnergyData {
+    var buckets: [EnergyBucket] = []
+    var previous: [EnergyBucket] = []
+    /// Hourly use from the energy counter (24 t view and Effekt).
+    var hourly: [HourCost] = []
+    var previousHourly: [HourCost] = []
 }
 
 /// App state. Wraps the `HeatPumpService` actor; all rules (caching, rate limits, validation,
@@ -72,6 +97,8 @@ final class AppModel {
     let isDemo: Bool
 
     var selection: Screen? = .overview
+    /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
+    var initialHistoryTab: String?
     var stateResult: StateResult?
     /// State as it should be after changes not yet confirmed by a refresh.
     var effectiveState: DeviceState?
@@ -83,6 +110,15 @@ final class AppModel {
     var hasCredentials = true
     var isRefreshing = false
     var lastError: String?
+    /// Sends edits from Kontroll and the dial automatically.
+    private(set) var debouncer: ChangeDebouncer?
+    var priceSettings = PriceSettings.default
+    var todayPrices: [PriceBreakdown] = []
+    var tomorrowPrices: [PriceBreakdown] = []
+    var today: EnergyBucket?
+    var todayHourly: [HourCost] = []
+    var estimatedPowerW: Double?
+    var priceMessage: String?
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 
@@ -103,6 +139,26 @@ final class AppModel {
         if let screen = environment["VARMEPUMPE_SCREEN"].flatMap(Screen.init(rawValue:)) {
             selection = screen
         }
+        initialHistoryTab = environment["VARMEPUMPE_HISTORY_TAB"]
+        if let service {
+            debouncer = ChangeDebouncer(
+                send: { [weak self] changes in
+                    let outcomes = try await service.apply(changes, source: .app, reason: ChangeDebouncer.reason)
+                    await self?.afterSend()
+                    return outcomes
+                },
+                budget: { try await service.writeBudget() })
+        }
+    }
+
+    /// Shows the state reported by the write right away (no extra network call) and logs it.
+    private func afterSend() async {
+        guard let service else { return }
+        if let cached = try? await service.cachedState() {
+            stateResult?.state = cached
+            debouncer?.updateLive(cached)
+        }
+        await reloadLocal()
     }
 
     var state: DeviceState? { stateResult?.state }
@@ -131,6 +187,7 @@ final class AppModel {
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
+            if let service = self?.service, service.isDemo { try? await service.seedDemoHistoryIfNeeded() }
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh(force: false)
@@ -158,12 +215,16 @@ final class AppModel {
         hasCredentials = await service.hasCredentials()
         do {
             stateResult = try await service.currentState(force: force)
+            debouncer?.updateLive(stateResult?.state)
             if stateResult?.state != nil { _ = try await service.syncHistory() }
             lastError = nil
         } catch {
             lastError = error.localizedDescription
         }
+        let sync = try? await service.syncPrices()
+        priceMessage = sync?.status == .failed ? sync?.message : nil
         await reloadLocal()
+        await debouncer?.refreshBudget()
         await deliverNotifications()
     }
 
@@ -176,6 +237,19 @@ final class AppModel {
             errorLog = try await service.errorLog(days: 90)
             changes = try await service.changeLog(limit: 500, source: nil)
             fetchStatus = try await service.fetchStatus()
+            priceSettings = try await service.priceSettings()
+            let now = Date()
+            let calendar = Calendar.current
+            todayPrices = try await service.prices(day: now)
+            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) {
+                tomorrowPrices = try await service.prices(day: tomorrow)
+            }
+            let startOfDay = calendar.startOfDay(for: now)
+            today = try await service.energy(period: .day, from: startOfDay, to: now).last {
+                $0.period == WireDate.day(now, timeZone: .current)
+            }
+            todayHourly = try await service.hourlyConsumption(from: now.addingTimeInterval(-86_400), to: now)
+            estimatedPowerW = try await service.estimatedPowerW()
         } catch {
             lastError = error.localizedDescription
         }
@@ -193,48 +267,68 @@ final class AppModel {
 
     // MARK: Data for views
 
-    func history(range: HistoryRange) async -> HistoryData {
+    func history(range: HistoryRange, end: Date = Date()) async -> HistoryData {
         guard let service else { return HistoryData() }
-        let to = Date()
-        let from = to.addingTimeInterval(-range.seconds)
+        let from = end.addingTimeInterval(-range.seconds)
         var data = HistoryData()
-        let series: [(HistoryMetric, String)] = [
-            (.roomTemperature, "Inne"), (.outdoorTemperature, "Ute"), (.setTemperature, "Ønsket"),
-        ]
-        for (metric, name) in series {
-            let points = (try? await service.history(metric: metric, from: from, to: to)) ?? []
-            data.temperatures += points.compactMap { p in p.value.map { SeriesPoint(date: p.timestamp, value: $0, series: name) } }
+        if let history = try? await service.temperatureHistory(from: from, to: end) {
+            data.temperatures = history.points
+            data.fromMELCloud = history.fromMELCloud
         }
-        data.power = (try? await service.history(metric: .power, from: from, to: to)) ?? []
-        data.modes = (try? await service.history(metric: .mode, from: from, to: to)) ?? []
+        data.power = (try? await service.history(metric: .power, from: from, to: end)) ?? []
+        data.modes = (try? await service.history(metric: .mode, from: from, to: end)) ?? []
         return data
     }
 
-    func energy(period: EnergyPeriod) async -> [EnergyBucket] {
-        guard let service else { return [] }
+    /// Energy for the range (per hour for 24 t, per day for 7/30 d, per month for 1 år) and the
+    /// same length of time before it.
+    func energy(range: HistoryRange) async -> EnergyData {
+        guard let service else { return EnergyData() }
         let to = Date()
-        let days: Double =
-            switch period {
-            case .day: 30
-            case .week: 12 * 7
-            case .month: 365
-            }
-        return (try? await service.energy(period: period, from: to.addingTimeInterval(-days * 86_400), to: to)) ?? []
+        let from = to.addingTimeInterval(-range.seconds)
+        let previousFrom = from.addingTimeInterval(-range.seconds)
+        let period: EnergyPeriod = range == .year ? .month : .day
+        var data = EnergyData()
+        data.buckets = (try? await service.energy(period: period, from: from, to: to)) ?? []
+        data.previous = (try? await service.energy(period: period, from: previousFrom, to: from.addingTimeInterval(-1))) ?? []
+        if range == .day || range == .week {
+            data.hourly = (try? await service.hourlyConsumption(from: from, to: to)) ?? []
+            data.previousHourly = (try? await service.hourlyConsumption(from: previousFrom, to: from)) ?? []
+        }
+        return data
+    }
+
+    // MARK: Prices
+
+    func savePriceSettings(_ settings: PriceSettings) async {
+        guard let service else { return }
+        do {
+            try await service.savePriceSettings(settings)
+            priceSettings = settings
+            let sync = try await service.syncPrices()
+            priceMessage = sync.status == .failed ? sync.message : nil
+        } catch {
+            priceMessage = error.localizedDescription
+        }
+        await reloadLocal()
+    }
+
+    var hasTibberToken: Bool { service?.credentials?.loadTibberToken() != nil }
+
+    /// Saves the token in the keychain and tests it with one request.
+    func saveAndTestTibberToken(_ token: String) async -> String {
+        guard let service else { return startupError ?? "" }
+        do {
+            try service.credentials?.saveTibberToken(token)
+        } catch {
+            return error.localizedDescription
+        }
+        let message = await service.testTibberToken(token)
+        await savePriceSettings(priceSettings)
+        return message
     }
 
     // MARK: Actions
-
-    func send(_ changes: [DeviceChange]) async -> [ChangeOutcome] {
-        guard let service else { return [] }
-        do {
-            let outcomes = try await service.apply(changes, source: .app, reason: "Endret i appen")
-            await reloadLocal()
-            return outcomes
-        } catch {
-            lastError = error.localizedDescription
-            return []
-        }
-    }
 
     /// Returns a Norwegian error message, or nil on success.
     func recordMaintenance(kind: MaintenanceKind, date: Date, note: String) async -> String? {

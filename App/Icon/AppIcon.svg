@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Varmepumpe app icon: a wall-mounted indoor unit with one warm and one cool airflow,
+       on a macOS rounded-square background (824 px plate, 100 px margin). -->
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B4C7E"/>
+      <stop offset="1" stop-color="#11223D"/>
+    </linearGradient>
+    <linearGradient id="unit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE4EE"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFB547"/>
+      <stop offset="1" stop-color="#FF6B3D"/>
+    </linearGradient>
+    <linearGradient id="cool" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7FDBFF"/>
+      <stop offset="1" stop-color="#3A8DFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="14"/>
+      <feOffset dy="12"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Plate -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#plate)" filter="url(#shadow)"/>
+
+  <!-- Indoor unit -->
+  <g filter="url(#shadow)">
+    <rect x="200" y="270" width="624" height="250" rx="72" fill="url(#unit)"/>
+  </g>
+  <!-- Louvre -->
+  <rect x="262" y="442" width="500" height="34" rx="17" fill="#8193AB"/>
+  <!-- Status light -->
+  <circle cx="752" cy="338" r="15" fill="#34C759"/>
+
+  <!-- Airflow: warm and cool -->
+  <path d="M 250 645 C 340 585, 420 595, 500 640 S 690 690, 790 615"
+        fill="none" stroke="url(#warm)" stroke-width="46" stroke-linecap="round"/>
+  <path d="M 250 765 C 340 705, 420 715, 500 760 S 690 810, 790 735"
+        fill="none" stroke="url(#cool)" stroke-width="46" stroke-linecap="round"/>
+</svg>
