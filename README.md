@@ -11,13 +11,20 @@ Styring og helseovervåking av en Mitsubishi Electric MSZ-RW25VG (luft-til-luft)
 Krever Xcode 27 / Swift 6.4, macOS 26 og [XcodeGen](https://github.com/yonaskolb/XcodeGen). `project.yml` er kilden; `.xcodeproj` lages og sjekkes ikke inn.
 
 ```sh
+make build     # Release-bygg, signert: build/DerivedData/Build/Products/Release/Varmepumpe.app
+make test      # enhetstestene i HeatPumpKit
+make install   # bygg og kopier til /Applications (avslutt appen først)
+make demo      # Debug-bygg med simulerte data, egen database i build/demo/
+make check     # tester + Debug-bygg
+make clean
+```
+
+Uten make:
+
+```sh
 xcodegen generate
 xcodebuild -scheme Varmepumpe -configuration Debug -derivedDataPath build/DerivedData build
-# Appen: build/DerivedData/Build/Products/Debug/Varmepumpe.app
-
-cd Packages/HeatPumpKit
-swift build
-swift test
+cd Packages/HeatPumpKit && swift test
 ```
 
 Appen signeres med «Apple Development»-sertifikatet (team `49P95434EE`, som er teamet i sertifikatet), med hardened runtime og uten App Sandbox, slik at appen og MCP-serveren deler database og nøkkelring.
