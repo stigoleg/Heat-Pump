@@ -248,6 +248,10 @@ final class AppModel {
 
     func start() {
         guard pollTask == nil else { return }
+        if let keychain = service?.credentials as? KeychainCredentialStore {
+            // Once per install: items from older versions get the ACL shared with the helper.
+            Task.detached { keychain.migrateAccessIfNeeded() }
+        }
         Task { await checkTibberToken() }
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
@@ -599,7 +603,7 @@ final class AppModel {
 
     func checkTibberToken() async {
         guard let credentials = service?.credentials else { return }
-        hasTibberToken = await Task.detached { credentials.loadTibberToken() != nil }.value
+        hasTibberToken = await Task.detached { credentials.hasTibberToken() }.value
     }
 
     /// Saves the token in the keychain and tests it with one request.
