@@ -181,12 +181,17 @@ public enum HealthEngine {
 
     static func firmware(_ state: DeviceState) -> [HealthFinding] {
         var findings: [HealthFinding] = []
-        if let deployment = state.firmware.deployment, !deployment.isEmpty {
+        // The deployment id is MELCloud-internal and never shown; the version is.
+        if state.firmware.updateAvailable {
+            let detail =
+                state.firmware.version.map { "Modulen har fastvare \($0). MELCloud har en nyere versjon klar." }
+                ?? "MELCloud har en nyere fastvareversjon klar for modulen."
             findings.append(
                 HealthFinding(
-                    code: "firmware_pending", severity: .info, title: "Programvareoppdatering venter",
-                    detail: "MELCloud har en oppdatering klar for Wi-Fi-modulen (\(deployment)).",
-                    recommendation: "Ingen tiltak nødvendig. Oppdateringen installeres automatisk når modulen er på nett."))
+                    code: "firmware_pending", severity: .info, title: "Oppdatering tilgjengelig for Wi-Fi-modulen",
+                    detail: detail,
+                    recommendation:
+                        "Start oppdateringen i den offisielle MELCloud-appen (Innstillinger → fastvare/oppdatering for enheten), mens varmepumpen er på og har godt Wi-Fi. Varmepumpe-appen starter ikke fastvareoppdateringer selv."))
         }
         if state.firmware.updateAborted {
             findings.append(

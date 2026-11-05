@@ -60,6 +60,33 @@ enum HistoryRange: String, CaseIterable, Identifiable {
         case .year: 365 * 86_400
         }
     }
+
+    /// Start of the period ending now: the last 24 hours, or whole calendar days (7 d, 30 d)
+    /// and whole months (1 år) so the first column is never a fragment.
+    func start(now: Date, calendar: Calendar = .current) -> Date {
+        let today = calendar.startOfDay(for: now)
+        let start: Date? =
+            switch self {
+            case .day: now.addingTimeInterval(-86_400)
+            case .week: calendar.date(byAdding: .day, value: -6, to: today)
+            case .month: calendar.date(byAdding: .day, value: -29, to: today)
+            case .year:
+                calendar.dateInterval(of: .month, for: now).flatMap { calendar.date(byAdding: .month, value: -11, to: $0.start) }
+            }
+        return start ?? now.addingTimeInterval(-seconds)
+    }
+
+    /// Moves a date one period length back (current period → previous period).
+    func shifted(_ date: Date, by periods: Int, calendar: Calendar = .current) -> Date {
+        let moved: Date? =
+            switch self {
+            case .day: date.addingTimeInterval(Double(periods) * 86_400)
+            case .week: calendar.date(byAdding: .day, value: 7 * periods, to: date)
+            case .month: calendar.date(byAdding: .day, value: 30 * periods, to: date)
+            case .year: calendar.date(byAdding: .month, value: 12 * periods, to: date)
+            }
+        return moved ?? date.addingTimeInterval(Double(periods) * seconds)
+    }
 }
 
 /// One plotted value with its series name.
@@ -267,9 +294,12 @@ final class AppModel {
 
     // MARK: Data for views
 
-    func history(range: HistoryRange, end: Date = Date()) async -> HistoryData {
+    func history(range: HistoryRange, now: Date = Date()) async -> HistoryData {
+        await history(from: range.start(now: now), to: now)
+    }
+
+    func history(from: Date, to end: Date) async -> HistoryData {
         guard let service else { return HistoryData() }
-        let from = end.addingTimeInterval(-range.seconds)
         var data = HistoryData()
         if let history = try? await service.temperatureHistory(from: from, to: end) {
             data.temperatures = history.points
@@ -285,8 +315,8 @@ final class AppModel {
     func energy(range: HistoryRange) async -> EnergyData {
         guard let service else { return EnergyData() }
         let to = Date()
-        let from = to.addingTimeInterval(-range.seconds)
-        let previousFrom = from.addingTimeInterval(-range.seconds)
+        let from = range.start(now: to)
+        let previousFrom = range.shifted(from, by: -1)
         let period: EnergyPeriod = range == .year ? .month : .day
         var data = EnergyData()
         data.buckets = (try? await service.energy(period: period, from: from, to: to)) ?? []
@@ -299,6 +329,12 @@ final class AppModel {
     }
 
     // MARK: Prices
+
+    /// Reads the stored price settings (Settings may open before the first reload).
+    func loadPriceSettings() async -> PriceSettings {
+        if let service, let stored = try? await service.priceSettings() { priceSettings = stored }
+        return priceSettings
+    }
 
     func savePriceSettings(_ settings: PriceSettings) async {
         guard let service else { return }
@@ -313,7 +349,14 @@ final class AppModel {
         await reloadLocal()
     }
 
-    var hasTibberToken: Bool { service?.credentials?.loadTibberToken() != nil }
+    /// Whether a Tibber token is stored. Cached; refreshed only by `checkTibberToken()`
+    /// (Settings opening, after saving), so views never read the keychain while rendering.
+    private(set) var hasTibberToken = false
+
+    func checkTibberToken() async {
+        guard let credentials = service?.credentials else { return }
+        hasTibberToken = await Task.detached { credentials.loadTibberToken() != nil }.value
+    }
 
     /// Saves the token in the keychain and tests it with one request.
     func saveAndTestTibberToken(_ token: String) async -> String {

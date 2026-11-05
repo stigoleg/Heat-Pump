@@ -93,8 +93,12 @@ struct ClassicBackendTests {
         var get = try Fixture.json("device_get_full").object ?? [:]
         get["OperationMode"] = .string("3")
         #expect(try MELCloudClassicParser.state(listing: nil, get: .object(get), fetchedAt: Date()).mode == .cool)
-        get["OperationMode"] = .number(0)
         let listing: JSONValue = .object(["DeviceID": .number(100001), "Device": .object(["OperationMode": .number(1)])])
+        // Device/Get says 0: the unit has no valid mode, even if the older listing says Varme.
+        get["OperationMode"] = .number(0)
+        #expect(try MELCloudClassicParser.state(listing: listing, get: .object(get), fetchedAt: Date()).mode == nil)
+        // Device/Get without the field: the listing is used.
+        get["OperationMode"] = nil
         #expect(try MELCloudClassicParser.state(listing: listing, get: .object(get), fetchedAt: Date()).mode == .heat)
     }
 

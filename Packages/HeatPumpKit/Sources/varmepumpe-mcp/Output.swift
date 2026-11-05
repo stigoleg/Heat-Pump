@@ -151,7 +151,7 @@ struct DeviceInfoView: Encodable {
     var serialNumber: String?
     var macAddress: String?
     var model: String
-    var firmware: FirmwareInfo
+    var firmware: FirmwareView
     var lastServiceDate: Date?
     var numberOfFanSpeeds: Int
     var hasAutomaticFanSpeed: Bool
@@ -160,4 +160,23 @@ struct DeviceInfoView: Encodable {
     var energyCounters: EnergyCounters
     var wifiSignalDbm: Int?
     var knowledge: [String]
+}
+
+/// Adapter firmware for `get_device_info` (MELCloud's internal deployment id is left out).
+struct FirmwareView: Encodable {
+    var version: String?
+    var updateAvailable: Bool
+    var updateAborted: Bool
+    var adapterStatus: String?
+    var adaptorType: Int?
+    var note: String
+
+    init(_ info: FirmwareInfo) {
+        version = info.version
+        updateAvailable = info.updateAvailable
+        updateAborted = info.updateAborted
+        adapterStatus = info.adapterStatus
+        adaptorType = info.adaptorType
+        note = "Fastvareoppdateringer startes i den offisielle MELCloud-appen; dette verktøyet kan ikke starte dem."
+    }
 }

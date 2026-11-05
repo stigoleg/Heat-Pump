@@ -5,6 +5,8 @@ import SwiftUI
 /// last change (see `ChangeDebouncer`); the chip at the top shows how far it has come.
 struct ControlView: View {
     @Environment(AppModel.self) private var model
+    /// True while the slider is dragged; edits then wait for the release.
+    @State private var sliderEditing = false
 
     var body: some View {
         Group {
@@ -20,27 +22,35 @@ struct ControlView: View {
 
     private func content(state: DeviceState, debouncer: ChangeDebouncer) -> some View {
         let shown = debouncer.displayed ?? ControlSettings(state)
+        let mode = debouncer.displayedMode
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                StatusBanner()
-                HStack(alignment: .center) {
-                    Text("Endringer sendes automatisk et par sekunder etter at du har stilt inn.")
-                        .font(.callout).foregroundStyle(.secondary)
-                    Spacer()
-                    StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
-                        .fixedSize()
+                VStack(alignment: .leading, spacing: 0) {
+                    StatusBanner(bottomSpacing: Theme.Space.l)
+                    HStack(alignment: .center, spacing: Theme.Space.m) {
+                        Text("Endringer sendes automatisk et par sekunder etter at du har stilt inn.")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Spacer(minLength: Theme.Space.s)
+                        StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
+                    }
+                }
+                if mode == nil {
+                    InsightCard(
+                        title: "Modus ukjent – velg modus",
+                        detail: "Varmepumpen rapporterer ingen gyldig modus. Velg for eksempel Varme under Modus før du endrer temperaturen.",
+                        systemImage: "questionmark.circle.fill", tint: Theme.Status.caution)
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: Theme.Space.l) {
                         powerCard(shown, debouncer).frame(width: 220)
-                        temperatureCard(shown, state: state, debouncer: debouncer).frame(minWidth: 380)
+                        temperatureCard(shown, mode: mode, state: state, debouncer: debouncer).frame(minWidth: 380)
                     }
                     VStack(spacing: Theme.Space.l) {
                         powerCard(shown, debouncer)
-                        temperatureCard(shown, state: state, debouncer: debouncer)
+                        temperatureCard(shown, mode: mode, state: state, debouncer: debouncer)
                     }
                 }
-                modeSection(shown, debouncer)
+                modeSection(mode, debouncer)
                 fanSection(shown, state: state, debouncer: debouncer)
                 vaneSection(shown, debouncer)
                 Text(
@@ -82,12 +92,18 @@ struct ControlView: View {
 
     // MARK: Temperature
 
-    private func temperatureCard(_ shown: ControlSettings, state: DeviceState, debouncer: ChangeDebouncer) -> some View {
-        let range = state.limits.range(for: shown.mode)
+    private func temperatureCard(_ shown: ControlSettings, mode: OperationMode?, state: DeviceState, debouncer: ChangeDebouncer) -> some View {
+        let range = state.limits.range(for: mode ?? .heat)
         let step = state.temperatureIncrement > 0 ? state.temperatureIncrement : 0.5
+        let tint = mode?.tint ?? .secondary
+        // Keyboard and VoiceOver changes commit at once; a drag waits for the release.
         let binding = Binding<Double>(
             get: { shown.setTemperature },
-            set: { debouncer.edit(.temperature(min(max(($0 / step).rounded() * step, range.lowerBound), range.upperBound)), commit: false) })
+            set: {
+                debouncer.edit(
+                    .temperature(min(max(($0 / step).rounded() * step, range.lowerBound), range.upperBound)),
+                    commit: !sliderEditing)
+            })
         return CardSurface {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
@@ -99,7 +115,7 @@ struct ControlView: View {
                     Text(Format.temperature(shown.setTemperature))
                         .font(.system(size: 52, weight: .light, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(shown.mode.tint)
+                        .foregroundStyle(tint)
                         .contentTransition(.numericText())
                     Spacer()
                     Stepper("Ønsket temperatur", value: Binding(get: { shown.setTemperature }, set: { debouncer.edit(.temperature($0)) }), in: range, step: step)
@@ -112,13 +128,15 @@ struct ControlView: View {
                 } maximumValueLabel: {
                     Text(Norwegian.format("%.0f°", range.upperBound)).font(.caption)
                 } onEditingChanged: { editing in
+                    sliderEditing = editing
                     if !editing { debouncer.commit() }
                 }
-                .tint(shown.mode.tint)
+                .labelsHidden()
+                .tint(tint)
                 Text(
                     Norwegian.format(
                         "Tillatt i %@: %.0f–%.0f °C. Små justeringer (1–2 grader) er nok.",
-                        shown.mode.displayName.lowercased(), range.lowerBound, range.upperBound)
+                        (mode?.displayName ?? "varme").lowercased(), range.lowerBound, range.upperBound)
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -127,12 +145,12 @@ struct ControlView: View {
 
     // MARK: Mode
 
-    private func modeSection(_ shown: ControlSettings, _ debouncer: ChangeDebouncer) -> some View {
+    private func modeSection(_ current: OperationMode?, _ debouncer: ChangeDebouncer) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader("Modus", hint: "Varme er riktig valg om vinteren")
             HStack(spacing: Theme.Space.m) {
                 ForEach([OperationMode.heat, .cool, .dry, .fan, .auto], id: \.self) { mode in
-                    let selected = shown.mode == mode
+                    let selected = current == mode
                     Button {
                         debouncer.edit(.mode(mode))
                     } label: {
@@ -154,7 +172,7 @@ struct ControlView: View {
                     .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
-            Text(modeHelp(shown.mode)).font(.caption).foregroundStyle(.secondary)
+            Text(current.map(modeHelp) ?? "Modus ukjent – velg modus.").font(.caption).foregroundStyle(.secondary)
         }
     }
 

@@ -78,7 +78,9 @@ enum MELCloudClassicParser {
 
     /// Builds a state from a `ListDevices` wrapper and/or a `Device/Get` payload.
     /// `Device/Get` values win where both carry the same field.
-    static func state(listing: JSONValue?, get: JSONValue?, fetchedAt: Date) throws -> DeviceState {
+    /// `listingFetchedAt`: when the listing was fetched; the energy counter (listing-only) is
+    /// stamped with it. Nil means the listing's age is unknown and the counter is dropped.
+    static func state(listing: JSONValue?, get: JSONValue?, fetchedAt: Date, listingFetchedAt: Date? = nil) throws -> DeviceState {
         let device = listing?["Device"]
         func value(_ keys: String...) -> JSONValue? {
             for key in keys {
@@ -93,7 +95,11 @@ enum MELCloudClassicParser {
         }
         let utc = TimeZone.gmt
         let hasOutdoor = value("HasOutdoorTemperature")?.bool ?? true
-        let currentWh = value("CurrentEnergyConsumed")?.double
+        // The counter is stamped with the time it was read: Device/Get time if Get has it,
+        // otherwise the listing time (unknown → no counter rather than a wrongly timed one).
+        let counterFromGet = get?["CurrentEnergyConsumed"].map { !$0.isNull } ?? false
+        let counterAt = counterFromGet ? fetchedAt : listingFetchedAt
+        let currentWh = counterAt == nil ? nil : value("CurrentEnergyConsumed")?.double
         let limits = TemperatureLimits(
             minHeat: value("MinTempHeat")?.double ?? 10,
             maxHeat: value("MaxTempHeat")?.double ?? 31,
@@ -132,7 +138,9 @@ enum MELCloudClassicParser {
             firmware: FirmwareInfo(
                 deployment: firmwareDeployment,
                 updateAborted: value("FirmwareUpdateAborted")?.bool ?? false,
-                adaptorType: value("AdaptorType")?.int),
+                adaptorType: value("AdaptorType")?.int,
+                appVersion: value("FirmwareAppVersion")?.int,
+                adapterStatus: value("WifiAdapterStatus")?.string.flatMap { $0.isEmpty ? nil : $0 }),
             lastServiceDate: WireDate.parse(value("LastServiceDate")?.string, timeZone: .current),
             energy: EnergyCounters(
                 currentConsumedKWh: currentWh.map { $0 / 1000 },
@@ -140,16 +148,19 @@ enum MELCloudClassicParser {
                 totalCoolingKWh: value("TotalCoolingConsumed")?.double,
                 totalAutoKWh: value("TotalAutoConsumed")?.double,
                 totalDryKWh: value("TotalDryConsumed")?.double,
-                totalFanKWh: value("TotalFanConsumed")?.double),
+                totalFanKWh: value("TotalFanConsumed")?.double, counterAt: counterAt),
             limits: limits,
             temperatureIncrement: value("TemperatureIncrement")?.double ?? 0.5,
             fetchedAt: fetchedAt)
     }
 
-    /// First valid operation mode from `Device/Get`, then the listing. A value that is not a
-    /// known mode (for example 0) is skipped rather than turning the whole mode into nil.
+    /// Operation mode from `Device/Get` when it carries one (an unknown value such as 0 gives
+    /// nil: the unit really has no valid mode); otherwise from the listing. Strings are accepted.
     static func mode(get: JSONValue?, device: JSONValue?, listing: JSONValue?) -> OperationMode? {
-        for source in [get, device, listing] {
+        for key in ["OperationMode", "OperationModeAta"] {
+            if let value = get?[key], !value.isNull { return value.int.flatMap(OperationMode.init(rawValue:)) }
+        }
+        for source in [device, listing] {
             for key in ["OperationMode", "OperationModeAta"] {
                 if let raw = source?[key]?.int, let mode = OperationMode(rawValue: raw) { return mode }
             }
@@ -161,15 +172,18 @@ enum MELCloudClassicParser {
 
     /// Fields MELCloud resets to defaults (power off, mode 0) when they are missing from a
     /// `Device/SetAta` body. A body without all of them is never sent.
+    static let invalidModeMessage =
+        "Varmepumpen rapporterer ingen gyldig modus. Velg modus (for eksempel Varme) samtidig med endringen."
+    static let missingObjectMessage =
+        "Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt. Oppdater og prøv igjen."
+
     static let requiredSetAtaKeys = ["Power", "OperationMode", "SetTemperature", "SetFanSpeed", "VaneHorizontal", "VaneVertical"]
 
     /// Builds the `Device/SetAta` body: the full device object from the last `Device/Get`
     /// (MELCloud takes omitted fields as defaults) with the changes applied, `EffectiveFlags`
     /// set to the changed fields only and `HasPendingCommand` true. Same approach as pymelcloud.
     static func setAtaPayload(_ changes: ChangeSet, raw: JSONValue) throws -> [String: JSONValue] {
-        guard var body = raw.object else {
-            throw HeatPumpError.validation("Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt.")
-        }
+        guard var body = raw.object else { throw HeatPumpError.validation(missingObjectMessage) }
         var flags = ClassicEffectiveFlags()
         body["DeviceID"] = .number(Double(changes.deviceId))
         if let power = changes.power {
@@ -206,8 +220,7 @@ enum MELCloudClassicParser {
         }
         // An unknown mode would be sent back as-is and could leave the unit in a bad state.
         guard let mode = body["OperationMode"]?.int, OperationMode(rawValue: mode) != nil else {
-            throw HeatPumpError.validation(
-                "Varmepumpen rapporterer ingen gyldig modus. Velg modus (for eksempel Varme) samtidig med endringen.")
+            throw HeatPumpError.validation(invalidModeMessage)
         }
         return body
     }

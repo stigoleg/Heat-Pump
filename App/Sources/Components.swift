@@ -6,6 +6,8 @@ struct StatusBanner: View {
     @Environment(AppModel.self) private var model
     /// Outer padding, applied only when there is something to show.
     var inset: CGFloat = 0
+    /// Space below the banner, only when it is shown (so an empty banner takes no room).
+    var bottomSpacing: CGFloat = 0
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -20,6 +22,7 @@ struct StatusBanner: View {
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.small))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small).strokeBorder(Theme.hairline))
                 .padding(inset)
+                .padding(.bottom, bottomSpacing)
             }
         }
     }

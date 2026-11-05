@@ -181,7 +181,7 @@ struct ToolHandler: Sendable {
         }
         let view = DeviceInfoView(
             name: s.name, deviceId: s.deviceId, buildingId: s.buildingId, serialNumber: s.serialNumber,
-            macAddress: s.macAddress, model: "Mitsubishi Electric MSZ-RW25VG (MSZ-RW25VG-SC1)", firmware: s.firmware,
+            macAddress: s.macAddress, model: "Mitsubishi Electric MSZ-RW25VG (MSZ-RW25VG-SC1)", firmware: FirmwareView(s.firmware),
             lastServiceDate: s.lastServiceDate, numberOfFanSpeeds: s.numberOfFanSpeeds,
             hasAutomaticFanSpeed: s.hasAutomaticFanSpeed, temperatureIncrement: s.temperatureIncrement,
             limits: s.limits, energyCounters: s.energy, wifiSignalDbm: s.wifiSignal,

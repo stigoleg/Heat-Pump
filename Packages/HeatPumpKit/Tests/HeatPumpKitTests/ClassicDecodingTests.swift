@@ -33,9 +33,31 @@ struct ClassicDecodingTests {
         #expect(summaries.first?.buildingId == 200001)
     }
 
+    @Test func firmwareVersionAndAdapterStatus() throws {
+        let listing: JSONValue = .object([
+            "DeviceID": .number(100001),
+            "Device": .object([
+                "FirmwareDeployment": .string("123456"), "FirmwareAppVersion": .number(34000),
+                "FirmwareWebVersion": .number(0), "FirmwareWlanVersion": .number(0),
+                "WifiAdapterStatus": .string("NORMAL"), "FirmwareUpdateAborted": .bool(false),
+            ]),
+        ])
+        let firmware = try MELCloudClassicParser.state(listing: listing, get: nil, fetchedAt: now).firmware
+        #expect(firmware.appVersion == 34000)
+        #expect(firmware.version == "34.00")
+        #expect(firmware.adapterStatus == "NORMAL")
+        #expect(firmware.updateAvailable)
+        #expect(FirmwareInfo(appVersion: 43050).version == "43.05")
+        #expect(FirmwareInfo(appVersion: 0).version == nil)
+    }
+
     @Test func stateFromListingOnly() throws {
         let listing = try Fixture.json("list_devices").array?[0]["Structure"]?["Floors"]?.array?[0]["Areas"]?.array?[0]["Devices"]?.array?[0]
-        let state = try MELCloudClassicParser.state(listing: listing, get: nil, fetchedAt: now)
+        let listedAt = now.addingTimeInterval(-1200)
+        let state = try MELCloudClassicParser.state(listing: listing, get: nil, fetchedAt: now, listingFetchedAt: listedAt)
+        #expect(state.energy.counterAt == listedAt)
+        // Without the listing time the counter is left out rather than stamped wrongly.
+        #expect(try MELCloudClassicParser.state(listing: listing, get: nil, fetchedAt: now).energy.currentConsumedKWh == nil)
         #expect(state.deviceId == 100001)
         #expect(state.buildingId == 200001)
         #expect(state.name == "Stue")

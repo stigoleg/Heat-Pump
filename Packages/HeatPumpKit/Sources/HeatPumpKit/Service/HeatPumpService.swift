@@ -430,6 +430,17 @@ public actor HeatPumpService {
                 projected = value.applied(to: projected)
             }
         }
+        // Refusals the backend would make locally go out before budget, approval or network.
+        if backend.requiresFreshStateForWrites, projected.mode == nil {
+            return .rejected(try rejectAll(
+                normalized, source: source, reason: reason, state: start,
+                error: MELCloudClassicParser.invalidModeMessage, now: t))
+        }
+        var dryRun = ChangeSet(deviceId: start.deviceId, buildingId: start.buildingId)
+        for change in normalized { Self.merge(change, into: &dryRun) }
+        if let problem = await backend.localWriteProblem(dryRun, requireBase: false) {
+            return .rejected(try rejectAll(normalized, source: source, reason: reason, state: start, error: problem, now: t))
+        }
         if try store.credentialsRejected() {
             return .rejected(try rejectAll(
                 normalized, source: source, reason: reason, state: start,
@@ -483,6 +494,12 @@ public actor HeatPumpService {
     private func send(
         _ request: [DeviceChange], base: DeviceState, source: ChangeSource, reason: String
     ) async throws -> (outcomes: [ChangeOutcome], state: DeviceState) {
+        var changeSet = ChangeSet(deviceId: base.deviceId, buildingId: base.buildingId)
+        for change in request { Self.merge(change, into: &changeSet) }
+        // Checked against the (now fresh) device object before a budget slot is used.
+        if let problem = await backend.localWriteProblem(changeSet, requireBase: true) {
+            return (try rejectAll(request, source: source, reason: reason, state: base, error: problem, now: now()), base)
+        }
         var waited: TimeInterval = 0
         while true {
             let t = now()
@@ -509,8 +526,6 @@ public actor HeatPumpService {
                     error: HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", now: t)
                 return (outcomes.map { var o = $0; o.nextAllowed = next; return o }, base)
             case .reserved(let ids):
-                var changeSet = ChangeSet(deviceId: base.deviceId, buildingId: base.buildingId)
-                for change in request { Self.merge(change, into: &changeSet) }
                 do {
                     let reported = try await backend.apply(changeSet)
                     try store.finishChange(ids: ids, result: .ok)
@@ -574,7 +589,8 @@ public actor HeatPumpService {
                 let state = try await backend.fetchState(deviceId: deviceId)
                 try store.insertSnapshot(state)
                 try store.recordFetchSuccess(key: Self.stateKey, now: t)
-                return nil
+                if await isFresh() { return nil }
+                return "Endringen ble ikke sendt fordi svaret fra MELCloud manglet fullstendig status for varmepumpen."
             } catch let error as HeatPumpError {
                 try handleBlock(error, now: t)
                 return "Endringen ble ikke sendt fordi status fra varmepumpen ikke kunne hentes først: "

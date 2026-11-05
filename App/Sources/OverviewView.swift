@@ -33,12 +33,13 @@ struct OverviewView: View {
 
     private func hero(_ state: DeviceState) -> some View {
         let shown = model.debouncer?.displayed ?? ControlSettings(state)
-        let range = state.limits.range(for: shown.mode)
+        let mode = model.debouncer?.displayedMode ?? state.mode
+        let range = state.limits.range(for: mode ?? .heat)
         return CardSurface(padding: Theme.Space.xl) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 let dial = ThermostatDial(
                     room: state.roomTemperature, setpoint: shown.setTemperature, range: range,
-                    step: state.temperatureIncrement, mode: shown.mode, isOn: shown.power
+                    step: state.temperatureIncrement, mode: mode, isOn: shown.power
                 ) { value, commit in
                     model.debouncer?.edit(.temperature(value), commit: commit)
                 }
@@ -54,7 +55,10 @@ struct OverviewView: View {
                     }
                 }
                 HStack(spacing: Theme.Space.s) {
-                    SettingChip(title: shown.mode.displayName, systemImage: shown.mode.systemImage, tint: shown.mode.tint) {
+                    SettingChip(
+                        title: mode?.displayName ?? "Modus ukjent – velg modus",
+                        systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
+                    ) {
                         model.selection = .control
                     }
                     SettingChip(title: shown.power ? "På" : "Av", systemImage: "power", tint: shown.power ? Theme.Status.good : .secondary) {
@@ -76,7 +80,6 @@ struct OverviewView: View {
         .overlay(alignment: .topTrailing) {
             if let debouncer = model.debouncer {
                 StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
-                    .fixedSize()
                     .padding(Theme.Space.m)
             }
         }
@@ -198,10 +201,12 @@ struct OverviewView: View {
         let values = points.flatMap { [$0.room, $0.outdoor].compactMap { $0 } }
         let low = (values.min() ?? 0).rounded(.down) - 1
         let high = (values.max() ?? 25).rounded(.up) + 1
+        // The indoor area starts just below the lowest indoor value, not at the outdoor minimum.
+        let areaBase = (points.compactMap(\.room).min() ?? low) - 1.5
         return Chart {
             ForEach(points, id: \.timestamp) { p in
                 if let room = p.room {
-                    AreaMark(x: .value("Tid", p.timestamp), yStart: .value("°C", low), yEnd: .value("°C", room), series: .value("S", "inne"))
+                    AreaMark(x: .value("Tid", p.timestamp), yStart: .value("°C", areaBase), yEnd: .value("°C", room), series: .value("S", "inne"))
                         .foregroundStyle(ChartKit.areaGradient(Theme.Data.inside))
                         .interpolationMethod(.monotone)
                     LineMark(x: .value("Tid", p.timestamp), y: .value("°C", room), series: .value("S", "inne"))

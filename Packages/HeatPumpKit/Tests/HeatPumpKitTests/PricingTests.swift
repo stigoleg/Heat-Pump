@@ -64,6 +64,32 @@ struct PricingTests {
         #expect(body["query"]?.string?.contains("priceInfoRange") == true)
     }
 
+    @Test func hvaKosterStrommenKeepsDaysFetchedBeforeAFailure() async throws {
+        let transport = StubTransport()
+        transport.enqueue("11-04_NO1.json", body: try Fixture.data("hvakosterstrommen_NO1"))
+        transport.enqueue("11-03_NO1.json", status: 500, body: Data())
+        let provider = HvaKosterStrommenProvider(area: .no1, transport: transport)
+        let prices = try await provider.fetchPrices(
+            days: [date("2026-11-04T00:00:00"), date("2026-11-03T00:00:00"), date("2026-11-02T00:00:00")], timeZone: oslo)
+        #expect(prices.count == 24)
+        #expect(transport.requests.count == 2)  // stops after the failure
+        let failing = StubTransport()
+        failing.enqueue("11-04_NO1.json", status: 500, body: Data())
+        await #expect(throws: PriceError.http(status: 500)) {
+            _ = try await HvaKosterStrommenProvider(area: .no1, transport: failing).fetchPrices(days: [date("2026-11-04T00:00:00")], timeZone: oslo)
+        }
+    }
+
+    @Test func rawDeviceIsOnlyReplacedByNewer() throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let t = date("2026-11-05T12:00:00")
+        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t, json: .object(["SetTemperature": .number(23)])))
+        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t.addingTimeInterval(-5), json: .object(["SetTemperature": .number(21)])))
+        #expect(try store.rawDevice(deviceId: 1)?.json["SetTemperature"] == .number(23))
+        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t.addingTimeInterval(5), json: .object(["SetTemperature": .number(22)])))
+        #expect(try store.rawDevice(deviceId: 1)?.json["SetTemperature"] == .number(22))
+    }
+
     @Test func stromstotteAboveThreshold() {
         // 177 øre excl. VAT: 90 % of 100 øre above 77, plus 25 % VAT.
         #expect(abs(Stromstotte.support(spotOreExVat: 177, vatFactor: 1.25) - 112.5) < 0.0001)
@@ -182,6 +208,28 @@ struct PriceServiceTests {
         _ = try await service.syncPrices()
         let tomorrow = WireDate.calendar(.gmt).date(byAdding: .day, value: 1, to: WireDate.calendar(.gmt).startOfDay(for: clock.now))
         #expect(provider.requests.last?.first == tomorrow)
+    }
+
+    @Test func counterSamplesUseTheirReadingTime() async throws {
+        let clock = TestClock()
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let service = HeatPumpService(backend: CountingBackend(now: clock.provider), store: store, timeZone: .gmt, now: clock.provider)
+        let listedAt = clock.now
+        // Three snapshots 10 min apart that all carry the same cached listing reading,
+        // then a new listing 30 min later with +0.5 kWh.
+        for i in 0..<3 {
+            var s = makeState(at: clock.now.addingTimeInterval(Double(i) * 600))
+            s.energy = EnergyCounters(currentConsumedKWh: 100, counterAt: listedAt)
+            try store.insertSnapshot(s)
+        }
+        var later = makeState(at: clock.now.addingTimeInterval(1800))
+        later.energy = EnergyCounters(currentConsumedKWh: 100.5, counterAt: clock.now.addingTimeInterval(1800))
+        try store.insertSnapshot(later)
+        let samples = try await service.counterSamples(from: clock.now.addingTimeInterval(-60), to: clock.now.addingTimeInterval(3600))
+        #expect(samples.map(\.at) == [listedAt, listedAt.addingTimeInterval(1800)])
+        // 0.5 kWh over 30 min = 1 kW, not 0.5 kWh squeezed into the last 10 min.
+        let watts = CounterSampler.averagePowerW(samples, now: listedAt.addingTimeInterval(1800))
+        #expect(watts == 1000)
     }
 
     @Test func energyBucketsCarryCost() async throws {

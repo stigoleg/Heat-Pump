@@ -364,6 +364,8 @@ public final class HistoryStore: Sendable {
 
     // MARK: Raw device object
 
+    /// Stores the object unless a newer one is already stored (another process may have
+    /// saved a SetAta answer while this one was waiting for a slower Device/Get).
     public func saveRawDevice(_ raw: RawDevice) throws {
         let json = String(decoding: try JSONEncoder().encode(raw.json), as: UTF8.self)
         let listing = try raw.listing.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) }
@@ -373,6 +375,7 @@ public final class HistoryStore: Sendable {
                     INSERT INTO device_raw (deviceId, ts, json, listingJSON) VALUES (?, ?, ?, ?)
                     ON CONFLICT(deviceId) DO UPDATE SET ts = excluded.ts, json = excluded.json,
                         listingJSON = COALESCE(excluded.listingJSON, listingJSON)
+                    WHERE excluded.ts >= device_raw.ts
                     """,
                 arguments: [raw.deviceId, raw.fetchedAt, json, listing])
         }

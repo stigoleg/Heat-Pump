@@ -193,8 +193,9 @@ struct StatusChip: View {
             if status != .idle {
                 HStack(spacing: 6) {
                     icon
-                    Text(status.text).lineLimit(1)
+                    Text(status.text).lineLimit(1).truncationMode(.tail)
                 }
+                .frame(maxWidth: 340, alignment: .leading)
                 .font(.callout)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -206,6 +207,7 @@ struct StatusChip: View {
             if let remaining, remaining < 4 {
                 Text("\(remaining) endringer igjen denne timen")
                     .font(.caption)
+                    .lineLimit(1)
                     .foregroundStyle(remaining == 0 ? Theme.Status.bad : Theme.Status.caution)
             }
         }

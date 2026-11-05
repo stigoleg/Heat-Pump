@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         @Bindable var model = model
@@ -36,6 +37,10 @@ struct RootView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) { RefreshButton() }
+        }
+        .task {
+            // Dev only (screenshots): open Settings on a given tab without keyboard input.
+            if ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] != nil { openSettings() }
         }
     }
 

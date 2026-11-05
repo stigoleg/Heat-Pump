@@ -49,7 +49,7 @@ public actor MockBackend: HeatPumpBackend {
             hasError: false, errorCode: 8000, offline: false,
             lastCommunication: t.addingTimeInterval(-40), nextCommunication: t.addingTimeInterval(20),
             wifiSignal: -62, hasPendingCommand: false,
-            firmware: FirmwareInfo(deployment: nil, updateAborted: false, adaptorType: 4),
+            firmware: FirmwareInfo(deployment: nil, updateAborted: false, adaptorType: 4, appVersion: 34000, adapterStatus: "NORMAL"),
             lastServiceDate: nil,
             energy: EnergyCounters(
                 currentConsumedKWh: Self.counterKWh(at: t), totalHeatingKWh: 1180.2, totalCoolingKWh: 54.3),

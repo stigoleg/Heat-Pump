@@ -53,8 +53,9 @@ struct HistoryView: View {
         }
         .task(id: "\(range.rawValue)-\(model.revision)") {
             let now = Date()
-            data = await model.history(range: range, end: now)
-            previous = await model.history(range: range, end: now.addingTimeInterval(-range.seconds))
+            let start = range.start(now: now)
+            data = await model.history(from: start, to: now)
+            previous = await model.history(from: range.shifted(start, by: -1), to: start)
             energy = await model.energy(range: range)
         }
         .onChange(of: tab) { selected = nil }
@@ -68,7 +69,7 @@ struct HistoryView: View {
         }
     }
 
-    private var periodStart: Date { Date().addingTimeInterval(-range.seconds) }
+    private var periodStart: Date { range.start(now: Date()) }
 
     private var tabPicker: some View {
         Picker("Visning", selection: $tab) {
@@ -142,10 +143,12 @@ struct HistoryView: View {
         let values = points.flatMap { [$0.room, $0.outdoor, $0.set].compactMap { $0 } }
         let low = (values.min() ?? 0).rounded(.down) - 1
         let high = (values.max() ?? 25).rounded(.up) + 1
+        // The indoor area starts just below the lowest indoor value, not at the outdoor minimum.
+        let areaBase = (points.compactMap(\.room).min() ?? low) - 1.5
         return Chart {
             ForEach(points, id: \.timestamp) { p in
                 if let room = p.room {
-                    AreaMark(x: .value("Tid", p.timestamp), yStart: .value("°C", low), yEnd: .value("°C", room), series: .value("S", "inne"))
+                    AreaMark(x: .value("Tid", p.timestamp), yStart: .value("°C", areaBase), yEnd: .value("°C", room), series: .value("S", "inne"))
                         .foregroundStyle(ChartKit.areaGradient(Theme.Data.inside))
                         .interpolationMethod(.monotone)
                     LineMark(x: .value("Tid", p.timestamp), y: .value("°C", room), series: .value("S", "inne"))
@@ -193,7 +196,7 @@ struct HistoryView: View {
         let totalKWh = bars.reduce(0) { $0 + $1.kWh }
         let previousKWh = previousBars.reduce(0) { $0 + $1.kWh }
         let support = energy.buckets.compactMap(\.cost?.supportNok).reduce(0, +)
-        let days = max(1, range.seconds / 86_400)
+        let days = max(1, Date().timeIntervalSince(periodStart) / 86_400)
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             KPIRow {
                 KPITile(
@@ -221,9 +224,9 @@ struct HistoryView: View {
             ) {
                 HStack(spacing: Theme.Space.m) {
                     if showCost {
-                        LegendDot(label: "Strøm", color: Theme.Data.electricity)
+                        LegendDot(label: "Strøm etter støtte", color: Theme.Data.electricity)
                         LegendDot(label: "Nettleie", color: Theme.Data.gridTariff)
-                        LegendDot(label: "Støtte", color: Theme.Data.support)
+                        LegendDot(label: "Støtte (trukket fra)", color: Theme.Data.support.opacity(0.35))
                     } else {
                         LegendDot(label: "kWh", color: Theme.Data.energy)
                     }
@@ -285,20 +288,28 @@ struct HistoryView: View {
         // Previous period drawn on the current period's dates (same position in the period).
         let shifted = previous.map { bar -> EnergyBar in
             var moved = bar
-            moved.date = bar.date.addingTimeInterval(range.seconds)
+            moved.date = range.shifted(bar.date, by: 1)
             return moved
         }
         let unit = bars.first?.unit ?? .day
         return Chart {
             ForEach(bars) { bar in
                 if showCost, let cost = bar.cost {
-                    BarMark(x: .value("Tid", bar.date, unit: unit), y: .value("kr", cost.energyNok))
-                        .foregroundStyle(by: .value("Del", "Strøm"))
-                    BarMark(x: .value("Tid", bar.date, unit: unit), y: .value("kr", cost.gridNok))
+                    // The solid bar is what you pay: electricity after support + grid tariff.
+                    // The pale cap on top is the support that was deducted.
+                    let electricity = max(0, cost.energyNok + cost.supportNok)
+                    let net = electricity + cost.gridNok
+                    BarMark(
+                        x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", 0), yEnd: .value("kr", electricity))
+                        .foregroundStyle(by: .value("Del", "Strøm etter støtte"))
+                    BarMark(
+                        x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", electricity), yEnd: .value("kr", net))
                         .foregroundStyle(by: .value("Del", "Nettleie"))
                     if cost.supportNok < 0 {
-                        BarMark(x: .value("Tid", bar.date, unit: unit), y: .value("kr", cost.supportNok))
-                            .foregroundStyle(by: .value("Del", "Støtte"))
+                        BarMark(
+                            x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", net),
+                            yEnd: .value("kr", net - cost.supportNok))
+                            .foregroundStyle(by: .value("Del", "Støtte (trukket fra)"))
                     }
                 } else if !showCost {
                     BarMark(x: .value("Tid", bar.date, unit: unit), y: .value("kWh", bar.kWh))
@@ -323,7 +334,8 @@ struct HistoryView: View {
             }
         }
         .chartForegroundStyleScale([
-            "Strøm": Theme.Data.electricity, "Nettleie": Theme.Data.gridTariff, "Støtte": Theme.Data.support,
+            "Strøm etter støtte": Theme.Data.electricity, "Nettleie": Theme.Data.gridTariff,
+            "Støtte (trukket fra)": Theme.Data.support.opacity(0.3),
         ])
         .chartLegend(.hidden)
         .calmYAxis { Norwegian.format(showCost ? "%.0f kr" : "%.0f", $0) }
@@ -345,7 +357,7 @@ struct HistoryView: View {
             rows.append(("Strøm", Format.kroner(cost.energyNok), Theme.Data.electricity))
             rows.append(("Nettleie", Format.kroner(cost.gridNok), Theme.Data.gridTariff))
             if cost.supportNok < 0 { rows.append(("Støtte", Format.kroner(cost.supportNok), Theme.Data.support)) }
-            rows.append(("Totalt" + (bar.isEstimate ? " (anslag)" : ""), Format.kroner(cost.totalNok), .primary))
+            rows.append(("Å betale" + (bar.isEstimate ? " (anslag)" : ""), Format.kroner(cost.totalNok), .primary))
         }
         return rows
     }
@@ -380,8 +392,8 @@ struct HistoryView: View {
                     RuleMark(x: .value("Nå", now))
                         .foregroundStyle(Theme.Status.caution)
                         .lineStyle(StrokeStyle(lineWidth: 1.5))
-                        .annotation(position: .overlay, alignment: .topLeading) {
-                            Text(" nå").font(.caption2.weight(.semibold)).foregroundStyle(Theme.Status.caution)
+                        .annotation(position: .top, alignment: .center, spacing: 2) {
+                            Text("nå").font(.caption2.weight(.semibold)).foregroundStyle(Theme.Status.caution)
                         }
                     if let p = nearest(all, to: selectedPrice, by: \.hour) {
                         RuleMark(x: .value("Valgt", p.hour, unit: .hour))
@@ -401,7 +413,8 @@ struct HistoryView: View {
                 .calmYAxis { Norwegian.format("%.1f", $0) }
                 .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
                 .chartXSelection(value: $selectedPrice)
-                .frame(height: 180)
+                .padding(.top, Theme.Space.l)
+                .frame(height: 196)
             }
         }
     }

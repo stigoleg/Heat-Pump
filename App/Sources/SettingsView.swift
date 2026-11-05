@@ -3,12 +3,15 @@ import HeatPumpKit
 import SwiftUI
 
 struct SettingsView: View {
+    /// Dev only (`VARMEPUMPE_SETTINGS_TAB`, screenshots): konto, strompris, claude or data.
+    @State private var tab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "konto"
+
     var body: some View {
-        TabView {
-            Tab("Konto", systemImage: "person.crop.circle") { AccountSettings() }
-            Tab("Strømpris", systemImage: "bolt.horizontal.circle") { PriceSettingsView() }
-            Tab("Claude", systemImage: "sparkles") { ClaudeSettings() }
-            Tab("Data", systemImage: "externaldrive") { DataSettings() }
+        TabView(selection: $tab) {
+            Tab("Konto", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
+            Tab("Strømpris", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
+            Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
+            Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
         }
         .frame(width: 600, height: 560)
     }
@@ -83,6 +86,7 @@ struct AccountSettings: View {
                     Label("Demo-modus: appen viser simulerte data, og innlogging er ikke i bruk.", systemImage: "play.rectangle")
                         .foregroundStyle(.secondary)
                 }
+                deviceSection
             } else if signedIn && !switchingAccount {
                 accountSection
                 deviceSection
@@ -138,6 +142,15 @@ struct AccountSettings: View {
                 }
                 LabeledContent("Siste kontakt", value: Format.relative(state.lastCommunication))
                 LabeledContent("Data hentet", value: Format.relative(state.fetchedAt))
+                LabeledContent("Wi-Fi-modul") {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(state.firmware.version.map { "Fastvare \($0)" } ?? "Fastvare ukjent")
+                        if state.firmware.updateAvailable {
+                            Text("Oppdatering tilgjengelig – startes i MELCloud-appen")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
             } else {
                 Text("Ingen data hentet ennå.").foregroundStyle(.secondary)
             }
@@ -290,6 +303,7 @@ struct PriceSettingsView: View {
                             Task {
                                 testing = true
                                 testResult = await model.saveAndTestTibberToken(token)
+                                await model.checkTibberToken()
                                 tokenStored = model.hasTibberToken
                                 token = ""
                                 testing = false
@@ -349,7 +363,8 @@ struct PriceSettingsView: View {
         .task {
             guard !loaded else { return }
             loaded = true
-            draft = model.priceSettings
+            draft = await model.loadPriceSettings()
+            await model.checkTibberToken()
             tokenStored = model.hasTibberToken
         }
     }
@@ -357,7 +372,7 @@ struct PriceSettingsView: View {
     private var agreementFooter: String {
         switch draft.agreement {
         case .norgespris:
-            "Norgespris er en fast pris per kWh fra staten. Med Norgespris får du ikke strømstøtte."
+            "Norgespris er en fast pris per kWh fra staten: 50 øre inkl. mva, eller 40 øre i Nord-Norge (NO4), der det ikke er mva. Med Norgespris får du ikke strømstøtte."
         case .tibber:
             "Timeprisene hentes fra Tibber-kontoen din (høyst én gang i timen). Nøkkelen lagres i nøkkelringen. Strømstøtte trekkes fra: staten dekker 90 % av timeprisen over 96,25 øre/kWh inkl. mva (2026)."
         case .spot:

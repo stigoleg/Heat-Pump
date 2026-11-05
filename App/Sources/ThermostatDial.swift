@@ -10,7 +10,8 @@ struct ThermostatDial: View {
     let setpoint: Double
     let range: ClosedRange<Double>
     let step: Double
-    let mode: OperationMode
+    /// Nil when the unit reports no valid mode (grey arc).
+    let mode: OperationMode?
     let isOn: Bool
     /// `commit` false while dragging; true on release, key press or button.
     let onChange: (Double, _ commit: Bool) -> Void
@@ -22,7 +23,7 @@ struct ThermostatDial: View {
     private let startAngle = 135.0  // degrees, 0 = east, clockwise
 
     private var shown: Double { dragValue ?? setpoint }
-    private var tint: Color { isOn ? mode.tint : .gray }
+    private var tint: Color { isOn ? (mode?.tint ?? .gray) : .gray }
 
     var body: some View {
         GeometryReader { geo in
@@ -37,7 +38,7 @@ struct ThermostatDial: View {
                 arc(from: 0, to: fraction(shown))
                     .stroke(
                         AngularGradient(
-                            colors: isOn ? mode.gradient : [.gray.opacity(0.4), .gray.opacity(0.6)],
+                            colors: isOn ? (mode?.gradient ?? [.gray.opacity(0.4), .gray.opacity(0.6)]) : [.gray.opacity(0.4), .gray.opacity(0.6)],
                             center: .center, startAngle: .degrees(startAngle), endAngle: .degrees(startAngle + sweep)),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .padding(lineWidth / 2 + 6)

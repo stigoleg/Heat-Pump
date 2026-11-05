@@ -88,10 +88,16 @@ public struct HvaKosterStrommenProvider: PriceProvider {
             var request = URLRequest(url: url)
             request.timeoutInterval = 20
             request.setValue("Varmepumpe/1.0 (macOS)", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await sendMapped(request)
-            if response.statusCode == 404 { continue }  // not published yet
-            guard (200..<300).contains(response.statusCode) else { throw PriceError.http(status: response.statusCode) }
-            result += try Self.parse(data, area: priceArea, timeZone: timeZone)
+            do {
+                let (data, response) = try await sendMapped(request)
+                if response.statusCode == 404 { continue }  // not published yet
+                guard (200..<300).contains(response.statusCode) else { throw PriceError.http(status: response.statusCode) }
+                result += try Self.parse(data, area: priceArea, timeZone: timeZone)
+            } catch {
+                // Keep the days already fetched; the rest is tried again next hour.
+                if result.isEmpty { throw error }
+                break
+            }
         }
         return result
     }

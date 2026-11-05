@@ -168,7 +168,7 @@ Dette er fakta om varmepumpen, hentet fra typeskiltet og bruksanvisningen. Serie
 
 ## Sikkerhetsmerknad om Wi-Fi-modulen
 
-Wi-Fi-adaptere i samme gruppe som MSZ-RW25VG-SC1 er omfattet av sårbarheten CVE-2026-5667 (fast kodet passord for adapterens eget tilgangspunkt) for adapterversjon 42.00 og eldre. Feilen er rettet i versjon 43.00. Sårbarheten er bare relevant når enheten ikke er koblet til en ruter (oppsettmodus). Sjekk fastvareversjonen i MELCloud eller hos forhandleren, og hold enheten koblet til ruteren.
+Wi-Fi-adaptere i samme gruppe som MSZ-RW25VG-SC1 er omfattet av sårbarheten CVE-2026-5667 (fast kodet passord for adapterens eget tilgangspunkt) for adapterversjon 42.00 og eldre. Feilen er rettet i versjon 43.00. Sårbarheten er bare relevant når enheten ikke er koblet til en ruter (oppsettmodus). Sjekk fastvareversjonen i MELCloud eller hos forhandleren, og hold enheten koblet til ruteren. Appen viser modulens fastvareversjon under Innstillinger → Konto (MELCloud oppgir for eksempel 34000, som betyr versjon 34.00). Oppdatering anbefales, men er ikke akutt så lenge enheten er koblet til hjemmenettet. Oppdateringen startes i den offisielle MELCloud-appen; Varmepumpe-appen og Claude starter ikke fastvareoppdateringer.
 """#,
         "when-to-call-dealer": #"""
 # Når bør du ringe forhandleren?

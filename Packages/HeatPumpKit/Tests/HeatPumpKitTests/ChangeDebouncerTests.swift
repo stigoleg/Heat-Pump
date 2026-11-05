@@ -4,6 +4,18 @@ import Testing
 @testable import HeatPumpKit
 
 /// Records sends and serves a configurable budget.
+/// One-shot gate a fake send can wait on.
+final class Gate: Sendable {
+    private let stream: AsyncStream<Void>
+    private let continuation: AsyncStream<Void>.Continuation
+    init() { (stream, continuation) = AsyncStream.makeStream() }
+    func wait() async { for await _ in stream { return } }
+    func open() {
+        continuation.yield()
+        continuation.finish()
+    }
+}
+
 final class FakeWriter: Sendable {
     private let state = Mutex<(sent: [[DeviceChange]], budget: WriteBudget, outcome: ChangeResult, nextAllowed: Date?)>(
         ([], WriteBudget(remaining: 12), .ok, nil))
@@ -133,6 +145,7 @@ struct ChangeDebouncerTests {
         pending.hasPendingCommand = true
         d.updateLive(pending)
         #expect(d.status == .sent)
+        clock.advance(30)
         d.updateLive(makeState(at: clock.now, set: 22))
         #expect(d.status == .confirmed)
     }
@@ -146,6 +159,83 @@ struct ChangeDebouncerTests {
         d.edit(.power(true))
         await d.flush()
         #expect(writer.sent == [[.power(true), .mode(.heat)]])
+    }
+
+    @Test func editsDuringASendAreBasedOnWhatWasSent() async {
+        let writer = FakeWriter()
+        let gate = Gate()
+        let gatedSend = writer.send
+        let d = ChangeDebouncer(
+            delay: 2, send: { changes in
+                await gate.wait()
+                return try await gatedSend(changes)
+            }, budget: writer.budget, sleep: manual, now: clock.provider)
+        d.updateLive(makeState(at: clock.now, set: 21))
+        d.edit(.temperature(22))
+        let sending = Task { await d.flush() }
+        while d.status != .sending { await Task.yield() }
+        // The controls keep showing what is being sent.
+        #expect(d.displayed?.setTemperature == 22)
+        // Back to 21 differs from what is being sent, so it is a real edit.
+        d.edit(.temperature(21))
+        #expect(d.hasDraft)
+        d.edit(.temperature(21.5))
+        #expect(d.displayed?.setTemperature == 21.5)
+        gate.open()
+        await sending.value
+        #expect(d.hasDraft)
+        #expect(d.status == .edited)
+        await d.flush()
+        #expect(writer.sent == [[.temperature(22)], [.temperature(21.5)]])
+    }
+
+    @Test func editEqualToInFlightValueIsDropped() async {
+        let writer = FakeWriter()
+        let gate = Gate()
+        let gatedSend = writer.send
+        let d = ChangeDebouncer(
+            delay: 2, send: { changes in
+                await gate.wait()
+                return try await gatedSend(changes)
+            }, budget: writer.budget, sleep: manual, now: clock.provider)
+        d.updateLive(makeState(at: clock.now, set: 21))
+        d.edit(.temperature(22))
+        let sending = Task { await d.flush() }
+        while d.status != .sending { await Task.yield() }
+        d.edit(.temperature(22))
+        #expect(!d.hasDraft)
+        gate.open()
+        await sending.value
+        #expect(writer.sent == [[.temperature(22)]])
+    }
+
+    @Test func impliedModeGoesWhenPowerIsTurnedBack() async {
+        let writer = FakeWriter()
+        let d = make(writer)
+        var off = makeState(at: clock.now, power: false)
+        off.mode = nil
+        d.updateLive(off)
+        #expect(d.displayedMode == nil)
+        d.edit(.power(true))
+        #expect(d.displayedMode == .heat)
+        d.edit(.power(false))
+        #expect(!d.hasDraft)
+        #expect(d.displayedMode == nil)
+        await d.flush()
+        #expect(writer.sent.isEmpty)
+    }
+
+    @Test func dragHasALongFallbackTimer() async {
+        let delays = Mutex<[TimeInterval]>([])
+        let writer = FakeWriter()
+        let d = make(writer, sleep: { seconds in
+            delays.withLock { $0.append(seconds) }
+            try await Task.sleep(for: .seconds(3600))
+        })
+        d.edit(.temperature(22), commit: false)
+        d.edit(.temperature(22.5))
+        for _ in 0..<50 where delays.withLock({ $0.count }) < 2 { await Task.yield() }
+        #expect(delays.withLock { $0 } == [ChangeDebouncer.dragFallback, 2])
     }
 
     @Test func modeSwitchClampsSetpoint() async {

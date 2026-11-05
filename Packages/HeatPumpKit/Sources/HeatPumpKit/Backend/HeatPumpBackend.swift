@@ -93,10 +93,14 @@ public protocol HeatPumpBackend: Sendable {
     var requiresFreshStateForWrites: Bool { get }
     /// When the device object a write would be based on was fetched (nil when unknown).
     func writeBaseFetchedAt(deviceId: Int) async -> Date?
+    /// Norwegian reason the backend would refuse `changes` without contacting the unit, or nil.
+    /// With `requireBase` a missing device object counts as a reason.
+    func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String?
 }
 
 extension HeatPumpBackend {
     public func resetSession() async {}
     public var requiresFreshStateForWrites: Bool { false }
     public func writeBaseFetchedAt(deviceId: Int) async -> Date? { nil }
+    public func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String? { nil }
 }

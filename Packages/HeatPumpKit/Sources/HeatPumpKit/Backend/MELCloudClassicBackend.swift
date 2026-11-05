@@ -101,6 +101,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     public func fetchState(deviceId: Int) async throws -> DeviceState {
         var devices = listing.flatMap { now().timeIntervalSince($0.fetchedAt) < listingMaxAge ? $0.devices : nil }
         if devices == nil { devices = try await refreshListing() }
+        let listingFetchedAt = listing?.fetchedAt
         guard let wrapper = devices?.first(where: { $0["DeviceID"]?.int == deviceId }) else {
             throw HeatPumpError.deviceNotFound
         }
@@ -109,7 +110,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
             "GET", "Device/Get",
             query: [URLQueryItem(name: "id", value: String(deviceId)), URLQueryItem(name: "buildingID", value: String(buildingId))])
         let t = now()
-        let state = try MELCloudClassicParser.state(listing: wrapper, get: get, fetchedAt: t)
+        let state = try MELCloudClassicParser.state(listing: wrapper, get: get, fetchedAt: t, listingFetchedAt: listingFetchedAt)
         if get.object != nil {
             remember(RawDevice(deviceId: deviceId, fetchedAt: t, json: get, listing: wrapper))
         }
@@ -122,13 +123,26 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         currentRaw(deviceId: deviceId)?.fetchedAt
     }
 
+    /// Dry run of `apply`: would the body be refused locally (no object, missing fields,
+    /// unknown mode)?
+    public func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String? {
+        guard let base = currentRaw(deviceId: changes.deviceId) else {
+            return requireBase ? MELCloudClassicParser.missingObjectMessage : nil
+        }
+        do {
+            _ = try MELCloudClassicParser.setAtaPayload(changes, raw: base.json)
+            return nil
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
     /// Sends the full device object with the changes applied (see
     /// `MELCloudClassicParser.setAtaPayload`) and returns the state from the response. The
     /// response, laid over what was sent, becomes the new device object.
     public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
         guard let base = currentRaw(deviceId: changes.deviceId) else {
-            throw HeatPumpError.validation(
-                "Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt. Oppdater og prøv igjen.")
+            throw HeatPumpError.validation(MELCloudClassicParser.missingObjectMessage)
         }
         let body = try MELCloudClassicParser.setAtaPayload(changes, raw: base.json)
         let response = try await authorizedJSON("POST", "Device/SetAta", body: .object(body))
@@ -140,7 +154,11 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         let merged = MELCloudClassicParser.merged(raw: .object(body), response: response)
         let wrapper = base.listing ?? listing?.devices.first { $0["DeviceID"]?.int == changes.deviceId }
         remember(RawDevice(deviceId: changes.deviceId, fetchedAt: isFullObject ? t : base.fetchedAt, json: merged, listing: wrapper))
-        return try? MELCloudClassicParser.state(listing: wrapper, get: merged, fetchedAt: t)
+        // Counter: listing time only when this process holds that listing; else dropped.
+        let listingAt = listing.flatMap { l in
+            l.devices.contains { $0["DeviceID"]?.int == changes.deviceId } ? l.fetchedAt : nil
+        }
+        return try? MELCloudClassicParser.state(listing: wrapper, get: merged, fetchedAt: t, listingFetchedAt: listingAt)
     }
 
     public func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {

@@ -164,16 +164,35 @@ public struct TemperatureLimits: Codable, Sendable, Equatable {
 }
 
 public struct FirmwareInfo: Codable, Sendable, Equatable {
-    /// Non-empty when MELCloud has a firmware deployment queued for the adapter.
+    /// MELCloud's id of a firmware deployment queued for the Wi-Fi adapter (an internal number,
+    /// not a version; never shown to the user). Non-empty means an update is available.
     public var deployment: String?
     public var updateAborted: Bool
     public var adaptorType: Int?
+    /// `FirmwareAppVersion` as reported, e.g. 34000 for version 34.00.
+    public var appVersion: Int?
+    /// `WifiAdapterStatus`, e.g. "NORMAL".
+    public var adapterStatus: String?
 
-    public init(deployment: String? = nil, updateAborted: Bool = false, adaptorType: Int? = nil) {
+    public init(
+        deployment: String? = nil, updateAborted: Bool = false, adaptorType: Int? = nil, appVersion: Int? = nil,
+        adapterStatus: String? = nil
+    ) {
         self.deployment = deployment
         self.updateAborted = updateAborted
         self.adaptorType = adaptorType
+        self.appVersion = appVersion
+        self.adapterStatus = adapterStatus
     }
+
+    /// Adapter firmware version as shown in MELCloud, e.g. "34.00" (nil when unknown or 0).
+    public var version: String? {
+        guard let appVersion, appVersion > 0 else { return nil }
+        return String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), Double(appVersion) / 1000)
+    }
+
+    /// True when MELCloud has a newer adapter firmware ready.
+    public var updateAvailable: Bool { !(deployment ?? "").isEmpty }
 }
 
 /// Energy counters in kWh (nil when the device has no meter).
@@ -184,11 +203,15 @@ public struct EnergyCounters: Codable, Sendable, Equatable {
     public var totalAutoKWh: Double?
     public var totalDryKWh: Double?
     public var totalFanKWh: Double?
+    /// When `currentConsumedKWh` was read. MELCloud only reports it in the device listing,
+    /// which is cached for up to 30 minutes, so this can be older than the snapshot.
+    public var counterAt: Date?
 
     public init(
         currentConsumedKWh: Double? = nil, totalHeatingKWh: Double? = nil, totalCoolingKWh: Double? = nil,
-        totalAutoKWh: Double? = nil, totalDryKWh: Double? = nil, totalFanKWh: Double? = nil
+        totalAutoKWh: Double? = nil, totalDryKWh: Double? = nil, totalFanKWh: Double? = nil, counterAt: Date? = nil
     ) {
+        self.counterAt = counterAt
         self.currentConsumedKWh = currentConsumedKWh
         self.totalHeatingKWh = totalHeatingKWh
         self.totalCoolingKWh = totalCoolingKWh

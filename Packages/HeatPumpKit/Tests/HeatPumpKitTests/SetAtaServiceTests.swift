@@ -109,4 +109,67 @@ struct SetAtaServiceTests {
         #expect(mixed.fromMELCloud)
         #expect(mixed.points.map(\.room) == [19, 21, 22])
     }
+
+    /// Counts approval requests.
+    final class CountingApprover: ChangeApprover, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _asked = 0
+        var asked: Int { lock.withLock { _asked } }
+        func requestApproval(_ request: ApprovalRequest) async -> ApprovalDecision {
+            lock.withLock { _asked += 1 }
+            return .approved
+        }
+    }
+
+    private func invalidModeDevice() throws -> Data {
+        var get = try Fixture.json("device_get_full").object ?? [:]
+        get["OperationMode"] = .number(0)
+        get["Power"] = .bool(false)
+        return try JSONEncoder().encode(JSONValue.object(get))
+    }
+
+    @Test func locallyRefusedWritesUseNoBudgetAndNoApproval() async throws {
+        let clock = TestClock()
+        let transport = StubTransport()
+        transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
+        transport.enqueue("/Device/Get", body: try invalidModeDevice())
+        let (service, store) = try makeService(transport, clock: clock)
+        _ = try await service.currentState()
+        #expect(try store.latestSnapshot()?.state.mode == nil)
+
+        let outcome = try await service.apply(.temperature(23), source: .app, reason: "x")
+        #expect(outcome.result == .rejected)
+        #expect(outcome.message.contains("ingen gyldig modus"))
+        let approver = CountingApprover()
+        let viaClaude = try await service.applyWithApproval([.power(true)], source: .claude, reason: "y", approver: approver)
+        #expect(viaClaude.allSatisfy { $0.result == .rejected })
+        #expect(approver.asked == 0)
+        #expect(!paths(transport).contains("SetAta"))
+        #expect(try await service.writeBudget().remaining == 12)
+
+        // Choosing a mode together with the change is allowed.
+        transport.enqueue("/Device/SetAta", body: try Fixture.data("setata_response"))
+        let fixed = try await service.apply([.power(true), .mode(.heat)], source: .app, reason: "z")
+        #expect(fixed.allSatisfy { $0.result == .ok })
+        let body = try JSONValue.parse(try #require(transport.requests.last?.httpBody))
+        #expect(body["OperationMode"]?.int == 1)
+        #expect(body["Power"]?.bool == true)
+    }
+
+    @Test func missingObjectAfterRefreshIsRejectedNotCounted() async throws {
+        let clock = TestClock()
+        let transport = StubTransport()
+        transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
+        transport.enqueue("/Device/Get", body: try Fixture.data("device_get_full"))
+        let (service, store) = try makeService(transport, clock: clock)
+        _ = try await service.currentState()
+        clock.advance(120)
+        // The refresh answers with something that is not a device object.
+        transport.enqueue("/Device/Get", body: Data("[]".utf8))
+        let outcome = try await service.apply(.temperature(23), source: .app, reason: "x")
+        #expect(outcome.result == .rejected)
+        #expect(!paths(transport).contains("SetAta"))
+        #expect(try store.changes(limit: 1).first?.result == .rejected)
+        #expect(try await service.writeBudget().remaining == 12)
+    }
 }

@@ -167,8 +167,13 @@ extension HeatPumpService {
 
     func counterSamples(from: Date, to: Date) throws -> [(at: Date, kWh: Double)] {
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return [] }
+        // Stamped with when the counter was read; repeats of the same reading are dropped.
+        var seen = Set<Date>()
         return try store.snapshots(deviceId: deviceId, from: from, to: to).compactMap { s in
-            s.energy.currentConsumedKWh.map { (s.fetchedAt, $0) }
+            guard let kWh = s.energy.currentConsumedKWh else { return nil }
+            let at = s.energy.counterAt ?? s.fetchedAt
+            guard seen.insert(at).inserted else { return nil }
+            return (at, kWh)
         }
     }
 
