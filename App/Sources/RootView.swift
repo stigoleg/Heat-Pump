@@ -16,7 +16,7 @@ struct RootView: View {
                 }
                 .tag(screen)
             }
-            .navigationSplitViewColumnWidth(min: 190, ideal: 210)
+            .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 240)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.isDemo { DemoBadge() }

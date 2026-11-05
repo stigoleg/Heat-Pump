@@ -89,10 +89,17 @@ struct ActivityRow: View {
                 .frame(width: 18)
                 .help(record.source.displayName)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(record.displaySummary).font(.body.weight(.medium))
-                    Spacer()
-                    resultLabel(record)
+                // The result moves below the summary when they don't fit on one line.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(record.displaySummary).font(.body.weight(.medium))
+                        Spacer()
+                        resultLabel(record)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(record.displaySummary).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                        resultLabel(record)
+                    }
                 }
                 Text("\(record.source.displayName) · \(Norwegian.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
                     .font(.callout).foregroundStyle(.secondary)

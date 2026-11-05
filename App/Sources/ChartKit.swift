@@ -26,12 +26,13 @@ extension View {
     }
 
     /// X axis: labels only, no grid, ticks or axis line. A little room after the plot keeps a
-    /// label on the last tick from being clipped.
+    /// label on the last tick from being clipped. Labels that would overlap in a narrow chart
+    /// are skipped.
     func calmXAxis(_ format: Date.FormatStyle, count: Int = 6) -> some View {
         chartPlotStyle { plot in plot.padding(.trailing, 14) }
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: count)) { value in
-                AxisValueLabel {
+                AxisValueLabel(collisionResolution: .greedy(minimumSpacing: 6)) {
                     if let d = value.as(Date.self) {
                         Text(d.formatted(format.locale(Norwegian.locale))).font(.caption2).foregroundStyle(.secondary)
                     }

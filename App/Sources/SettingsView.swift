@@ -16,7 +16,9 @@ struct SettingsView: View {
             Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
         }
-        .frame(width: 700, height: 600)
+        // Resizable down to 560 × 480; opens at the ideal size.
+        .frame(minWidth: 560, idealWidth: 700, maxWidth: .infinity, minHeight: 480, idealHeight: 600, maxHeight: .infinity)
+        .background(ResizableWindow())
     }
 }
 
