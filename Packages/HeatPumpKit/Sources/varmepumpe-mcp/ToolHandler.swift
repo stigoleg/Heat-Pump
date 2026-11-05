@@ -18,6 +18,7 @@ struct ToolHandler: Sendable {
             case "get_energy": return try await getEnergy(args)
             case "get_prices": return try await getPrices()
             case "get_live_status": return try await getLiveStatus()
+            case "get_forecast": return try await getForecast()
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -189,6 +190,59 @@ struct ToolHandler: Sendable {
                     + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med. "
                     + "level (VERY_CHEAP … VERY_EXPENSIVE) er Tibbers nivå, eller for andre kilder samme grenser regnet mot "
                     + "snittet siste 72 timer (spotpris). Ingen nivå med Norgespris."))
+    }
+
+    private func getForecast() async throws -> CallTool.Result {
+        let sync = try await service.syncWeather()
+        _ = try? await service.syncPrices()
+        let now = Date()
+        let hourStart = Calendar.current.dateInterval(of: .hour, for: now)?.start ?? now
+        let end = hourStart.addingTimeInterval(48 * 3600)
+        let forecast = try await service.weatherForecast(from: hourStart, to: end)
+        let prices = Dictionary(
+            try await service.priceBreakdowns(from: hourStart, to: end).map { ($0.hour, $0) }, uniquingKeysWith: { a, _ in a })
+        struct Hour: Encodable {
+            var time: String
+            var temperature: Double
+            var windSpeed: Double?
+            var precipitationMm: Double?
+            var priceOre: Double?
+            var priceLevel: String?
+        }
+        struct View: Encodable {
+            var location: String?
+            var locationSource: String?
+            var fetchedAt: Date?
+            var sync: WeatherSync
+            var hours: [Hour]
+            var coldestHours: [Hour]
+            var cheapestHours: [Hour]
+            var mostExpensiveHours: [Hour]
+            var tomorrow: TomorrowEstimate?
+            var tomorrowText: String?
+            var attribution: String
+            var note: String
+        }
+        let hours = forecast.hours.map { h in
+            Hour(
+                time: h.time.formatted(Date.ISO8601FormatStyle(timeZone: .current)), temperature: h.temperature, windSpeed: h.windSpeed,
+                precipitationMm: h.precipitation, priceOre: prices[h.time].map { ($0.totalOre * 10).rounded() / 10 },
+                priceLevel: prices[h.time]?.level?.rawValue)
+        }
+        let priced = hours.filter { $0.priceOre != nil }
+        let tomorrow = try await service.tomorrowEstimate()
+        return try await output(
+            View(
+                location: forecast.location?.displayName, locationSource: forecast.location?.source.rawValue,
+                fetchedAt: forecast.fetchedAt, sync: sync, hours: hours,
+                coldestHours: Array(hours.sorted { $0.temperature < $1.temperature }.prefix(3)),
+                cheapestHours: Array(priced.sorted { ($0.priceOre ?? 0) < ($1.priceOre ?? 0) }.prefix(3)),
+                mostExpensiveHours: Array(priced.sorted { ($0.priceOre ?? 0) > ($1.priceOre ?? 0) }.prefix(3)),
+                tomorrow: tomorrow, tomorrowText: tomorrow?.shortText, attribution: WeatherForecast.attribution,
+                note: "Anslaget for i morgen er en enkel modell (forbruk mot graddager, basis 17 °C) fra denne varmepumpens "
+                    + "egne data, med et usikkerhetsområde (kWhLow–kWhHigh). pricesFromToday betyr at morgendagens priser ikke "
+                    + "er kommet ennå og dagens timepriser er brukt. Forvarming: høyst 1 °C opp et par timer før en kald og dyr "
+                    + "periode, og tilbake etterpå; unngå hyppige av/på og store hopp."))
     }
 
     private func getLiveStatus() async throws -> CallTool.Result {

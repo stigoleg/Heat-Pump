@@ -69,10 +69,20 @@ enum MELCloudClassicParser {
 
     // MARK: Device listing
 
-    /// Flattens Structure → Devices / Areas / Floors → Areas, deduplicated by DeviceID.
+    /// Building fields copied into each device wrapper under `buildingKey` (location for the
+    /// weather forecast, frost protection and holiday mode as the listing reports them).
+    static let buildingKey = "_building"
+    static let buildingFields = [
+        "Latitude", "Longitude", "FPDefined", "FPEnabled", "FPMinTemperature", "FPMaxTemperature", "HMDefined", "HMEnabled",
+        "HMStartDate", "HMEndDate",
+    ]
+
+    /// Flattens Structure → Devices / Areas / Floors → Areas, deduplicated by DeviceID. Each
+    /// wrapper gets the building's `buildingFields` under `_building`.
     static func listedDevices(_ json: JSONValue) -> [JSONValue] {
         var result: [JSONValue] = []
         var seen = Set<Int>()
+        var building: [String: JSONValue] = [:]
         func add(_ devices: JSONValue?) {
             for device in devices?.array ?? [] {
                 guard let id = device["DeviceID"]?.int, !seen.contains(id) else { continue }
@@ -80,11 +90,15 @@ enum MELCloudClassicParser {
                 let type = device["Type"]?.int ?? device["Device"]?["DeviceType"]?.int ?? 0
                 guard type == 0 else { continue }
                 seen.insert(id)
-                result.append(device)
+                var wrapper = device.object ?? [:]
+                if !building.isEmpty { wrapper[buildingKey] = .object(building) }
+                result.append(device.object == nil ? device : .object(wrapper))
             }
         }
-        for building in json.array ?? [] {
-            guard let structure = building["Structure"] else { continue }
+        for entry in json.array ?? [] {
+            building = [:]
+            for key in buildingFields { if let value = entry[key], !value.isNull { building[key] = value } }
+            guard let structure = entry["Structure"] else { continue }
             add(structure["Devices"])
             for area in structure["Areas"]?.array ?? [] { add(area["Devices"]) }
             for floor in structure["Floors"]?.array ?? [] {
@@ -93,6 +107,14 @@ enum MELCloudClassicParser {
             }
         }
         return result
+    }
+
+    /// Building latitude/longitude from a device wrapper (nil when missing or 0/0).
+    static func buildingLocation(_ wrapper: JSONValue?) -> (latitude: Double, longitude: Double)? {
+        guard let building = wrapper?[buildingKey], let lat = building["Latitude"]?.double, let lon = building["Longitude"]?.double,
+            (-90...90).contains(lat), (-180...180).contains(lon), !(lat == 0 && lon == 0)
+        else { return nil }
+        return (lat, lon)
     }
 
     static func summary(_ wrapper: JSONValue) -> DeviceSummary? {

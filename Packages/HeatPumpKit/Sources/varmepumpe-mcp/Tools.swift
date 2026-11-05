@@ -71,6 +71,11 @@ enum ToolCatalog {
             inputSchema: ["type": "object", "properties": [:]],
             annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),
         Tool(
+            name: "get_forecast",
+            description: "Weather forecast from MET Norway (yr.no) for the house for the next 48 hours (temperature, wind, precipitation) combined with hourly electricity prices and price levels, the coldest, cheapest and most expensive hours ahead, and the expected heat-pump use and cost tomorrow (degree-day model fitted on at least 10 days of this unit's own history; includes a range). The forecast is fetched at most hourly and only when MET's copy has expired. Location comes from MELCloud or the app's settings; coordinates are never returned. Attribution: \"Værdata: MET Norway\". Use for planning: a small pre-heating step (max 1 °C, a few hours before a cold and expensive period) is fine; avoid frequent on/off and big swings.",
+            inputSchema: ["type": "object", "properties": [:]],
+            annotations: readOnly),
+        Tool(
             name: "get_maintenance_status",
             description: "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",
             inputSchema: ["type": "object", "properties": [:]],

@@ -39,6 +39,16 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 - Unngå store hopp (mer enn 2 °C) og å slå varmepumpen av og på for å spare. Hyppig av/på sliter på kompressoren, og det koster mer å varme opp igjen et nedkjølt hus.
 - Med Norgespris er prisen lik hele døgnet; da sparer du mest på jevn, litt lavere temperatur. Nettleien er likevel lavere om natten og i helgene.
 - Kostnaden appen viser er strøm + nettleiens energiledd − strømstøtte. Kapasitetsleddet (fastleddet) er ikke med, fordi det avhenger av hele husets høyeste forbruk.
+- Prisnivå: Tibber merker hver time fra «svært billig» til «svært dyr» i forhold til snittet de siste dagene. Med andre spotkilder regner appen ut det samme mot snittet de siste 72 timene. Med Norgespris er prisen fast, så nivå vises ikke.
+
+## Værvarsel og forvarming
+
+Appen henter værvarsel fra MET Norway (yr.no) for huset, høyst én gang i timen. Værdata: MET Norway, CC BY 4.0.
+
+- **Forvarming før kulde og dyre timer**: kommer en kald periode samtidig med høye priser, kan du heve ønsket temperatur med høyst 1 °C to–tre timer før, og sette den tilbake når perioden starter eller er over. Små steg er nok; huset holder på varmen en stund.
+- **Unngå**: å skru mye opp og ned flere ganger om dagen, å slå varmepumpen av for å spare, og store hopp. Hyppige endringer gir kraftige starter og sliter på kompressoren, og et nedkjølt hus koster mer å varme opp igjen.
+- **Vind og fukt**: sterk vind øker varmetapet; fuktig vær rundt 0 °C gir mer avriming. Begge deler kan øke forbruket litt uten at noe er galt.
+- **Anslag for i morgen**: appen sammenligner forbruket mot hvor kaldt det har vært (graddager med grense 17 °C) i minst 10 av de siste 45 dagene, og bruker morgendagens varsel og priser. Det er et grovt anslag med et usikkerhetsområde, ikke et løfte.
 
 ## Lokale målinger (effekt og kompressor)
 

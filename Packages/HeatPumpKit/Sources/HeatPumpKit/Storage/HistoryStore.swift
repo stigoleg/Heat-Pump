@@ -299,6 +299,22 @@ public final class HistoryStore: Sendable {
                     ALTER TABLE energy_daily ADD COLUMN otherKWh DOUBLE;
                     """)
         }
+        migrator.registerMigration("v9") { db in
+            // MET Norway hourly forecast for the house (up to 9 days ahead).
+            try db.execute(
+                sql: """
+                    CREATE TABLE weather_forecast (
+                        hour DATETIME PRIMARY KEY,
+                        temp DOUBLE NOT NULL,
+                        wind DOUBLE,
+                        humidity DOUBLE,
+                        cloud DOUBLE,
+                        precipitation DOUBLE,
+                        symbol TEXT,
+                        fetchedAt DATETIME NOT NULL
+                    );
+                    """)
+        }
         return migrator
     }
 

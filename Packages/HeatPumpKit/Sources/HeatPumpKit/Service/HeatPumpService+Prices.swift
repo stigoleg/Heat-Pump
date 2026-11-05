@@ -249,13 +249,21 @@ extension HeatPumpService {
 }
 
 extension HeatPumpService {
-    /// Demo mode only: fills the last 48 hours with simulated snapshots (every 15 minutes) so
-    /// charts, hourly cost and power estimates have data on first launch. Does nothing when the
+    /// Demo mode only: fills the last 48 hours with simulated snapshots (every 15 minutes) and 45
+    /// days of outdoor temperatures so charts, hourly cost, power and forecast estimates have data
+    /// on first launch. Does nothing when the
     /// database already has older snapshots or the backend is not the mock.
     public func seedDemoHistoryIfNeeded() async throws {
         guard let mock = backend as? MockBackend else { return }
         let t = now()
         try seedDemoLocalIfNeeded(now: t)
+        // Older outdoor temperatures (MELCloud's log only goes 7 days back per request), so the
+        // degree-day model behind "Anslag i morgen" has enough days.
+        let older = DateInterval(start: t.addingTimeInterval(-45 * 86_400), end: t.addingTimeInterval(-7 * 86_400))
+        if try store.temperaturePoints(deviceId: MockBackend.deviceId, from: older.start, to: older.end).isEmpty {
+            try store.upsertTemperaturePoints(
+                try await mock.fetchTemperatureLog(deviceId: MockBackend.deviceId, range: older), deviceId: MockBackend.deviceId)
+        }
         let existing = try store.snapshots(deviceId: MockBackend.deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
         guard existing.isEmpty else { return }
         var at = t.addingTimeInterval(-48 * 3600)

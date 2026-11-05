@@ -34,6 +34,8 @@ public actor HeatPumpService {
     let priceProvider: @Sendable (PriceSettings) -> (any PriceProvider)?
     /// Read-only access to the Wi-Fi adapter on the home network (unavailable unless injected).
     let local: LocalAccess
+    /// Builds the forecast source for the current weather settings (nil: no forecast).
+    let weatherProvider: @Sendable (WeatherSettings) -> (any WeatherProviding)?
 
     public init(
         backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
@@ -43,9 +45,11 @@ public actor HeatPumpService {
             try? await Task.sleep(for: .seconds(max(0, seconds)))
         },
         priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil },
-        local: LocalAccess = .unavailable
+        local: LocalAccess = .unavailable,
+        weatherProvider: @escaping @Sendable (WeatherSettings) -> (any WeatherProviding)? = { _ in nil }
     ) {
         self.priceProvider = priceProvider
+        self.weatherProvider = weatherProvider
         self.local = local
         self.backend = backend
         self.store = store
@@ -64,7 +68,8 @@ public actor HeatPumpService {
         if isMock(environment: environment) {
             return HeatPumpService(
                 backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() },
-                local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"))
+                local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
+                weatherProvider: { _ in MockWeatherProvider() })
         }
         let credentials = KeychainCredentialStore(environment: environment)
         return HeatPumpService(
@@ -77,8 +82,14 @@ public actor HeatPumpService {
                     // Read only when prices are actually fetched (at most hourly).
                     return credentials.loadTibberToken().map { TibberPriceProvider(token: $0) }
                 }
-            }, local: .network)
+            }, local: .network,
+            weatherProvider: { settings in
+                METForecastProvider(userAgent: METForecastProvider.userAgent(version: appVersion, contact: settings.contactEmail))
+            })
     }
+
+    /// Marketing version of the running app or helper (for User-Agent strings).
+    public static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
 
     public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
         environment["VARMEPUMPE_BACKEND"]?.lowercased() == "mock"

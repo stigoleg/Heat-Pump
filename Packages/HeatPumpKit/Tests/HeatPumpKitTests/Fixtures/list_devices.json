@@ -6,6 +6,9 @@
   "City": null,
   "Country": 234,
   "TimeZone": 98,
+  "Latitude": 59.9139, "Longitude": 10.7522,
+  "FPDefined": true, "FPEnabled": false, "FPMinTemperature": 8, "FPMaxTemperature": 12,
+  "HMDefined": false, "HMEnabled": false, "HMStartDate": null, "HMEndDate": null,
   "Structure": {
    "Floors": [
     {
