@@ -133,9 +133,11 @@ Timeprisene i Historikk farges fra «svært billig» (grønn) til «svært dyr»
 Den nye siden **Borte hjemmefra** viser og endrer to innstillinger som lagres i MELCloud:
 
 - **Frostsikring**: holder rommet mellom laveste (4–14 °C) og høyeste (6–16 °C) temperatur når varmepumpen ellers står av; høyeste må være minst 2 °C over laveste.
-- **Feriemodus**: fra og til (norsk tid). I perioden følger varmepumpen frostsikringen. MELCloud lagrer tidene som UTC; appen regner om.
+- **Feriemodus**: fra og til (norsk tid). I perioden kan varmepumpen stå av, så feriemodus slås bare på når frostsikring er kjent som på (område vises i bekreftelsen; under 8 °C gir en advarsel), og frostsikring kan ikke slås av mens feriemodus er på. Appen sender tidene som UTC (slik melcloud-api gjør); siden viser tidene MELCloud leser tilbake ved siden av det som ble sendt, så en forskyvning synes. Sammenlign første gang med MELCloud-appen.
 
 Disse sendes ikke automatisk: hver endring bekreftes i et eget vindu, teller som én av de 12 sendingene i timen (med 5 sekunder mellom), og logges (`frostProtection`, `holidayMode`). Claude kan foreslå dem med `set_frost_protection` og `set_holiday_mode`, men de sendes bare etter godkjenning i vinduet på Macen. Innstillingene leses fra MELCloud høyst én gang i timen.
+
+Svarer MELCloud at kontoen ikke får bruke disse endepunktene (HTTP 401/403 rett etter en vellykket statushenting), logger appen aldri inn på nytt for dem, viser «MELCloud tillot ikke å lese …» og venter et døgn (eller til du trykker «Prøv igjen» / «Hent nå»). Resten av appen påvirkes ikke.
 
 Endepunktene er ikke prøvd mot en ekte konto ennå. Svarene tolkes tolerant, svarformen (bare nøkler og typer, ingen verdier) skrives til stderr med prefikset `[melcloud]`, og avviser MELCloud endringen, vises feilen. Gjør den første endringen selv og sjekk i MELCloud-appen at den er registrert.
 

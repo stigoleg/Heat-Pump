@@ -13,7 +13,7 @@ struct AwayView: View {
     @State private var holidayEnd = Date().addingTimeInterval(7 * 86_400)
     @State private var loadedAt: Date?
     @State private var confirming: AwayChange?
-    @State private var outcome: ChangeOutcome?
+    @State private var outcome: (ok: Bool, message: String)?
     @State private var sending = false
 
     var body: some View {
@@ -22,7 +22,7 @@ struct AwayView: View {
                 StatusBanner()
                 InsightCard(
                     title: "Når huset står tomt",
-                    detail: "Frostsikring holder rommet mellom en laveste og høyeste temperatur selv om varmepumpen ellers er av. Feriemodus gjør at varmepumpen følger frostsikringen i en periode du velger, og går tilbake til vanlige innstillinger etterpå. Begge deler lagres i MELCloud, så de virker selv om Macen er av.",
+                    detail: "Frostsikring holder rommet mellom en laveste og høyeste temperatur selv om varmepumpen ellers er av. I feriemodus kan varmepumpen stå av i en periode du velger, og da er det frostsikringen som hindrer at huset blir for kaldt; derfor må frostsikring være på først. Begge deler lagres i MELCloud, så de virker selv om Macen er av.",
                     systemImage: "house.lodge.fill", tint: Theme.Data.blue)
                 frostCard
                 holidayCard
@@ -72,7 +72,7 @@ struct AwayView: View {
     }
 
     private var frostCard: some View {
-        let problem = frostChange.validationProblem(now: Date())
+        let problem = frostChange.validationProblem(now: Date()) ?? frostChange.safetyProblem(current: model.away, now: Date())
         let unchanged = model.away?.frost.map { $0.enabled == frostEnabled && $0.minimum == frostMin && $0.maximum == frostMax } ?? false
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader("Frostsikring", hint: model.away?.frost.map { "Nå: \($0.summary)" })
@@ -90,7 +90,14 @@ struct AwayView: View {
                     .disabled(!frostEnabled)
                     Text("Laveste 4–14 °C, høyeste 6–16 °C, minst 2 grader mellom. 8–12 °C passer for et hus eller en hytte som står tom.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if let problem { Label(problem, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(Theme.Status.caution) }
+                    if let problem, !unchanged {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(Theme.Status.caution)
+                    }
+                    if let sent = model.away?.sentFrost, let at = model.away?.sentAt {
+                        comparison(
+                            sent: sent.summary, read: model.away?.pendingSince == nil ? model.away?.frost?.summary : nil, at: at,
+                            matches: model.away?.frost.map { $0.enabled == sent.enabled && $0.minimum == sent.minimum && $0.maximum == sent.maximum } ?? false)
+                    }
                     HStack {
                         Spacer()
                         Button("Lagre frostsikring…") { confirming = frostChange }
@@ -108,7 +115,7 @@ struct AwayView: View {
     }
 
     private var holidayCard: some View {
-        let problem = holidayChange.validationProblem(now: Date())
+        let problem = holidayChange.validationProblem(now: Date()) ?? holidayChange.safetyProblem(current: model.away, now: Date())
         let unchanged = model.away?.holiday.map {
             $0.enabled == holidayEnabled && (!holidayEnabled || ($0.start == holidayStart && $0.end == holidayEnd))
         } ?? false
@@ -123,11 +130,19 @@ struct AwayView: View {
                     }
                     .disabled(!holidayEnabled)
                     Text(
-                        "I perioden holder varmepumpen frostsikringens temperatur"
-                            + (model.away?.frost.map { $0.enabled ? Norwegian.format(" (%.0f–%.0f °C)", $0.minimum, $0.maximum) : " (frostsikring er av nå – slå den på først)" } ?? "")
+                        "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok"
+                            + (model.away?.frost.map { $0.enabled ? Norwegian.format(" (nå %.0f–%.0f °C)", $0.minimum, $0.maximum) : " – den er av nå, så slå den på først" } ?? " – appen vet ikke om den er på")
                             + ". Tidene er norsk tid.")
                         .font(.caption).foregroundStyle(.secondary)
-                    if let problem { Label(problem, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(Theme.Status.caution) }
+                    if let problem, !unchanged {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(Theme.Status.caution)
+                    }
+                    if let sent = model.away?.sentHoliday, let at = model.away?.sentAt {
+                        let read = model.away?.pendingSince == nil ? model.away?.holiday : nil
+                        comparison(
+                            sent: sent.summary, read: read?.summary, at: at,
+                            matches: read?.enabled == sent.enabled && (!sent.enabled || (read?.start == sent.start && read?.end == sent.end)))
+                    }
                     HStack {
                         Spacer()
                         Button("Lagre feriemodus…") { confirming = holidayChange }
@@ -138,18 +153,34 @@ struct AwayView: View {
         }
     }
 
+    /// What was sent next to what MELCloud reads back, so an offset in the times is obvious.
+    private func comparison(sent: String, read: String?, at: Date, matches: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Sendt \(Format.relative(at)): \(sent)")
+            Text("MELCloud viser: \(read ?? "ikke lest ennå")")
+            if read != nil && !matches {
+                Label("Ikke det samme. Sjekk i MELCloud-appen hva som gjelder.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.Status.caution)
+            }
+        }
+        .font(.caption).foregroundStyle(.secondary)
+    }
+
     // MARK: Status
 
     @ViewBuilder private var statusFooter: some View {
         if let outcome {
             InsightCard(
-                title: outcome.result == .ok ? "Sendt til MELCloud" : "Ikke sendt", detail: outcome.message,
-                systemImage: outcome.result == .ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
-                tint: outcome.result == .ok ? Theme.Status.good : Theme.Status.caution)
+                title: outcome.ok ? "Sendt til MELCloud" : "Ikke sendt", detail: outcome.message,
+                systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
+                tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if let away = model.away {
                 if let message = away.message { Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(Theme.Status.caution) }
+                if away.refusedUntil != nil {
+                    Button("Prøv igjen") { Task { await model.loadAway(manual: true); sync(force: true) } }
+                }
                 Text(
                     away.fetchedAt.map { "Hentet fra MELCloud \(Format.relative($0))." }
                         ?? "Foreløpig fra MELCloud sin enhetsliste; hentes direkte høyst én gang i timen.")
@@ -167,7 +198,7 @@ struct AwayView: View {
     private func confirmSheet(_ change: AwayChange) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             Label("Bekreft endring", systemImage: "suitcase.fill").font(.title2.bold())
-            Text(change.displaySummary).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            Text(change.displaySummary(frost: model.away?.frost)).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
             Text(explanation(change)).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
@@ -199,7 +230,7 @@ struct AwayView: View {
         case .frostProtection:
             "Varmepumpen passer ikke lenger på at rommet ikke fryser når den står av."
         case .holidayMode(let hm) where hm.enabled:
-            "I perioden følger varmepumpen frostsikringen i stedet for de vanlige innstillingene. Etterpå går den tilbake til slik den var."
+            "I perioden kan varmepumpen stå av, og frostsikringen passer på at huset ikke blir for kaldt. Etterpå går den tilbake til slik den var. Tidene MELCloud lagrer vises på siden etterpå; sammenlign dem med det du valgte."
         case .holidayMode:
             "Varmepumpen går tilbake til de vanlige innstillingene."
         }

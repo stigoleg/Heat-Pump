@@ -171,9 +171,59 @@ extension HistoryStore {
         }
     }
 
+    /// SQL for the operating kind of one reading (matches `LocalPhase.spanKind`).
+    static let phaseKindSQL = """
+        CASE WHEN power = 0 OR subMode = 16 THEN 'off'
+             WHEN subMode = 2 THEN 'defrost'
+             WHEN subMode IN (1, 4) THEN 'startup'
+             WHEN subMode = 8 THEN 'rest'
+             WHEN operating = 1 OR compressorHz > 0 THEN 'running'
+             WHEN operating IS NOT NULL OR compressorHz IS NOT NULL THEN 'rest'
+             ELSE 'unknown' END
+        """
+
     /// Stretches of the same operating kind (running, rest, defrost, …) between `from` and `to`.
-    /// Only the readings where the kind changes or a gap (> 5 min) starts or ends are loaded; a
-    /// stretch before a gap ends one minute after its last reading.
+    /// With `resolution` above a minute (long ranges), each bucket of that many seconds gets its
+    /// most common kind and equal neighbours are merged, so a month stays a few hundred
+    /// rectangles; a missing bucket ends a stretch.
+    public func localPhaseSpans(from: Date, to: Date, resolution: TimeInterval) throws -> [LocalPhaseSpan] {
+        let bucket = Int(resolution)
+        guard bucket > 60 else { return try localPhaseSpans(from: from, to: to) }
+        let rows = try pool.read { db in
+            try Row.fetchAll(
+                db,
+                sql: """
+                    WITH s AS (
+                        SELECT CAST(strftime('%s', ts) AS INTEGER) / ? AS b, \(Self.phaseKindSQL) AS kind
+                        FROM local_samples WHERE ts >= ? AND ts <= ?
+                    ), c AS (
+                        SELECT b, kind, COUNT(*) AS n FROM s GROUP BY b, kind
+                    ), r AS (
+                        SELECT b, kind, ROW_NUMBER() OVER (PARTITION BY b ORDER BY n DESC, kind) AS rn FROM c
+                    )
+                    SELECT b, kind FROM r WHERE rn = 1 ORDER BY b
+                    """,
+                arguments: [bucket, from, to])
+        }
+        var spans: [LocalPhaseSpan] = []
+        var previous: Int?
+        for row in rows {
+            let b: Int = row["b"]
+            let kind = LocalPhaseSpan.Kind(rawValue: row["kind"]) ?? .unknown
+            let start = max(from, Date(timeIntervalSince1970: TimeInterval(b * bucket)))
+            let end = min(to, Date(timeIntervalSince1970: TimeInterval((b + 1) * bucket)))
+            if let last = spans.last, last.kind == kind, previous == b - 1 {
+                spans[spans.count - 1].end = end
+            } else {
+                spans.append(LocalPhaseSpan(kind: kind, start: start, end: end))
+            }
+            previous = b
+        }
+        return spans
+    }
+
+    /// Exact stretches: only the readings where the kind changes or a gap (> 5 min) starts or ends
+    /// are loaded; a stretch before a gap ends one minute after its last reading.
     public func localPhaseSpans(from: Date, to: Date) throws -> [LocalPhaseSpan] {
         let gap = Int(CompressorCycles.maxGap)
         let rows = try pool.read { db in
@@ -182,13 +232,7 @@ extension HistoryStore {
                 sql: """
                     WITH s AS (
                         SELECT ts, CAST(strftime('%s', ts) AS INTEGER) AS t,
-                            CASE WHEN power = 0 OR subMode = 16 THEN 'off'
-                                 WHEN subMode = 2 THEN 'defrost'
-                                 WHEN subMode IN (1, 4) THEN 'startup'
-                                 WHEN subMode = 8 THEN 'rest'
-                                 WHEN operating = 1 OR compressorHz > 0 THEN 'running'
-                                 WHEN operating IS NOT NULL OR compressorHz IS NOT NULL THEN 'rest'
-                                 ELSE 'unknown' END AS kind
+                            \(Self.phaseKindSQL) AS kind
                         FROM local_samples WHERE ts >= ? AND ts <= ?
                     ), p AS (
                         SELECT *, LAG(kind) OVER w AS pk, LAG(t) OVER w AS pt, LEAD(t) OVER w AS nt

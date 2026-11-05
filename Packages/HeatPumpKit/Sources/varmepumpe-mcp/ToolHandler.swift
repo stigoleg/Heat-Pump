@@ -362,10 +362,16 @@ struct ToolHandler: Sendable {
         let current = try await service.awaySettings()
         let change: AwayChange
         if tool == "set_frost_protection" {
-            change = .frostProtection(
-                FrostProtection(
-                    enabled: enabled, minimum: args.double("minimum") ?? current.frost?.minimum ?? 8,
-                    maximum: args.double("maximum") ?? current.frost?.maximum ?? 12))
+            // Never guess a range: missing values keep the current ones, and when those are unknown
+            // the caller must give both (otherwise the user's range could be overwritten).
+            guard let fp = FrostProtection.resolving(
+                enabled: enabled, minimum: args.double("minimum"), maximum: args.double("maximum"), current: current.frost)
+            else {
+                throw ArgumentError(
+                    message: "Nåværende frostsikring er ukjent (kunne ikke leses fra MELCloud). Oppgi både minimum og maximum, "
+                        + "så det er tydelig hvilket område som sendes.")
+            }
+            change = .frostProtection(fp)
         } else {
             for key in ["start", "end"] {
                 if let text = args.string(key), args.date(key) == nil { throw ArgumentError(message: "Ugyldig dato i \(key): \(text)") }
@@ -435,7 +441,7 @@ struct ToolHandler: Sendable {
                 fanSpeed: s.fanSpeed.map { $0 == 0 ? "auto" : String($0) },
                 errorCode: s.errorCode.map { String(format: "0x%04X", $0) }, hasError: s.hasError, energyCounterKWh: s.energyKWh,
                 adapterVersion: s.adapterVersion, rssiDbm: s.rssi, cloudConnected: s.cloudConnected,
-                phase: s.phase?.rawValue, phaseText: s.phase?.statusLine, phaseExplanation: s.phase?.explanation,
+                phase: s.phase?.rawValue, phaseText: s.statusLine, phaseExplanation: s.phase?.explanation,
                 subMode: s.subMode, stage: s.stage, autoSubMode: s.autoSubMode, runtimeHoursIndoorUnit: s.runtimeHours)
         }
         return try await output(

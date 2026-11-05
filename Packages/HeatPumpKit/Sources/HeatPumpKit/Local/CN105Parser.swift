@@ -58,6 +58,16 @@ public struct LocalSample: Codable, Sendable, Equatable {
     /// Whole hours of the indoor unit's runtime counter.
     public var runtimeHours: Int? { runtimeMinutes.map { $0 / 60 } }
 
+    /// Status line for this reading: "Hviler (ønsket temperatur nådd)" only when the room really is
+    /// at or above the setpoint, otherwise the neutral phase text.
+    public var statusLine: String? {
+        guard let phase else { return nil }
+        if phase == .standby || phase == .resting, let room = roomTemperature, let set = setTemperature, room >= set {
+            return "Hviler (ønsket temperatur nådd)"
+        }
+        return phase.statusLine
+    }
+
     /// What the unit is doing (defrost, standby, heating …), or nil without enough data.
     public var phase: LocalPhase? {
         if power == false || subMode == 0x10 { return .off }

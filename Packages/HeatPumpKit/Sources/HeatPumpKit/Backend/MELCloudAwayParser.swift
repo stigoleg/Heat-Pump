@@ -9,7 +9,7 @@ import Foundation
 ///   MaximumTemperature, DeviceIds}` (melcloud-api `ClassicFrostProtectionPostData`).
 /// - `GET HolidayMode/GetSettings?id=<deviceId>&tableName=DeviceLocation` → `HMEnabled, HMStartDate,
 ///   HMEndDate, StartDate/EndDate {Year…Second}`; `POST HolidayMode/Update {Enabled, StartDate, EndDate,
-///   HMTimeZones: [{Devices: [id]}]}` with dates as UTC wall clock.
+///   HMTimeZones: [{Devices: [id]}]}` with dates as described at `HolidayWireTime`.
 /// - `GET Timer/Get2?deviceId=<id>` → `{Enabled, Seasons[].Events[]}` (event schema undocumented).
 extension MELCloudClassicParser {
     static func throwIfAttributeErrors(_ json: JSONValue) throws {
@@ -32,8 +32,8 @@ extension MELCloudClassicParser {
     static func holidayMode(_ json: JSONValue) throws -> HolidayMode {
         try throwIfAttributeErrors(json)
         guard let enabled = json["HMEnabled"]?.bool else { throw HeatPumpError.decoding("Feriemodus: uventet svar fra MELCloud.") }
-        let start = WireDate.parse(json["HMStartDate"]?.string, timeZone: .gmt) ?? date(components: json["StartDate"])
-        let end = WireDate.parse(json["HMEndDate"]?.string, timeZone: .gmt) ?? date(components: json["EndDate"])
+        let start = HolidayWireTime.date(string: json["HMStartDate"]?.string) ?? HolidayWireTime.date(components: json["StartDate"])
+        let end = HolidayWireTime.date(string: json["HMEndDate"]?.string) ?? HolidayWireTime.date(components: json["EndDate"])
         return HolidayMode(enabled: enabled, start: start, end: end, defined: json["HMDefined"]?.bool)
     }
 
@@ -55,28 +55,10 @@ extension MELCloudClassicParser {
 
     static func holidayModeBody(_ hm: HolidayMode, deviceId: Int) -> JSONValue {
         .object([
-            "Enabled": .bool(hm.enabled), "StartDate": hm.start.map(components) ?? .null, "EndDate": hm.end.map(components) ?? .null,
+            "Enabled": .bool(hm.enabled), "StartDate": hm.start.map(HolidayWireTime.components) ?? .null,
+            "EndDate": hm.end.map(HolidayWireTime.components) ?? .null,
             "HMTimeZones": .array([.object(["Devices": .array([.number(Double(deviceId))])])]),
         ])
-    }
-
-    /// A date as MELCloud's `{Year, Month, Day, Hour, Minute, Second}` in UTC wall clock.
-    static func components(_ date: Date) -> JSONValue {
-        let c = WireDate.calendar(.gmt).dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-        return .object([
-            "Year": .number(Double(c.year ?? 0)), "Month": .number(Double(c.month ?? 0)), "Day": .number(Double(c.day ?? 0)),
-            "Hour": .number(Double(c.hour ?? 0)), "Minute": .number(Double(c.minute ?? 0)), "Second": .number(Double(c.second ?? 0)),
-        ])
-    }
-
-    static func date(components json: JSONValue?) -> Date? {
-        guard let json, let year = json["Year"]?.int, year > 1, let month = json["Month"]?.int, let day = json["Day"]?.int else {
-            return nil
-        }
-        let c = DateComponents(
-            year: year, month: month, day: day, hour: json["Hour"]?.int ?? 0, minute: json["Minute"]?.int ?? 0,
-            second: json["Second"]?.int ?? 0)
-        return WireDate.calendar(.gmt).date(from: c)
     }
 
     /// Update answers: `{Success, AttributeErrors}`. An empty body counts as success.
@@ -137,5 +119,45 @@ extension MELCloudClassicParser {
             weekday: day == 0 ? 7 : day, minuteOfDay: minute, power: power,
             mode: first("OperationMode", "Mode")?.int.flatMap { CloudOperationMode(raw: $0)?.mode },
             setTemperature: first("SetTemperature", "Temperature", "SetPoint")?.double)
+    }
+}
+
+/// The one place that converts holiday-mode times to and from MELCloud Classic's wire format.
+///
+/// Interpretation: **UTC wall clock** (an instant written as its UTC date and time, without offset).
+/// Evidence, all from melcloud-api (OlivierZal), none verified against this account:
+/// - `utils.ts` `toUtcWallClock`: "Projects a caller-local wall-clock datetime onto the UTC wall clock
+///   the MELCloud wires store" (and `toZonedWallClock` for reading back) — the library's helper for
+///   datetimes it sends.
+/// - Against it: `api_classic.ts` (error log) says "Classic timestamps are building-local wall clock",
+///   and `ClassicHolidayModeData` carries a `TimeZone` number (an optional `TimeZone` may also go in
+///   `HMTimeZones`). That comment is about read timestamps of the error log, not holiday writes.
+/// The first live write must be compared with the MELCloud app; the Borte page shows the times read
+/// back from MELCloud next to what was sent, so an offset (e.g. one hour in winter) is visible.
+enum HolidayWireTime {
+    static let zone = TimeZone.gmt
+
+    /// `{Year, Month, Day, Hour, Minute, Second}` for an update body.
+    static func components(_ date: Date) -> JSONValue {
+        let c = WireDate.calendar(zone).dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        return .object([
+            "Year": .number(Double(c.year ?? 0)), "Month": .number(Double(c.month ?? 0)), "Day": .number(Double(c.day ?? 0)),
+            "Hour": .number(Double(c.hour ?? 0)), "Minute": .number(Double(c.minute ?? 0)), "Second": .number(Double(c.second ?? 0)),
+        ])
+    }
+
+    static func date(components json: JSONValue?) -> Date? {
+        guard let json, let year = json["Year"]?.int, year > 1, let month = json["Month"]?.int, let day = json["Day"]?.int else {
+            return nil
+        }
+        let c = DateComponents(
+            year: year, month: month, day: day, hour: json["Hour"]?.int ?? 0, minute: json["Minute"]?.int ?? 0,
+            second: json["Second"]?.int ?? 0)
+        return WireDate.calendar(zone).date(from: c)
+    }
+
+    /// `HMStartDate`/`HMEndDate` strings (an explicit offset in the string wins).
+    static func date(string: String?) -> Date? {
+        WireDate.parse(string, timeZone: zone)
     }
 }

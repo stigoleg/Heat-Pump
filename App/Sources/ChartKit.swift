@@ -25,9 +25,11 @@ extension View {
         }
     }
 
-    /// X axis: labels only, no grid, ticks or axis line.
+    /// X axis: labels only, no grid, ticks or axis line. A little room after the plot keeps a
+    /// label on the last tick from being clipped.
     func calmXAxis(_ format: Date.FormatStyle, count: Int = 6) -> some View {
-        chartXAxis {
+        chartPlotStyle { plot in plot.padding(.trailing, 14) }
+        .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: count)) { value in
                 AxisValueLabel {
                     if let d = value.as(Date.self) {

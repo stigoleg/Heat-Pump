@@ -192,17 +192,20 @@ struct AwayTests {
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
         let service = makeService(store: store, backend: backend)
         _ = try await service.currentState()
+        _ = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 8, maximum: 12)), source: .app, reason: "x")
         let rejecting = RecordingApprover(.rejected)
         let change = AwayChange.holidayMode(HolidayMode(enabled: true, start: clock.now, end: clock.now.addingTimeInterval(86_400)))
         let refused = try await service.applyAway(change, source: .claude, reason: "Hytta", approver: rejecting)
         #expect(refused.result == .rejected)
         #expect(rejecting.received.count == 1)
-        #expect(rejecting.received.first?.summaries.first?.hasPrefix("Slå på feriemodus") == true)
-        #expect(await backend.awayWrites == 0)
+        let summary = rejecting.received.first?.summaries.first ?? ""
+        #expect(summary.hasPrefix("Slå på feriemodus"))
+        #expect(summary.contains("frostsikringens område 8–12 °C"))
+        #expect(await backend.awayWrites == 1)  // only the frost protection
         let approving = RecordingApprover(.approved)
         let sent = try await service.applyAway(change, source: .claude, reason: "Hytta", approver: approving)
         #expect(sent.result == .ok)
-        #expect(await backend.awayWrites == 1)
+        #expect(await backend.awayWrites == 2)
         #expect(try store.changes(limit: 1).first?.source == .claude)
     }
 
@@ -250,6 +253,112 @@ struct AwayTests {
         let outcome = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 8, maximum: 12)), source: .app, reason: "x")
         #expect(outcome.result == .failed)
         #expect(try store.blockStatus(now: clock.now) == nil)
+    }
+
+    // MARK: Round 5 review
+
+    @Test func holidayNeedsFrostProtectionOn() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        let approver = RecordingApprover(.approved)
+        let holiday = AwayChange.holidayMode(HolidayMode(enabled: true, start: clock.now, end: clock.now.addingTimeInterval(86_400)))
+        // Mock starts with frost protection off.
+        let refused = try await service.applyAway(holiday, source: .claude, reason: "Ferie", approver: approver)
+        #expect(refused.result == .rejected)
+        #expect(refused.message.contains("frostsikring er av"))
+        #expect(approver.received.isEmpty)
+        #expect(await backend.awayWrites == 0)
+        // Low but allowed range: sent, and the summary warns.
+        clock.advance(10)
+        _ = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 6, maximum: 10)), source: .app, reason: "x")
+        clock.advance(10)
+        let sent = try await service.applyAway(holiday, source: .claude, reason: "Ferie", approver: approver)
+        #expect(sent.result == .ok)
+        #expect(approver.received.first?.summaries.first?.contains("8 °C eller mer anbefales") == true)
+        // Frost protection cannot be switched off during the holiday.
+        clock.advance(10)
+        let off = try await service.applyAway(.frostProtection(FrostProtection(enabled: false, minimum: 6, maximum: 10)), source: .app, reason: "x")
+        #expect(off.result == .rejected)
+        #expect(off.message.contains("feriemodus er på"))
+        #expect(await backend.frost.enabled == true)
+    }
+
+    @Test func holidayRefusedWhenFrostIsUnknown() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let service = HeatPumpService(backend: RefusingBackend(now: clock.provider), store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        _ = try await service.currentState()
+        let outcome = try await service.applyAway(
+            .holidayMode(HolidayMode(enabled: true, start: clock.now, end: clock.now.addingTimeInterval(86_400))), source: .app, reason: "x")
+        #expect(outcome.result == .rejected)
+        #expect(outcome.message.contains("ikke vet om frostsikring er på"))
+        #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
+    }
+
+    @Test func frostRangeIsNeverGuessed() {
+        let current = FrostProtection(enabled: true, minimum: 10, maximum: 14)
+        #expect(FrostProtection.resolving(enabled: false, minimum: nil, maximum: nil, current: current)
+            == FrostProtection(enabled: false, minimum: 10, maximum: 14))
+        #expect(FrostProtection.resolving(enabled: false, minimum: nil, maximum: nil, current: nil) == nil)
+        #expect(FrostProtection.resolving(enabled: true, minimum: 8, maximum: nil, current: nil) == nil)
+        #expect(FrostProtection.resolving(enabled: true, minimum: 8, maximum: 12, current: nil) == FrostProtection(enabled: true, minimum: 8, maximum: 12))
+        #expect(AwayChange.frostProtection(FrostProtection(enabled: false, minimum: 10, maximum: 14)).displaySummary
+            == "Slå av frostsikring (området 10–14 °C lagres uendret)")
+    }
+
+    @Test func writeIsReadBackForComparison() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        _ = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 8, maximum: 12)), source: .app, reason: "x")
+        let stored = try #require(try await service.storedAwaySettings())
+        #expect(stored.pendingSince == nil)  // read back right away
+        #expect(stored.sentFrost == FrostProtection(enabled: true, minimum: 8, maximum: 12))
+        #expect(stored.frost?.enabled == true)
+        #expect(stored.sentAt != nil)
+    }
+
+    @Test func refusingEndpointsCauseNoLoginsFor24Hours() async throws {
+        let transport = StubTransport()
+        transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
+        transport.enqueue("/Device/Get", body: try Fixture.data("device_get_full"))
+        for _ in 0..<30 {
+            transport.enqueue("/FrostProtection/GetSettings", status: 401, body: Data())
+            transport.enqueue("/Timer/Get2", status: 401, body: Data())
+            transport.enqueue("/Login/ClientLogin", body: try Fixture.data("login_success"))
+        }
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let credentials = InMemoryCredentialStore(
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+        let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, rawCache: store, now: clock.provider)
+        let service = HeatPumpService(backend: backend, store: store, credentials: credentials, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
+        _ = try await service.currentState()
+        var last: AwaySettings?
+        for _ in 0..<24 {
+            last = try await service.awaySettings()
+            _ = try await service.weeklyTimer()
+            clock.advance(3600)
+        }
+        let paths = transport.requests.compactMap { $0.url?.path }
+        #expect(paths.filter { $0.hasSuffix("ClientLogin") }.isEmpty)
+        #expect(paths.filter { $0.hasSuffix("FrostProtection/GetSettings") }.count == 1)
+        #expect(paths.filter { $0.hasSuffix("Timer/Get2") }.count == 1)
+        #expect(last?.message?.contains("tillot ikke å lese frostsikring og feriemodus") == true)
+        #expect(last?.refusedUntil != nil)
+        #expect(try store.blockStatus(now: clock.now) == nil)
+        // "Prøv igjen" lifts the pause.
+        _ = try await service.awaySettings(manual: true)
+        #expect(transport.requests.compactMap { $0.url?.path }.filter { $0.hasSuffix("FrostProtection/GetSettings") }.count == 2)
+    }
+
+    @Test func holidayWireTimeIsOneFunction() throws {
+        let date = try #require(WireDate.calendar(.gmt).date(from: DateComponents(year: 2026, month: 12, day: 20, hour: 6, minute: 40)))
+        let json = HolidayWireTime.components(date)
+        #expect(json["Hour"] == .number(6))
+        #expect(HolidayWireTime.date(components: json) == date)
+        #expect(HolidayWireTime.date(string: "2026-12-20T06:40:00") == date)
     }
 
     @Test func timerIsReadAtMostEverySixHoursAndNotedOnWrites() async throws {

@@ -212,9 +212,9 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     }
 
     public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
-        let frostJSON = try await authorizedJSON("GET", "FrostProtection/GetSettings", query: settingsQuery(deviceId))
+        let frostJSON = try await authorizedJSON("GET", "FrostProtection/GetSettings", query: settingsQuery(deviceId), relogin: false)
         Self.diagnose("FrostProtection/GetSettings response: \(MELCloudClassicParser.redactedShape(frostJSON))")
-        let holidayJSON = try await authorizedJSON("GET", "HolidayMode/GetSettings", query: settingsQuery(deviceId))
+        let holidayJSON = try await authorizedJSON("GET", "HolidayMode/GetSettings", query: settingsQuery(deviceId), relogin: false)
         Self.diagnose("HolidayMode/GetSettings response: \(MELCloudClassicParser.redactedShape(holidayJSON))")
         return AwaySettings(
             frost: try MELCloudClassicParser.frostProtection(frostJSON), holiday: try MELCloudClassicParser.holidayMode(holidayJSON),
@@ -227,13 +227,14 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
             case .frostProtection(let fp): ("FrostProtection/Update", MELCloudClassicParser.frostProtectionBody(fp, deviceId: deviceId))
             case .holidayMode(let hm): ("HolidayMode/Update", MELCloudClassicParser.holidayModeBody(hm, deviceId: deviceId))
             }
-        let response = try await authorizedJSON("POST", path, body: body)
+        let response = try await authorizedJSON("POST", path, body: body, relogin: false)
         Self.diagnose("\(path) response: \(MELCloudClassicParser.redactedShape(response))")
         try MELCloudClassicParser.checkMutation(response)
     }
 
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
-        let json = try await authorizedJSON("GET", "Timer/Get2", query: [URLQueryItem(name: "deviceId", value: String(deviceId))])
+        let json = try await authorizedJSON(
+            "GET", "Timer/Get2", query: [URLQueryItem(name: "deviceId", value: String(deviceId))], relogin: false)
         Self.diagnose("Timer/Get2 response: \(MELCloudClassicParser.redactedShape(json))")
         try MELCloudClassicParser.throwIfAttributeErrors(json)
         var timer = MELCloudClassicParser.weeklyTimer(json)
@@ -272,11 +273,16 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     /// Sends an authenticated request. On HTTP 401 it first tries the ContextKey from the
     /// keychain (another process may have logged in already; logging in again would
     /// invalidate that key), then logs in once. A 401 after a fresh login is `.unauthorized`.
+    /// With `relogin` false (optional, unverified endpoints) it never logs in: a 401/403 that the
+    /// stored key does not fix is `.endpointRefused`, so a refusing endpoint cannot cause logins.
     private func authorizedJSON(
-        _ method: String, _ path: String, query: [URLQueryItem] = [], body: JSONValue? = nil
+        _ method: String, _ path: String, query: [URLQueryItem] = [], body: JSONValue? = nil, relogin: Bool = true
     ) async throws -> JSONValue {
         if contextKey == nil { contextKey = credentials.loadContextKey() }
-        if contextKey == nil { try await login() }
+        if contextKey == nil {
+            guard relogin else { throw HeatPumpError.validation("Ingen aktiv MELCloud-økt ennå. Prøver igjen senere.") }
+            try await login()
+        }
         var triedStoredKey = false
         var loggedIn = false
         while true {
@@ -291,6 +297,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
                         continue
                     }
                 }
+                guard relogin else { throw HeatPumpError.endpointRefused(status: 401) }
                 if !loggedIn {
                     loggedIn = true
                     try await login()
@@ -298,6 +305,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
                 }
                 throw HeatPumpError.unauthorized
             }
+            if !relogin, response.statusCode == 403 { throw HeatPumpError.endpointRefused(status: 403) }
             try checkStatus(response)
             return try parse(data)
         }

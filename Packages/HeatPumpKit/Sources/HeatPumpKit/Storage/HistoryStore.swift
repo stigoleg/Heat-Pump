@@ -870,6 +870,25 @@ public final class HistoryStore: Sendable {
         }
     }
 
+    /// Stops automatic requests for one key (an endpoint refused this account) until `until`.
+    /// Only the service's own check honours it; the global MELCloud block is not touched.
+    public func recordKeyRefusal(key: String, until: Date) throws {
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO fetch_state (key, blockedUntil) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET blockedUntil = excluded.blockedUntil
+                    """,
+                arguments: [key, until])
+        }
+    }
+
+    public func clearKeyRefusal(key: String) throws {
+        try pool.write { db in
+            try db.execute(sql: "UPDATE fetch_state SET blockedUntil = NULL WHERE key = ?", arguments: [key])
+        }
+    }
+
     public func clearCredentialsRejected() throws {
         try pool.write { db in
             try db.execute(sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey])

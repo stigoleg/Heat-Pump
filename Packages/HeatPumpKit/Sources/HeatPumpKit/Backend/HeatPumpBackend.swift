@@ -20,6 +20,9 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
     /// Earlier login was refused; network calls stay stopped until new credentials are saved.
     case credentialsRejected
     case writeTooSoon(nextAllowed: Date)
+    /// An optional endpoint (frost protection, holiday mode, weekly timer) refused this account
+    /// (HTTP 401/403) although the session works for everything else. Never triggers a new login.
+    case endpointRefused(status: Int)
 
     public var errorDescription: String? {
         switch self {
@@ -56,6 +59,8 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
             "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
         case .writeTooSoon(let next):
             "En annen endring ble nettopp sendt. Prøv igjen etter \(Norwegian.time(next))."
+        case .endpointRefused(let status):
+            "MELCloud tillot ikke denne forespørselen for kontoen (HTTP \(status))."
         }
     }
 }

@@ -34,6 +34,14 @@ public struct FrostProtection: Codable, Sendable, Equatable {
         return nil
     }
 
+    /// The values to send for a request that may leave out `minimum`/`maximum`: missing ones keep
+    /// the current range. Nil when a value is missing and the current range is unknown (the caller
+    /// must then ask for it explicitly instead of guessing and overwriting the user's range).
+    public static func resolving(enabled: Bool, minimum: Double?, maximum: Double?, current: FrostProtection?) -> FrostProtection? {
+        guard let low = minimum ?? current?.minimum, let high = maximum ?? current?.maximum else { return nil }
+        return FrostProtection(enabled: enabled, minimum: low, maximum: high)
+    }
+
     /// "på, 8–12 °C" or "av" (change log and dialogs).
     public var summary: String {
         enabled ? Norwegian.format("på, %.0f–%.0f °C", minimum, maximum) : "av"
@@ -41,7 +49,8 @@ public struct FrostProtection: Codable, Sendable, Equatable {
 }
 
 /// MELCloud holiday mode: the unit follows frost protection between `start` and `end` instead of
-/// its normal settings. MELCloud stores the dates as UTC wall clock (see `MELCloudClassicParser`).
+/// its normal settings (it may otherwise stand off, so frost protection must be on first). The
+/// wire format of the dates is described at `HolidayWireTime`.
 public struct HolidayMode: Codable, Sendable, Equatable {
     public var enabled: Bool
     public var start: Date?
@@ -84,8 +93,15 @@ public struct AwaySettings: Codable, Sendable, Equatable {
     public var source: String
     /// Norwegian text when reading failed.
     public var message: String?
-    /// Set after a write until the next read confirms it.
+    /// Set after a write until a read confirms it.
     public var pendingSince: Date?
+    /// What the app or Claude last sent, kept so the page can show it next to what MELCloud reads back.
+    public var sentFrost: FrostProtection?
+    public var sentHoliday: HolidayMode?
+    public var sentAt: Date?
+    /// MELCloud refused to let this account read the settings (HTTP 4xx); no new read until then,
+    /// unless the user presses "Prøv igjen".
+    public var refusedUntil: Date?
 
     public init(
         frost: FrostProtection? = nil, holiday: HolidayMode? = nil, fetchedAt: Date? = nil, source: String = "melcloud",
@@ -97,6 +113,12 @@ public struct AwaySettings: Codable, Sendable, Equatable {
         self.source = source
         self.message = message
         self.pendingSince = pendingSince
+    }
+
+    /// True while holiday mode is on now or later.
+    func holidayActive(now: Date) -> Bool {
+        guard let holiday, holiday.enabled else { return false }
+        return holiday.end.map { $0 > now } ?? true
     }
 }
 
@@ -119,18 +141,54 @@ public enum AwayChange: Sendable, Equatable {
         }
     }
 
-    /// Norwegian one-line summary for dialogs and confirmations.
+    /// Norwegian one-line summary for confirmations, with the values that will be sent.
     public var displaySummary: String {
         switch self {
         case .frostProtection(let fp):
             fp.enabled
-                ? Norwegian.format("Slå på frostsikring (holder %.0f–%.0f °C når varmepumpen ellers er av)", fp.minimum, fp.maximum)
-                : "Slå av frostsikring"
+                ? Norwegian.format("Slå på frostsikring: holder %.0f–%.0f °C når varmepumpen ellers er av", fp.minimum, fp.maximum)
+                : Norwegian.format("Slå av frostsikring (området %.0f–%.0f °C lagres uendret)", fp.minimum, fp.maximum)
         case .holidayMode(let hm):
             hm.enabled
                 ? "Slå på feriemodus fra " + (hm.start.map(Norwegian.dateTime) ?? "?") + " til " + (hm.end.map(Norwegian.dateTime) ?? "?")
-                    + " (holder frostsikringens temperatur i perioden)"
                 : "Slå av feriemodus"
+        }
+    }
+
+    /// Recommended lowest frost-protection temperature; lower is allowed but warned about.
+    public static let recommendedFrostMinimum = 8.0
+
+    /// The summary for the approval dialog and the log, stating the frost range that will apply
+    /// during a holiday (from the current settings).
+    public func displaySummary(frost: FrostProtection?) -> String {
+        guard case .holidayMode(let hm) = self, hm.enabled else { return displaySummary }
+        guard let frost, frost.enabled else { return displaySummary + " – frostsikring er IKKE på" }
+        var text = displaySummary + Norwegian.format(
+            " – i perioden holder varmepumpen frostsikringens område %.0f–%.0f °C", frost.minimum, frost.maximum)
+        if frost.minimum < Self.recommendedFrostMinimum {
+            text += Norwegian.format(" (laveste %.0f °C er lavt; 8 °C eller mer anbefales)", frost.minimum)
+        }
+        return text
+    }
+
+    /// Norwegian reason this change is unsafe with the current settings, or nil. Holiday mode may
+    /// leave the unit off, so it is only switched on while frost protection is known to be on, and
+    /// frost protection is not switched off during a holiday.
+    public func safetyProblem(current: AwaySettings?, now: Date) -> String? {
+        switch self {
+        case .holidayMode(let hm) where hm.enabled:
+            guard let frost = current?.frost else {
+                return "Feriemodus ble ikke slått på fordi appen ikke vet om frostsikring er på (innstillingene kunne ikke leses fra MELCloud). I feriemodus kan varmepumpen stå av. Slå på frostsikring først (for eksempel 8–12 °C), og prøv igjen."
+            }
+            guard frost.enabled else {
+                return "Feriemodus ble ikke slått på fordi frostsikring er av. I feriemodus kan varmepumpen stå av, og da er det frostsikringen som hindrer at huset blir for kaldt. Slå på frostsikring først (for eksempel 8–12 °C)."
+            }
+            return nil
+        case .frostProtection(let fp) where !fp.enabled:
+            guard current?.holidayActive(now: now) == true else { return nil }
+            return "Frostsikring ble ikke slått av fordi feriemodus er på. Uten frostsikring kan huset bli kaldt mens varmepumpen står av. Slå av feriemodus først."
+        default:
+            return nil
         }
     }
 
@@ -151,8 +209,12 @@ public enum AwayChange: Sendable, Equatable {
     func applied(to settings: AwaySettings) -> AwaySettings {
         var next = settings
         switch self {
-        case .frostProtection(let fp): next.frost = fp
-        case .holidayMode(let hm): next.holiday = hm
+        case .frostProtection(let fp):
+            next.frost = fp
+            next.sentFrost = fp
+        case .holidayMode(let hm):
+            next.holiday = hm
+            next.sentHoliday = hm
         }
         return next
     }

@@ -16,6 +16,39 @@ extension HeatPumpService {
     /// "Hent nå" for the timer, at most this often.
     public static let timerManualInterval: TimeInterval = 10 * 60
     static let weeklyTimerNote = "Merk: ukeplanen i MELCloud er på, så varmepumpen kan endre seg selv etter planen."
+    /// After a refusal (HTTP 4xx) these reads pause this long, unless the user presses "Prøv igjen".
+    public static let refusalBackoff: TimeInterval = 24 * 3600
+    /// A 401 only counts as a refusal of the endpoint when the session read status this recently
+    /// (otherwise the session itself may have expired, and the next status read logs in again).
+    static let sessionProvenWithin: TimeInterval = 10 * 60
+    /// Read-back right after a write, at most this often.
+    static let verifyInterval: TimeInterval = 30
+    static let awayVerifyKey = "away.verify"
+    static let awayRefusedMessage =
+        "MELCloud tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
+    static let timerRefusedMessage =
+        "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Hent nå»."
+
+    /// When automatic reads of `key` (`away` or `timer`) are paused after a refusal, or nil.
+    public func endpointRefusedUntil(_ key: String) throws -> Date? {
+        guard let until = try store.fetchState(key: key)?.blockedUntil, until > now() else { return nil }
+        return until
+    }
+
+    /// True for answers that mean "this account may not use this endpoint" (not traffic or network).
+    func isRefusal(_ error: Error) throws -> Bool {
+        guard let error = error as? HeatPumpError else { return false }
+        switch error {
+        case .endpointRefused(let status):
+            // A 401 right after a successful status read is the endpoint, not an expired session.
+            if status == 401, let ok = try store.fetchState(key: Self.stateKey)?.lastSuccess {
+                return now().timeIntervalSince(ok) < Self.sessionProvenWithin
+            }
+            return status != 401
+        case .http(let status): return (400..<500).contains(status) && status != 429
+        default: return false
+        }
+    }
 
     /// These endpoints are unverified: a 401 or other refusal from them must not stop every other
     /// MELCloud call for an hour, so only real traffic limits (429, login throttle) become blocks.
@@ -37,28 +70,42 @@ extension HeatPumpService {
     }
 
     /// Frost protection and holiday mode, read from MELCloud when the cached copy is older than
-    /// `maxAge` and the hourly limit allows it.
-    public func awaySettings(maxAge: TimeInterval = awayInterval) async throws -> AwaySettings {
+    /// `maxAge` and the hourly limit allows it. `manual` ("Prøv igjen") lifts a refusal pause and
+    /// allows a read every 10 minutes.
+    public func awaySettings(maxAge: TimeInterval = awayInterval, manual: Bool = false) async throws -> AwaySettings {
         let t = now()
-        let cached = try storedAwaySettings()
-        if let cached, let at = cached.fetchedAt, t.timeIntervalSince(at) < maxAge, cached.pendingSince == nil {
+        if manual { try store.clearKeyRefusal(key: Self.awayFetchKey) }
+        var cached = try storedAwaySettings()
+        if let cached, let at = cached.fetchedAt, t.timeIntervalSince(at) < maxAge, cached.pendingSince == nil, !manual {
             return cached
+        }
+        if let until = try endpointRefusedUntil(Self.awayFetchKey) {
+            var paused = cached ?? AwaySettings()
+            paused.refusedUntil = until
+            paused.message = Self.awayRefusedMessage
+            return paused
         }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
             return cached ?? AwaySettings(message: "Ingen status fra varmepumpen ennå.")
         }
-        switch try store.reserveFetch(key: Self.awayFetchKey, minInterval: Self.awayInterval, now: t) {
+        switch try store.reserveFetch(key: Self.awayFetchKey, minInterval: manual ? Self.timerManualInterval : Self.awayInterval, now: t) {
         case .throttled, .blocked, .credentialsRejected:
             return cached ?? AwaySettings(message: "Hentes fra MELCloud senere (høyst én gang i timen).")
         case .allowed:
             do {
-                var fresh = try await backend.fetchAwaySettings(deviceId: deviceId)
-                fresh.fetchedAt = fresh.fetchedAt ?? t
-                try store.saveSetting(fresh, key: Self.awaySettingsKey)
+                let fresh = try await readAway(deviceId: deviceId, keeping: cached, at: t)
                 try store.recordFetchSuccess(key: Self.awayFetchKey, now: t)
                 return fresh
             } catch {
                 _ = try handleAwayError(error, now: t)
+                if try isRefusal(error) {
+                    let until = t.addingTimeInterval(Self.refusalBackoff)
+                    try store.recordKeyRefusal(key: Self.awayFetchKey, until: until)
+                    cached = cached ?? AwaySettings()
+                    cached?.refusedUntil = until
+                    cached?.message = Self.awayRefusedMessage
+                    return cached ?? AwaySettings()
+                }
                 var fallback = cached ?? AwaySettings()
                 fallback.message = "Kunne ikke lese frostsikring og feriemodus fra MELCloud: "
                     + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
@@ -67,16 +114,30 @@ extension HeatPumpService {
         }
     }
 
+    /// One read of both settings; keeps what was last sent so the page can compare.
+    private func readAway(deviceId: Int, keeping cached: AwaySettings?, at t: Date) async throws -> AwaySettings {
+        var fresh = try await backend.fetchAwaySettings(deviceId: deviceId)
+        fresh.fetchedAt = fresh.fetchedAt ?? t
+        fresh.sentFrost = cached?.sentFrost
+        fresh.sentHoliday = cached?.sentHoliday
+        fresh.sentAt = cached?.sentAt
+        try store.saveSetting(fresh, key: Self.awaySettingsKey)
+        return fresh
+    }
+
     public func storedWeeklyTimer() throws -> WeeklyTimer? {
         try store.setting(WeeklyTimer.self, key: Self.weeklyTimerKey)
     }
 
-    /// The weekly timer, read at most every 6 hours (`manual`: "Hent nå", at most every 10 minutes).
+    /// The weekly timer, read at most every 6 hours (`manual`: "Hent nå", at most every 10 minutes,
+    /// and it lifts a refusal pause).
     public func weeklyTimer(manual: Bool = false) async throws -> WeeklyTimer? {
         let t = now()
+        if manual { try store.clearKeyRefusal(key: Self.timerFetchKey) }
         let cached = try storedWeeklyTimer()
         let interval = manual ? Self.timerManualInterval : Self.timerInterval
         if let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
+        if try endpointRefusedUntil(Self.timerFetchKey) != nil { return cached }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return cached }
         switch try store.reserveFetch(key: Self.timerFetchKey, minInterval: interval, now: t) {
         case .throttled, .blocked, .credentialsRejected:
@@ -90,6 +151,9 @@ extension HeatPumpService {
                 return timer
             } catch {
                 _ = try handleAwayError(error, now: t)
+                if try isRefusal(error) {
+                    try store.recordKeyRefusal(key: Self.timerFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
+                }
                 return cached
             }
         }
@@ -103,7 +167,7 @@ extension HeatPumpService {
         _ change: AwayChange, source: ChangeSource, reason: String, approver: (any ChangeApprover)? = nil
     ) async throws -> ChangeOutcome {
         let t = now()
-        let current = try storedAwaySettings()
+        var current = try storedAwaySettings()
         func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
             try store.logChange(
                 ChangeRecord(
@@ -118,12 +182,17 @@ extension HeatPumpService {
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
             return try reject("Ingen status fra varmepumpen ennå.")
         }
+        // Holiday mode may leave the unit off: it needs frost protection known to be on (read at
+        // most hourly), and frost protection is not switched off during a holiday.
+        current = try await awaySettings()
+        if let problem = change.safetyProblem(current: current, now: t) { return try reject(problem) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
         }
         if let approver {
-            let decision = await approver.requestApproval(ApprovalRequest(summaries: [change.displaySummary], reason: reason))
+            let decision = await approver.requestApproval(
+                ApprovalRequest(summaries: [change.displaySummary(frost: current?.frost)], reason: reason))
             guard decision == .approved else { return try reject(decision.rejectionText) }
         }
         var waited: TimeInterval = 0
@@ -148,10 +217,17 @@ extension HeatPumpService {
                     try store.finishChange(ids: ids, result: .ok)
                     var updated = change.applied(to: current ?? AwaySettings())
                     updated.pendingSince = at
+                    updated.sentAt = at
                     try store.saveSetting(updated, key: Self.awaySettingsKey)
+                    // Read back once so the page can show what MELCloud stored next to what was sent.
+                    var readBack = false
+                    if try store.reserveFetch(key: Self.awayVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed {
+                        readBack = (try? await readAway(deviceId: deviceId, keeping: updated, at: now())) != nil
+                    }
                     return ChangeOutcome(
                         result: .ok,
-                        message: "Sendt: \(change.displaySummary). MELCloud bekrefter ved neste henting (høyst én gang i timen).",
+                        message: "Sendt: \(change.displaySummary(frost: current?.frost))."
+                            + (readBack ? " Sjekk at MELCloud viser det samme (vises på siden)." : " MELCloud bekrefter ved neste henting (høyst én gang i timen)."),
                         field: change.field, oldValue: change.currentValue(in: current), newValue: change.valueDescription)
                 } catch {
                     let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

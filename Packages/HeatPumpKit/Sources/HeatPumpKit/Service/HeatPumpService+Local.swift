@@ -309,8 +309,9 @@ extension HeatPumpService {
     }
 
     /// Stretches of running, rest, defrost, start-up and off from local readings (for charts).
-    public func localPhaseSpans(from: Date, to: Date) throws -> [LocalPhaseSpan] {
-        try store.localPhaseSpans(from: from, to: to)
+    /// `resolution` 0 gives exact stretches; above a minute, the dominant kind per bucket, merged.
+    public func localPhaseSpans(from: Date, to: Date, resolution: TimeInterval = 0) throws -> [LocalPhaseSpan] {
+        try store.localPhaseSpans(from: from, to: to, resolution: resolution)
     }
 
     /// `get_live_status`: latest reading, starts in the last 1/3/24 h and power over the last hour.

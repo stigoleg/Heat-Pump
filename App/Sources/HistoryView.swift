@@ -26,6 +26,7 @@ struct HistoryView: View {
     @State private var forecast: [ForecastHour] = []
     @State private var houseShare: HouseShareSummary?
     @State private var phaseSpans: [LocalPhaseSpan] = []
+    @State private var defrostSpans: [LocalPhaseSpan] = []
     @State private var showCost = false
     @State private var selected: Date?
     @State private var selectedPrice: Date?
@@ -75,7 +76,8 @@ struct HistoryView: View {
         // Local phases (running, rest, defrost) for Drift and Effekt.
         .task(id: "\(range.rawValue)-\(model.revision)-\(tab == .power || tab == .operation)") {
             guard tab == .power || tab == .operation else { return }
-            phaseSpans = await model.phaseSpans(range: range)
+            if tab == .operation { phaseSpans = await model.phaseSpans(range: range) }
+            if tab == .power { defrostSpans = await model.defrostSpans(range: range) }
         }
         .onChange(of: tab) { selected = nil }
         .onAppear {
@@ -402,7 +404,8 @@ struct HistoryView: View {
                                 }
                         }
                     }
-                    .chartXScale(domain: periodStart...Date())
+                    // Day bars reach to the end of today (and hour bars to the end of this hour).
+                    .chartXScale(domain: periodStart...houseDomainEnd(perHour: perHour))
                     .calmYAxis { Norwegian.format("%.0f", $0) }
                     .calmXAxis(perHour ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat)
                     .chartXSelection(value: $selected)
@@ -416,6 +419,12 @@ struct HistoryView: View {
                     + (tibberCost > 0 ? "Huset kostet \(Format.kroner(tibberCost)) i perioden ifølge Tibber (strøm, uten nettleie)." : ""))
                 .font(.callout).foregroundStyle(.secondary)
         }
+    }
+
+    private func houseDomainEnd(perHour: Bool) -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        return (perHour ? calendar.dateInterval(of: .hour, for: now)?.end : calendar.dateInterval(of: .day, for: now)?.end) ?? now
     }
 
     private struct HouseBar {
@@ -658,7 +667,8 @@ struct HistoryView: View {
             Text(
                 "Øverste rad viser om varmepumpen var på (grønn) eller av (grå). Neste rad viser modus."
                     + (phaseSpans.isEmpty
-                        ? "" : " Raden «Lokalt» kommer fra Wi-Fi-modulen: oransje når kompressoren går, grå når den hviler (ønsket temperatur nådd), og turkis når utedelen avriser. Avriming er normalt i fuktig kulde."))
+                        ? "" : " Raden «Lokalt» kommer fra Wi-Fi-modulen: indigo når kompressoren går, grå når den hviler, gul ved oppstart og rosa når utedelen avriser. Avriming er normalt i fuktig kulde."
+                            + (range == .day ? "" : " For lengre perioder vises det som dominerte hvert tidsrom.")))
                 .font(.callout).foregroundStyle(.secondary)
         }
     }
@@ -753,7 +763,7 @@ struct HistoryView: View {
 
     private func powerChart(_ buckets: [LocalPowerBucket]) -> some View {
         Chart {
-            ForEach(Array(phaseSpans.filter { $0.kind == .defrost }.enumerated()), id: \.offset) { _, span in
+            ForEach(Array(defrostSpans.enumerated()), id: \.offset) { _, span in
                 RectangleMark(xStart: .value("Fra", span.start), xEnd: .value("Til", max(span.end, span.start.addingTimeInterval(range == .day ? 120 : 600))))
                     .foregroundStyle(LocalPhaseSpan.Kind.defrost.color.opacity(0.25))
             }

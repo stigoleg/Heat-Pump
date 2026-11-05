@@ -21,7 +21,7 @@ public enum LocalPhase: String, Codable, Sendable, CaseIterable {
         case .defrost: "Avriser – det kan blåse lite eller kaldt i noen minutter"
         case .preheat: "Forvarmer"
         case .warmup: "Starter opp"
-        case .standby, .resting: "Hviler (ønsket temperatur nådd)"
+        case .standby, .resting: "Hviler – kompressoren står"
         case .heating: "Varmer"
         case .cooling: "Kjøler"
         case .drying: "Avfukter"
@@ -39,7 +39,7 @@ public enum LocalPhase: String, Codable, Sendable, CaseIterable {
         case .preheat: "Innedelen varmes opp før viften starter for fullt, så den ikke blåser kald luft."
         case .warmup: "Varmepumpen har nettopp startet og kommer i gang."
         case .standby, .resting:
-            "Kompressoren står fordi rommet er varmt nok. Den starter igjen av seg selv når temperaturen faller."
+            "Kompressoren står. Det skjer når rommet er varmt nok, og ellers en kort stund mellom to runder. Den starter igjen av seg selv."
         case .heating: "Kompressoren går og varmer rommet."
         case .cooling: "Kompressoren går og kjøler rommet."
         case .drying: "Varmepumpen tar fukt ut av lufta."

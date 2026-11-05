@@ -40,7 +40,14 @@ struct LocalPhaseTests {
         #expect(sample(subMode: 0, running: false, power: false).phase == .off)
         #expect(sample(subMode: 0x10, running: false).phase == .off)
         #expect(LocalPhase.defrost.statusLine == "Avriser – det kan blåse lite eller kaldt i noen minutter")
-        #expect(LocalPhase.standby.statusLine == "Hviler (ønsket temperatur nådd)")
+        #expect(LocalPhase.standby.statusLine == "Hviler – kompressoren står")
+        // "Ønsket temperatur nådd" only when the room is at or above the setpoint.
+        var resting = sample(subMode: 0, running: false)
+        resting.setTemperature = 21
+        resting.roomTemperature = 20.5
+        #expect(resting.statusLine == "Hviler – kompressoren står")
+        resting.roomTemperature = 21
+        #expect(resting.statusLine == "Hviler (ønsket temperatur nådd)")
         #expect(LocalSample(timestamp: date).phase == nil)
     }
 
@@ -93,6 +100,25 @@ struct LocalPhaseTests {
         #expect(spans[1].end == start.addingTimeInterval(900))
         #expect(spans[2].end == start.addingTimeInterval(30 * 60))  // last reading + 1 min before the gap
         #expect(spans[3].start == start.addingTimeInterval(50 * 60))
+    }
+
+    @Test func coarseSpansMergeAndDownsample() throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let start = date
+        // Two hours of 12-minute cycles: 6 min running, 6 min resting, one 5-minute defrost.
+        try store.insertLocalSamples((0..<120).map { m in
+            var s = sample(subMode: (60..<65).contains(m) ? 2 : 0, running: m % 12 < 6)
+            s.timestamp = start.addingTimeInterval(Double(m) * 60)
+            return s
+        })
+        let exact = try store.localPhaseSpans(from: start, to: start.addingTimeInterval(7200))
+        #expect(exact.count > 15)
+        let coarse = try store.localPhaseSpans(from: start, to: start.addingTimeInterval(7200), resolution: 1800)
+        // 30-minute buckets keep only the dominant kind, merged: far fewer rectangles.
+        #expect(coarse.count <= 4)
+        #expect(coarse.first?.start == start)
+        #expect(coarse.last?.end == start.addingTimeInterval(7200))
+        #expect(zip(coarse, coarse.dropFirst()).allSatisfy { $0.kind != $1.kind || $0.end < $1.start })
     }
 
     func hours(_ count: Int, endingAt end: Date, defrosts: Int, defrostMinutes: Double, outdoor: Double = -2) -> [LocalPowerBucket] {

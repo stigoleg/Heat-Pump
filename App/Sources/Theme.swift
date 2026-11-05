@@ -102,9 +102,10 @@ extension LocalPhase {
 extension LocalPhaseSpan.Kind {
     var color: Color {
         switch self {
-        case .running: Color.orange.opacity(0.75)
+        // Distinct from the mode colours (orange heat, teal dry, blue cool, purple auto).
+        case .running: Color.indigo.opacity(0.75)
         case .rest: Color.gray.opacity(0.35)
-        case .defrost: Color.cyan.opacity(0.85)
+        case .defrost: Color.pink.opacity(0.85)
         case .startup: Color.yellow.opacity(0.8)
         case .off: Color.gray.opacity(0.15)
         case .unknown: Color.gray.opacity(0.1)

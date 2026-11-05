@@ -338,7 +338,11 @@ final class AppModel {
             weatherSettings = try await service.weatherSettings()
             tomorrow = try await service.tomorrowEstimate()
             away = try await service.storedAwaySettings()
+            if let until = try await service.endpointRefusedUntil(HeatPumpService.awayFetchKey) {
+                away?.refusedUntil = until
+            }
             weeklyTimer = try await service.storedWeeklyTimer()
+            timerRefusedUntil = try await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
         } catch {
             lastError = error.localizedDescription
         }
@@ -414,10 +418,20 @@ final class AppModel {
     }
 
     /// Stretches of running, rest and defrost from local readings (not for 1 år: too many).
+    /// Longer ranges are downsampled to the dominant kind per bucket (≥ 10 minutes, at most about
+    /// a thousand buckets) so Drift draws a few hundred rectangles, not thousands.
     func phaseSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
         guard let service, range != .year else { return [] }
         let to = Date()
-        return (try? await service.localPhaseSpans(from: range.start(now: to), to: to)) ?? []
+        let resolution = range == .day ? 0 : max(600, range.seconds / 1000)
+        return (try? await service.localPhaseSpans(from: range.start(now: to), to: to, resolution: resolution)) ?? []
+    }
+
+    /// Exact defrost stretches for the Effekt chart (a few per day).
+    func defrostSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
+        guard let service, range != .year else { return [] }
+        let to = Date()
+        return ((try? await service.localPhaseSpans(from: range.start(now: to), to: to)) ?? []).filter { $0.kind == .defrost }
     }
 
     // MARK: Weather settings
@@ -438,24 +452,39 @@ final class AppModel {
     // MARK: Away
 
     /// Sends a frost-protection or holiday-mode change after the user confirmed it in a sheet.
-    func applyAway(_ change: AwayChange) async -> ChangeOutcome? {
-        guard let service else { return nil }
-        let outcome = try? await service.applyAway(change, source: .app, reason: "Endret i appen (Borte hjemmefra)")
+    /// Returns whether it was sent and a Norwegian message (also for unexpected errors).
+    func applyAway(_ change: AwayChange) async -> (ok: Bool, message: String) {
+        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        let result: (Bool, String)
+        do {
+            let outcome = try await service.applyAway(change, source: .app, reason: "Endret i appen (Borte hjemmefra)")
+            result = (outcome.result == .ok, outcome.message)
+        } catch {
+            result = (false, "Endringen kunne ikke behandles: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+        }
         await reloadLocal()
         await debouncer?.refreshBudget()
-        return outcome
+        return result
     }
 
-    /// Reads frost protection and holiday mode (MELCloud at most hourly).
-    func loadAway() async {
+    /// Reads frost protection and holiday mode (MELCloud at most hourly; `manual` = "Prøv igjen").
+    func loadAway(manual: Bool = false) async {
         guard let service else { return }
-        away = try? await service.awaySettings()
+        do {
+            away = try await service.awaySettings(manual: manual)
+        } catch {
+            lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
     }
 
-    /// "Hent ukeplan nå": at most every 10 minutes.
+    /// When MELCloud refused to let the account read the weekly timer (reads paused until then).
+    var timerRefusedUntil: Date?
+
+    /// "Hent ukeplan nå": at most every 10 minutes; lifts a refusal pause.
     func refreshWeeklyTimer() async {
         guard let service else { return }
         weeklyTimer = try? await service.weeklyTimer(manual: true)
+        timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
     }
 
     // MARK: Appearance

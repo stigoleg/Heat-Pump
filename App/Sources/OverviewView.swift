@@ -125,7 +125,7 @@ struct OverviewView: View {
     @ViewBuilder private var phaseLine: some View {
         if let sample = model.liveSample, let phase = sample.phase, phase != .off {
             Label {
-                Text(phase.statusLine).fixedSize(horizontal: false, vertical: true)
+                Text(sample.statusLine ?? phase.statusLine).fixedSize(horizontal: false, vertical: true)
             } icon: {
                 Image(systemName: phase.systemImage).foregroundStyle(phase.tint)
             }

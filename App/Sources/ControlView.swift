@@ -407,7 +407,14 @@ struct WeeklyTimerSection: View {
                 .help("Henter ukeplanen fra MELCloud (høyst hvert 10. minutt; ellers automatisk hver 6. time).")
             }
             CardSurface {
-                if let timer = model.weeklyTimer {
+                if let until = model.timerRefusedUntil {
+                    Label(
+                        "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen \(Format.relative(until)), eller trykk «Hent nå».",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else if let timer = model.weeklyTimer {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         Label(
                             timer.enabled == true ? "Ukeplanen er på" : timer.enabled == false ? "Ukeplanen er av" : "Ukjent om ukeplanen er på",

@@ -183,8 +183,8 @@ enum ToolCatalog {
                 "type": "object",
                 "properties": [
                     "enabled": ["type": "boolean"],
-                    "minimum": ["type": "number", "minimum": 4, "maximum": 14, "description": "°C (default: current or 8)."],
-                    "maximum": ["type": "number", "minimum": 6, "maximum": 16, "description": "°C (default: current or 12)."],
+                    "minimum": ["type": "number", "minimum": 4, "maximum": 14, "description": "°C (default: the current value; required when it is unknown). 8 or more is recommended."],
+                    "maximum": ["type": "number", "minimum": 6, "maximum": 16, "description": "°C (default: the current value; required when it is unknown)."],
                     "reason": reasonProperty,
                 ],
                 "required": ["enabled", "reason"],
@@ -192,7 +192,7 @@ enum ToolCatalog {
             annotations: writeAnnotations()),
         Tool(
             name: "set_holiday_mode",
-            description: "Switch MELCloud holiday mode on (with start and end, local time) or off. While on, the unit holds the frost-protection range instead of its normal settings, so check get_away_settings first. \(writeWarning) Counts toward the 12 writes per hour.",
+            description: "Switch MELCloud holiday mode on (with start and end, local time) or off. While on, the unit may stand off and only frost protection keeps the house from getting cold, so holiday mode is refused unless frost protection is on (turn it on first with set_frost_protection, 8–12 °C is typical); frost protection cannot be switched off during a holiday. Check get_away_settings first. \(writeWarning) Counts toward the 12 writes per hour.",
             inputSchema: [
                 "type": "object",
                 "properties": [
