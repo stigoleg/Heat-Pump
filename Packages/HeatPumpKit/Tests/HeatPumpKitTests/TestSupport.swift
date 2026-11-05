@@ -67,10 +67,10 @@ actor CountingBackend: HeatPumpBackend {
         try maybeThrow()
         return try await inner.fetchState(deviceId: deviceId)
     }
-    func apply(_ changes: ChangeSet) async throws {
+    func apply(_ changes: ChangeSet) async throws -> DeviceState? {
         applyCalls += 1
         try maybeThrow()
-        try await inner.apply(changes)
+        return try await inner.apply(changes)
     }
     func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {
         reportCalls += 1

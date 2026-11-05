@@ -13,17 +13,25 @@ struct ClassicBackendTests {
         #expect(ClassicEffectiveFlags.vaneHorizontal.rawValue == 0x100)
     }
 
-    @Test func setAtaPayloadSingleField() {
-        let body = MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 100001, buildingId: 1, setTemperature: 21.5))
+    @Test func setAtaPayloadSingleFieldKeepsFullObject() throws {
+        let raw = try Fixture.json("device_get_full")
+        let body = try MELCloudClassicParser.setAtaPayload(
+            ChangeSet(deviceId: 100001, buildingId: 1, setTemperature: 21.5), raw: raw)
         #expect(body["EffectiveFlags"] == .number(0x04))
         #expect(body["SetTemperature"] == .number(21.5))
         #expect(body["DeviceID"] == .number(100001))
         #expect(body["HasPendingCommand"] == .bool(true))
-        #expect(body["Power"] == nil)
-        #expect(body["OperationMode"] == nil)
+        // Unchanged fields go out with their current values, never as defaults.
+        #expect(body["Power"] == .bool(true))
+        #expect(body["OperationMode"] == .number(1))
+        #expect(body["SetFanSpeed"] == .number(0))
+        #expect(body["VaneHorizontal"] == .number(3))
+        #expect(body["VaneVertical"] == .number(0))
+        #expect(body["DefaultHeatingSetTemperature"] == .number(23))
     }
 
-    @Test func setAtaPayloadEachFieldAndCombined() {
+    @Test func setAtaPayloadEachFieldAndCombined() throws {
+        let raw = try Fixture.json("device_get_full")
         let cases: [(ChangeSet, Int, String, JSONValue)] = [
             (ChangeSet(deviceId: 1, buildingId: 1, power: false), 0x01, "Power", .bool(false)),
             (ChangeSet(deviceId: 1, buildingId: 1, mode: .cool), 0x02, "OperationMode", .number(3)),
@@ -32,27 +40,79 @@ struct ClassicBackendTests {
             (ChangeSet(deviceId: 1, buildingId: 1, vaneHorizontal: .split), 0x100, "VaneHorizontal", .number(8)),
         ]
         for (changes, flags, key, value) in cases {
-            let body = MELCloudClassicParser.setAtaPayload(changes)
+            let body = try MELCloudClassicParser.setAtaPayload(changes, raw: raw)
             #expect(body["EffectiveFlags"] == .number(Double(flags)), "\(key)")
             #expect(body[key] == value, "\(key)")
         }
-        let combined = MELCloudClassicParser.setAtaPayload(
-            ChangeSet(deviceId: 1, buildingId: 1, power: true, mode: .heat, setTemperature: 22))
+        let combined = try MELCloudClassicParser.setAtaPayload(
+            ChangeSet(deviceId: 1, buildingId: 1, power: true, mode: .heat, setTemperature: 22), raw: raw)
         #expect(combined["EffectiveFlags"] == .number(0x07))
     }
 
+    @Test func powerOnlyChangeKeepsSetpointAndMode() throws {
+        let raw = try Fixture.json("device_get_full")
+        let body = try MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 100001, buildingId: 1, power: false), raw: raw)
+        #expect(body["EffectiveFlags"] == .number(0x01))
+        #expect(body["Power"] == .bool(false))
+        #expect(body["SetTemperature"] == .number(22.5))
+        #expect(body["OperationMode"] == .number(1))
+    }
+
+    @Test func setAtaPayloadRefusesIncompleteBase() throws {
+        // A base without the fields MELCloud would otherwise reset is never sent.
+        let partial: JSONValue = .object(["DeviceID": .number(1), "SetTemperature": .number(21)])
+        #expect(throws: HeatPumpError.self) {
+            try MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 1, buildingId: 1, setTemperature: 22), raw: partial)
+        }
+        var invalidMode = try Fixture.json("device_get_full").object ?? [:]
+        invalidMode["OperationMode"] = .number(0)
+        #expect(throws: HeatPumpError.self) {
+            try MELCloudClassicParser.setAtaPayload(
+                ChangeSet(deviceId: 1, buildingId: 1, power: true), raw: .object(invalidMode))
+        }
+        // Choosing a mode in the same change makes it valid.
+        let fixed = try MELCloudClassicParser.setAtaPayload(
+            ChangeSet(deviceId: 1, buildingId: 1, power: true, mode: .heat), raw: .object(invalidMode))
+        #expect(fixed["OperationMode"] == .number(1))
+    }
+
+    @Test func partialResponseDoesNotNullMode() throws {
+        let raw = try Fixture.json("device_get_full")
+        let merged = MELCloudClassicParser.merged(raw: raw, response: try Fixture.json("setata_response_partial"))
+        #expect(merged["OperationMode"] == .number(1))
+        #expect(merged["Power"] == .bool(true))
+        #expect(merged["SetTemperature"] == .number(23))
+        let zeroMode = MELCloudClassicParser.merged(raw: raw, response: .object(["OperationMode": .number(0)]))
+        #expect(zeroMode["OperationMode"] == .number(1))
+        let state = try MELCloudClassicParser.state(listing: nil, get: merged, fetchedAt: Date())
+        #expect(state.mode == .heat)
+        #expect(state.power)
+    }
+
+    @Test func stateModeSkipsInvalidValues() throws {
+        var get = try Fixture.json("device_get_full").object ?? [:]
+        get["OperationMode"] = .string("3")
+        #expect(try MELCloudClassicParser.state(listing: nil, get: .object(get), fetchedAt: Date()).mode == .cool)
+        get["OperationMode"] = .number(0)
+        let listing: JSONValue = .object(["DeviceID": .number(100001), "Device": .object(["OperationMode": .number(1)])])
+        #expect(try MELCloudClassicParser.state(listing: listing, get: .object(get), fetchedAt: Date()).mode == .heat)
+    }
+
     @Test func payloadEncodesIntegersWithoutFraction() throws {
-        let body = MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 100001, buildingId: 1, setTemperature: 21))
+        let body = try MELCloudClassicParser.setAtaPayload(
+            ChangeSet(deviceId: 100001, buildingId: 1, setTemperature: 21), raw: try Fixture.json("device_get_full"))
         let text = String(decoding: try JSONEncoder().encode(JSONValue.object(body)), as: UTF8.self)
         #expect(text.contains("\"DeviceID\":100001"))
         #expect(text.contains("\"EffectiveFlags\":4"))
     }
 
-    private func makeBackend(_ transport: StubTransport, contextKey: String? = nil) -> MELCloudClassicBackend {
+    private func makeBackend(
+        _ transport: StubTransport, contextKey: String? = nil, cache: (any RawDeviceCache)? = nil
+    ) -> MELCloudClassicBackend {
         MELCloudClassicBackend(
             credentials: InMemoryCredentialStore(
                 credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: contextKey),
-            transport: transport, timeZone: .gmt, now: { Date(timeIntervalSince1970: 1_793_872_800) })
+            transport: transport, timeZone: .gmt, rawCache: cache, now: { Date(timeIntervalSince1970: 1_793_872_800) })
     }
 
     @Test func loginThenFetchState() async throws {
@@ -122,16 +182,57 @@ struct ClassicBackendTests {
         await #expect(throws: HeatPumpError.loginThrottled(until: until)) { try await makeBackend(throttled).login() }
     }
 
-    @Test func applySendsSetAta() async throws {
+    @Test func applySendsFullObjectAndUsesResponse() async throws {
         let transport = StubTransport()
-        transport.enqueue("/Device/SetAta", body: try Fixture.data("setata_response"))
+        transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
+        transport.enqueue("/Device/Get", body: try Fixture.data("device_get_full"))
+        transport.enqueue("/Device/SetAta", body: try Fixture.data("setata_response_partial"))
         let backend = makeBackend(transport, contextKey: "KEY")
-        try await backend.apply(ChangeSet(deviceId: 100001, buildingId: 200001, setTemperature: 21.5))
-        let request = try #require(transport.requests.first)
-        #expect(request.httpMethod == "POST")
+        _ = try await backend.fetchState(deviceId: 100001)
+        let state = try await backend.apply(ChangeSet(deviceId: 100001, buildingId: 200001, setTemperature: 23))
+        let request = try #require(transport.requests.last)
+        #expect(request.url?.path.hasSuffix("/Device/SetAta") == true)
         let body = try JSONValue.parse(request.httpBody ?? Data())
         #expect(body["EffectiveFlags"]?.int == 4)
-        #expect(body["SetTemperature"]?.double == 21.5)
+        #expect(body["SetTemperature"]?.double == 23)
+        #expect(body["Power"]?.bool == true)
+        #expect(body["OperationMode"]?.int == 1)
+        #expect(body["SetFanSpeed"]?.int == 0)
+        #expect(body["VaneHorizontal"]?.int == 3)
+        #expect(body["VaneVertical"]?.int == 0)
+        #expect(body["HasPendingCommand"]?.bool == true)
+        // The partial response (mode/power null) keeps the previous values.
+        #expect(state?.mode == .heat)
+        #expect(state?.power == true)
+        #expect(state?.setTemperature == 23)
+        #expect(state?.name == "Stue")
+    }
+
+    @Test func applyWithoutDeviceObjectSendsNothing() async throws {
+        let transport = StubTransport()
+        let backend = makeBackend(transport, contextKey: "KEY")
+        await #expect(throws: HeatPumpError.self) {
+            _ = try await backend.apply(ChangeSet(deviceId: 100001, buildingId: 200001, setTemperature: 21.5))
+        }
+        #expect(transport.requests.isEmpty)
+    }
+
+    @Test func deviceObjectIsSharedThroughTheCache() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let first = StubTransport()
+        first.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
+        first.enqueue("/Device/Get", body: try Fixture.data("device_get_full"))
+        _ = try await makeBackend(first, contextKey: "KEY", cache: store).fetchState(deviceId: 100001)
+        // A second process (e.g. the MCP helper) writes without its own Device/Get.
+        let second = StubTransport()
+        second.enqueue("/Device/SetAta", body: try Fixture.data("setata_response"))
+        let other = makeBackend(second, contextKey: "KEY", cache: store)
+        #expect(await other.writeBaseFetchedAt(deviceId: 100001) != nil)
+        _ = try await other.apply(ChangeSet(deviceId: 100001, buildingId: 200001, power: false))
+        let body = try JSONValue.parse(try #require(second.requests.first?.httpBody))
+        #expect(body["Power"]?.bool == false)
+        #expect(body["OperationMode"]?.int == 1)
+        #expect(body["SetTemperature"]?.double == 22.5)
     }
 
     @Test func missingCredentials() async {

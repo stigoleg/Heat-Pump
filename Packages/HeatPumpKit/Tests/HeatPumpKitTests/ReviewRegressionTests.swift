@@ -264,7 +264,7 @@ struct ReviewRegressionTests {
         #expect(first.power == true && first.mode == .heat && first.setTemperature == 22 && first.fanSpeed == 3)
         #expect(first.vaneVertical == .position5 && first.vaneHorizontal == nil)
         #expect(sets.last?.vaneHorizontal == .swing && sets.last?.setTemperature == nil)
-        let flags = MELCloudClassicParser.setAtaPayload(first)["EffectiveFlags"]
+        let flags = try MELCloudClassicParser.setAtaPayload(first, raw: try Fixture.json("device_get_full"))["EffectiveFlags"]
         #expect(flags == .number(Double(0x01 | 0x02 | 0x04 | 0x08 | 0x10)))
         // The budget counts requests, not fields.
         let batches = Set(try store.changes(limit: 10).map(\.timestamp))

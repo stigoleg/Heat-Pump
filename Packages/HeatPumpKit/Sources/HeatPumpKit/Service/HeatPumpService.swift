@@ -19,6 +19,8 @@ public actor HeatPumpService {
     public static let unauthorizedBlock: TimeInterval = 3600
     /// Longest a write waits for the cross-process spacing before giving up.
     public static let maxWriteWait: TimeInterval = 10
+    /// Oldest device object a MELCloud write may be based on; older means a fresh read first.
+    public static let writeBaseMaxAge: TimeInterval = 60
 
     public nonisolated let backend: any HeatPumpBackend
     public nonisolated let store: HistoryStore
@@ -56,7 +58,7 @@ public actor HeatPumpService {
         }
         let credentials = KeychainCredentialStore(environment: environment)
         return HeatPumpService(
-            backend: MELCloudClassicBackend(credentials: credentials), store: store, credentials: credentials)
+            backend: MELCloudClassicBackend(credentials: credentials, rawCache: store), store: store, credentials: credentials)
     }
 
     public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
@@ -291,8 +293,10 @@ public actor HeatPumpService {
             try store.upsertErrorEvents(entries)
             return entries.count
         case .temperatureLog:
+            // At most a week per request; the web app asks for short ranges too.
             let latest = try store.latestTemperaturePointDate(deviceId: deviceId)
-            let from = max(t.addingTimeInterval(-30 * 86_400), latest ?? .distantPast)
+            let maxDays = Double(MELCloudClassicParser.maxTemperatureRangeDays)
+            let from = max(t.addingTimeInterval(-maxDays * 86_400), latest ?? .distantPast)
             guard let range = interval(from, t) else { return 0 }
             let points = try await backend.fetchTemperatureLog(deviceId: deviceId, range: range)
             try store.upsertTemperaturePoints(points, deviceId: deviceId)
@@ -429,6 +433,9 @@ public actor HeatPumpService {
 
         var outcomes: [ChangeOutcome] = []
         var current = start
+        if let problem = try await refreshWriteBase(deviceId: start.deviceId) {
+            return try rejectAll(normalized, source: source, reason: reason, state: start, error: problem, now: now())
+        }
         for (index, request) in requests.enumerated() {
             let sent = try await send(request, base: current, source: source, reason: reason)
             outcomes += sent.outcomes
@@ -480,10 +487,19 @@ public actor HeatPumpService {
                 var changeSet = ChangeSet(deviceId: base.deviceId, buildingId: base.buildingId)
                 for change in request { Self.merge(change, into: &changeSet) }
                 do {
-                    try await backend.apply(changeSet)
+                    let reported = try await backend.apply(changeSet)
                     try store.finishChange(ids: ids, result: .ok)
-                    let expected = request.reduce(base) { $1.applied(to: $0) }
+                    var expected = request.reduce(base) { $1.applied(to: $0) }
                     try store.saveExpectedState(expected, at: t)
+                    if var reported {
+                        // A field the response leaves out keeps its value; the mode never
+                        // becomes unknown because of a write.
+                        if reported.mode == nil { reported.mode = expected.mode }
+                        if reported.setTemperature == nil { reported.setTemperature = expected.setTemperature }
+                        try store.insertSnapshot(reported)
+                        expected = request.reduce(reported) { $1.applied(to: $0) }
+                    }
+                    // Not confirmed by the unit yet: the next refresh fetches again.
                     try store.markLatestSnapshotStale(deviceId: base.deviceId)
                     let outcomes = request.map { change in
                         ChangeOutcome(
@@ -503,6 +519,41 @@ public actor HeatPumpService {
                     }
                     return (outcomes, base)
                 }
+            }
+        }
+    }
+
+    /// MELCloud Classic writes send the whole device object, so it must be recent. When the
+    /// backend's copy is missing or older than `writeBaseMaxAge`, one `Device/Get` is made under
+    /// the normal refresh rules. Returns a Norwegian reason when the write must not be sent.
+    private func refreshWriteBase(deviceId: Int) async throws -> String? {
+        guard backend.requiresFreshStateForWrites else { return nil }
+        func isFresh() async -> Bool {
+            guard let at = await backend.writeBaseFetchedAt(deviceId: deviceId) else { return false }
+            return now().timeIntervalSince(at) < Self.writeBaseMaxAge
+        }
+        if await isFresh() { return nil }
+        let t = now()
+        switch try store.reserveFetch(key: Self.stateKey, minInterval: Self.minRefreshInterval, now: t) {
+        case .credentialsRejected:
+            return HeatPumpError.credentialsRejected.errorDescription
+        case .blocked(let until):
+            return (try store.blockStatus(now: t)?.reason ?? .rateLimited).message(until: until)
+        case .throttled(let next):
+            // Another process may have just fetched and stored the device object.
+            if await isFresh() { return nil }
+            return "Endringen ble ikke sendt fordi appen først må hente fersk status fra varmepumpen, "
+                + "og det er hentet nylig. Prøv igjen etter \(Norwegian.time(next))."
+        case .allowed:
+            do {
+                let state = try await backend.fetchState(deviceId: deviceId)
+                try store.insertSnapshot(state)
+                try store.recordFetchSuccess(key: Self.stateKey, now: t)
+                return nil
+            } catch let error as HeatPumpError {
+                try handleBlock(error, now: t)
+                return "Endringen ble ikke sendt fordi status fra varmepumpen ikke kunne hentes først: "
+                    + (error.errorDescription ?? "ukjent feil")
             }
         }
     }
@@ -676,6 +727,24 @@ public actor HeatPumpService {
             }
         }
         return points.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    /// Temperature history for charts: MELCloud's temperature log, completed with the app's own
+    /// snapshots after the last log point. When MELCloud has nothing, snapshots alone are used
+    /// (`fromMELCloud` false) so the chart still shows what has been seen while the app ran.
+    public func temperatureHistory(from: Date, to: Date) throws -> TemperatureHistory {
+        guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
+            return TemperatureHistory(points: [], fromMELCloud: false)
+        }
+        let log = try store.temperaturePoints(deviceId: deviceId, from: from, to: to)
+        let after = log.last?.timestamp ?? .distantPast
+        let own = try store.snapshots(deviceId: deviceId, from: from, to: to).compactMap { s -> TemperaturePoint? in
+            guard s.fetchedAt > after, s.roomTemperature != nil || s.outdoorTemperature != nil else { return nil }
+            return TemperaturePoint(
+                timestamp: s.fetchedAt, room: s.roomTemperature, set: s.power ? s.setTemperature : nil,
+                outdoor: s.outdoorTemperature)
+        }
+        return TemperatureHistory(points: log + own, fromMELCloud: !log.isEmpty)
     }
 
     public func energy(period: EnergyPeriod, from: Date, to: Date) throws -> [EnergyBucket] {

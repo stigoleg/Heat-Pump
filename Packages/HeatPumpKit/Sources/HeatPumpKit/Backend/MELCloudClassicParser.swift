@@ -112,7 +112,7 @@ enum MELCloudClassicParser {
             serialNumber: value("SerialNumber")?.string,
             macAddress: value("MacAddress")?.string,
             power: value("Power")?.bool ?? false,
-            mode: value("OperationMode")?.int.flatMap(OperationMode.init(rawValue:)),
+            mode: mode(get: get, device: device, listing: listing),
             setTemperature: value("SetTemperature")?.double,
             roomTemperature: value("RoomTemperature")?.double,
             outdoorTemperature: hasOutdoor ? value("OutdoorTemperature")?.double : nil,
@@ -146,15 +146,32 @@ enum MELCloudClassicParser {
             fetchedAt: fetchedAt)
     }
 
+    /// First valid operation mode from `Device/Get`, then the listing. A value that is not a
+    /// known mode (for example 0) is skipped rather than turning the whole mode into nil.
+    static func mode(get: JSONValue?, device: JSONValue?, listing: JSONValue?) -> OperationMode? {
+        for source in [get, device, listing] {
+            for key in ["OperationMode", "OperationModeAta"] {
+                if let raw = source?[key]?.int, let mode = OperationMode(rawValue: raw) { return mode }
+            }
+        }
+        return nil
+    }
+
     // MARK: SetAta
 
-    /// Builds the minimal `Device/SetAta` body: id, flags, pending marker and changed fields only.
-    static func setAtaPayload(_ changes: ChangeSet) -> [String: JSONValue] {
+    /// Fields MELCloud resets to defaults (power off, mode 0) when they are missing from a
+    /// `Device/SetAta` body. A body without all of them is never sent.
+    static let requiredSetAtaKeys = ["Power", "OperationMode", "SetTemperature", "SetFanSpeed", "VaneHorizontal", "VaneVertical"]
+
+    /// Builds the `Device/SetAta` body: the full device object from the last `Device/Get`
+    /// (MELCloud takes omitted fields as defaults) with the changes applied, `EffectiveFlags`
+    /// set to the changed fields only and `HasPendingCommand` true. Same approach as pymelcloud.
+    static func setAtaPayload(_ changes: ChangeSet, raw: JSONValue) throws -> [String: JSONValue] {
+        guard var body = raw.object else {
+            throw HeatPumpError.validation("Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt.")
+        }
         var flags = ClassicEffectiveFlags()
-        var body: [String: JSONValue] = [
-            "DeviceID": .number(Double(changes.deviceId)),
-            "HasPendingCommand": .bool(true),
-        ]
+        body["DeviceID"] = .number(Double(changes.deviceId))
         if let power = changes.power {
             body["Power"] = .bool(power)
             flags.insert(.power)
@@ -180,7 +197,31 @@ enum MELCloudClassicParser {
             flags.insert(.vaneHorizontal)
         }
         body["EffectiveFlags"] = .number(Double(flags.rawValue))
+        body["HasPendingCommand"] = .bool(true)
+
+        let missing = requiredSetAtaKeys.filter { body[$0] == nil || body[$0]?.isNull == true }
+        guard missing.isEmpty else {
+            throw HeatPumpError.validation(
+                "Status fra varmepumpen mangler \(missing.joined(separator: ", ")), så endringen ble ikke sendt.")
+        }
+        // An unknown mode would be sent back as-is and could leave the unit in a bad state.
+        guard let mode = body["OperationMode"]?.int, OperationMode(rawValue: mode) != nil else {
+            throw HeatPumpError.validation(
+                "Varmepumpen rapporterer ingen gyldig modus. Velg modus (for eksempel Varme) samtidig med endringen.")
+        }
         return body
+    }
+
+    /// New device object after a write: the old object with every non-null field of the
+    /// `SetAta` response laid over it. A short or partial response never removes a field.
+    static func merged(raw: JSONValue, response: JSONValue) -> JSONValue {
+        guard var base = raw.object else { return response }
+        for (key, value) in response.object ?? [:] where !value.isNull {
+            // An unknown mode in the response must not replace a known one.
+            if key == "OperationMode", OperationMode(rawValue: value.int ?? -1) == nil { continue }
+            base[key] = value
+        }
+        return .object(base)
     }
 
     // MARK: Reports
@@ -207,25 +248,107 @@ enum MELCloudClassicParser {
         }
     }
 
-    /// Series order assumed for ATA `Report/GetTemperatureLog2`.
-    /// Not verified against a live account; adjust here if the real order differs.
+    /// Series order for ATA `Report/GetTemperatureLog2` (melcloud-api's ATA legend:
+    /// SetTemperature, RoomTemperature, OutdoorTemperature).
     enum TemperatureSeries: Int { case set = 0, room = 1, outdoor = 2 }
 
-    /// `Report/GetTemperatureLog2` → `{ Labels: [timestamp], Data: [[series values]] }`.
-    static func temperatureLog(_ json: JSONValue, timeZone: TimeZone) -> [TemperaturePoint] {
+    /// Longest range asked for in one `Report/GetTemperatureLog2` request.
+    static let maxTemperatureRangeDays = 7
+
+    /// `Report/GetTemperatureLog2` body as the MELCloud web app sends it (melcloud-api
+    /// `ClassicTemperatureLogPostData`): DeviceID, local FromDate/ToDate, `Duration` in whole
+    /// days (rounded up) and the device's `Location` when known.
+    static func temperatureLogBody(deviceId: Int, range: DateInterval, location: Int?, timeZone: TimeZone) -> JSONValue {
+        var body: [String: JSONValue] = [
+            "DeviceID": .number(Double(deviceId)),
+            "FromDate": .string(WireDate.localTimestamp(range.start, timeZone: timeZone)),
+            "ToDate": .string(WireDate.localTimestamp(range.end, timeZone: timeZone)),
+            "Duration": .number(max(1, (range.duration / 86_400).rounded(.up))),
+        ]
+        if let location { body["Location"] = .number(Double(location)) }
+        return .object(body)
+    }
+
+    /// `Report/GetTemperatureLog2` → `{ Labels, LabelType, FromDate, ToDate, Data: [[series]] }`.
+    ///
+    /// Labels may be full timestamps, times of day ("10:00", LabelType 0) or something else.
+    /// Times of day are placed on consecutive days from `FromDate`; anything else is spread
+    /// evenly between `FromDate` and `ToDate` (or `range`). `AttributeErrors` throws.
+    static func temperatureLog(_ json: JSONValue, range: DateInterval? = nil, timeZone: TimeZone) throws -> [TemperaturePoint] {
+        if let attributeErrors = json["AttributeErrors"]?.object, !attributeErrors.isEmpty {
+            throw HeatPumpError.server(attributeErrors.keys.sorted().joined(separator: ", "))
+        }
         let labels = json["Labels"]?.array ?? []
         let series = json["Data"]?.array ?? []
         func value(_ s: TemperatureSeries, _ index: Int) -> Double? {
             guard s.rawValue < series.count, let row = series[s.rawValue].array, index < row.count else { return nil }
             return row[index].double
         }
-        return labels.enumerated().compactMap { index, label in
-            guard let ts = WireDate.parse(label.string, timeZone: timeZone) else { return nil }
+        let from = WireDate.parse(json["FromDate"]?.string, timeZone: timeZone) ?? range?.start
+        let to = WireDate.parse(json["ToDate"]?.string, timeZone: timeZone) ?? range?.end
+        let count = max(labels.count, series.compactMap { $0.array?.count }.max() ?? 0)
+        let timestamps = timestamps(labels: labels, count: count, from: from, to: to, timeZone: timeZone)
+        return (0..<count).compactMap { index in
+            guard let ts = timestamps[index] else { return nil }
             let point = TemperaturePoint(
                 timestamp: ts, room: value(.room, index), set: value(.set, index), outdoor: value(.outdoor, index))
             if point.room == nil && point.set == nil && point.outdoor == nil { return nil }
             return point
         }
+    }
+
+    private static func timestamps(
+        labels: [JSONValue], count: Int, from: Date?, to: Date?, timeZone: TimeZone
+    ) -> [Date?] {
+        guard count > 0 else { return [] }
+        let strings = (0..<count).map { $0 < labels.count ? labels[$0].string : nil }
+        let full = strings.map { WireDate.parse($0, timeZone: timeZone) }
+        if full.contains(where: { $0 != nil }) && labels.count == count { return full }
+
+        let calendar = WireDate.calendar(timeZone)
+        let times = strings.map(timeOfDay)
+        if let from, times.allSatisfy({ $0 != nil }) {
+            var day = calendar.startOfDay(for: from)
+            var previous = -1
+            return times.map { minutes -> Date? in
+                guard let minutes else { return nil }
+                if minutes < previous, let next = calendar.date(byAdding: .day, value: 1, to: day) { day = next }
+                previous = minutes
+                return day.addingTimeInterval(Double(minutes) * 60)
+            }
+        }
+        guard let from, let to, to > from else { return Array(repeating: nil, count: count) }
+        let step = count > 1 ? to.timeIntervalSince(from) / Double(count - 1) : 0
+        return (0..<count).map { from.addingTimeInterval(Double($0) * step) }
+    }
+
+    /// "HH:mm" or "H:mm[:ss]" → minutes after midnight.
+    private static func timeOfDay(_ label: String?) -> Int? {
+        guard let parts = label?.split(separator: ":"), parts.count >= 2,
+            let hour = Int(parts[0]), let minute = Int(parts[1]), (0..<24).contains(hour), (0..<60).contains(minute)
+        else { return nil }
+        return hour * 60 + minute
+    }
+
+    /// Shape of a report response for stderr diagnostics: keys, counts and label format,
+    /// with digits masked so no values or identifiers are logged.
+    static func reportShape(_ json: JSONValue) -> String {
+        guard let object = json.object else {
+            return json.array.map { "array(\($0.count))" } ?? (json.isNull ? "empty" : "scalar")
+        }
+        var parts = ["keys=\(object.keys.sorted().joined(separator: ","))"]
+        if let labels = json["Labels"]?.array {
+            let sample = labels.first?.string.map { String($0.map { $0.isNumber ? "9" : $0 }) } ?? "-"
+            parts.append("labels=\(labels.count) labelFormat=\(sample)")
+        }
+        if let type = json["LabelType"]?.int { parts.append("labelType=\(type)") }
+        if let data = json["Data"]?.array {
+            parts.append("series=\(data.count) rows=\(data.map { String($0.array?.count ?? -1) }.joined(separator: "/"))")
+        }
+        if let errors = json["AttributeErrors"]?.object {
+            parts.append("attributeErrors=\(errors.map { "\($0.key): \($0.value.array?.compactMap(\.string).joined(separator: " | ") ?? "")" }.joined(separator: "; "))")
+        }
+        return parts.joined(separator: " ")
     }
 
     /// Longest range requested from `EnergyCost/Report`, chosen so MELCloud answers with

@@ -55,6 +55,30 @@ public enum ChangeBudget {
     public static let minSpacing: TimeInterval = 5
 }
 
+/// The full MELCloud device object as last seen (from `Device/Get` or a `SetAta` response).
+public struct RawDevice: Sendable, Equatable {
+    public var deviceId: Int
+    public var fetchedAt: Date
+    public var json: JSONValue
+    /// `User/ListDevices` wrapper (name, limits, Wi-Fi, firmware), when known.
+    public var listing: JSONValue?
+
+    public init(deviceId: Int, fetchedAt: Date, json: JSONValue, listing: JSONValue? = nil) {
+        self.deviceId = deviceId
+        self.fetchedAt = fetchedAt
+        self.json = json
+        self.listing = listing
+    }
+}
+
+/// Persists the raw device object so every process can build a full `SetAta` body.
+public protocol RawDeviceCache: Sendable {
+    func saveRawDevice(_ raw: RawDevice) throws
+    func rawDevice(deviceId: Int) throws -> RawDevice?
+}
+
+extension HistoryStore: RawDeviceCache {}
+
 public struct FetchStateRow: Sendable, Equatable {
     public var key: String
     public var lastAttempt: Date?
@@ -195,6 +219,19 @@ public final class HistoryStore: Sendable {
         migrator.registerMigration("v3") { db in
             try db.execute(sql: "ALTER TABLE fetch_state ADD COLUMN reason TEXT")
         }
+        migrator.registerMigration("v4") { db in
+            // Full MELCloud device object (Device/Get + listing wrapper) used as the base of
+            // every SetAta body, shared so a fresh process (the MCP helper) can write too.
+            try db.execute(
+                sql: """
+                    CREATE TABLE device_raw (
+                        deviceId INTEGER PRIMARY KEY,
+                        ts DATETIME NOT NULL,
+                        json TEXT NOT NULL,
+                        listingJSON TEXT
+                    );
+                    """)
+        }
         return migrator
     }
 
@@ -305,6 +342,33 @@ public final class HistoryStore: Sendable {
                 let state = Self.decodeState(row["stateJSON"])
             else { return nil }
             return (state, row["ts"])
+        }
+    }
+
+    // MARK: Raw device object
+
+    public func saveRawDevice(_ raw: RawDevice) throws {
+        let json = String(decoding: try JSONEncoder().encode(raw.json), as: UTF8.self)
+        let listing = try raw.listing.map { String(decoding: try JSONEncoder().encode($0), as: UTF8.self) }
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO device_raw (deviceId, ts, json, listingJSON) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(deviceId) DO UPDATE SET ts = excluded.ts, json = excluded.json,
+                        listingJSON = COALESCE(excluded.listingJSON, listingJSON)
+                    """,
+                arguments: [raw.deviceId, raw.fetchedAt, json, listing])
+        }
+    }
+
+    public func rawDevice(deviceId: Int) throws -> RawDevice? {
+        try pool.read { db in
+            guard let row = try Row.fetchOne(
+                db, sql: "SELECT ts, json, listingJSON FROM device_raw WHERE deviceId = ?", arguments: [deviceId]),
+                let json = try? JSONValue.parse(Data((row["json"] as String).utf8))
+            else { return nil }
+            let listing = (row["listingJSON"] as String?).flatMap { try? JSONValue.parse(Data($0.utf8)) }
+            return RawDevice(deviceId: deviceId, fetchedAt: row["ts"], json: json, listing: listing)
         }
     }
 

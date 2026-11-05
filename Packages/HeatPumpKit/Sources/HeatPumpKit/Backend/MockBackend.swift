@@ -52,7 +52,8 @@ public actor MockBackend: HeatPumpBackend {
             temperatureIncrement: 0.5, fetchedAt: t)
     }
 
-    public func apply(_ changes: ChangeSet) async throws {
+    @discardableResult
+    public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
         guard changes.deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
         appliedChanges.append(changes)
         if let value = changes.power { power = value }
@@ -61,6 +62,9 @@ public actor MockBackend: HeatPumpBackend {
         if let value = changes.fanSpeed { fanSpeed = value }
         if let value = changes.vaneVertical { vaneVertical = value }
         if let value = changes.vaneHorizontal { vaneHorizontal = value }
+        var state = try await fetchState(deviceId: changes.deviceId)
+        state.hasPendingCommand = true
+        return state
     }
 
     /// One simulated error every 17 days at 03:12 UTC, anchored to a fixed epoch so entries are stable.

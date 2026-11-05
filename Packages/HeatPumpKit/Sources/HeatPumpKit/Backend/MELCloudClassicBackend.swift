@@ -43,17 +43,22 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     private let timeZone: TimeZone
     private let listingMaxAge: TimeInterval
     private let now: @Sendable () -> Date
+    private let rawCache: (any RawDeviceCache)?
 
     private var contextKey: String?
     private var listing: (fetchedAt: Date, devices: [JSONValue])?
+    /// Last full device object per device (base of every SetAta body).
+    private var raw: [Int: RawDevice] = [:]
 
     public init(
         credentials: any CredentialProviding,
         transport: any HTTPTransport = URLSessionTransport(),
         timeZone: TimeZone = .current,
         listingMaxAge: TimeInterval = 30 * 60,
+        rawCache: (any RawDeviceCache)? = nil,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
+        self.rawCache = rawCache
         self.credentials = credentials
         self.transport = transport
         self.timeZone = timeZone
@@ -103,15 +108,39 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         let get = try await authorizedJSON(
             "GET", "Device/Get",
             query: [URLQueryItem(name: "id", value: String(deviceId)), URLQueryItem(name: "buildingID", value: String(buildingId))])
-        return try MELCloudClassicParser.state(listing: wrapper, get: get, fetchedAt: now())
+        let t = now()
+        let state = try MELCloudClassicParser.state(listing: wrapper, get: get, fetchedAt: t)
+        if get.object != nil {
+            remember(RawDevice(deviceId: deviceId, fetchedAt: t, json: get, listing: wrapper))
+        }
+        return state
     }
 
-    public func apply(_ changes: ChangeSet) async throws {
-        let body = MELCloudClassicParser.setAtaPayload(changes)
+    public nonisolated var requiresFreshStateForWrites: Bool { true }
+
+    public func writeBaseFetchedAt(deviceId: Int) async -> Date? {
+        currentRaw(deviceId: deviceId)?.fetchedAt
+    }
+
+    /// Sends the full device object with the changes applied (see
+    /// `MELCloudClassicParser.setAtaPayload`) and returns the state from the response. The
+    /// response, laid over what was sent, becomes the new device object.
+    public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
+        guard let base = currentRaw(deviceId: changes.deviceId) else {
+            throw HeatPumpError.validation(
+                "Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt. Oppdater og prøv igjen.")
+        }
+        let body = try MELCloudClassicParser.setAtaPayload(changes, raw: base.json)
         let response = try await authorizedJSON("POST", "Device/SetAta", body: .object(body))
         if let attributeErrors = response["AttributeErrors"]?.object, !attributeErrors.isEmpty {
             throw HeatPumpError.server(attributeErrors.keys.sorted().joined(separator: ", "))
         }
+        let t = now()
+        let isFullObject = response["DeviceID"] != nil
+        let merged = MELCloudClassicParser.merged(raw: .object(body), response: response)
+        let wrapper = base.listing ?? listing?.devices.first { $0["DeviceID"]?.int == changes.deviceId }
+        remember(RawDevice(deviceId: changes.deviceId, fetchedAt: isFullObject ? t : base.fetchedAt, json: merged, listing: wrapper))
+        return try? MELCloudClassicParser.state(listing: wrapper, get: merged, fetchedAt: t)
     }
 
     public func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {
@@ -125,13 +154,15 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     }
 
     public func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] {
-        let body: JSONValue = .object([
-            "DeviceID": .number(Double(deviceId)),
-            "FromDate": .string(WireDate.localTimestamp(range.start, timeZone: timeZone)),
-            "ToDate": .string(WireDate.localTimestamp(range.end, timeZone: timeZone)),
-        ])
+        let location = listing?.devices.first { $0["DeviceID"]?.int == deviceId }?["Location"]?.int
+            ?? currentRaw(deviceId: deviceId)?.listing?["Location"]?.int
+        let body = MELCloudClassicParser.temperatureLogBody(
+            deviceId: deviceId, range: range, location: location, timeZone: timeZone)
         let json = try await authorizedJSON("POST", "Report/GetTemperatureLog2", body: body)
-        return MELCloudClassicParser.temperatureLog(json, timeZone: timeZone)
+        Self.diagnose("GetTemperatureLog2 response: \(MELCloudClassicParser.reportShape(json))")
+        let points = try MELCloudClassicParser.temperatureLog(json, range: range, timeZone: timeZone)
+        Self.diagnose("GetTemperatureLog2 parsed \(points.count) points")
+        return points
     }
 
     public func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] {
@@ -157,6 +188,25 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     }
 
     // MARK: Internals
+
+    /// Newest device object from memory or the shared cache (another process may be newer).
+    private func currentRaw(deviceId: Int) -> RawDevice? {
+        let cached = (try? rawCache?.rawDevice(deviceId: deviceId)) ?? nil
+        let memory = raw[deviceId]
+        let newest = [memory, cached].compactMap { $0 }.max { $0.fetchedAt < $1.fetchedAt }
+        if let newest { raw[deviceId] = newest }
+        return newest
+    }
+
+    private func remember(_ device: RawDevice) {
+        raw[device.deviceId] = device
+        try? rawCache?.saveRawDevice(device)
+    }
+
+    /// Diagnostics on stderr (shapes and counts only, no personal data).
+    static func diagnose(_ message: String) {
+        FileHandle.standardError.write(Data("[melcloud] \(message)\n".utf8))
+    }
 
     private func refreshListing() async throws -> [JSONValue] {
         let json = try await authorizedJSON("GET", "User/ListDevices")

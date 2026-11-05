@@ -105,3 +105,15 @@ public struct MaintenanceStatus: Codable, Sendable, Equatable {
         self.nextDue = nextDue
     }
 }
+
+/// Temperature points for charts and where they come from.
+public struct TemperatureHistory: Sendable, Equatable {
+    public var points: [TemperaturePoint]
+    /// False when MELCloud's temperature log had nothing and the points are the app's own snapshots.
+    public var fromMELCloud: Bool
+
+    public init(points: [TemperaturePoint], fromMELCloud: Bool) {
+        self.points = points
+        self.fromMELCloud = fromMELCloud
+    }
+}

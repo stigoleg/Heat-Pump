@@ -125,11 +125,58 @@ struct ClassicDecodingTests {
     }
 
     @Test func temperatureLog() throws {
-        let points = MELCloudClassicParser.temperatureLog(try Fixture.json("temperature_log"), timeZone: utc)
+        let points = try MELCloudClassicParser.temperatureLog(try Fixture.json("temperature_log"), timeZone: utc)
         #expect(points.count == 3)
         #expect(points[0] == TemperaturePoint(timestamp: WireDate.parse("2026-11-04T10:00:00", timeZone: utc)!, room: 20.5, set: 21, outdoor: -3))
         #expect(points[2].room == nil)
         #expect(points[2].set == 21.5)
+    }
+
+    @Test func temperatureLogTimeOfDayLabelsRollOverMidnight() throws {
+        let json: JSONValue = .object([
+            "Labels": .array([.string("22:00"), .string("23:00"), .string("00:00"), .string("01:00")]),
+            "LabelType": .number(0), "FromDate": .string("2026-11-04T22:00:00"), "ToDate": .string("2026-11-05T01:00:00"),
+            "Data": .array([
+                .array([.number(21), .number(21), .number(21), .number(21)]),
+                .array([.number(20.5), .number(20), .number(20), .number(19.5)]),
+                .array([.number(-3), .number(-3.5), .number(-4), .number(-4)]),
+            ]),
+        ])
+        let points = try MELCloudClassicParser.temperatureLog(json, timeZone: utc)
+        #expect(points.count == 4)
+        #expect(points[0].timestamp == WireDate.parse("2026-11-04T22:00:00", timeZone: utc))
+        #expect(points[2].timestamp == WireDate.parse("2026-11-05T00:00:00", timeZone: utc))
+        #expect(points[3].room == 19.5)
+    }
+
+    @Test func temperatureLogUnknownLabelsAreSpreadOverTheRange() throws {
+        let json: JSONValue = .object([
+            "Labels": .array([.number(1), .number(2), .number(3)]),
+            "FromDate": .string("2026-11-04T00:00:00"), "ToDate": .string("2026-11-04T02:00:00"),
+            "Data": .array([.array([.number(21), .number(21), .number(21)])]),
+        ])
+        let points = try MELCloudClassicParser.temperatureLog(json, timeZone: utc)
+        #expect(points.map(\.timestamp) == [0, 3600, 7200].map { WireDate.parse("2026-11-04T00:00:00", timeZone: utc)!.addingTimeInterval($0) })
+    }
+
+    @Test func temperatureLogAttributeErrorsThrowAndShapeHasNoValues() throws {
+        let failure: JSONValue = .object(["AttributeErrors": .object(["FromDate": .array([.string("required")])])])
+        #expect(throws: HeatPumpError.self) { try MELCloudClassicParser.temperatureLog(failure, timeZone: utc) }
+        let shape = MELCloudClassicParser.reportShape(try Fixture.json("temperature_log"))
+        #expect(shape.contains("labels=4"))
+        #expect(shape.contains("labelFormat=9999-99-99T99:99:99"))
+        #expect(shape.contains("series=3"))
+        #expect(!shape.contains("2026"))
+    }
+
+    @Test func temperatureLogRequestMatchesWebApp() throws {
+        let start = WireDate.parse("2026-11-04T10:00:00", timeZone: utc)!
+        let body = MELCloudClassicParser.temperatureLogBody(
+            deviceId: 100001, range: DateInterval(start: start, duration: 30 * 3600), location: 12345, timeZone: utc)
+        #expect(body["DeviceID"]?.int == 100001)
+        #expect(body["FromDate"]?.string == "2026-11-04T10:00:00")
+        #expect(body["Duration"]?.int == 2)
+        #expect(body["Location"]?.int == 12345)
     }
 
     @Test func retryAfter() {

@@ -79,15 +79,24 @@ public protocol HeatPumpBackend: Sendable {
     func login() async throws
     func listDevices() async throws -> [DeviceSummary]
     func fetchState(deviceId: Int) async throws -> DeviceState
-    func apply(_ changes: ChangeSet) async throws
+    /// Sends the changes. Returns the device state the backend reported back (MELCloud's
+    /// `SetAta` answers with the full device object), or nil when it does not report one.
+    func apply(_ changes: ChangeSet) async throws -> DeviceState?
     func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry]
     func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint]
     func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay]
     func fetchSignalStrength(deviceId: Int) async throws -> Int?
     /// Forgets any in-memory session and cached listing (after new credentials are saved).
     func resetSession() async
+    /// True when `apply` needs a recent full device object (MELCloud Classic) and therefore a
+    /// fresh read before a write if `writeBaseFetchedAt` is too old.
+    var requiresFreshStateForWrites: Bool { get }
+    /// When the device object a write would be based on was fetched (nil when unknown).
+    func writeBaseFetchedAt(deviceId: Int) async -> Date?
 }
 
 extension HeatPumpBackend {
     public func resetSession() async {}
+    public var requiresFreshStateForWrites: Bool { false }
+    public func writeBaseFetchedAt(deviceId: Int) async -> Date? { nil }
 }
