@@ -452,6 +452,165 @@ struct WeeklyTimerTests {
         #expect(reordered.hasSameContent(as: readBack))
     }
 
+    // MARK: Review fixes
+
+    @Test func unknownOnOffIsNeverSavedAsOff() async throws {
+        var json = try Fixture.json("timer_get2")
+        if case .object(var root) = json {
+            root["Enabled"] = nil
+            json = .object(root)
+        }
+        let unknown = MELCloudClassicParser.weeklyTimer(json)
+        #expect(unknown.enabled == nil)
+        #expect(unknown.decoded)
+        #expect(unknown.validationProblem(limits: nil)?.contains("Velg på eller av") == true)
+        #expect(MELCloudClassicParser.timerSetBody(timer: unknown, deviceId: 1)["TimerEnabled"] == .null)
+        var chosen = unknown
+        chosen.enabled = false
+        #expect(chosen.validationProblem(limits: nil) == nil)
+        #expect(chosen.differences(from: unknown) == ["Ukeplanen slås av"])
+        #expect(!chosen.hasSameContent(as: unknown))
+        // Through the service: refused and nothing sent until on/off is chosen.
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        await backend.replaceTimer(json)
+        let base = try #require(try await service.weeklyTimer())
+        #expect(base.enabled == nil)
+        var draft = base
+        draft.put(newEvent(12 * 60, 20), on: [3])
+        let refused = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(refused.result == .rejected)
+        #expect(await backend.timerWrites == 0)
+        draft.enabled = true
+        let saved = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(saved.result == .ok)
+        #expect(try await service.storedWeeklyTimer()?.enabled == true)
+    }
+
+    @Test func seasonsAreMatchedByNameAndStartNotPosition() throws {
+        let old = try timer("timer_get2_seasons")
+        var reordered = old
+        reordered.seasons.reverse()
+        #expect(reordered.differences(from: old).isEmpty)
+        #expect(reordered.hasSameContent(as: old))
+        var lost = old
+        lost.seasons.removeLast()
+        #expect(lost.differences(from: old) == ["Sommer: Fjernet: ons kl. 12:00 – Av"])
+        #expect(!lost.hasSameContent(as: old))
+    }
+
+    @Test func readBackConfirmationComparesContent() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        await backend.replaceTimer(try Fixture.json("timer_get2_seasons"))
+        let base = try #require(try await service.weeklyTimer())
+        var draft = base
+        draft.put(newEvent(12 * 60, 20), on: [3], season: 0)
+        // MELCloud keeps only the first season.
+        await backend.transformNextSavedTimer { json in
+            .object(["Enabled": json["Enabled"] ?? .null, "Seasons": .array([json["Seasons"]!.array![0]])])
+        }
+        let lost = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
+        #expect(lost.result == .ok)
+        #expect(lost.message.contains("annen plan"))
+        // Seasons returned in another order are the same plan.
+        clock.advance(31)
+        let current = try #require(try await service.storedWeeklyTimer())
+        await backend.replaceTimer(try Fixture.json("timer_get2_seasons"))
+        clock.advance(10 * 60)
+        let fresh = try #require(try await service.weeklyTimer(maxAge: 60))
+        #expect(fresh.seasons.count == 2)
+        #expect(!current.hasSameContent(as: fresh))
+        var edit = fresh
+        edit.put(newEvent(13 * 60, 20), on: [4], season: 1)
+        await backend.transformNextSavedTimer { json in
+            .object(["Enabled": json["Enabled"] ?? .null, "Seasons": .array(json["Seasons"]!.array!.reversed())])
+        }
+        let reordered = try await service.saveWeeklyTimer(edit, base: fresh, source: .app, reason: "x")
+        #expect(reordered.result == .ok)
+        #expect(reordered.message.contains("samme planen"))
+    }
+
+    @Test func pendingReadBackBacksOffAndGivesUp() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        let base = try #require(try await service.weeklyTimer())
+        var draft = base
+        draft.put(newEvent(12 * 60, 20), on: [3])
+        // One failing read first (the pre-save read: refused), then two saves 16 s apart, so the
+        // second one cannot read back (30 s) and leaves the plan pending.
+        await backend.failNextTimerRead(with: .http(status: 500), times: 1)
+        clock.advance(16)
+        _ = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")  // pre-save read fails → refused
+        clock.advance(16)
+        #expect(try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x").result == .ok)
+        clock.advance(16)
+        var second = try #require(try await service.storedWeeklyTimer())
+        let secondBase = second
+        second.put(newEvent(13 * 60, 20), on: [4])
+        #expect(try await service.saveWeeklyTimer(second, base: secondBase, source: .app, reason: "x").result == .ok)
+        #expect(try await service.storedWeeklyTimer()?.pendingSince != nil)  // read-back skipped (30 s)
+        await backend.failNextTimerRead(with: .http(status: 500), times: 10)
+        var reads = await backend.timerReads
+        func poll(after seconds: TimeInterval) async throws -> Int {
+            clock.advance(seconds)
+            _ = try await service.weeklyTimer()
+            let now = await backend.timerReads
+            defer { reads = now }
+            return now - reads
+        }
+        #expect(try await poll(after: 31) == 1)  // 1st failure
+        #expect(try await poll(after: 31) == 0)  // now 2 minutes
+        #expect(try await poll(after: 100) == 1)  // 2nd failure
+        #expect(try await poll(after: 130) == 0)  // now 10 minutes
+        #expect(try await poll(after: 500) == 1)  // 3rd failure: gives up
+        #expect(try await service.storedWeeklyTimer()?.pendingSince == nil)
+        #expect(try await poll(after: 700) == 0)  // back to the normal interval
+        #expect(try await poll(after: 6 * 3600) == 1)
+    }
+
+    @Test func untouchedEventsPassValidation() throws {
+        let limits = TemperatureLimits(minHeat: 10, maxHeat: 31, minCoolDry: 16, maxCoolDry: 31)
+        // MELCloud has a heating event at 8 °C (below today's limit) and a fan event at 5 °C.
+        var json = try Fixture.json("timer_get2")
+        if case .object(var root) = json, case .array(var seasons)? = root["Seasons"], case .object(var season) = seasons[0],
+            case .array(var events)? = season["Events"], case .object(var first) = events[0]
+        {
+            first["SetTemperature"] = .number(8)
+            events[0] = .object(first)
+            var fan = first
+            fan["EventDay"] = .number(2)
+            fan["OperationMode"] = .number(7)
+            fan["SetTemperature"] = .number(5)
+            fan["ID"] = .number(105)
+            events.append(.object(fan))
+            season["Events"] = .array(events)
+            seasons[0] = .object(season)
+            root["Seasons"] = .array(seasons)
+            json = .object(root)
+        }
+        var timer = MELCloudClassicParser.weeklyTimer(json)
+        #expect(timer.seasons[0].events.allSatisfy { $0.isAsRead })
+        #expect(timer.validationProblem(limits: limits) == nil)
+        // A new fan event needs no setpoint check either.
+        var fan = newEvent(600, 5)
+        fan.mode = .fan
+        timer.put(fan, on: [3])
+        #expect(timer.validationProblem(limits: limits) == nil)
+        // Editing the cold event makes it subject to the limits.
+        let cold = timer.seasons[0].events[0]
+        var edited = cold
+        edited.minuteOfDay = 7 * 60
+        timer.put(edited, on: [1], replacing: cold)
+        #expect(timer.validationProblem(limits: limits)?.contains("mandag kl. 07:00") == true)
+    }
+
     @Test func failedFreshReadSendsNothing() async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)

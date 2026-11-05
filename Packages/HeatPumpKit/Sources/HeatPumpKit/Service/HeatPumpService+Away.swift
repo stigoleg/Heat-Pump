@@ -24,6 +24,9 @@ extension HeatPumpService {
     static let sessionProvenWithin: TimeInterval = 10 * 60
     /// Read-back right after a write, at most this often.
     static let verifyInterval: TimeInterval = 30
+    /// Spacing of the read-backs of a saved weekly plan after failed attempts; after the last one
+    /// the plan is read at the normal interval again.
+    static let timerReadBackSpacing: [TimeInterval] = [30, 120, 600]
     static let awayVerifyKey = "away.verify"
     static let timerVerifyKey = "timer.verify"
     static let timerPresaveKey = "timer.presave"
@@ -150,8 +153,13 @@ extension HeatPumpService {
         if !pending, let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
         if try endpointRefusedUntil(Self.timerFetchKey) != nil { return cached }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return cached }
-        // A save that could not be read back right away is read back once the 30 s spacing allows.
-        let (key, spacing) = pending ? (Self.timerVerifyKey, Self.verifyInterval) : (Self.timerFetchKey, interval)
+        // A save that could not be read back right away is read back once the spacing allows
+        // (30 s, then 2 and 10 minutes after failures).
+        let attempts = cached?.pendingAttempts ?? 0
+        let (key, spacing) =
+            pending
+            ? (Self.timerVerifyKey, Self.timerReadBackSpacing[min(attempts, Self.timerReadBackSpacing.count - 1)])
+            : (Self.timerFetchKey, interval)
         switch try store.reserveFetch(key: key, minInterval: spacing, now: t) {
         case .throttled, .blocked, .credentialsRejected:
             return cached
@@ -166,6 +174,15 @@ extension HeatPumpService {
                 _ = try handleAwayError(error, now: t)
                 if try isRefusal(error) {
                     try store.recordKeyRefusal(key: Self.timerFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
+                }
+                if pending, var failed = cached {
+                    failed.pendingAttempts = attempts + 1
+                    if attempts + 1 >= Self.timerReadBackSpacing.count {
+                        failed.pendingSince = nil
+                        failed.pendingAttempts = nil
+                    }
+                    try store.saveSetting(failed, key: Self.weeklyTimerKey)
+                    return failed
                 }
                 return cached
             }
@@ -326,7 +343,7 @@ extension HeatPumpService {
                 // Until it is read back, the cache holds what was sent (as MELCloud would return it).
                 var sent = MELCloudClassicParser.weeklyTimer(
                     .object([
-                        "Enabled": .bool(timer.enabled == true && timer.totalEvents > 0),
+                        "Enabled": MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)["TimerEnabled"] ?? .null,
                         "Seasons": MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)["Seasons"] ?? .array([]),
                     ]))
                 sent.fetchedAt = at
@@ -343,7 +360,7 @@ extension HeatPumpService {
                     try store.recordFetchSuccess(key: Self.timerFetchKey, now: now())
                     readBack = fresh
                 }
-                let confirmed = readBack.map { $0.decoded && $0.differences(from: sent).isEmpty }
+                let confirmed = readBack.map { $0.hasSameContent(as: sent) }
                 let tail: String =
                     switch confirmed {
                     case true?: " MELCloud viser den samme planen."

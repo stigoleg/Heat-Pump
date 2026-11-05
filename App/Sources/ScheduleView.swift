@@ -28,6 +28,7 @@ struct ScheduleView: View {
                 header
                 if let draft, draft.decoded {
                     editorSection(draft)
+                        .disabled(sending)
                 } else if let timer = model.weeklyTimer, !timer.decoded {
                     InsightCard(
                         title: timer.eventCount == 0 ? "Ukeplanen kunne ikke leses" : "Planen har \(timer.eventCount) hendelser i et ukjent format",
@@ -42,11 +43,22 @@ struct ScheduleView: View {
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width - 2 * Theme.Space.xl }) { width = $0 }
         }
         .task {
-            sync(force: true)
+            if let kept = model.scheduleDraft {
+                // Unsaved edits from the last visit.
+                base = kept.base
+                draft = kept.draft
+                season = kept.season
+                model.scheduleDraft = nil
+            } else {
+                sync(force: true)
+            }
             await model.loadWeeklyTimerForEditing()
             sync(force: false)
         }
         .onChange(of: model.weeklyTimer) { _, _ in sync(force: false) }
+        .onDisappear {
+            if hasChanges, let base, let draft { model.scheduleDraft = ScheduleDraft(base: base, draft: draft, season: season) }
+        }
         .sheet(item: $editor) { item in
             EventEditorSheet(
                 item: item, limits: model.state?.limits ?? TemperatureLimits(), fanSpeeds: model.state?.numberOfFanSpeeds ?? 5,
@@ -162,13 +174,29 @@ struct ScheduleView: View {
                         )
                         .foregroundStyle(Theme.Status.caution)
                     }
-                    if let draft, draft.decoded {
+                    if let draft, draft.decoded, draft.enabled == nil {
+                        // MELCloud did not say: never shown (or saved) as off by guess.
+                        LabeledContent("Ukjent om ukeplanen er på") {
+                            Picker("Ukeplanen", selection: Binding(get: { draft.enabled }, set: { self.draft?.enabled = $0; outcome = nil })) {
+                                Text("På").tag(Bool?.some(true))
+                                Text("Av").tag(Bool?.some(false))
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .fixedSize()
+                        }
+                        .font(.body.weight(.medium))
+                        .disabled(sending)
+                        Text("MELCloud oppga ikke om planen er på. Velg på eller av før du lagrer.")
+                            .font(.callout).foregroundStyle(Theme.Status.caution)
+                    } else if let draft, draft.decoded {
                         Toggle(
                             "Ukeplanen er på",
                             isOn: Binding(get: { draft.enabled == true }, set: { self.draft?.enabled = $0; outcome = nil })
                         )
                         .toggleStyle(.switch)
                         .font(.body.weight(.medium))
+                        .disabled(sending)
                     } else if model.weeklyTimer == nil {
                         Text("Ukeplanen hentes fra MELCloud …").foregroundStyle(.secondary)
                     }
@@ -404,6 +432,13 @@ struct ScheduleView: View {
         .padding(Theme.Space.xl)
         .frame(width: 500)
     }
+}
+
+/// Unsaved edits of the Ukeplan page, kept in `AppModel` while another page is shown.
+struct ScheduleDraft {
+    var base: WeeklyTimer
+    var draft: WeeklyTimer
+    var season: Int
 }
 
 /// An event being edited: the original (nil for a new one) and the days it occurs on.

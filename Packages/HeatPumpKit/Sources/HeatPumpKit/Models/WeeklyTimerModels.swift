@@ -32,6 +32,11 @@ public struct TimerEvent: Codable, Sendable, Equatable {
         self.raw = raw
     }
 
+    /// Exactly as read from MELCloud (not made or changed in the app).
+    public var isAsRead: Bool {
+        raw.flatMap(MELCloudClassicParser.timerEvent) == self
+    }
+
     /// Same settings (power, mode, temperature, fan, vanes), regardless of day, time and wire object.
     public func sameSettings(as other: TimerEvent) -> Bool {
         power == other.power && mode == other.mode && setTemperature == other.setTemperature && fanSpeed == other.fanSpeed
@@ -141,6 +146,9 @@ public struct TimerSeason: Codable, Sendable, Equatable {
         return "\(title) (fra \(startDay ?? 1). \(Self.monthNames[month - 1]))"
     }
 
+    /// What identifies a season across reads: name and start date (IDs may be assigned later).
+    var identity: String { "\(name ?? "Default")|\(startDay ?? 1).\(startMonth ?? 1)" }
+
     /// Events of `day` in time order.
     public func events(on day: Int) -> [TimerEvent] {
         events.filter { $0.weekday == day }.sorted { $0.minuteOfDay < $1.minuteOfDay }
@@ -193,6 +201,8 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// Set when the cache holds a plan as sent that MELCloud has not been read back for yet; the
     /// next `weeklyTimer()` reads it as soon as the read-back spacing allows.
     public var pendingSince: Date?
+    /// Failed read-backs of a pending plan so far (they back off, then give up).
+    public var pendingAttempts: Int?
 
     public init(
         enabled: Bool?, seasons: [TimerSeason], eventCount: Int? = nil, decoded: Bool, fetchedAt: Date? = nil, maxEvents: Int? = nil
@@ -206,7 +216,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, seasons, eventCount, decoded, fetchedAt, maxEvents, pendingSince
+        case enabled, seasons, eventCount, decoded, fetchedAt, maxEvents, pendingSince, pendingAttempts
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -221,6 +231,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         eventCount = try container.decodeIfPresent(Int.self, forKey: .eventCount) ?? 0
         maxEvents = try container.decodeIfPresent(Int.self, forKey: .maxEvents)
         pendingSince = try container.decodeIfPresent(Date.self, forKey: .pendingSince)
+        pendingAttempts = try container.decodeIfPresent(Int.self, forKey: .pendingAttempts)
         if let seasons = try container.decodeIfPresent([TimerSeason].self, forKey: .seasons) {
             self.seasons = seasons
             decoded = try container.decodeIfPresent(Bool.self, forKey: .decoded) ?? false
@@ -245,7 +256,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// cosmetic fields (IDs, `Name`, `Settings`, `EventTime` formatting), order and read time do not
     /// count, so a plan MELCloud gave IDs after a save still matches what was sent.
     public func hasSameContent(as other: WeeklyTimer) -> Bool {
-        decoded && other.decoded && (enabled == true) == (other.enabled == true) && contentKey == other.contentKey
+        decoded && other.decoded && enabled == other.enabled && contentKey == other.contentKey
     }
 
     private var contentKey: [String] {
@@ -260,7 +271,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
                 ]
                 return fields.joined(separator: ",")
             }
-            return "\(season.name ?? "Default")|\(season.startDay ?? 1).\(season.startMonth ?? 1)|" + events.sorted().joined(separator: ";")
+            return season.identity + "|" + events.sorted().joined(separator: ";")
         }.sorted()
     }
 
@@ -385,24 +396,32 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     // MARK: Validation and differences
 
     /// Norwegian reason the plan cannot be saved, or nil. `limits` are the unit's setpoint limits.
+    /// New and edited events are checked strictly; events exactly as read from MELCloud pass
+    /// through unchanged (MELCloud accepted them, and the app must not make a plan unsavable).
     public func validationProblem(limits: TemperatureLimits?) -> String? {
         guard decoded else {
             return "Ukeplanen kunne ikke leses helt, så appen endrer den ikke (det kunne ha slettet hendelser appen ikke forstår)."
         }
+        guard enabled != nil else {
+            return "MELCloud oppga ikke om ukeplanen er på. Velg på eller av før du lagrer."
+        }
         for season in seasons {
-            var seen = Set<Int>()
+            var seen: [Int: Bool] = [:]
             for event in season.events {
+                let edited = !event.isAsRead
                 guard (1...7).contains(event.weekday), (0..<1440).contains(event.minuteOfDay) else {
                     return "Ugyldig dag eller klokkeslett i ukeplanen (00:00–23:59)."
                 }
                 let at = "\(event.weekdayName) kl. \(event.timeText)"
-                guard seen.insert(event.weekday * 1440 + event.minuteOfDay).inserted else {
-                    return "To hendelser \(at). Fjern den ene."
-                }
-                if event.raw == nil, event.power == nil || event.mode == nil || event.setTemperature == nil {
+                let key = event.weekday * 1440 + event.minuteOfDay
+                if let other = seen[key], other || edited { return "To hendelser \(at). Fjern den ene." }
+                seen[key] = edited
+                guard edited else { continue }
+                if event.power == nil || event.mode == nil || event.setTemperature == nil {
                     return "Hendelsen \(at) mangler av/på, modus eller temperatur."
                 }
-                if event.power != false, let mode = event.mode, let value = event.setTemperature {
+                // The setpoint does not apply in fan mode (or when the event switches the unit off).
+                if event.power != false, let mode = event.mode, mode != .fan, let value = event.setTemperature {
                     let range = (limits ?? TemperatureLimits()).range(for: mode)
                     guard value.isFinite, range.contains(value), (value * 2).rounded() == value * 2 else {
                         return "Temperaturen \(at) må være "
@@ -423,34 +442,44 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
 
     /// Norwegian lines describing what changes from `old` to this plan, with identical changes on
     /// several days grouped: "Ny: hverdager kl. 06:30 – Varme 21 °C". Empty when nothing changes.
+    /// Seasons are matched by name and start date, not position.
     public func differences(from old: WeeklyTimer) -> [String] {
         var lines: [String] = []
-        if (old.enabled == true) != (enabled == true) {
-            lines.append(enabled == true ? "Ukeplanen slås på" : "Ukeplanen slås av")
+        if old.enabled != enabled {
+            lines.append(
+                enabled == true ? "Ukeplanen slås på" : enabled == false ? "Ukeplanen slås av" : "Ukjent om ukeplanen blir på")
         }
+        // Pairs of (label, events before, events after).
+        var pairs: [(label: String, before: [TimerEvent], after: [TimerEvent])] = []
+        var unmatched = Array(old.seasons.indices)
+        for season in seasons {
+            let match = unmatched.firstIndex { old.seasons[$0].identity == season.identity }
+            let before = match.map { old.seasons[unmatched[$0]].events } ?? []
+            if let match { unmatched.remove(at: match) }
+            pairs.append((season.name ?? "Sesong", before, season.events))
+        }
+        for index in unmatched { pairs.append((old.seasons[index].name ?? "Sesong", old.seasons[index].events, [])) }
         struct Key: Hashable {
-            var season: Int
+            var pair: Int
             var kind: Int
             var minute: Int
             var text: String
         }
         var grouped: [Key: Set<Int>] = [:]
-        for index in seasons.indices {
-            let before = old.seasons.indices.contains(index) ? old.seasons[index].events : []
-            let after = seasons[index].events
+        for (index, pair) in pairs.enumerated() {
             for day in 1...7 {
-                let minutes = Set((before + after).filter { $0.weekday == day }.map(\.minuteOfDay))
+                let minutes = Set((pair.before + pair.after).filter { $0.weekday == day }.map(\.minuteOfDay))
                 for minute in minutes {
-                    let o = before.first { $0.weekday == day && $0.minuteOfDay == minute }
-                    let n = after.first { $0.weekday == day && $0.minuteOfDay == minute }
+                    let o = pair.before.first { $0.weekday == day && $0.minuteOfDay == minute }
+                    let n = pair.after.first { $0.weekday == day && $0.minuteOfDay == minute }
                     let key: Key
                     switch (o, n) {
-                    case (nil, let n?): key = Key(season: index, kind: 0, minute: minute, text: n.summary)
-                    case (let o?, nil): key = Key(season: index, kind: 1, minute: minute, text: o.summary)
+                    case (nil, let n?): key = Key(pair: index, kind: 0, minute: minute, text: n.summary)
+                    case (let o?, nil): key = Key(pair: index, kind: 1, minute: minute, text: o.summary)
                     case (let o?, let n?) where !o.sameSettings(as: n):
                         let detailed = o.summary == n.summary
                         key = Key(
-                            season: index, kind: 2, minute: minute,
+                            pair: index, kind: 2, minute: minute,
                             text: (detailed ? o.detailText : o.summary) + " → " + (detailed ? n.detailText : n.summary))
                     default: continue
                     }
@@ -460,10 +489,10 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         }
         let labels = ["Ny", "Fjernet", "Endret"]
         let sorted = grouped.sorted { a, b in
-            (a.key.season, a.key.kind, a.value.min() ?? 0, a.key.minute) < (b.key.season, b.key.kind, b.value.min() ?? 0, b.key.minute)
+            (a.key.pair, a.key.kind, a.value.min() ?? 0, a.key.minute) < (b.key.pair, b.key.kind, b.value.min() ?? 0, b.key.minute)
         }
         for (key, days) in sorted {
-            let prefix = seasons.count > 1 ? (seasons[key.season].name ?? "Sesong") + ": " : ""
+            let prefix = pairs.count > 1 ? pairs[key.pair].label + ": " : ""
             lines.append(
                 "\(prefix)\(labels[key.kind]): \(TimerEvent.daysText(days)) kl. \(TimerEvent.timeText(key.minute)) – \(key.text)")
         }

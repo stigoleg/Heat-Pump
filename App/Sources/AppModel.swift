@@ -183,6 +183,8 @@ final class AppModel {
     var away: AwaySettings?
     /// MELCloud's weekly timer (cached; read at most every 6 hours).
     var weeklyTimer: WeeklyTimer?
+    /// Unsaved edits of the Ukeplan page while another page is shown.
+    var scheduleDraft: ScheduleDraft?
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 

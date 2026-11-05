@@ -135,12 +135,13 @@ extension MELCloudClassicParser {
 
     /// `Timer/SetAta2` body: every season with its events. All fields of untouched events and
     /// seasons go back as read; with no events at all the plan is switched off (as the web client does).
+    /// `enabled` must be known (`validationProblem` refuses nil); it is never guessed as off here.
     static func timerSetBody(timer: WeeklyTimer, deviceId: Int) -> JSONValue {
         let seasons = timer.seasons.map(timerSeasonJSON)
         let hasEvents = timer.seasons.contains { !$0.events.isEmpty }
         return .object([
             "Devices": .array([.number(Double(deviceId))]), "Seasons": .array(seasons),
-            "TimerEnabled": .bool(timer.enabled == true && hasEvents), "SkipPage1": .bool(true),
+            "TimerEnabled": timer.enabled.map { .bool($0 && hasEvents) } ?? .null, "SkipPage1": .bool(true),
         ])
     }
 

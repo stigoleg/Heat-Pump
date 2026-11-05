@@ -158,10 +158,18 @@ public actor MockBackend: HeatPumpBackend {
     /// The weekly timer in the wire shape (`Timer/Get2`); a save replaces it, so a read returns it.
     private var timerJSON: JSONValue = MockBackend.initialTimer()
 
-    /// Error for the next timer read (tests).
+    /// Error for the next timer reads (tests).
     private var timerReadError: HeatPumpError?
+    private var timerReadFailures = 0
+    /// Changes what a save stores, as if MELCloud kept something else (tests).
+    private var timerSaveTransform: (@Sendable (JSONValue) -> JSONValue)?
 
-    public func failNextTimerRead(with error: HeatPumpError) { timerReadError = error }
+    public func failNextTimerRead(with error: HeatPumpError, times: Int = 1) {
+        timerReadError = error
+        timerReadFailures = times
+    }
+
+    public func transformNextSavedTimer(_ transform: @escaping @Sendable (JSONValue) -> JSONValue) { timerSaveTransform = transform }
 
     /// Replaces the plan as if it had been changed in the MELCloud app (tests).
     public func replaceTimer(_ json: JSONValue) { timerJSON = json }
@@ -169,8 +177,8 @@ public actor MockBackend: HeatPumpBackend {
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
         guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
         timerReads += 1
-        if let error = timerReadError {
-            timerReadError = nil
+        if let error = timerReadError, timerReadFailures > 0 {
+            timerReadFailures -= 1
             throw error
         }
         var timer = MELCloudClassicParser.weeklyTimer(timerJSON)
@@ -200,6 +208,10 @@ public actor MockBackend: HeatPumpBackend {
             return .object(object)
         }
         timerJSON = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": .array(seasons)])
+        if let transform = timerSaveTransform {
+            timerSaveTransform = nil
+            timerJSON = transform(timerJSON)
+        }
     }
 
     static let timerMaxEvents = 50
