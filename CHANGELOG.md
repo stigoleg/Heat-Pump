@@ -1,5 +1,15 @@
 # Endringslogg
 
+## [Ikke utgitt]
+
+- **Prognose**: ny side med værvarsel for opptil ni dager, strømpriser fremover (kjente priser og et tydelig merket anslag for de neste dagene) og forventet forbruk og kostnad per dag.
+- **Prisstyring**: senker temperaturen i dyre timer, aldri under en grense du velger og høyst et valgt antall timer per døgn. Virker bare mens appen kjører og Macen er på; når den er på, lever appen videre i menylinjen når vinduet lukkes, og temperaturen settes tilbake før Macen sover og når appen avsluttes.
+- **Ukeplan**: ny side der MELCloud-ukeplanen kan leses og endres, med maler, kopiering av dager og bekreftelse før lagring. Planen kjører i MELCloud, også når Macen er av. Appen lagrer ikke over endringer gjort i MELCloud-appen i mellomtiden.
+- **Fastvare**: oppdateringen av Wi-Fi-modulen kan startes og følges under Helse → Fastvare, og av Claude etter godkjenning på Macen.
+- **Sted for værvarsel**: søk etter adresse eller sted, eller klikk i kartet. Nytt sted gir nytt varsel innen ti minutter.
+- **Smale vinduer**: alle sider tilpasser seg vindusbredden, og vinduet kan gjøres smalere enn før.
+- **Nøkkelringen**: appen og Claude-hjelperen deler tilgangen til innloggingen, så macOS slutter å spørre om passordet ved vanlig bruk. Første oppstart flytter lagrede innlogginger én gang.
+
 ## [1.0.0] – 2026-11-05
 
 Første versjon.

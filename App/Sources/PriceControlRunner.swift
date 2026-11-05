@@ -136,12 +136,13 @@ final class PriceControlRunner {
         }
     }
 
-    /// Sets the base temperature back (sleep; within the controller's hourly cap). The next tick
-    /// after waking applies the plan again, but not within the same clock hour.
+    /// Sets the base temperature back before sleep, even over the hourly cap: the house must not
+    /// stay lowered while nothing watches it. This cannot loop, because the next tick after waking
+    /// does not lower again within the same clock hour.
     func restore(reason: String) async {
         guard let service else { return }
         await serialized { [self] in
-            _ = try? await service.restorePriceControl(reason: reason)
+            _ = try? await service.restorePriceControl(reason: reason, always: true)
             await afterChange?()
         }
     }
