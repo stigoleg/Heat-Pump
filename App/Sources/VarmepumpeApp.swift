@@ -30,7 +30,7 @@ struct VarmepumpeApp: App {
             RootView()
                 .environment(model)
                 .environment(\.locale, Norwegian.locale)
-                .frame(minWidth: 860, minHeight: 580)
+                .frame(minWidth: 620, minHeight: 580)
                 .task { model.start() }
                 .onDisappear { model.stop() }
         }
@@ -59,5 +59,7 @@ struct VarmepumpeApp: App {
                 .environment(model)
                 .environment(\.locale, Norwegian.locale)
         }
+        .defaultSize(width: 700, height: 600)
+        .windowResizability(.contentMinSize)
     }
 }

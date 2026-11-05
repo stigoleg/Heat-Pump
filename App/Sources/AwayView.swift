@@ -79,13 +79,9 @@ struct AwayView: View {
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Toggle("Frostsikring på", isOn: $frostEnabled).toggleStyle(.switch)
-                    HStack(spacing: Theme.Space.xl) {
-                        Stepper(value: $frostMin, in: FrostProtection.minimumRange, step: 1) {
-                            Text("Laveste: \(Text(Norwegian.format("%.0f °C", frostMin)).monospacedDigit().bold())")
-                        }
-                        Stepper(value: $frostMax, in: FrostProtection.maximumRange, step: 1) {
-                            Text("Høyeste: \(Text(Norwegian.format("%.0f °C", frostMax)).monospacedDigit().bold())")
-                        }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Space.xl) { frostSteppers }
+                        VStack(alignment: .leading, spacing: Theme.Space.s) { frostSteppers }
                     }
                     .disabled(!frostEnabled)
                     Text("Laveste 4–14 °C, høyeste 6–16 °C, minst 2 grader mellom. 8–12 °C passer for et hus eller en hytte som står tom.")
@@ -108,6 +104,15 @@ struct AwayView: View {
         }
     }
 
+    @ViewBuilder private var frostSteppers: some View {
+        Stepper(value: $frostMin, in: FrostProtection.minimumRange, step: 1) {
+            Text("Laveste: \(Text(Norwegian.format("%.0f °C", frostMin)).monospacedDigit().bold())")
+        }
+        Stepper(value: $frostMax, in: FrostProtection.maximumRange, step: 1) {
+            Text("Høyeste: \(Text(Norwegian.format("%.0f °C", frostMax)).monospacedDigit().bold())")
+        }
+    }
+
     // MARK: Holiday mode
 
     private var holidayChange: AwayChange {
@@ -124,9 +129,9 @@ struct AwayView: View {
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Toggle("Feriemodus på", isOn: $holidayEnabled).toggleStyle(.switch)
-                    HStack(spacing: Theme.Space.xl) {
-                        DatePicker("Fra", selection: $holidayStart, displayedComponents: [.date, .hourAndMinute])
-                        DatePicker("Til", selection: $holidayEnd, in: holidayStart..., displayedComponents: [.date, .hourAndMinute])
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Space.xl) { holidayPickers }
+                        VStack(alignment: .leading, spacing: Theme.Space.s) { holidayPickers }
                     }
                     .disabled(!holidayEnabled)
                     Text(
@@ -151,6 +156,11 @@ struct AwayView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder private var holidayPickers: some View {
+        DatePicker("Fra", selection: $holidayStart, displayedComponents: [.date, .hourAndMinute])
+        DatePicker("Til", selection: $holidayEnd, in: holidayStart..., displayedComponents: [.date, .hourAndMinute])
     }
 
     /// What was sent next to what MELCloud reads back, so an offset in the times is obvious.

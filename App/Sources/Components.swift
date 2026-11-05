@@ -71,6 +71,18 @@ struct DemoBadge: View {
     }
 }
 
+/// Lets the user resize the hosting window; SwiftUI's Settings window is fixed-size otherwise.
+/// The minimum size comes from the content's frame.
+struct ResizableWindow: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { view.window?.styleMask.insert(.resizable) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 /// Dev only (`VARMEPUMPE_SCROLL_TO`): scrolls a screen to the section with that id once, a moment
 /// after it appears, so screenshots can show sections below the fold without input events.
 struct DevScrollTarget: ViewModifier {

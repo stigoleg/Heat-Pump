@@ -45,8 +45,8 @@ struct ControlView: View {
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: Theme.Space.l) {
-                        powerCard(shown, debouncer).frame(width: 220)
-                        temperatureCard(shown, mode: mode, state: state, debouncer: debouncer).frame(minWidth: 380)
+                        powerCard(shown, debouncer).frame(idealWidth: 220, maxWidth: 240)
+                        temperatureCard(shown, mode: mode, state: state, debouncer: debouncer).frame(idealWidth: 380, maxWidth: .infinity)
                     }
                     VStack(spacing: Theme.Space.l) {
                         powerCard(shown, debouncer)
@@ -154,32 +154,41 @@ struct ControlView: View {
     private func modeSection(_ current: OperationMode?, _ debouncer: ChangeDebouncer) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader("Modus", hint: "Varme er riktig valg om vinteren")
-            HStack(spacing: Theme.Space.m) {
-                ForEach([OperationMode.heat, .cool, .dry, .fan, .auto], id: \.self) { mode in
-                    let selected = current == mode
-                    Button {
-                        debouncer.edit(.mode(mode))
-                    } label: {
-                        VStack(spacing: Theme.Space.s) {
-                            Image(systemName: mode.systemImage)
-                                .font(.system(size: 26, weight: .medium))
-                                .foregroundStyle(selected ? .white : mode.tint)
-                                .frame(width: 56, height: 56)
-                                .background(
-                                    selected ? AnyShapeStyle(mode.tint.gradient) : AnyShapeStyle(mode.tint.opacity(0.12)),
-                                    in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                            Text(mode.displayName).font(.callout.weight(selected ? .semibold : .regular))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Theme.Space.s)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
+            let modes: [OperationMode] = [.heat, .cool, .dry, .fan, .auto]
+            // Spread over the full width when there is room; wrap to more lines when narrow.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.m) {
+                    ForEach(modes, id: \.self) { modeButton($0, current: current, debouncer) }
+                }
+                FlowLayout(spacing: Theme.Space.m, lineSpacing: 0) {
+                    ForEach(modes, id: \.self) { modeButton($0, current: current, debouncer) }
                 }
             }
             Text(current.map(modeHelp) ?? "Modus ukjent – velg modus.").font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    private func modeButton(_ mode: OperationMode, current: OperationMode?, _ debouncer: ChangeDebouncer) -> some View {
+        let selected = current == mode
+        return Button {
+            debouncer.edit(.mode(mode))
+        } label: {
+            VStack(spacing: Theme.Space.s) {
+                Image(systemName: mode.systemImage)
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundStyle(selected ? .white : mode.tint)
+                    .frame(width: 56, height: 56)
+                    .background(
+                        selected ? AnyShapeStyle(mode.tint.gradient) : AnyShapeStyle(mode.tint.opacity(0.12)),
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                Text(mode.displayName).font(.callout.weight(selected ? .semibold : .regular))
+            }
+            .frame(minWidth: 72, maxWidth: .infinity)
+            .padding(.vertical, Theme.Space.s)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func modeHelp(_ mode: OperationMode) -> String {
@@ -245,11 +254,11 @@ struct ControlView: View {
     private func vaneSection(_ shown: ControlSettings, _ debouncer: ChangeDebouncer) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader("Luftretning", hint: "Ved oppvarming: nederste stilling eller Auto, så varmen når gulvet")
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 420), spacing: Theme.Space.l, alignment: .top)], spacing: Theme.Space.l) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: Theme.Space.l, alignment: .top)], spacing: Theme.Space.l) {
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("Opp/ned").font(.callout).foregroundStyle(.secondary)
-                        HStack(spacing: Theme.Space.s) {
+                        FlowLayout(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
                             ForEach(VaneVertical.allCases, id: \.self) { vane in
                                 VaneButton(
                                     selected: shown.vaneVertical == vane, title: vane.shortTitle,
@@ -264,7 +273,7 @@ struct ControlView: View {
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text("Venstre/høyre").font(.callout).foregroundStyle(.secondary)
-                        HStack(spacing: Theme.Space.s) {
+                        FlowLayout(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
                             ForEach(VaneHorizontal.allCases, id: \.self) { vane in
                                 VaneButton(
                                     selected: shown.vaneHorizontal == vane, title: vane.shortTitle,
@@ -448,25 +457,52 @@ struct WeeklyTimerSection: View {
         }
     }
 
-    /// One column per weekday with the day's events in time order.
+    /// One column per weekday with the day's events in time order; one row per day when the
+    /// window is too narrow for seven readable columns.
     private func grid(_ timer: WeeklyTimer) -> some View {
-        HStack(alignment: .top, spacing: Theme.Space.s) {
-            ForEach(1...7, id: \.self) { day in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(TimerEvent.weekdayNames[day - 1].prefix(3).capitalized).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    ForEach(Array(timer.events.filter { $0.weekday == day }.sorted { $0.minuteOfDay < $1.minuteOfDay }.enumerated()), id: \.offset) { _, event in
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(event.timeText).font(.caption.monospacedDigit().weight(.medium))
-                            Text(event.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: Theme.Space.s) {
+                ForEach(1...7, id: \.self) { day in
+                    VStack(alignment: .leading, spacing: 4) {
+                        dayName(day)
+                        ForEach(Array(events(timer, day: day).enumerated()), id: \.offset) { _, event in
+                            eventCell(event, fill: true)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background((event.power == false ? Color.gray : (event.mode?.tint ?? .orange)).opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+            .frame(idealWidth: 7 * 72)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ForEach(1...7, id: \.self) { day in
+                    HStack(alignment: .top, spacing: Theme.Space.s) {
+                        dayName(day).frame(width: 32, alignment: .leading)
+                        FlowLayout(spacing: 4, lineSpacing: 4, alignment: .top) {
+                            ForEach(Array(events(timer, day: day).enumerated()), id: \.offset) { _, event in eventCell(event) }
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
+    }
+
+    private func events(_ timer: WeeklyTimer, day: Int) -> [TimerEvent] {
+        timer.events.filter { $0.weekday == day }.sorted { $0.minuteOfDay < $1.minuteOfDay }
+    }
+
+    private func dayName(_ day: Int) -> some View {
+        Text(TimerEvent.weekdayNames[day - 1].prefix(3).capitalized).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+    }
+
+    /// `fill` stretches the cell to the column width.
+    private func eventCell(_ event: TimerEvent, fill: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(event.timeText).font(.caption.monospacedDigit().weight(.medium))
+            Text(event.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
+        .background((event.power == false ? Color.gray : (event.mode?.tint ?? .orange)).opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
     }
 }

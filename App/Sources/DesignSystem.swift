@@ -15,19 +15,37 @@ struct CardSurface<Content: View>: View {
     }
 }
 
-/// Section title with an optional secondary hint on the right.
+/// Section title with an optional secondary hint on the right; the hint and trailing content
+/// move below the title when they don't fit beside it.
 struct SectionHeader<Trailing: View>: View {
     let title: String
     var hint: String?
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Text(title).font(.title3.weight(.semibold))
-            Spacer(minLength: Theme.Space.s)
-            if let hint { Text(hint).font(.callout).foregroundStyle(.secondary) }
-            trailing
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                titleText
+                Spacer(minLength: Theme.Space.s)
+                if let hint { hintText(hint) }
+                trailing
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                titleText
+                FlowLayout(spacing: Theme.Space.m, alignment: .firstTextBaseline) {
+                    if let hint { hintText(hint) }
+                    trailing
+                }
+            }
         }
+    }
+
+    private var titleText: some View {
+        Text(title).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func hintText(_ hint: String) -> some View {
+        Text(hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -107,7 +125,7 @@ struct LegendDot: View {
             } else {
                 Circle().fill(color).frame(width: 8, height: 8)
             }
-            Text(label).font(.caption).foregroundStyle(.secondary).fixedSize()
+            Text(label).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -170,8 +188,9 @@ struct TrendCard<Chart: View, Legend: View>: View {
         }
     }
 
+    /// Title, value and delta on one line when there is room; they wrap otherwise.
     private var heading: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+        FlowLayout(spacing: Theme.Space.s, lineSpacing: 2, alignment: .firstTextBaseline) {
             Text(title).font(.headline)
             if let value { Text(value).font(.headline).foregroundStyle(.secondary).monospacedDigit() }
             if let delta {
@@ -179,7 +198,6 @@ struct TrendCard<Chart: View, Legend: View>: View {
                     .font(.caption.weight(.medium)).foregroundStyle(delta.color)
             }
         }
-        .fixedSize()
     }
 }
 
@@ -258,7 +276,6 @@ struct SettingChip: View {
                 Image(systemName: systemImage).foregroundStyle(tint)
             }
             .font(.callout.weight(.medium))
-            .fixedSize()
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(Theme.surface, in: Capsule())
@@ -300,5 +317,77 @@ struct KPIRow<Content: View>: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum), spacing: Theme.Space.l, alignment: .topLeading)], alignment: .leading, spacing: Theme.Space.l) {
             content
         }
+    }
+}
+
+/// Places subviews left to right and starts a new line when the width runs out, like words in
+/// a paragraph. Used for chip rows and chart legends so nothing is clipped in narrow windows.
+/// A subview wider than a whole line is offered the full width, so its text can wrap.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = Theme.Space.m
+    var lineSpacing: CGFloat = Theme.Space.s
+    /// How subviews on the same line line up with each other.
+    var alignment: VerticalAlignment = .center
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for line in arrange(width: bounds.width, subviews: subviews).lines {
+            for item in line.items {
+                let origin = CGPoint(x: bounds.minX + item.x, y: bounds.minY + line.y + line.ascent - item.ascent)
+                subviews[item.index].place(at: origin, proposal: item.proposal)
+            }
+        }
+    }
+
+    private struct Item {
+        var index: Int
+        var x: CGFloat
+        var width: CGFloat
+        /// Distance from the item's top to its alignment guide.
+        var ascent: CGFloat
+        var proposal: ProposedViewSize
+    }
+
+    private struct Line {
+        var items: [Item] = []
+        var y: CGFloat = 0
+        /// Height above and below the shared alignment guide.
+        var ascent: CGFloat = 0
+        var descent: CGFloat = 0
+        var width: CGFloat { items.last.map { $0.x + $0.width } ?? 0 }
+    }
+
+    private func arrange(width: CGFloat?, subviews: Subviews) -> (lines: [Line], size: CGSize) {
+        let maxWidth = width ?? .infinity
+        var lines: [Line] = []
+        var line = Line()
+        for (index, subview) in subviews.enumerated() {
+            var proposal = ProposedViewSize.unspecified
+            var size = subview.sizeThatFits(proposal)
+            if size.width > maxWidth {
+                proposal = ProposedViewSize(width: maxWidth, height: nil)
+                size = subview.sizeThatFits(proposal)
+            }
+            if !line.items.isEmpty, line.width + spacing + size.width > maxWidth {
+                lines.append(line)
+                line = Line()
+            }
+            let ascent = subview.dimensions(in: proposal)[alignment]
+            let x = line.items.isEmpty ? 0 : line.width + spacing
+            line.items.append(Item(index: index, x: x, width: size.width, ascent: ascent, proposal: proposal))
+            line.ascent = max(line.ascent, ascent)
+            line.descent = max(line.descent, size.height - ascent)
+        }
+        if !line.items.isEmpty { lines.append(line) }
+        var y: CGFloat = 0
+        for i in lines.indices {
+            if i > 0 { y += lineSpacing }
+            lines[i].y = y
+            y += lines[i].ascent + lines[i].descent
+        }
+        return (lines, CGSize(width: lines.map(\.width).max() ?? 0, height: y))
     }
 }

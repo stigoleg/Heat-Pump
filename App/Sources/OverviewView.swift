@@ -42,13 +42,20 @@ struct OverviewView: View {
         let range = state.limits.range(for: mode ?? .heat)
         return CardSurface(padding: Theme.Space.xl) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
+                // In the layout (not an overlay) so a long status never covers the dial or facts.
+                if let debouncer = model.debouncer, debouncer.status != .idle || (debouncer.remainingThisHour ?? .max) < 4 {
+                    StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
                 let dial = ThermostatDial(
                     room: model.newerLocalSample?.roomTemperature ?? state.roomTemperature, setpoint: shown.setTemperature, range: range,
                     step: state.temperatureIncrement, mode: mode, isOn: shown.power
                 ) { value, commit in
                     model.debouncer?.edit(.temperature(value), commit: commit)
                 }
-                .frame(width: 290, height: 290)
+                // Full size when there is room; shrinks with the card in narrow windows.
+                .frame(idealWidth: 290, maxWidth: 290, idealHeight: 290, maxHeight: 290)
+                .aspectRatio(1, contentMode: .fit)
                 .overlay(alignment: .bottom) {
                     // The room value in the dial is local only when a newer local reading has one.
                     if let local = model.newerLocalSample, local.roomTemperature != nil {
@@ -69,7 +76,8 @@ struct OverviewView: View {
                         facts(state)
                     }
                 }
-                let chips = HStack(spacing: Theme.Space.s) {
+                // Chips wrap to more lines when the window is narrow.
+                FlowLayout(spacing: Theme.Space.s) {
                     SettingChip(
                         title: mode?.displayName ?? "Modus ukjent – velg modus",
                         systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
@@ -88,25 +96,8 @@ struct OverviewView: View {
                         systemImage: state.offline ? "wifi.slash" : "wifi",
                         tint: state.offline ? Theme.Status.caution : Theme.Status.good
                     ) { model.selection = .control }
+                    priceChip
                 }
-                // The price chip moves to its own row when the window is narrow.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Space.s) {
-                        chips
-                        priceChip
-                        Spacer(minLength: 0)
-                    }
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        chips
-                        priceChip
-                    }
-                }
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            if let debouncer = model.debouncer {
-                StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
-                    .padding(Theme.Space.m)
             }
         }
     }
@@ -182,7 +173,7 @@ struct OverviewView: View {
                 }
             }
         }
-        .frame(minWidth: 250, maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func fact<Value: View, Detail: View>(
@@ -194,9 +185,10 @@ struct OverviewView: View {
             Text(label).foregroundStyle(.secondary).frame(width: 64, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 value().font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
-                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    .fixedSize(horizontal: false, vertical: true)
                 detail().font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
     }
@@ -281,7 +273,7 @@ struct OverviewView: View {
         let bars = costBars(from: start)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader(title: "Siste 24 t", hint: history.fromMELCloud ? nil : "Bygges opp mens appen er åpen") {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     LegendDot(label: "Inne", color: Theme.Data.inside)
                     LegendDot(label: "Ute", color: Theme.Data.outside, dashed: true)
                     LegendDot(label: bars.isCost ? "kr/time" : "kr/kWh", color: Theme.Data.purple)
@@ -400,29 +392,45 @@ struct OverviewView: View {
                 } else {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         forecastStrip(hours).frame(height: 90)
-                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
-                            if let low = hours.min(by: { $0.temperature < $1.temperature }),
-                                let high = hours.max(by: { $0.temperature < $1.temperature })
-                            {
-                                Label(
-                                    Norwegian.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
-                                    systemImage: "thermometer.medium"
-                                )
-                                .foregroundStyle(.secondary)
+                        // Range and tomorrow's estimate side by side, or stacked when narrow.
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
+                                forecastRange(hours)
+                                Spacer()
+                                tomorrowEstimate(alignment: .trailing)
                             }
-                            Spacer()
-                            if let tomorrow = model.tomorrow {
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(tomorrow.shortText).font(.callout.weight(.semibold)).monospacedDigit()
-                                    Text(tomorrowDetail(tomorrow)).font(.caption).foregroundStyle(.secondary)
-                                }
-                                .help("Grovt anslag: forbruket mot hvor kaldt det har vært de siste \(tomorrow.basisDays) dagene, morgendagens varsel og strømpriser.")
+                            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                                forecastRange(hours)
+                                tomorrowEstimate(alignment: .leading)
                             }
                         }
                         .font(.callout)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder private func forecastRange(_ hours: [ForecastHour]) -> some View {
+        if let low = hours.min(by: { $0.temperature < $1.temperature }),
+            let high = hours.max(by: { $0.temperature < $1.temperature })
+        {
+            Label(
+                Norwegian.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
+                systemImage: "thermometer.medium"
+            )
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private func tomorrowEstimate(alignment: HorizontalAlignment) -> some View {
+        if let tomorrow = model.tomorrow {
+            VStack(alignment: alignment, spacing: 2) {
+                Text(tomorrow.shortText).font(.callout.weight(.semibold)).monospacedDigit()
+                Text(tomorrowDetail(tomorrow)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            .help("Grovt anslag: forbruket mot hvor kaldt det har vært de siste \(tomorrow.basisDays) dagene, morgendagens varsel og strømpriser.")
         }
     }
 

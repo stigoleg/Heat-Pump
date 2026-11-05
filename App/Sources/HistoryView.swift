@@ -45,6 +45,11 @@ struct HistoryView: View {
                         tabPicker
                         rangePicker
                     }
+                    // Narrowest: the tabs become a pop-up menu.
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        tabMenu
+                        rangePicker
+                    }
                 }
                 switch tab {
                 case .temperature: temperatureTab
@@ -117,6 +122,15 @@ struct HistoryView: View {
         .fixedSize()
     }
 
+    private var tabMenu: some View {
+        Picker("Visning", selection: $tab) {
+            ForEach(HistoryTab.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .fixedSize()
+    }
+
     private var rangePicker: some View {
         Picker("Periode", selection: $range) {
             ForEach(HistoryRange.allCases) { Text($0.title).tag($0) }
@@ -153,7 +167,7 @@ struct HistoryView: View {
                     detail: energy.isEstimate ? "Delvis anslag" : nil, systemImage: "creditcard.fill", tint: Theme.Data.purple)
             }
             TrendCard(title: "Temperatur", value: inside.last.map { "Inne nå " + Format.degrees($0) }) {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     LegendDot(label: "Inne", color: Theme.Data.inside)
                     LegendDot(label: "Ute", color: Theme.Data.outside)
                     LegendDot(label: "Ønsket", color: Theme.Data.setpoint, dashed: true)
@@ -286,7 +300,7 @@ struct HistoryView: View {
                     ? Delta.between(energy.totalCost, energy.previousTotalCost, higherIsGood: false)
                     : Delta.between(totalKWh, previousKWh, higherIsGood: false)
             ) {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     if showCost {
                         LegendDot(label: "Strøm etter støtte", color: Theme.Data.electricity)
                         LegendDot(label: "Nettleie", color: Theme.Data.gridTariff)
@@ -356,7 +370,7 @@ struct HistoryView: View {
                         }
                     }
                     .frame(height: 10)
-                    HStack(spacing: Theme.Space.l) {
+                    FlowLayout(spacing: Theme.Space.l) {
                         ForEach(shares, id: \.name) { share in
                             LegendDot(
                                 label: share.name + " " + Format.percentShare(share.share) + " · " + Format.kWh(share.kWh),
@@ -375,7 +389,7 @@ struct HistoryView: View {
             TrendCard(title: "Varmepumpens andel av husets strøm", value: house.yesterday?.share.map {
                 Norwegian.format("Varmepumpen sto for %.0f %% av strømmen i går", $0 * 100)
             }) {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     LegendDot(label: "Varmepumpen", color: Theme.Data.energy)
                     LegendDot(label: "Resten av huset", color: Color.gray.opacity(0.45))
                 }
@@ -558,7 +572,7 @@ struct HistoryView: View {
                 Norwegian.format("Nå %.2f kr/kWh", $0.totalOre / 100)
             }
         ) {
-            HStack(spacing: Theme.Space.m) {
+            FlowLayout {
                 if all.contains(where: { $0.level != nil }) {
                     ForEach([PriceLevel.veryCheap, .cheap, .normal, .expensive, .veryExpensive], id: \.self) {
                         LegendDot(label: $0.displayName, color: $0.color)
@@ -634,7 +648,7 @@ struct HistoryView: View {
                     systemImage: "creditcard.fill", tint: Theme.Data.purple)
             }
             TrendCard(title: "Drift") {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     ForEach([OperationMode.heat, .cool, .dry, .fan, .auto], id: \.self) {
                         LegendDot(label: $0.displayName, color: $0.tint)
                     }
@@ -718,7 +732,7 @@ struct HistoryView: View {
                     systemImage: "timer", tint: Theme.Data.orange)
             }
             TrendCard(title: "Effekt", value: model.liveSample?.powerW.map { "Nå " + Format.watts(Double($0)) }) {
-                HStack(spacing: Theme.Space.m) {
+                FlowLayout {
                     LegendDot(label: "Snitt inkl. stopp (W)", color: .yellow)
                     if let totals, totals.phaseCount > 0 {
                         LegendDot(label: "Avriming (\(totals.defrosts) i perioden)", color: LocalPhaseSpan.Kind.defrost.color)

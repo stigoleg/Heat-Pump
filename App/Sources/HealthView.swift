@@ -84,10 +84,17 @@ struct HealthView: View {
                         HStack(alignment: .top, spacing: Theme.Space.m) {
                             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Status.caution)
                             VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(entry.message).font(.body.weight(.medium))
-                                    Spacer()
-                                    Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                // The date moves below the message when they don't fit on one line.
+                                ViewThatFits(in: .horizontal) {
+                                    HStack(alignment: .firstTextBaseline) {
+                                        Text(entry.message).font(.body.weight(.medium))
+                                        Spacer()
+                                        Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(entry.message).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                                        Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                    }
                                 }
                                 Text(entry.end.map { "Gikk over \(Norwegian.dateTime($0))" } ?? "Ikke registrert som avsluttet")
                                     .font(.caption).foregroundStyle(.secondary)
