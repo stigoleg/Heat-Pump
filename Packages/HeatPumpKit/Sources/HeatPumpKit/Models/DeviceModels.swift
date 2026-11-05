@@ -231,6 +231,8 @@ public struct DeviceState: Codable, Sendable, Equatable {
 
     public var power: Bool
     public var mode: OperationMode?
+    /// True when MELCloud reports the mode with i-See (OperationMode 9/10/11); nil when unknown.
+    public var iSee: Bool?
     public var setTemperature: Double?
     public var roomTemperature: Double?
     public var outdoorTemperature: Double?
@@ -262,7 +264,7 @@ public struct DeviceState: Codable, Sendable, Equatable {
 
     public init(
         deviceId: Int, buildingId: Int, name: String, serialNumber: String? = nil, macAddress: String? = nil,
-        power: Bool, mode: OperationMode?, setTemperature: Double?, roomTemperature: Double?,
+        power: Bool, mode: OperationMode?, iSee: Bool? = nil, setTemperature: Double?, roomTemperature: Double?,
         outdoorTemperature: Double? = nil, fanSpeed: Int? = nil, actualFanSpeed: Int? = nil,
         numberOfFanSpeeds: Int = 5, hasAutomaticFanSpeed: Bool = true,
         vaneVertical: VaneVertical? = nil, vaneHorizontal: VaneHorizontal? = nil,
@@ -279,6 +281,7 @@ public struct DeviceState: Codable, Sendable, Equatable {
         self.macAddress = macAddress
         self.power = power
         self.mode = mode
+        self.iSee = iSee
         self.setTemperature = setTemperature
         self.roomTemperature = roomTemperature
         self.outdoorTemperature = outdoorTemperature
@@ -402,7 +405,9 @@ public enum DeviceChange: Sendable, Equatable {
         var next = state
         switch self {
         case .power(let on): next.power = on
-        case .mode(let mode): next.mode = mode
+        case .mode(let mode):
+            next.mode = mode
+            next.iSee = nil  // the plain value is sent; whether i-See stays on is up to the unit
         case .temperature(let celsius): next.setTemperature = celsius
         case .fanSpeed(let speed): next.fanSpeed = speed
         case .vaneVertical(let vane): next.vaneVertical = vane

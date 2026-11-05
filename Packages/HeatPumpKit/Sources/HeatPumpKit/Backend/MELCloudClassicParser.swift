@@ -13,6 +13,32 @@ public struct ClassicEffectiveFlags: OptionSet, Sendable {
     public static let vaneHorizontal = ClassicEffectiveFlags(rawValue: 0x100)
 }
 
+/// A MELCloud Classic `OperationMode` value. 9, 10 and 11 are heat, dry and cool with i-See
+/// (homebridge-melcloud constants "Heat Isee"/"Dry Isee"/"Cool Isee"); the raw value is kept so a
+/// write that does not change the mode sends it back unchanged.
+struct CloudOperationMode: Equatable {
+    var mode: OperationMode
+    var iSee: Bool
+    var raw: Int
+
+    init(mode: OperationMode, iSee: Bool, raw: Int) {
+        self.mode = mode
+        self.iSee = iSee
+        self.raw = raw
+    }
+
+    init?(raw: Int) {
+        switch raw {
+        case 9: self.init(mode: .heat, iSee: true, raw: raw)
+        case 10: self.init(mode: .dry, iSee: true, raw: raw)
+        case 11: self.init(mode: .cool, iSee: true, raw: raw)
+        default:
+            guard let mode = OperationMode(rawValue: raw) else { return nil }
+            self.init(mode: mode, iSee: false, raw: raw)
+        }
+    }
+}
+
 /// Outcome of `Login/ClientLogin`.
 enum ClassicLoginOutcome: Equatable {
     case success(contextKey: String, expiry: Date?)
@@ -95,6 +121,7 @@ enum MELCloudClassicParser {
         }
         let utc = TimeZone.gmt
         let hasOutdoor = value("HasOutdoorTemperature")?.bool ?? true
+        let cloudMode = mode(get: get, device: device, listing: listing)
         // The counter is stamped with the time it was read: Device/Get time if Get has it,
         // otherwise the listing time (unknown → no counter rather than a wrongly timed one).
         let counterFromGet = get?["CurrentEnergyConsumed"].map { !$0.isNull } ?? false
@@ -118,7 +145,8 @@ enum MELCloudClassicParser {
             serialNumber: value("SerialNumber")?.string,
             macAddress: value("MacAddress")?.string,
             power: value("Power")?.bool ?? false,
-            mode: mode(get: get, device: device, listing: listing),
+            mode: cloudMode?.mode,
+            iSee: cloudMode?.iSee,
             setTemperature: value("SetTemperature")?.double,
             roomTemperature: value("RoomTemperature")?.double,
             outdoorTemperature: hasOutdoor ? value("OutdoorTemperature")?.double : nil,
@@ -156,13 +184,13 @@ enum MELCloudClassicParser {
 
     /// Operation mode from `Device/Get` when it carries one (an unknown value such as 0 gives
     /// nil: the unit really has no valid mode); otherwise from the listing. Strings are accepted.
-    static func mode(get: JSONValue?, device: JSONValue?, listing: JSONValue?) -> OperationMode? {
+    static func mode(get: JSONValue?, device: JSONValue?, listing: JSONValue?) -> CloudOperationMode? {
         for key in ["OperationMode", "OperationModeAta"] {
-            if let value = get?[key], !value.isNull { return value.int.flatMap(OperationMode.init(rawValue:)) }
+            if let value = get?[key], !value.isNull { return value.int.flatMap(CloudOperationMode.init(raw:)) }
         }
         for source in [device, listing] {
             for key in ["OperationMode", "OperationModeAta"] {
-                if let raw = source?[key]?.int, let mode = OperationMode(rawValue: raw) { return mode }
+                if let raw = source?[key]?.int, let mode = CloudOperationMode(raw: raw) { return mode }
             }
         }
         return nil
@@ -218,8 +246,9 @@ enum MELCloudClassicParser {
             throw HeatPumpError.validation(
                 "Status fra varmepumpen mangler \(missing.joined(separator: ", ")), så endringen ble ikke sendt.")
         }
-        // An unknown mode would be sent back as-is and could leave the unit in a bad state.
-        guard let mode = body["OperationMode"]?.int, OperationMode(rawValue: mode) != nil else {
+        // An unknown mode would be sent back as-is and could leave the unit in a bad state. The
+        // i-See values 9/10/11 are valid and go back unchanged when the mode is not changed.
+        guard let mode = body["OperationMode"]?.int, CloudOperationMode(raw: mode) != nil else {
             throw HeatPumpError.validation(invalidModeMessage)
         }
         return body
@@ -231,7 +260,7 @@ enum MELCloudClassicParser {
         guard var base = raw.object else { return response }
         for (key, value) in response.object ?? [:] where !value.isNull {
             // An unknown mode in the response must not replace a known one.
-            if key == "OperationMode", OperationMode(rawValue: value.int ?? -1) == nil { continue }
+            if key == "OperationMode", CloudOperationMode(raw: value.int ?? -1) == nil { continue }
             base[key] = value
         }
         return .object(base)
