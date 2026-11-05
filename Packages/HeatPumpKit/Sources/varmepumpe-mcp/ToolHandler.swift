@@ -19,6 +19,7 @@ struct ToolHandler: Sendable {
             case "get_prices": return try await getPrices()
             case "get_live_status": return try await getLiveStatus()
             case "get_forecast": return try await getForecast()
+            case "get_house_consumption": return try await getHouseConsumption(args)
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -243,6 +244,42 @@ struct ToolHandler: Sendable {
                     + "egne data, med et usikkerhetsområde (kWhLow–kWhHigh). pricesFromToday betyr at morgendagens priser ikke "
                     + "er kommet ennå og dagens timepriser er brukt. Forvarming: høyst 1 °C opp et par timer før en kald og dyr "
                     + "periode, og tilbake etterpå; unngå hyppige av/på og store hopp."))
+    }
+
+    private func getHouseConsumption(_ args: Arguments) async throws -> CallTool.Result {
+        let sync = try await service.syncHouseConsumption()
+        let to = args.date("to") ?? Date()
+        let from = args.date("from") ?? Calendar.current.startOfDay(for: to.addingTimeInterval(-7 * 86_400))
+        let summary = try await service.houseShare(from: from, to: to)
+        struct Day: Encodable {
+            var day: String
+            var houseKWh: Double
+            var heatPumpKWh: Double
+            var heatPumpShare: Double?
+            var hoursWithBoth: Int
+            var heatPumpMeasured: Bool
+            var houseCostNokFromTibber: Double?
+        }
+        struct View: Encodable {
+            var sync: HouseSync
+            var yesterdayText: String?
+            var days: [Day]
+            var note: String
+        }
+        let days = summary.days.map {
+            Day(
+                day: $0.day, houseKWh: $0.houseKWh, heatPumpKWh: $0.heatPumpKWh, heatPumpShare: $0.share.map { ($0 * 1000).rounded() / 1000 },
+                hoursWithBoth: $0.hoursWithBoth, heatPumpMeasured: $0.heatPumpMeasured, houseCostNokFromTibber: $0.houseCostNok)
+        }
+        let yesterday = summary.yesterday?.share.map { Norwegian.format("Varmepumpen sto for %.0f %% av strømmen i går.", $0 * 100) }
+        return try await output(
+            View(
+                sync: sync, yesterdayText: yesterday, days: days,
+                note: sync.status == .notConfigured && days.isEmpty
+                    ? "Krever en Tibber-nøkkel (Innstillinger → Strømpris i appen)."
+                    : "Andelen regnes bare over timer der både huset og varmepumpen har tall (minst 20 timer for et døgn). "
+                        + "houseCostNokFromTibber er Tibbers egen kostnad for hele huset (kontrolltall); appens egen "
+                        + "kostnadsberegning for varmepumpen (get_energy) er uendret."))
     }
 
     private func getLiveStatus() async throws -> CallTool.Result {

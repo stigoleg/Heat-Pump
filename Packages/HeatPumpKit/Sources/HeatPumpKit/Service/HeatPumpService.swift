@@ -36,6 +36,8 @@ public actor HeatPumpService {
     let local: LocalAccess
     /// Builds the forecast source for the current weather settings (nil: no forecast).
     let weatherProvider: @Sendable (WeatherSettings) -> (any WeatherProviding)?
+    /// The house's consumption source (Tibber; nil without a token). Called at most hourly.
+    let houseProvider: @Sendable () -> (any HouseConsumptionProviding)?
 
     public init(
         backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
@@ -46,9 +48,11 @@ public actor HeatPumpService {
         },
         priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil },
         local: LocalAccess = .unavailable,
-        weatherProvider: @escaping @Sendable (WeatherSettings) -> (any WeatherProviding)? = { _ in nil }
+        weatherProvider: @escaping @Sendable (WeatherSettings) -> (any WeatherProviding)? = { _ in nil },
+        houseProvider: @escaping @Sendable () -> (any HouseConsumptionProviding)? = { nil }
     ) {
         self.priceProvider = priceProvider
+        self.houseProvider = houseProvider
         self.weatherProvider = weatherProvider
         self.local = local
         self.backend = backend
@@ -69,7 +73,7 @@ public actor HeatPumpService {
             return HeatPumpService(
                 backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() },
                 local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
-                weatherProvider: { _ in MockWeatherProvider() })
+                weatherProvider: { _ in MockWeatherProvider() }, houseProvider: { MockHouseConsumptionProvider() })
         }
         let credentials = KeychainCredentialStore(environment: environment)
         return HeatPumpService(
@@ -85,7 +89,9 @@ public actor HeatPumpService {
             }, local: .network,
             weatherProvider: { settings in
                 METForecastProvider(userAgent: METForecastProvider.userAgent(version: appVersion, contact: settings.contactEmail))
-            })
+            },
+            // The token is read only when consumption is actually fetched (at most hourly).
+            houseProvider: { credentials.loadTibberToken().map { TibberConsumptionProvider(token: $0) } })
     }
 
     /// Marketing version of the running app or helper (for User-Agent strings).

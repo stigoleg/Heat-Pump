@@ -315,6 +315,18 @@ public final class HistoryStore: Sendable {
                     );
                     """)
         }
+        migrator.registerMigration("v10") { db in
+            // The whole house's hourly use from Tibber (only with a Tibber token).
+            try db.execute(
+                sql: """
+                    CREATE TABLE house_consumption_hourly (
+                        hour DATETIME PRIMARY KEY,
+                        kWh DOUBLE NOT NULL,
+                        cost DOUBLE,
+                        unitPrice DOUBLE
+                    );
+                    """)
+        }
         return migrator
     }
 

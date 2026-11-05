@@ -76,6 +76,17 @@ enum ToolCatalog {
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
+            name: "get_house_consumption",
+            description: "The whole house's hourly electricity use from Tibber (only when the user has saved a Tibber token in the app) next to the heat pump's own use, per day: house kWh, heat-pump kWh, the heat pump's share, and Tibber's own cost for the house. The heat pump's kWh are exact when measured by the local adapter (heatPumpMeasured), otherwise estimated from MELCloud's counter. Fetched from Tibber at most hourly; Tibber's data lags a few hours.",
+            inputSchema: [
+                "type": "object",
+                "properties": [
+                    "from": ["type": "string", "description": "ISO 8601 date (default: 7 days ago)."],
+                    "to": ["type": "string", "description": "ISO 8601 date (default: now)."],
+                ],
+            ],
+            annotations: readOnly),
+        Tool(
             name: "get_maintenance_status",
             description: "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",
             inputSchema: ["type": "object", "properties": [:]],
