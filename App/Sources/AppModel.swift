@@ -132,10 +132,21 @@ final class AppModel {
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refresh(force: false)
-                try? await Task.sleep(for: .seconds(60))
+                guard let self else { return }
+                await self.refresh(force: false)
+                do {
+                    try await Task.sleep(for: .seconds(60))
+                } catch {
+                    return  // cancelled
+                }
             }
         }
+    }
+
+    /// Stops polling (window closed / app quitting). The app only polls while open.
+    func stop() {
+        pollTask?.cancel()
+        pollTask = nil
     }
 
     /// Asks the service for state (cache unless old; it enforces the 60 s / block rules),
@@ -250,11 +261,11 @@ final class AppModel {
             if result.refreshed, let state = result.state {
                 return (true, "Innlogget. Fant «\(state.name)».")
             }
-            if let next = result.nextRefreshAllowed {
-                return (false, "Innloggingen er lagret, men status kan hentes tidligst \(Norwegian.time(next)) (maks én gang i minuttet).")
+            if let message = result.blockMessage {
+                return (false, message)
             }
-            if let until = result.blockedUntil {
-                return (false, HeatPumpError.blocked(until: until).errorDescription ?? "")
+            if let next = result.nextRefreshAllowed {
+                return (false, "Innloggingen er lagret. Vent litt før du tester igjen (tidligst kl. \(Norwegian.time(next))).")
             }
             return (false, result.error ?? "Ukjent feil ved innlogging.")
         } catch {

@@ -19,6 +19,34 @@ public enum ChangeReservation: Sendable, Equatable {
     case tooSoon(nextAllowed: Date)
 }
 
+/// Why MELCloud requests are stopped. Drives the user-facing message.
+public enum BlockReason: String, Codable, Sendable {
+    /// HTTP 429, too much traffic.
+    case rateLimited
+    /// Too many login attempts (ErrorId 6).
+    case loginThrottled
+    /// HTTP 401 even after a fresh login.
+    case unauthorized
+
+    /// Norwegian explanation including when it ends.
+    public func message(until: Date) -> String {
+        let time = Norwegian.time(until)
+        switch self {
+        case .rateLimited:
+            return "MELCloud har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. \(time)."
+        case .loginThrottled:
+            return "For mange innloggingsforsøk mot MELCloud. Prøv igjen kl. \(time)."
+        case .unauthorized:
+            return "MELCloud avviser tilgangen selv etter ny innlogging. Appen prøver igjen kl. \(time)."
+        }
+    }
+}
+
+public struct BlockStatus: Sendable, Equatable {
+    public var until: Date
+    public var reason: BlockReason
+}
+
 public enum ChangeBudget {
     /// Maximum `Device/SetAta` requests per rolling window, across processes.
     public static let maxChangesPerHour = 12
@@ -163,6 +191,9 @@ public final class HistoryStore: Sendable {
                         stateJSON TEXT NOT NULL
                     );
                     """)
+        }
+        migrator.registerMigration("v3") { db in
+            try db.execute(sql: "ALTER TABLE fetch_state ADD COLUMN reason TEXT")
         }
         return migrator
     }
@@ -553,17 +584,32 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    /// Blocks every network call from every process until `until` (keeps the later of two blocks).
-    public func recordBlock(until: Date) throws {
+    /// Blocks every network call from every process until `until` (keeps the later of two
+    /// blocks, together with its reason).
+    public func recordBlock(until: Date, reason: BlockReason) throws {
         try immediate { db in
             try db.execute(
                 sql: """
-                    INSERT INTO fetch_state (key, blockedUntil) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET blockedUntil =
-                        CASE WHEN blockedUntil IS NULL OR blockedUntil < excluded.blockedUntil
+                    INSERT INTO fetch_state (key, blockedUntil, reason) VALUES (?, ?, ?)
+                    ON CONFLICT(key) DO UPDATE SET
+                        reason = CASE WHEN blockedUntil IS NULL OR blockedUntil < excluded.blockedUntil
+                             THEN excluded.reason ELSE reason END,
+                        blockedUntil = CASE WHEN blockedUntil IS NULL OR blockedUntil < excluded.blockedUntil
                              THEN excluded.blockedUntil ELSE blockedUntil END
                     """,
-                arguments: [Self.globalKey, until])
+                arguments: [Self.globalKey, until, reason.rawValue])
+        }
+    }
+
+    /// The active block with its reason (rows from before v3 count as rate limiting).
+    public func blockStatus(now: Date) throws -> BlockStatus? {
+        try pool.read { db in
+            guard let row = try Row.fetchOne(
+                db, sql: "SELECT blockedUntil, reason FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
+                let until: Date = row["blockedUntil"], until > now
+            else { return nil }
+            let reason = (row["reason"] as String?).flatMap(BlockReason.init(rawValue:)) ?? .rateLimited
+            return BlockStatus(until: until, reason: reason)
         }
     }
 

@@ -59,7 +59,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         self.timeZone = timeZone
         self.listingMaxAge = listingMaxAge
         self.now = now
-        self.contextKey = credentials.loadContextKey()
+        // The ContextKey is read from the keychain lazily, right before the first request.
     }
 
     // MARK: HeatPumpBackend

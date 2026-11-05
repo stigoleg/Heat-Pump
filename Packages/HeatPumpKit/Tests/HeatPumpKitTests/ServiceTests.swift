@@ -71,11 +71,12 @@ struct CoordinationTests {
         let processA = try HistoryStore(path: path)
         let processB = try HistoryStore(path: path)
         let t = Date(timeIntervalSince1970: 1_793_872_800)
-        try processA.recordBlock(until: t.addingTimeInterval(7200))
-        try processB.recordBlock(until: t.addingTimeInterval(600))  // shorter block must not shorten it
+        try processA.recordBlock(until: t.addingTimeInterval(7200), reason: .loginThrottled)
+        try processB.recordBlock(until: t.addingTimeInterval(600), reason: .rateLimited)  // shorter block must not shorten it
         #expect(try processB.reserveFetch(key: "report.energy", minInterval: 3600, now: t)
             == .blocked(until: t.addingTimeInterval(7200)))
         #expect(try processB.blockedUntil(now: t) == t.addingTimeInterval(7200))
+        #expect(try processB.blockStatus(now: t) == BlockStatus(until: t.addingTimeInterval(7200), reason: .loginThrottled))
         #expect(try processA.blockedUntil(now: t.addingTimeInterval(7201)) == nil)
     }
 

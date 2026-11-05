@@ -14,9 +14,7 @@ struct AppSupportTests {
             backend: backend, store: try HistoryStore(path: temporaryDatabasePath()), credentials: creds,
             timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         #expect(await !svc.hasCredentials())
-        await backend.failNext(with: .invalidCredentials(nil))
         #expect(try await svc.currentState().needsLogin)
-        clock.advance(61)
         let result = try await svc.signIn(MELCloudCredentials(email: "a@b.no", password: "pw"))
         #expect(result.refreshed && !result.needsLogin)
         #expect(await svc.hasCredentials())

@@ -41,7 +41,7 @@ struct ActivityView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Slik er Claude koblet til", systemImage: "sparkles").font(.headline)
                     Text(
-                        "Claude kan lese status, historikk og helse fra varmepumpen gjennom MCP-serveren som følger med appen. Claude kan bare foreslå endringer: hver endring må du godkjenne før den sendes, og alt som sendes eller avvises vises her."
+                        "Claude kan lese status, historikk og helse fra varmepumpen gjennom MCP-serveren som følger med appen. Når Claude vil endre noe, åpner Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og begrunnelsen. Endringen sendes bare hvis du trykker Godkjenn. Avvis, eller ingen svar innen 2 minutter, stopper den. Alt som sendes eller avvises vises her."
                     )
                     Text("Oppsett finner du under Innstillinger → Claude.").font(.callout).foregroundStyle(.secondary)
                 }

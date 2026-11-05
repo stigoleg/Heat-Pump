@@ -3,7 +3,8 @@ import SwiftUI
 
 struct ControlView: View {
     @Environment(AppModel.self) private var model
-    @State private var draft: ControlSettings?
+    /// Only the fields the user has touched; everything else shows live state.
+    @State private var edits = ControlEdits()
     @State private var confirming = false
     @State private var sending = false
     @State private var outcomes: [ChangeOutcome] = []
@@ -21,13 +22,20 @@ struct ControlView: View {
     }
 
     private func form(base state: DeviceState) -> some View {
-        let original = ControlSettings(state)
-        let binding = Binding<ControlSettings>(
-            get: { draft ?? original },
-            set: { draft = $0 })
-        let pending = binding.wrappedValue.changes(from: original)
-        let range = state.limits.range(for: binding.wrappedValue.mode)
+        let live = ControlSettings(state)
+        let shown = edits.displayed(over: live)
+        let pending = edits.changes(from: live)
+        let range = state.limits.range(for: shown.mode)
         let step = state.temperatureIncrement > 0 ? state.temperatureIncrement : 0.5
+        func field<T>(_ edit: WritableKeyPath<ControlEdits, T?>, _ value: KeyPath<ControlSettings, T>) -> Binding<T> {
+            Binding(get: { edits[keyPath: edit] ?? live[keyPath: value] }, set: { edits[keyPath: edit] = $0 })
+        }
+        let mode = Binding<OperationMode>(
+            get: { shown.mode },
+            set: { newMode in
+                edits.mode = newMode
+                edits.clampSetpoint(over: live, limits: state.limits, step: step)
+            })
 
         return Form {
             if model.isAwaitingConfirmation {
@@ -38,22 +46,17 @@ struct ControlView: View {
             }
 
             Section("Av/på") {
-                Toggle("Varmepumpen er på", isOn: binding.power)
+                Toggle("Varmepumpen er på", isOn: field(\.power, \.power))
             }
 
             Section {
-                Picker("Modus", selection: binding.mode) {
+                Picker("Modus", selection: mode) {
                     ForEach([OperationMode.heat, .cool, .dry, .fan, .auto], id: \.self) { mode in
                         Label(mode.displayName, systemImage: mode.systemImage).tag(mode)
                     }
                 }
-                .onChange(of: binding.wrappedValue.mode) {
-                    var value = binding.wrappedValue
-                    value.clampSetpoint(to: state.limits, step: step)
-                    binding.wrappedValue = value
-                }
-                Stepper(value: binding.setTemperature, in: range, step: step) {
-                    LabeledContent("Ønsket temperatur", value: Format.temperature(binding.wrappedValue.setTemperature))
+                Stepper(value: field(\.setTemperature, \.setTemperature), in: range, step: step) {
+                    LabeledContent("Ønsket temperatur", value: Format.temperature(shown.setTemperature))
                 }
             } header: {
                 Text("Varme og temperatur")
@@ -61,20 +64,20 @@ struct ControlView: View {
                 Text(
                     Norwegian.format(
                         "Tillatt i %@: %.0f–%.0f °C. Varme er riktig valg om vinteren. Små justeringer (1–2 grader) er nok.",
-                        binding.wrappedValue.mode.displayName.lowercased(), range.lowerBound, range.upperBound))
+                        shown.mode.displayName.lowercased(), range.lowerBound, range.upperBound))
             }
 
             Section {
-                Picker("Viftehastighet", selection: binding.fanSpeed) {
+                Picker("Viftehastighet", selection: field(\.fanSpeed, \.fanSpeed)) {
                     if state.hasAutomaticFanSpeed { Text("Auto").tag(0) }
                     ForEach(1...max(state.numberOfFanSpeeds, 1), id: \.self) { speed in
                         Text("\(speed)").tag(speed)
                     }
                 }
-                Picker("Vertikalt spjeld (opp/ned)", selection: binding.vaneVertical) {
+                Picker("Vertikalt spjeld (opp/ned)", selection: field(\.vaneVertical, \.vaneVertical)) {
                     ForEach(VaneVertical.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
-                Picker("Horisontalt spjeld (venstre/høyre)", selection: binding.vaneHorizontal) {
+                Picker("Horisontalt spjeld (venstre/høyre)", selection: field(\.vaneHorizontal, \.vaneHorizontal)) {
                     ForEach(VaneHorizontal.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
             } header: {
@@ -85,7 +88,7 @@ struct ControlView: View {
 
             Section {
                 HStack {
-                    Button("Tilbakestill") { draft = nil }
+                    Button("Tilbakestill") { edits = ControlEdits() }
                         .disabled(pending.isEmpty || sending)
                     Spacer()
                     if sending { ProgressView().controlSize(.small) }
@@ -113,6 +116,8 @@ struct ControlView: View {
             }
         }
         .formStyle(.grouped)
+        // Edits that live state has caught up with are no longer pending.
+        .onChange(of: live) { edits.prune(against: live) }
         .safeAreaInset(edge: .top, spacing: 0) { StatusBanner(inset: 16) }
         .confirmationDialog("Sende endringene til varmepumpen?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Send") { Task { await send(pending) } }
@@ -126,6 +131,6 @@ struct ControlView: View {
         sending = true
         defer { sending = false }
         outcomes = await model.send(changes)
-        if outcomes.allSatisfy({ $0.result == .ok }) { draft = nil }
+        if outcomes.allSatisfy({ $0.result == .ok }) { edits = ControlEdits() }
     }
 }

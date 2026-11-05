@@ -4,7 +4,7 @@ import MCP
 
 enum ToolCatalog {
     static let writeWarning =
-        "This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes."
+        "This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Godkjenn (sent) or Avvis (not sent); no answer within 120 s counts as rejected."
 
     static let reasonProperty: Value = [
         "type": "string",

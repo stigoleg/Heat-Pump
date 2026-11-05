@@ -65,30 +65,44 @@ public actor HeatPumpService {
 
     // MARK: Credentials
 
+    /// Shortest gap between two sign-in test fetches (each one is a real login attempt).
+    public static let signInMinInterval: TimeInterval = 10
+
+    /// Cached answer to "are credentials stored?" so polling never touches the keychain.
+    private var credentialsStored: Bool?
+
+    /// Whether credentials are stored. Checked once (without reading the password), then
+    /// cached and updated on save, sign-out and refused logins.
     public func hasCredentials() -> Bool {
         guard let credentials else { return true }
-        return ((try? credentials.loadCredentials()) ?? nil) != nil
+        if let credentialsStored { return credentialsStored }
+        let stored = credentials.hasCredentials()
+        credentialsStored = stored
+        return stored
     }
 
     /// Saves new credentials and lifts a "credentials rejected" stop. Does not call the network.
     public func saveCredentials(_ new: MELCloudCredentials) throws {
         guard let credentials else { return }
         try credentials.saveCredentials(new)
+        credentialsStored = true
         try store.clearCredentialsRejected()
         device = nil
     }
 
-    /// Saves credentials, forgets the old session and does one forced state fetch
-    /// (one login + one fetch, still subject to the global 60 s / block rules).
+    /// Saves credentials, forgets the old session and does one test fetch right away
+    /// (one login + one fetch). It skips the 60 s refresh spacing but still respects 429 and
+    /// login-throttle blocks, is recorded like any fetch, and is itself limited to one per 10 s.
     public func signIn(_ new: MELCloudCredentials) async throws -> StateResult {
         try saveCredentials(new)
         await backend.resetSession()
-        return try await currentState(force: true)
+        return try await fetchState(minInterval: Self.signInMinInterval, cached: try store.latestSnapshot(), maxAge: 0)
     }
 
     /// Removes credentials and session from the keychain.
     public func signOut() async throws {
         try credentials?.deleteAll()
+        credentialsStored = false
         await backend.resetSession()
         device = nil
     }
@@ -106,7 +120,20 @@ public actor HeatPumpService {
         if let cached, !force, !cached.stale, t.timeIntervalSince(cached.state.fetchedAt) < maxAge {
             return result(cached.state, now: t, refreshed: false, stale: false)
         }
-        switch try store.reserveFetch(key: Self.stateKey, minInterval: Self.minRefreshInterval, now: t) {
+        // Without credentials there is nothing to fetch; do not use up the refresh slot.
+        guard hasCredentials() else {
+            var r = result(
+                cached?.state, now: t, refreshed: false, stale: cached != nil,
+                error: HeatPumpError.missingCredentials.errorDescription)
+            r.needsLogin = true
+            return r
+        }
+        return try await fetchState(minInterval: Self.minRefreshInterval, cached: cached, maxAge: maxAge)
+    }
+
+    private func fetchState(minInterval: TimeInterval, cached: HistoryStore.Snapshot?, maxAge: TimeInterval) async throws -> StateResult {
+        let t = now()
+        switch try store.reserveFetch(key: Self.stateKey, minInterval: minInterval, now: t) {
         case .credentialsRejected:
             var r = result(
                 cached?.state, now: t, refreshed: false, stale: true,
@@ -128,12 +155,13 @@ public actor HeatPumpService {
                 try store.recordFetchSuccess(key: Self.stateKey, now: t)
                 return result(state, now: now(), refreshed: true, stale: false)
             } catch let error as HeatPumpError {
+                if error == .missingCredentials { credentialsStored = false }
                 let blocked = try handleBlock(error, now: t)
                 var r = result(
                     cached?.state, now: t, refreshed: false, stale: true, blockedUntil: blocked,
-                    error: (error.isCredentialProblem ? HeatPumpError.credentialsRejected : error).errorDescription)
-                r.needsLogin = error.isCredentialProblem || error == .missingCredentials
-                if error == .missingCredentials { r.error = error.errorDescription }
+                    error: blocked == nil
+                        ? (error.isCredentialProblem ? HeatPumpError.credentialsRejected : error).errorDescription : nil)
+                r.needsLogin = r.needsLogin || error.isCredentialProblem || error == .missingCredentials
                 return r
             }
         }
@@ -155,12 +183,22 @@ public actor HeatPumpService {
         _ state: DeviceState?, now: Date, refreshed: Bool, stale: Bool, blockedUntil: Date? = nil,
         nextRefreshAllowed: Date? = nil, error: String? = nil
     ) -> StateResult {
-        StateResult(
+        let block = (try? store.blockStatus(now: now)) ?? nil
+        let credentialsRejected = (try? store.credentialsRejected()) ?? false
+        let until = blockedUntil ?? block?.until
+        var message: String?
+        if credentialsRejected {
+            message = HeatPumpError.credentialsRejected.errorDescription
+        } else if let until {
+            message = (block?.reason ?? .rateLimited).message(until: until)
+        }
+        return StateResult(
             state: state, fetchedAt: state?.fetchedAt,
             dataAgeSeconds: state.map { max(0, Int(now.timeIntervalSince($0.fetchedAt))) },
-            refreshed: refreshed, stale: stale, blockedUntil: blockedUntil ?? (try? store.blockedUntil(now: now)) ?? nil,
+            refreshed: refreshed, stale: stale, blockedUntil: until,
             nextRefreshAllowed: nextRefreshAllowed, error: error,
-            needsLogin: (try? store.credentialsRejected()) ?? false)
+            needsLogin: credentialsRejected, blockReason: until == nil ? nil : (block?.reason ?? .rateLimited),
+            blockMessage: message)
     }
 
     /// Records blocks for rate-limit and credential errors. Returns the block end, if timed.
@@ -168,17 +206,18 @@ public actor HeatPumpService {
     private func handleBlock(_ error: HeatPumpError, now: Date) throws -> Date? {
         switch error {
         case .rateLimited(let until):
-            try store.recordBlock(until: until)
+            try store.recordBlock(until: until, reason: .rateLimited)
             return until
         case .loginThrottled(let until):
             let end = until ?? now.addingTimeInterval(Self.defaultLoginBlock)
-            try store.recordBlock(until: end)
+            try store.recordBlock(until: end, reason: .loginThrottled)
             return end
         case .unauthorized:
             let end = now.addingTimeInterval(Self.unauthorizedBlock)
-            try store.recordBlock(until: end)
+            try store.recordBlock(until: end, reason: .unauthorized)
             return end
         case .invalidCredentials:
+            credentialsStored = true
             // Every further login attempt with the same password risks an account-wide
             // throttle that also hits the official app; stop until the user saves new ones.
             try store.recordCredentialsRejected(now: now)
@@ -300,7 +339,43 @@ public actor HeatPumpService {
     /// one `SetAta` request (combined EffectiveFlags); vanes are one axis per request.
     /// If any change is invalid, nothing is sent and all are logged as rejected.
     public func apply(_ changes: [DeviceChange], source: ChangeSource, reason: String) async throws -> [ChangeOutcome] {
-        guard !changes.isEmpty else { return [] }
+        switch try await prepare(changes, source: source, reason: reason) {
+        case .rejected(let outcomes):
+            return outcomes
+        case .ready(let start, let normalized):
+            return try await sendPrepared(normalized, start: start, source: source, reason: reason)
+        }
+    }
+
+    /// Like `apply`, but asks `approver` (a human) first. Changes that would be rejected anyway
+    /// (invalid, blocked) are logged without asking. A refusal, timeout or missing dialog is
+    /// logged as `rejected` and nothing is sent. After approval everything is checked again.
+    public func applyWithApproval(
+        _ changes: [DeviceChange], source: ChangeSource, reason: String, approver: any ChangeApprover
+    ) async throws -> [ChangeOutcome] {
+        switch try await prepare(changes, source: source, reason: reason) {
+        case .rejected(let outcomes):
+            return outcomes
+        case .ready(let start, let normalized):
+            let request = ApprovalRequest(summaries: normalized.map(\.displaySummary), reason: reason)
+            let decision = await approver.requestApproval(request)
+            guard decision == .approved else {
+                return try rejectAll(
+                    normalized, source: source, reason: reason, state: start,
+                    error: decision.rejectionText, now: now())
+            }
+            return try await apply(changes, source: source, reason: reason)
+        }
+    }
+
+    private enum Prepared {
+        case rejected([ChangeOutcome])
+        case ready(start: DeviceState, normalized: [DeviceChange])
+    }
+
+    /// Validates against the expected state and checks stops/blocks. Rejections are logged.
+    private func prepare(_ changes: [DeviceChange], source: ChangeSource, reason: String) async throws -> Prepared {
+        guard !changes.isEmpty else { return .rejected([]) }
         let t = now()
         var base = try effectiveState()
         if base == nil {
@@ -308,9 +383,9 @@ public actor HeatPumpService {
             base = try effectiveState()
         }
         guard let start = base else {
-            return try rejectAll(
+            return .rejected(try rejectAll(
                 changes, source: source, reason: reason, state: nil,
-                error: "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres.", now: t)
+                error: "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres.", now: t))
         }
 
         // Validate in dependency order against the state as it will be.
@@ -319,25 +394,31 @@ public actor HeatPumpService {
         for change in changes.sorted(by: { $0.validationOrder < $1.validationOrder }) {
             switch Self.validate(change, against: projected) {
             case .failure(let message):
-                return try rejectAll(changes, source: source, reason: reason, state: start, error: message.description, now: t)
+                return .rejected(
+                    try rejectAll(changes, source: source, reason: reason, state: start, error: message.description, now: t))
             case .success(let value):
                 normalized.append(value)
                 projected = value.applied(to: projected)
             }
         }
         if try store.credentialsRejected() {
-            return try rejectAll(
+            return .rejected(try rejectAll(
                 normalized, source: source, reason: reason, state: start,
-                error: HeatPumpError.credentialsRejected.errorDescription ?? "", now: t)
+                error: HeatPumpError.credentialsRejected.errorDescription ?? "", now: t))
         }
-        if let until = try store.blockedUntil(now: t) {
+        if let block = try store.blockStatus(now: t) {
             var outcomes = try rejectAll(
                 normalized, source: source, reason: reason, state: start,
-                error: HeatPumpError.blocked(until: until).errorDescription ?? "Blokkert", now: t)
-            for i in outcomes.indices { outcomes[i].blockedUntil = until }
-            return outcomes
+                error: block.reason.message(until: block.until), now: t)
+            for i in outcomes.indices { outcomes[i].blockedUntil = block.until }
+            return .rejected(outcomes)
         }
+        return .ready(start: start, normalized: normalized)
+    }
 
+    private func sendPrepared(
+        _ normalized: [DeviceChange], start: DeviceState, source: ChangeSource, reason: String
+    ) async throws -> [ChangeOutcome] {
         // Split into requests: one with everything but a second vane axis, then that axis.
         var first = normalized.filter { !$0.isVane }
         var requests: [[DeviceChange]] = []

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import HeatPumpKit
 import MCP
@@ -6,7 +7,9 @@ let instructions = """
     Tools for the user's Mitsubishi MSZ-RW25VG wall heat pump (MELCloud Classic).
     Read tools are safe to call freely. Write tools (set_*) change the physical heat pump: \
     propose the change, explain why in plain Norwegian, and only call the tool after the user \
-    explicitly agrees. Never chain several changes without asking. The user is not a heat-pump \
+    agrees in the conversation. Each set_* call then opens a confirmation dialog on the user's Mac \
+    ("Godkjenn"/"Avvis", rejected after 120 s without an answer); the change is only sent if the \
+    user clicks Godkjenn. Never chain several changes without asking. The user is not a heat-pump \
     expert; answer in Norwegian bokmål. Data may be cached: check meta.dataAgeSeconds and \
     meta.blockedUntil. MELCloud blocks accounts that poll too often, so do not call refresh repeatedly.
     """
@@ -27,19 +30,46 @@ let healthCheckPrompt = """
     Ikke endre noe på varmepumpen. Du kan foreslå endringer, men de skal bare utføres hvis brukeren sier ja.
     """
 
+// The helper is an accessory AppKit app (no Dock icon) so it can show its own approval
+// dialog. AppKit runs the main thread; the MCP server runs in a task.
+let application = NSApplication.shared
+application.setActivationPolicy(.accessory)
+
+let service: HeatPumpService
 do {
-    let service = try HeatPumpService.makeDefault()
-    let capabilities = ClientCapabilities()
+    service = try HeatPumpService.makeDefault()
+} catch {
+    Log.error("fatal: \(error)")
+    exit(1)
+}
+let environment = ProcessInfo.processInfo.environment
+let approver = ApprovalPolicy.approver(environment: environment, interactive: DialogApprover())
+if !(approver is DialogApprover) {
+    Log.info("VARMEPUMPE_APPROVAL=\(environment["VARMEPUMPE_APPROVAL"] ?? "") with mock backend: approval dialog bypassed (dev only)")
+}
+
+Task {
+    do {
+        try await runServer(service: service, approver: approver)
+    } catch {
+        Log.error("fatal: \(error)")
+        exit(1)
+    }
+    exit(0)
+}
+application.run()
+
+func runServer(service: HeatPumpService, approver: any ChangeApprover) async throws {
     let server = Server(
         name: "varmepumpe",
-        version: "0.1.0",
+        version: "0.2.0",
         title: "Varmepumpe",
         instructions: instructions,
         capabilities: .init(
             prompts: .init(listChanged: false),
             resources: .init(subscribe: false, listChanged: false),
             tools: .init(listChanged: false)))
-    let handler = ToolHandler(service: service, server: server, capabilities: capabilities)
+    let handler = ToolHandler(service: service, approver: approver)
 
     await server.withMethodHandler(ListTools.self) { _ in
         ListTools.Result(tools: ToolCatalog.all)
@@ -74,13 +104,9 @@ do {
             messages: [.user(.text(text: healthCheckPrompt))])
     }
 
-    try await server.start(transport: StdioTransport()) { client, clientCapabilities in
-        Log.info("client \(client.name) \(client.version), elicitation: \(clientCapabilities.elicitation != nil)")
-        await capabilities.set(supportsElicitation: clientCapabilities.elicitation != nil)
+    try await server.start(transport: StdioTransport()) { client, _ in
+        Log.info("client \(client.name) \(client.version)")
     }
     Log.info("started (backend: \(service.backend.identifier), db: \(service.store.path))")
     await server.waitUntilCompleted()
-} catch {
-    Log.error("fatal: \(error)")
-    exit(1)
 }

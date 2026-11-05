@@ -32,7 +32,7 @@ En test feiler hvis dette er glemt.
 
 ## Installer
 
-Kopier `Varmepumpe.app` til Programmer-mappen. Første gang uten innlogging viser appen en velkomstside der du logger inn på MELCloud.
+Kopier `Varmepumpe.app` til Programmer-mappen. Første gang uten innlogging viser appen en velkomstside der du logger inn på MELCloud. Appen henter bare data mens vinduet er åpent, og avsluttes når du lukker det.
 
 ## Kjør med simulert varmepumpe (demo)
 
@@ -44,7 +44,7 @@ VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=/tmp/varmepumpe-demo.sqlite \
   build/DerivedData/Build/Products/Debug/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp
 ```
 
-Appen viser merket «Demo-data». Den simulerte varmepumpen gir realistiske vinterdata og en feil i feilloggen omtrent hver 17. dag.
+Appen viser merket «Demo-data». MCP-serveren i demo-modus viser godkjenningsvinduet som ellers, med mindre `VARMEPUMPE_APPROVAL` er satt. Den simulerte varmepumpen gir realistiske vinterdata og en feil i feilloggen omtrent hver 17. dag.
 
 ## Koble til Claude Code
 
@@ -54,7 +54,7 @@ Innstillinger → Claude i appen viser den nøyaktige kommandoen med riktig sti,
 claude mcp add varmepumpe --scope user -- "/Applications/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp"
 ```
 
-Ikke legg `set_*`-verktøyene til i Claudes liste over verktøy som er tillatt uten å spørre.
+Hver endring må godkjennes i vinduet på Macen. Ikke legg likevel `set_*`-verktøyene til i Claudes liste over verktøy som er tillatt uten å spørre.
 
 Prompten `helsesjekk` gir en full helsesjekk med prioritert oppsummering. Kunnskapsdokumentene er tilgjengelige som ressurser under `varmepumpe://knowledge/…`.
 
@@ -72,7 +72,7 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 
 ## Sikkerhet og begrensninger
 
-- **Lese fritt, skrive bare med godkjenning.** Alle verktøy som endrer varmepumpen ber Claude om å få brukerens ja først. Støtter klienten MCP-bekreftelse (elicitation), spør serveren i tillegg selv. Avviste endringer sendes ikke, men logges.
+- **Lese fritt, skrive bare med godkjenning.** Når Claude kaller et `set_*`-verktøy, viser MCP-serveren selv et vindu på Macen: «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. **Avvis** (standardknappen, også Return og Esc), ingen svar innen 120 sekunder, eller at vinduet ikke kan vises (ingen grafisk økt), gjør at endringen ikke sendes. Dette gjelder uansett klient og tillatelsesmodus i Claude Code. Avviste endringer logges.
 - Alle endringer logges med kilde (app eller claude), gammel og ny verdi, begrunnelse og resultat.
 - Maks 12 sendinger per time og minst 5 sekunder mellom to sendinger, til sammen for appen og Claude. Flere endringer fra Kontroll-skjermen sendes samlet som én sending.
 - Godtar ikke MELCloud e-post eller passord, stopper all henting til ny innlogging er lagret, så kontoen ikke blir sperret.
@@ -88,4 +88,5 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 | `VARMEPUMPE_BACKEND=mock` | Bruk simulert varmepumpe |
 | `VARMEPUMPE_DB_PATH` | Sti til SQLite-databasen |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Kun utvikling: innlogging uten nøkkelring |
+| `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun utvikling og tester: svarer automatisk i stedet for godkjenningsvinduet. Virker bare sammen med `VARMEPUMPE_BACKEND=mock`; med ekte MELCloud ignoreres den. |
 | `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, health, activity) |

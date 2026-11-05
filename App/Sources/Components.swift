@@ -119,12 +119,14 @@ struct StatusBanner: View {
         guard let result = model.stateResult else { return nil }
         if result.needsLogin {
             return Message(
-                text: result.error ?? "Logg inn på MELCloud i Innstillinger.", icon: "person.crop.circle.badge.exclamationmark",
-                color: .orange)
+                text: result.blockMessage ?? result.error ?? "Logg inn på MELCloud i Innstillinger.",
+                icon: "person.crop.circle.badge.exclamationmark", color: .orange)
         }
         if let until = result.blockedUntil, until > now {
+            // The text comes from the block reason (traffic, login attempts, refused access).
+            let reason = result.blockMessage ?? BlockReason.rateLimited.message(until: until)
             return Message(
-                text: "MELCloud har midlertidig stengt for oppdateringer (for mye trafikk). Neste forsøk om \(Format.countdown(to: until, now: now)). Viser lagrede data.",
+                text: "\(reason) (om \(Format.countdown(to: until, now: now))). Viser lagrede data.",
                 icon: "hourglass", color: .orange)
         }
         if let error = result.error {

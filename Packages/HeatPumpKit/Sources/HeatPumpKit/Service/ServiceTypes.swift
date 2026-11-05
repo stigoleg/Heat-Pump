@@ -17,6 +17,10 @@ public struct StateResult: Codable, Sendable, Equatable {
     public var error: String?
     /// True when credentials are missing or MELCloud refused them; show the login screen.
     public var needsLogin: Bool = false
+    /// Why requests are blocked (set together with `blockedUntil`).
+    public var blockReason: BlockReason?
+    /// Norwegian text for the block or credential stop, chosen from the reason.
+    public var blockMessage: String?
 }
 
 public struct ChangeOutcome: Codable, Sendable, Equatable {

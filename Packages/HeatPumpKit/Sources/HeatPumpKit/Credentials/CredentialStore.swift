@@ -15,6 +15,8 @@ public struct MELCloudCredentials: Sendable, Equatable {
 /// Supplies MELCloud credentials and persists the session ContextKey.
 public protocol CredentialProviding: Sendable {
     func loadCredentials() throws -> MELCloudCredentials?
+    /// Whether credentials exist, without reading the secret (no keychain prompt).
+    func hasCredentials() -> Bool
     func saveCredentials(_ credentials: MELCloudCredentials) throws
     func loadContextKey() -> String?
     func saveContextKey(_ key: String?) throws
@@ -55,6 +57,19 @@ public struct KeychainCredentialStore: CredentialProviding {
             let email = object["email"], let password = object["password"]
         else { return nil }
         return MELCloudCredentials(email: email, password: password)
+    }
+
+    public func hasCredentials() -> Bool {
+        if let email = environment["MELCLOUD_EMAIL"], let password = environment["MELCLOUD_PASSWORD"],
+            !email.isEmpty, !password.isEmpty
+        {
+            return true
+        }
+        var query = baseQuery(account: Self.credentialsAccount)
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        return SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess
     }
 
     public func saveCredentials(_ credentials: MELCloudCredentials) throws {
@@ -141,6 +156,8 @@ public final class InMemoryCredentialStore: CredentialProviding {
     private struct State {
         var credentials: MELCloudCredentials?
         var contextKey: String?
+        var loadCount = 0
+        var existenceChecks = 0
     }
 
     private let state: Mutex<State>
@@ -149,9 +166,29 @@ public final class InMemoryCredentialStore: CredentialProviding {
         state = Mutex(State(credentials: credentials, contextKey: contextKey))
     }
 
-    public func loadCredentials() throws -> MELCloudCredentials? { state.withLock { $0.credentials } }
+    public func loadCredentials() throws -> MELCloudCredentials? {
+        state.withLock {
+            $0.loadCount += 1
+            return $0.credentials
+        }
+    }
+    public func hasCredentials() -> Bool {
+        state.withLock {
+            $0.existenceChecks += 1
+            return $0.credentials != nil
+        }
+    }
+    /// Number of `hasCredentials` calls.
+    public var existenceChecks: Int { state.withLock { $0.existenceChecks } }
+    /// Number of `loadCredentials` calls (tests check that polling does not read secrets).
+    public var loadCount: Int { state.withLock { $0.loadCount } }
     public func saveCredentials(_ credentials: MELCloudCredentials) throws { state.withLock { $0.credentials = credentials } }
     public func loadContextKey() -> String? { state.withLock { $0.contextKey } }
     public func saveContextKey(_ key: String?) throws { state.withLock { $0.contextKey = key } }
-    public func deleteAll() throws { state.withLock { $0 = State() } }
+    public func deleteAll() throws {
+        state.withLock {
+            $0.credentials = nil
+            $0.contextKey = nil
+        }
+    }
 }

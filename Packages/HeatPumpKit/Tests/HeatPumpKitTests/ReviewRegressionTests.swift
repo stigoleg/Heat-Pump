@@ -97,16 +97,19 @@ struct ReviewRegressionTests {
     // 3. A 401 first retries with the ContextKey another process stored.
     @Test func unauthorizedRetriesWithKeyFromKeychainBeforeLogin() async throws {
         let transport = StubTransport()
+        transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
         transport.enqueue("/User/ListDevices", status: 401, body: Data())
         transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
         let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "pw"), contextKey: "OLD")
         let backend = MELCloudClassicBackend(credentials: creds, transport: transport, timeZone: .gmt)
+        _ = try await backend.listDevices()  // uses OLD
         try creds.saveContextKey("NEW")  // another process logged in meanwhile
         _ = try await backend.listDevices()
         let requests = transport.requests
-        #expect(requests.map { $0.url?.lastPathComponent } == ["ListDevices", "ListDevices"])
-        #expect(requests[0].value(forHTTPHeaderField: "X-MitsContextKey") == "OLD")
-        #expect(requests[1].value(forHTTPHeaderField: "X-MitsContextKey") == "NEW")
+        #expect(requests.map { $0.url?.lastPathComponent } == ["ListDevices", "ListDevices", "ListDevices"])
+        #expect(requests[1].value(forHTTPHeaderField: "X-MitsContextKey") == "OLD")
+        #expect(requests[2].value(forHTTPHeaderField: "X-MitsContextKey") == "NEW")
+        #expect(creds.loadCount == 0)  // no login, so the password was never read
     }
 
     @Test func unauthorizedWithSameStoredKeyLogsInOnceAndKeepsKey() async throws {

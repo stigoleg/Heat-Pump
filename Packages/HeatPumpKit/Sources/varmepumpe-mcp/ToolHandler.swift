@@ -2,16 +2,10 @@ import Foundation
 import HeatPumpKit
 import MCP
 
-/// Whether the connected client declared MCP elicitation support (set in the initialize hook).
-actor ClientCapabilities {
-    private(set) var supportsElicitation = false
-    func set(supportsElicitation: Bool) { self.supportsElicitation = supportsElicitation }
-}
-
 struct ToolHandler: Sendable {
     let service: HeatPumpService
-    let server: Server
-    let capabilities: ClientCapabilities
+    /// Asks the user (native dialog) before any change reaches the heat pump.
+    let approver: any ChangeApprover
 
     func handle(_ params: CallTool.Parameters) async -> CallTool.Result {
         let args = Arguments(params.arguments)
@@ -196,51 +190,12 @@ struct ToolHandler: Sendable {
             throw ArgumentError(message: "reason er påkrevd for alle endringer")
         }
         let requested = try changes(for: tool, args)
-        // Make sure a current state exists so the confirmation and the log show old → new.
+        // Make sure a current state exists so the dialog and the log show old → new.
         _ = try await service.currentState()
-
-        if let declined = await confirm(requested, reason: reason) {
-            var outcomes: [ChangeOutcome] = []
-            for change in requested {
-                outcomes.append(try await service.logRejection(change, source: .claude, reason: reason, error: declined))
-            }
-            return try await output(outcomes, isError: true)
-        }
-
-        let outcomes = try await service.apply(requested, source: .claude, reason: reason)
+        // Every pump write waits for the user's answer in the helper's own dialog,
+        // whatever the MCP client or its permission mode is.
+        let outcomes = try await service.applyWithApproval(requested, source: .claude, reason: reason, approver: approver)
         return try await output(outcomes, isError: outcomes.contains { $0.result != .ok })
-    }
-
-    /// Asks the user through MCP elicitation when the client supports it.
-    /// Returns nil when confirmed (or elicitation is unavailable), else a Norwegian reason for rejection.
-    private func confirm(_ changes: [DeviceChange], reason: String) async -> String? {
-        guard await capabilities.supportsElicitation else { return nil }
-        let summary = changes.map(\.displaySummary).joined(separator: ", ")
-        let schema = Elicitation.RequestSchema(
-            title: "Bekreft endring på varmepumpen",
-            properties: [
-                "confirm": [
-                    "type": "boolean",
-                    "title": "Utfør endringen",
-                    "description": "Kryss av for å sende endringen til varmepumpen.",
-                ]
-            ],
-            required: ["confirm"])
-        do {
-            let response = try await server.requestElicitation(
-                message: "Claude vil endre varmepumpen: \(summary). Begrunnelse: \(reason)", requestedSchema: schema)
-            switch response.action {
-            case .accept:
-                return response.content?["confirm"]?.boolValue == true ? nil : "Avvist av brukeren i bekreftelsen."
-            case .decline:
-                return "Avvist av brukeren i bekreftelsen."
-            case .cancel:
-                return "Bekreftelsen ble avbrutt av brukeren."
-            }
-        } catch {
-            Log.error("elicitation failed: \(error)")
-            return "Kunne ikke be brukeren om bekreftelse (\(error.localizedDescription)); endringen ble ikke sendt."
-        }
     }
 
     private func recordMaintenance(_ args: Arguments) async throws -> CallTool.Result {

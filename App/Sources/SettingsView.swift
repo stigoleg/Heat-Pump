@@ -115,8 +115,11 @@ struct ClaudeSettings: View {
             }
             Section("Sikkerhet") {
                 Label(
-                    "Ikke legg set_*-verktøyene (endringer på varmepumpen) til i Claudes liste over verktøy som er tillatt uten å spørre. Da må du godkjenne hver endring.",
+                    "Hver endring Claude vil gjøre på varmepumpen vises i et eget godkjenningsvindu på Macen («Godkjenn» / «Avvis»). Det gjelder uansett hvordan Claude Code er satt opp. Uten svar innen 2 minutter blir endringen avvist.",
                     systemImage: "hand.raised")
+                Label(
+                    "Legg likevel ikke set_*-verktøyene til i Claudes liste over verktøy som er tillatt uten å spørre.",
+                    systemImage: "exclamationmark.shield")
                 Label("Claude kan lese fritt, men alle endringer logges under Claude-aktivitet.", systemImage: "list.bullet.rectangle")
             }
         }
