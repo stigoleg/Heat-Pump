@@ -136,9 +136,13 @@ public actor MockBackend: HeatPumpBackend {
     static func counterKWh(at date: Date) -> Double {
         let anchor = 1_767_225_600.0  // 2026-01-01T00:00:00Z
         let h = (date.timeIntervalSince1970 - anchor) / 3600
+        // `outdoorTemperature` uses hours since 1970; the weather term must use the same phase
+        // (the anchor is not a multiple of 216 h), or the counter drifts from the daily kWh.
+        let absolute = date.timeIntervalSince1970 / 3600
         let k = 0.0175
-        // 17 - outdoor = 21 - 4 sin(2π(h-8)/24) - 5 sin(2πh/216)
-        let integral = 21 * h + 4 * 24 / (2 * .pi) * cos(2 * .pi * (h - 8) / 24) + 5 * 216 / (2 * .pi) * cos(2 * .pi * h / 216)
+        // 17 - outdoor = 21 - 4 sin(2π(h-8)/24) - 5 sin(2π·absolute/216)
+        let integral =
+            21 * h + 4 * 24 / (2 * .pi) * cos(2 * .pi * (h - 8) / 24) + 5 * 216 / (2 * .pi) * cos(2 * .pi * absolute / 216)
         return ((1000 + k * integral) * 10).rounded(.down) / 10
     }
 
