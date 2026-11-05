@@ -278,6 +278,16 @@ public final class HistoryStore: Sendable {
                     CREATE INDEX local_samples_ts ON local_samples(ts);
                     """)
         }
+        migrator.registerMigration("v7") { db in
+            // 0x09 operating sub-mode/stage/auto sub-mode and the 0x03 runtime minutes.
+            try db.execute(
+                sql: """
+                    ALTER TABLE local_samples ADD COLUMN subMode INTEGER;
+                    ALTER TABLE local_samples ADD COLUMN stage INTEGER;
+                    ALTER TABLE local_samples ADD COLUMN autoSubMode INTEGER;
+                    ALTER TABLE local_samples ADD COLUMN runtimeMinutes INTEGER;
+                    """)
+        }
         return migrator
     }
 

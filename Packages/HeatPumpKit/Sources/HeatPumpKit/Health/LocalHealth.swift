@@ -59,6 +59,17 @@ public enum LocalHealth {
         public static let unreachableAfter: TimeInterval = 3600
         /// A local error code is only trusted while the reading is this fresh.
         public static let errorMaxAge: TimeInterval = 15 * 60
+        /// Heuristic: more than 3 defrosts an hour, 3 hours in a row, is unusually often (a unit
+        /// typically defrosts every 40–90 minutes of running in damp frost).
+        public static let defrostsPerHour = 3
+        public static let defrostSustainedHours = 3
+        /// Heuristic: defrosting more than 20 % of the time over the last day while it is milder than
+        /// −5 °C (in harder frost much defrosting is expected).
+        public static let defrostShare = 0.2
+        public static let defrostShareMinOutdoor = -5.0
+        public static let defrostShareMinHours = 6
+        /// An hour only counts with this many readings carrying a sub-mode and ≥ 50 min observed.
+        public static let defrostMinReadings = 30
     }
 
     /// Builds the input from stored readings (two small GROUP BY queries).
@@ -82,6 +93,7 @@ public enum LocalHealth {
         findings += unreachable(input, now: now)
         findings += shortCycling(input.recentHours)
         findings += powerVsOutdoor(input.hourly, now: now, timeZone: timeZone)
+        findings += frequentDefrost(input.hourly, now: now)
         return findings
     }
 
@@ -171,6 +183,49 @@ public enum LocalHealth {
         let delta = hours.reduce(0.0) { $0 + ($1.averageDelta ?? 0) }
         guard delta > 0 else { return nil }
         return hours.reduce(0.0) { $0 + ($1.averageW ?? 0) } / delta
+    }
+
+    /// Unusually frequent or long defrosting over the last 24 hours (dense local readings only).
+    static func frequentDefrost(_ hourly: [LocalPowerBucket], now: Date) -> [HealthFinding] {
+        let recent = hourly.filter {
+            $0.start >= now.addingTimeInterval(-86_400) && $0.phaseCount >= Threshold.defrostMinReadings
+                && $0.observedSeconds >= 50 * 60
+        }.sorted { $0.start < $1.start }
+        let advice =
+            "Utedelen kan ha is eller dårlig luftstrøm — sjekk at den er fri for snø/is og løv, og at ingenting står tett inntil den. "
+            + "Ikke hakk løs is med verktøy; la den smelte eller bruk lunkent vann. Fortsetter det etter at utedelen er ryddet, ring forhandleren."
+        var run = 0
+        var longest = 0
+        var previous: Date?
+        for hour in recent {
+            let next = previous.map { hour.start.timeIntervalSince($0) <= 3600 } ?? false
+            run = hour.defrosts > Threshold.defrostsPerHour ? (next ? run + 1 : 1) : 0
+            longest = max(longest, run)
+            previous = hour.start
+        }
+        if longest >= Threshold.defrostSustainedHours {
+            return [
+                HealthFinding(
+                    code: "frequent_defrost", severity: .warning, title: "Utedelen avriser uvanlig ofte",
+                    detail: Norwegian.format(
+                        "Varmepumpen har avrist mer enn %d ganger i timen i %d timer på rad siste døgn. Normalt avriser den hvert 40.–90. driftsminutt i fuktig kulde. Grensen er en tommelfingerregel.",
+                        Threshold.defrostsPerHour, longest),
+                    recommendation: advice)
+            ]
+        }
+        let mild = recent.filter { ($0.averageOutdoor ?? -99) > Threshold.defrostShareMinOutdoor }
+        let observed = mild.reduce(0.0) { $0 + $1.observedSeconds }
+        guard mild.count >= Threshold.defrostShareMinHours, observed > 0 else { return [] }
+        let share = mild.reduce(0.0) { $0 + $1.defrostSeconds } / observed
+        guard share > Threshold.defrostShare else { return [] }
+        return [
+            HealthFinding(
+                code: "defrost_share", severity: .info, title: "Utedelen bruker mye tid på avriming",
+                detail: Norwegian.format(
+                    "Siste døgn har varmepumpen avrist %.0f %% av tiden (%d timer med målinger, ute mildere enn −5 °C). Over 20 %% er mye; grensen er en tommelfingerregel.",
+                    share * 100, mild.count),
+                recommendation: advice)
+        ]
     }
 
     static func powerVsOutdoor(_ hourly: [LocalPowerBucket], now: Date, timeZone: TimeZone) -> [HealthFinding] {

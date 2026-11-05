@@ -285,6 +285,15 @@ extension HeatPumpService {
     static let maxLocalHistoryPoints = 1500
 
     func localHistory(metric: HistoryMetric, from: Date, to: Date) throws -> [HistoryPoint] {
+        if metric == .defrost {
+            // Per hour: minutes spent defrosting, and how many defrosts started.
+            return try localPowerBuckets(from: from, to: to, bucket: 3600).compactMap { b in
+                guard b.phaseCount > 0 else { return nil }
+                return HistoryPoint(
+                    timestamp: b.start, value: (b.defrostSeconds / 6).rounded() / 10, text: "\(b.defrosts) avriminger",
+                    source: "local")
+            }
+        }
         if try store.localSampleCount(from: from, to: to) <= Self.maxLocalHistoryPoints {
             return try store.localSamples(from: from, to: to).compactMap { s in
                 let value = metric == .powerW ? s.powerW : s.compressorHz
@@ -297,6 +306,11 @@ extension HeatPumpService {
                 HistoryPoint(timestamp: b.start, value: ($0 * 10).rounded() / 10, text: nil, source: "local")
             }
         }
+    }
+
+    /// Stretches of running, rest, defrost, start-up and off from local readings (for charts).
+    public func localPhaseSpans(from: Date, to: Date) throws -> [LocalPhaseSpan] {
+        try store.localPhaseSpans(from: from, to: to)
     }
 
     /// `get_live_status`: latest reading, starts in the last 1/3/24 h and power over the last hour.
@@ -313,7 +327,8 @@ extension HeatPumpService {
         return LiveSummary(
             live: live, startsLastHour: hour?.starts ?? 0, startsLast3Hours: try totals(3 * 3600)?.starts ?? 0,
             startsLast24Hours: day?.starts ?? 0, observedHoursLast24: ((day?.observedSeconds ?? 0) / 360).rounded() / 10,
-            powerLast60Minutes: stats)
+            powerLast60Minutes: stats, defrostsLast24Hours: day.flatMap { $0.phaseCount > 0 ? $0.defrosts : nil },
+            defrostMinutesLast24Hours: day.flatMap { $0.phaseCount > 0 ? ($0.defrostSeconds / 6).rounded() / 10 : nil })
     }
 
     /// Hourly aggregates for the health rules (16 days, computed in SQL), or nil when local

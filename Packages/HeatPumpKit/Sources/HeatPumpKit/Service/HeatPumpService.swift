@@ -777,7 +777,7 @@ public actor HeatPumpService {
             case .setTemperature: s.setTemperature.map { HistoryPoint(timestamp: s.fetchedAt, value: $0, text: nil, source: "snapshot") }
             case .mode: HistoryPoint(timestamp: s.fetchedAt, value: s.mode.map { Double($0.rawValue) }, text: s.mode?.key, source: "snapshot")
             case .power: HistoryPoint(timestamp: s.fetchedAt, value: s.power ? 1 : 0, text: s.power ? "on" : "off", source: "snapshot")
-            case .powerW, .compressorHz: nil
+            case .powerW, .compressorHz, .defrost: nil
             }
         }
         if [.roomTemperature, .outdoorTemperature, .setTemperature].contains(metric) {

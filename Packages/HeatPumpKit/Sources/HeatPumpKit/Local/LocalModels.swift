@@ -73,12 +73,24 @@ public struct LocalPowerBucket: Codable, Sendable, Equatable {
     public var runningSeconds: Double
     public var starts: Int
     public var count: Int
+    /// Defrosts started (sub-mode changed to defrost between readings ≤ 5 min apart).
+    public var defrosts: Int
+    /// Seconds spent defrosting (readings ≤ 5 min apart).
+    public var defrostSeconds: Double
+    /// Readings with a known sub-mode (0x09); defrost figures mean nothing without them.
+    public var phaseCount: Int
+    public var averageOutdoor: Double?
 
     public init(
         start: Date, averageW: Double? = nil, maxW: Double? = nil, minW: Double? = nil, averageHz: Double? = nil,
         maxHz: Double? = nil, averageRunningHz: Double? = nil, runningShare: Double = 0, heatingShare: Double? = nil,
-        averageDelta: Double? = nil, observedSeconds: Double = 0, runningSeconds: Double = 0, starts: Int = 0, count: Int = 0
+        averageDelta: Double? = nil, observedSeconds: Double = 0, runningSeconds: Double = 0, starts: Int = 0, count: Int = 0,
+        defrosts: Int = 0, defrostSeconds: Double = 0, phaseCount: Int = 0, averageOutdoor: Double? = nil
     ) {
+        self.defrosts = defrosts
+        self.defrostSeconds = defrostSeconds
+        self.phaseCount = phaseCount
+        self.averageOutdoor = averageOutdoor
         self.start = start
         self.averageW = averageW
         self.maxW = maxW
@@ -113,7 +125,9 @@ extension LocalPowerBucket {
             heatingShare: average(\.heatingShare), averageDelta: average(\.averageDelta),
             observedSeconds: buckets.reduce(0) { $0 + $1.observedSeconds },
             runningSeconds: buckets.reduce(0) { $0 + $1.runningSeconds }, starts: buckets.reduce(0) { $0 + $1.starts },
-            count: count)
+            count: count, defrosts: buckets.reduce(0) { $0 + $1.defrosts },
+            defrostSeconds: buckets.reduce(0) { $0 + $1.defrostSeconds }, phaseCount: buckets.reduce(0) { $0 + $1.phaseCount },
+            averageOutdoor: average(\.averageOutdoor))
     }
 }
 
@@ -134,6 +148,9 @@ public struct LiveSummary: Codable, Sendable, Equatable {
     /// Hours of the last 24 with readings close enough together to count starts.
     public var observedHoursLast24: Double
     public var powerLast60Minutes: PowerStats?
+    /// Defrosts started and minutes defrosting in the last 24 h (nil without 0x09 data).
+    public var defrostsLast24Hours: Int?
+    public var defrostMinutesLast24Hours: Double?
 }
 
 /// Result of "Test" in Settings.

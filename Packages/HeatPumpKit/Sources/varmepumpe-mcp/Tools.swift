@@ -36,7 +36,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_history",
-            description: "Time series for one metric from polled snapshots and the MELCloud temperature log. power_w (W) and compressor_hz come from the local Wi-Fi adapter readings (only when local access is on; long ranges are averaged per bucket, source \"local\"). Timestamps are ISO 8601.",
+            description: "Time series for one metric from polled snapshots and the MELCloud temperature log. power_w (W), compressor_hz and defrost come from the local Wi-Fi adapter readings (only when local access is on; long ranges are averaged per bucket, source \"local\"). defrost gives minutes of defrost per hour (value) and the number of defrosts that hour (text). Timestamps are ISO 8601.",
             inputSchema: [
                 "type": "object",
                 "properties": [
@@ -67,7 +67,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_live_status",
-            description: "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, age of the reading, compressor starts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
+            description: "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, what it is doing now (phase: heating, resting, defrost, preheat …, with a Norwegian explanation), age of the reading, compressor starts and defrosts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),
         Tool(

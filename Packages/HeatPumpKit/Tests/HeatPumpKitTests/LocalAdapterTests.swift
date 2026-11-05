@@ -200,7 +200,7 @@ struct LocalAdapterTests {
     @Test func fixtureFramesDecode() {
         let result = CN105Parser.sample(frames: LocalFixture.frames, at: date)
         let s = result.sample
-        #expect(result.used == 4)  // 0x02, 0x03, 0x04, 0x06; 0x05, 0x09 and 0x7B ignored
+        #expect(result.used == 5)  // 0x02, 0x03, 0x04, 0x06, 0x09; 0x05 and 0x7B ignored
         #expect(result.rejected == 0)
         #expect(s.power == true)
         #expect(s.mode == .heat)

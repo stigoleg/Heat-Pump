@@ -48,6 +48,8 @@ Når lokal tilkobling er slått på i appen, leser appen Wi-Fi-modulen direkte p
 - **Kompressor (Hz)**: hvor hardt kompressoren jobber. 0 Hz betyr at den står. Lav, jevn frekvens over lang tid er det mest effektive.
 - **Strømmåler**: en teller i pumpen med 0,1 kWh oppløsning. Den gir nøyaktig forbruk per time, så kostnaden blir eksakt (ikke anslag) for døgn appen har målt hele.
 - **Kompressorstarter per time**: Én til tre starter i timen er normalt. Mange korte runder (fire eller flere i timen over flere timer) kalles korte sykluser og sliter på kompressoren. Se «Vedlikehold» for hva du kan gjøre.
+- **Hva den gjør nå**: «Varmer», «Hviler (ønsket temperatur nådd)», «Forvarmer» (varmer opp før viften går for fullt, så den ikke blåser kaldt) eller «Avriser». Under avriming smelter utedelen bort is; innedelen blåser da lite eller kald luft i noen minutter. Det er normalt og skal ikke stoppes. Ikke endre innstillinger på grunn av en avriming.
+- **Driftstid totalt**: innedelen teller minutter selv. Tallet er trolig total driftstid siden enheten ble satt i drift, men betydningen er ikke bekreftet av Mitsubishi.
 
 Råd for styring ut fra effekt:
 

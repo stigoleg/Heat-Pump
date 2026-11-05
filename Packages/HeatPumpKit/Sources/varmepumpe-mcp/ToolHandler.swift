@@ -190,6 +190,13 @@ struct ToolHandler: Sendable {
             var adapterVersion: String?
             var rssiDbm: Int?
             var cloudConnected: Bool?
+            var phase: String?
+            var phaseText: String?
+            var phaseExplanation: String?
+            var subMode: Int?
+            var stage: Int?
+            var autoSubMode: Int?
+            var runtimeHoursIndoorUnit: Int?
         }
         struct View: Encodable {
             var enabled: Bool
@@ -204,6 +211,8 @@ struct ToolHandler: Sendable {
             var startsLast24Hours: Int
             var observedHoursLast24: Double
             var powerLast60Minutes: LiveSummary.PowerStats?
+            var defrostsLast24Hours: Int?
+            var defrostMinutesLast24Hours: Double?
             var note: String
         }
         let live = summary.live
@@ -214,7 +223,9 @@ struct ToolHandler: Sendable {
                 setTemperature: s.setTemperature, power: s.power, mode: s.mode?.key, modeName: s.mode?.displayName,
                 fanSpeed: s.fanSpeed.map { $0 == 0 ? "auto" : String($0) },
                 errorCode: s.errorCode.map { String(format: "0x%04X", $0) }, hasError: s.hasError, energyCounterKWh: s.energyKWh,
-                adapterVersion: s.adapterVersion, rssiDbm: s.rssi, cloudConnected: s.cloudConnected)
+                adapterVersion: s.adapterVersion, rssiDbm: s.rssi, cloudConnected: s.cloudConnected,
+                phase: s.phase?.rawValue, phaseText: s.phase?.statusLine, phaseExplanation: s.phase?.explanation,
+                subMode: s.subMode, stage: s.stage, autoSubMode: s.autoSubMode, runtimeHoursIndoorUnit: s.runtimeHours)
         }
         return try await output(
             View(
@@ -223,9 +234,14 @@ struct ToolHandler: Sendable {
                 lastError: live.reachability.lastError, startsLastHour: summary.startsLastHour,
                 startsLast3Hours: summary.startsLast3Hours, startsLast24Hours: summary.startsLast24Hours,
                 observedHoursLast24: summary.observedHoursLast24, powerLast60Minutes: summary.powerLast60Minutes,
+                defrostsLast24Hours: summary.defrostsLast24Hours, defrostMinutesLast24Hours: summary.defrostMinutesLast24Hours,
                 note: "Lest lokalt fra Wi-Fi-modulen (kun lesing). Effekten gjelder hele varmepumpen. "
-                    + "Kompressorstarter telles bare når appen eller Claude har lest minst hvert 5. minutt; "
-                    + "observedHoursLast24 sier hvor mye av døgnet som er dekket. Feilkode 0x8000 betyr ingen feil."))
+                    + "Kompressorstarter og avriminger telles bare når appen eller Claude har lest minst hvert 5. minutt; "
+                    + "observedHoursLast24 sier hvor mye av døgnet som er dekket. Feilkode 0x8000 betyr ingen feil. "
+                    + "phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. "
+                    + "Avriming (defrost) er normalt i fuktig kulde, typisk 3–10 minutter hvert 40.–90. driftsminutt. "
+                    + "stage og autoSubMode er rå verdier med usikker betydning. runtimeHoursIndoorUnit er innedelens "
+                    + "egen teller (trolig total driftstid), ikke verifisert mot produsenten."))
     }
 
     private func getChangeLog(_ args: Arguments) async throws -> CallTool.Result {

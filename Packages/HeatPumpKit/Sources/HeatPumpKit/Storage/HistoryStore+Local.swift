@@ -25,13 +25,14 @@ extension HistoryStore {
             sql: """
                 INSERT INTO local_samples (ts, power, mode, iSee, setTemperature, fan, vaneVertical, vaneHorizontal,
                     roomTemperature, roomTemperature2, outdoorTemperature, compressorHz, operating, powerW, energyKWh,
-                    errorCode, rssi, adapterVersion, cloudConnected)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    errorCode, rssi, adapterVersion, cloudConnected, subMode, stage, autoSubMode, runtimeMinutes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             arguments: [
                 s.timestamp, s.power, s.modeRaw, s.iSee, s.setTemperature, s.fanRaw, s.vaneVerticalRaw,
                 s.vaneHorizontalRaw, s.roomTemperature, s.roomTemperature2, s.outdoorTemperature, s.compressorHz,
                 s.operating, s.powerW, s.energyKWh, s.errorCode, s.rssi, s.adapterVersion, s.cloudConnected,
+                s.subMode, s.stage, s.autoSubMode, s.runtimeMinutes,
             ])
     }
 
@@ -52,6 +53,10 @@ extension HistoryStore {
         s.rssi = row["rssi"]
         s.adapterVersion = row["adapterVersion"]
         s.cloudConnected = row["cloudConnected"]
+        s.subMode = row["subMode"]
+        s.stage = row["stage"]
+        s.autoSubMode = row["autoSubMode"]
+        s.runtimeMinutes = row["runtimeMinutes"]
         return s
     }
 
@@ -125,10 +130,12 @@ extension HistoryStore {
                             CASE WHEN operating = 1 OR compressorHz > 0 THEN 1 ELSE 0 END AS run,
                             CASE WHEN operating IS NOT NULL OR compressorHz IS NOT NULL THEN 1 ELSE 0 END AS hasc,
                             CASE WHEN power = 1 AND mode = 1 THEN 1.0 WHEN power IS NULL THEN NULL ELSE 0.0 END AS heat,
-                            roomTemperature - outdoorTemperature AS delta
+                            roomTemperature - outdoorTemperature AS delta, outdoorTemperature AS outdoor,
+                            CASE WHEN subMode = 2 THEN 1 WHEN subMode IS NULL THEN NULL ELSE 0 END AS def
                         FROM local_samples WHERE ts >= ? AND ts <= ?
                     ), p AS (
-                        SELECT *, LAG(t) OVER w AS pt, LAG(run) OVER w AS prun, LAG(hasc) OVER w AS phasc
+                        SELECT *, LAG(t) OVER w AS pt, LAG(run) OVER w AS prun, LAG(hasc) OVER w AS phasc,
+                            LAG(def) OVER w AS pdef
                         FROM s WINDOW w AS (ORDER BY ts)
                     ), q AS (
                         SELECT *, CASE WHEN hasc = 1 AND phasc = 1 AND t - pt > 0 AND t - pt <= ? THEN t - pt ELSE 0 END AS dt
@@ -140,7 +147,10 @@ extension HistoryStore {
                         AVG(CASE WHEN run = 1 THEN compressorHz END) AS runHz,
                         AVG(run) AS running, AVG(heat) AS heating, AVG(delta) AS delta,
                         SUM(dt) AS observed, SUM(CASE WHEN prun = 1 THEN dt ELSE 0 END) AS runningSeconds,
-                        SUM(CASE WHEN dt > 0 AND prun = 0 AND run = 1 THEN 1 ELSE 0 END) AS starts
+                        SUM(CASE WHEN dt > 0 AND prun = 0 AND run = 1 THEN 1 ELSE 0 END) AS starts,
+                        SUM(CASE WHEN dt > 0 AND pdef = 0 AND def = 1 THEN 1 ELSE 0 END) AS defrosts,
+                        SUM(CASE WHEN pdef = 1 THEN dt ELSE 0 END) AS defrostSeconds,
+                        COUNT(def) AS phaseCount, AVG(outdoor) AS outdoor
                     FROM q GROUP BY idx ORDER BY idx
                     """,
                 arguments: [
@@ -154,9 +164,59 @@ extension HistoryStore {
                     averageHz: row["avgHz"], maxHz: row["maxHz"], averageRunningHz: row["runHz"],
                     runningShare: row["running"] ?? 0, heatingShare: row["heating"], averageDelta: row["delta"],
                     observedSeconds: row["observed"] ?? 0, runningSeconds: row["runningSeconds"] ?? 0,
-                    starts: row["starts"] ?? 0, count: row["n"])
+                    starts: row["starts"] ?? 0, count: row["n"], defrosts: row["defrosts"] ?? 0,
+                    defrostSeconds: row["defrostSeconds"] ?? 0, phaseCount: row["phaseCount"] ?? 0,
+                    averageOutdoor: row["outdoor"])
             }
         }
+    }
+
+    /// Stretches of the same operating kind (running, rest, defrost, …) between `from` and `to`.
+    /// Only the readings where the kind changes or a gap (> 5 min) starts or ends are loaded; a
+    /// stretch before a gap ends one minute after its last reading.
+    public func localPhaseSpans(from: Date, to: Date) throws -> [LocalPhaseSpan] {
+        let gap = Int(CompressorCycles.maxGap)
+        let rows = try pool.read { db in
+            try Row.fetchAll(
+                db,
+                sql: """
+                    WITH s AS (
+                        SELECT ts, CAST(strftime('%s', ts) AS INTEGER) AS t,
+                            CASE WHEN power = 0 OR subMode = 16 THEN 'off'
+                                 WHEN subMode = 2 THEN 'defrost'
+                                 WHEN subMode IN (1, 4) THEN 'startup'
+                                 WHEN subMode = 8 THEN 'rest'
+                                 WHEN operating = 1 OR compressorHz > 0 THEN 'running'
+                                 WHEN operating IS NOT NULL OR compressorHz IS NOT NULL THEN 'rest'
+                                 ELSE 'unknown' END AS kind
+                        FROM local_samples WHERE ts >= ? AND ts <= ?
+                    ), p AS (
+                        SELECT *, LAG(kind) OVER w AS pk, LAG(t) OVER w AS pt, LEAD(t) OVER w AS nt
+                        FROM s WINDOW w AS (ORDER BY ts)
+                    )
+                    SELECT ts, kind,
+                        CASE WHEN pk IS NULL OR pk != kind OR t - pt > ? THEN 1 ELSE 0 END AS isStart,
+                        CASE WHEN nt IS NULL OR nt - t > ? THEN 1 ELSE 0 END AS isEnd
+                    FROM p WHERE pk IS NULL OR pk != kind OR t - pt > ? OR nt IS NULL OR nt - t > ?
+                    ORDER BY ts
+                    """,
+                arguments: [from, to, gap, gap, gap, gap])
+        }
+        var spans: [LocalPhaseSpan] = []
+        var open: (kind: LocalPhaseSpan.Kind, start: Date)?
+        for row in rows {
+            let ts: Date = row["ts"]
+            let kind = LocalPhaseSpan.Kind(rawValue: row["kind"]) ?? .unknown
+            if (row["isStart"] as Int) == 1 {
+                if let current = open { spans.append(LocalPhaseSpan(kind: current.kind, start: current.start, end: ts)) }
+                open = (kind, ts)
+            }
+            if (row["isEnd"] as Int) == 1, let current = open {
+                spans.append(LocalPhaseSpan(kind: current.kind, start: current.start, end: ts.addingTimeInterval(60)))
+                open = nil
+            }
+        }
+        return spans
     }
 
     /// Thins old readings so the database stays small: full resolution for 90 days, then one

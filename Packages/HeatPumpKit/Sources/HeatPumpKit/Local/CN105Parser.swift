@@ -32,6 +32,16 @@ public struct LocalSample: Codable, Sendable, Equatable {
     public var adapterVersion: String?
     /// False when the adapter reports `CONNECT=OFF` (MELCloud connection switched off in the adapter).
     public var cloudConnected: Bool?
+    /// 0x09 byte 8: 0 normal, 1 warm-up, 2 defrost, 4 preheat, 8 standby, 0x10 off (MitsubishiCN105ESPHome).
+    public var subMode: Int?
+    /// 0x09 byte 9: demand stage, 0 idle … 5 high, 6 diffuse (names uncertain; pymi calls it "power mode").
+    public var stage: Int?
+    /// 0x09 byte 10: auto sub-mode. Sources disagree on the meaning of 1 and 3 (ESPHome: 1 cool,
+    /// 3 leader; pymi: 1 switching, 3 auto cooling); 0 off and 2 heat agree. Shown raw, marked uncertain.
+    public var autoSubMode: Int?
+    /// 0x03 bytes 15–18: minutes counter from the indoor unit (big-endian). Most likely total
+    /// powered/operating time; labelled as the indoor unit's own figure.
+    public var runtimeMinutes: Int?
 
     public init(timestamp: Date) {
         self.timestamp = timestamp
@@ -44,6 +54,30 @@ public struct LocalSample: Codable, Sendable, Equatable {
 
     /// True when the error code says something is wrong.
     public var hasError: Bool { errorCode.map { $0 != CN105Parser.noError } ?? false }
+
+    /// Whole hours of the indoor unit's runtime counter.
+    public var runtimeHours: Int? { runtimeMinutes.map { $0 / 60 } }
+
+    /// What the unit is doing (defrost, standby, heating …), or nil without enough data.
+    public var phase: LocalPhase? {
+        if power == false || subMode == 0x10 { return .off }
+        switch subMode {
+        case 2: return .defrost
+        case 4: return .preheat
+        case 1: return .warmup
+        case 8: return .standby
+        default: break
+        }
+        guard hasCompressorData else { return nil }
+        guard isRunning else { return mode == .fan ? .fan : .resting }
+        switch mode {
+        case .heat: return .heating
+        case .cool: return .cooling
+        case .dry: return .drying
+        case .fan: return .fan
+        case .auto, nil: return .running
+        }
+    }
 
     /// Sets the raw CN105 values and the MELCloud-style enums they map to (nil when unknown).
     mutating func setRaw(mode: Int?, fan: Int?, vaneVertical: Int?, vaneHorizontal: Int?) {
@@ -103,7 +137,7 @@ public enum CN105Parser {
     }
 
     /// Builds one sample from all frames. Invalid frames, 0x7B frames and unknown groups
-    /// (0x05, 0x09, …) are skipped; `rejected` counts frames that failed validation.
+    /// (0x05, …) are skipped; `rejected` counts frames that failed validation.
     public static func sample(frames: [String], at date: Date) -> (sample: LocalSample, used: Int, rejected: Int) {
         var sample = LocalSample(timestamp: date)
         var used = 0
@@ -119,6 +153,7 @@ public enum CN105Parser {
             case 0x03: applySensors(data, to: &sample)
             case 0x04: applyErrors(data, to: &sample)
             case 0x06: applyEnergy(data, to: &sample)
+            case 0x09: applySubMode(data, to: &sample)
             default: continue
             }
             used += 1
@@ -171,11 +206,22 @@ public enum CN105Parser {
         [6, 7, 9].contains(raw) ? nil : VaneHorizontal(rawValue: raw)
     }
 
-    /// 0x03 sensors: room (fine, else coarse), outdoor (invalid while the unit is off), second room sensor.
+    /// 0x03 sensors: room (fine, else coarse), outdoor (invalid while the unit is off), second room
+    /// sensor, and the 32-bit runtime minutes in bytes 15–18 (pymi `runtime_minutes`).
     static func applySensors(_ d: [UInt8], to s: inout LocalSample) {
         s.roomTemperature = d[11] != 0 ? (Double(d[11]) - 0x80) / 2 : Double(10 + Int(d[8]))
         s.outdoorTemperature = d[10] > 0x01 ? (Double(d[10]) - 0x80) / 2 : nil
         s.roomTemperature2 = d[12] != 0 ? (Double(d[12]) - 0x80) / 2 : nil
+        s.runtimeMinutes = d[15...18].reduce(0) { $0 << 8 | Int($1) }
+    }
+
+    /// 0x09 operating sub-mode, stage and auto sub-mode. Offsets agree between
+    /// MitsubishiCN105ESPHome (payload index 3/4/5 = frame 8/9/10) and pymi (frame 9/10); only
+    /// ESPHome names byte 8.
+    static func applySubMode(_ d: [UInt8], to s: inout LocalSample) {
+        s.subMode = Int(d[8])
+        s.stage = Int(d[9])
+        s.autoSubMode = Int(d[10])
     }
 
     /// 0x04 errors: 0x8000 = no error.

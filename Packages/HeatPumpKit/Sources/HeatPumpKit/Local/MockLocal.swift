@@ -49,6 +49,12 @@ public enum MockLocalSimulation {
         s.powerW = Int(state.watts.rounded())
         s.energyKWh = MockBackend.counterKWh(at: t).truncatingRemainder(dividingBy: CN105Parser.counterWrapKWh)
         s.errorCode = CN105Parser.noError
+        // Defrost: 5 of every 75 minutes while running below +3 °C outdoors (a typical rhythm).
+        let minute = Int((t.timeIntervalSince1970 / 60).rounded(.down))
+        s.subMode = state.running && outdoor < 3 && minute % 75 < 5 ? 2 : 0
+        s.stage = state.running ? min(5, 1 + state.hz / 20) : 1
+        s.autoSubMode = 0
+        s.runtimeMinutes = 1_400_000 + Int((t.timeIntervalSince1970 - 1_767_225_600) / 60)
         s.rssi = -55
         s.adapterVersion = "34.00"
         s.cloudConnected = true
@@ -61,6 +67,7 @@ public enum MockLocalSimulation {
         let set = s.setTemperature ?? 21
         let counter = Int(((s.energyKWh ?? 0) * 10).rounded()) & 0xFFFF
         let watts = max(0, min(0xFFFF, s.powerW ?? 0))
+        let runtime = max(0, s.runtimeMinutes ?? 0)
         return [
             CN105Parser.frame(
                 group: 0x02,
@@ -74,6 +81,8 @@ public enum MockLocalSimulation {
                 payload: [
                     8: UInt8(clamping: Int(s.roomTemperature ?? 20) - 10), 10: temperature(s.outdoorTemperature),
                     11: temperature(s.roomTemperature), 12: temperature(s.roomTemperature2),
+                    15: UInt8(truncatingIfNeeded: runtime >> 24), 16: UInt8(truncatingIfNeeded: runtime >> 16),
+                    17: UInt8(truncatingIfNeeded: runtime >> 8), 18: UInt8(truncatingIfNeeded: runtime),
                 ]),
             CN105Parser.frame(group: 0x04, payload: [9: UInt8((s.errorCode ?? CN105Parser.noError) >> 8), 10: UInt8((s.errorCode ?? 0) & 0xFF)]),
             CN105Parser.frame(group: 0x05, payload: [:]),
@@ -82,6 +91,11 @@ public enum MockLocalSimulation {
                 payload: [
                     8: UInt8(clamping: s.compressorHz ?? 0), 9: s.operating == true ? 1 : 0, 10: UInt8(watts >> 8),
                     11: UInt8(watts & 0xFF), 12: UInt8(counter >> 8), 13: UInt8(counter & 0xFF),
+                ]),
+            CN105Parser.frame(
+                group: 0x09,
+                payload: [
+                    8: UInt8(clamping: s.subMode ?? 0), 9: UInt8(clamping: s.stage ?? 0), 10: UInt8(clamping: s.autoSubMode ?? 0),
                 ]),
         ]
     }

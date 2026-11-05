@@ -62,9 +62,11 @@ public enum HistoryMetric: String, Codable, Sendable, CaseIterable {
     case powerW = "power_w"
     /// Compressor frequency in Hz from the local adapter.
     case compressorHz = "compressor_hz"
+    /// Minutes of defrost per hour from the local adapter (`text` gives the number of defrosts).
+    case defrost
 
     /// Metrics that come from local adapter readings instead of MELCloud.
-    public var isLocal: Bool { self == .powerW || self == .compressorHz }
+    public var isLocal: Bool { self == .powerW || self == .compressorHz || self == .defrost }
 }
 
 public struct HistoryPoint: Codable, Sendable, Equatable {

@@ -75,6 +75,7 @@ Med lokal tilkobling slått på følger appen med på effekt og kompressorstarte
 - **Korte sykluser**: i snitt fire eller flere kompressorstarter i timen over tre timer mens den varmer, gir en advarsel. Seks eller flere starter i minst to av de tre timene gir en sterkere advarsel. Vanlige årsaker: tett luftfilter, en varmepumpe som er stor for rommet (særlig i mildvær), eller at ønsket temperatur eller viften endres ofte. Rengjør filteret, la temperaturen ligge fast og bruk gjerne vifte auto. Fortsetter det i flere dager, også når det er kaldt, ring forhandleren.
 - **Høyt forbruk for temperaturen**: appen regner ut strøm per grad forskjell mellom inne og ute per time, med tiden kompressoren står stille medregnet (snitteffekt delt på temperaturforskjell). Det siste døgnet sammenlignes med medianen for tidligere dager med omtrent samme forskjell (innenfor 3 grader), siste 14 dager. Mer enn 1,5 ganger det vanlige er til info, mer enn 2 ganger er en advarsel. Mulige årsaker: skittent filter, is eller snø på utedelen, mye avriming. Regelen trenger minst 6 timer med varmedrift og minst 5 sammenlignbare dager, og ser bort fra timer der forskjellen er under 5 grader.
 - **Feilkode fra modulen**: modulen sender en kode (0x8000 betyr ingen feil). Annen kode vises som feil selv om MELCloud ikke har meldt den ennå.
+- **Avriming**: i fuktig kulde (rundt 0 til −10 °C) setter utedelen på seg is og avriser seg selv, typisk 3–10 minutter hvert 40.–90. driftsminutt. Imens blåser innedelen lite eller kald luft. Det er normalt. Mer enn tre avriminger i timen tre timer på rad gir en advarsel, og avriming mer enn 20 % av tiden siste døgn (når det er mildere enn −5 °C) gir et råd. Mulige årsaker: snø, is eller løv som tetter utedelen, eller at den står for tett inntil vegg eller busker. Rydd rundt utedelen; ikke hakk løs is. Grensene er tommelfingerregler og krever tette målinger (appen åpen).
 - **Modulen svarer ikke lokalt** i over en time mens Macen er på hjemmenettet: oftest ny IP-adresse fra ruteren. Bruk «Finn automatisk» i appen. Styring via MELCloud virker uansett. Er Macen på et annet nett, settes lokal avlesning bare på pause.
 
 ## Profesjonell service
@@ -139,6 +140,8 @@ Når lokal tilkobling er slått på i appen, leser appen Wi-Fi-modulen direkte p
 - **Kompressor (Hz)**: hvor hardt kompressoren jobber. 0 Hz betyr at den står. Lav, jevn frekvens over lang tid er det mest effektive.
 - **Strømmåler**: en teller i pumpen med 0,1 kWh oppløsning. Den gir nøyaktig forbruk per time, så kostnaden blir eksakt (ikke anslag) for døgn appen har målt hele.
 - **Kompressorstarter per time**: Én til tre starter i timen er normalt. Mange korte runder (fire eller flere i timen over flere timer) kalles korte sykluser og sliter på kompressoren. Se «Vedlikehold» for hva du kan gjøre.
+- **Hva den gjør nå**: «Varmer», «Hviler (ønsket temperatur nådd)», «Forvarmer» (varmer opp før viften går for fullt, så den ikke blåser kaldt) eller «Avriser». Under avriming smelter utedelen bort is; innedelen blåser da lite eller kald luft i noen minutter. Det er normalt og skal ikke stoppes. Ikke endre innstillinger på grunn av en avriming.
+- **Driftstid totalt**: innedelen teller minutter selv. Tallet er trolig total driftstid siden enheten ble satt i drift, men betydningen er ikke bekreftet av Mitsubishi.
 
 Råd for styring ut fra effekt:
 
