@@ -84,4 +84,10 @@ public protocol HeatPumpBackend: Sendable {
     func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint]
     func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay]
     func fetchSignalStrength(deviceId: Int) async throws -> Int?
+    /// Forgets any in-memory session and cached listing (after new credentials are saved).
+    func resetSession() async
+}
+
+extension HeatPumpBackend {
+    public func resetSession() async {}
 }

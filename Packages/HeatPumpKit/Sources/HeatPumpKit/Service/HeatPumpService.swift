@@ -78,11 +78,23 @@ public actor HeatPumpService {
         device = nil
     }
 
+    /// Saves credentials, forgets the old session and does one forced state fetch
+    /// (one login + one fetch, still subject to the global 60 s / block rules).
+    public func signIn(_ new: MELCloudCredentials) async throws -> StateResult {
+        try saveCredentials(new)
+        await backend.resetSession()
+        return try await currentState(force: true)
+    }
+
     /// Removes credentials and session from the keychain.
-    public func signOut() throws {
+    public func signOut() async throws {
         try credentials?.deleteAll()
+        await backend.resetSession()
         device = nil
     }
+
+    /// True for the simulated backend (`VARMEPUMPE_BACKEND=mock`).
+    public nonisolated var isDemo: Bool { backend.identifier == "mock" }
 
     // MARK: State
 
@@ -525,9 +537,11 @@ public actor HeatPumpService {
                     status = d > i ? "due" : "ok"
                 }
             }
+            let nextDue: Date? =
+                if let last, let interval { last.timestamp.addingTimeInterval(Double(interval) * 86_400) } else { nil }
             return MaintenanceStatus(
                 kind: kind, displayName: kind.displayName, lastDone: last?.timestamp, daysSince: days,
-                recommendedIntervalDays: interval, status: status, note: last?.note)
+                recommendedIntervalDays: interval, status: status, note: last?.note, nextDue: nextDue)
         }
     }
 

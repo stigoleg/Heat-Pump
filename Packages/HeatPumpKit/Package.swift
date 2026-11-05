@@ -16,7 +16,9 @@ let package = Package(
         .target(
             name: "HeatPumpKit",
             dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
-            resources: [.copy("Knowledge")]
+            // Knowledge/*.md is compiled in (KnowledgeContent.generated.swift) so the
+            // embedded helper needs no resource bundle.
+            exclude: ["Knowledge"]
         ),
         .executableTarget(
             name: "varmepumpe-mcp",

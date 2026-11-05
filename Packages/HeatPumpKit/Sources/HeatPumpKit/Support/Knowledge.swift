@@ -21,10 +21,7 @@ public enum Knowledge {
     }
 
     public static func document(named name: String) -> KnowledgeDocument? {
-        guard names.contains(name),
-            let url = Bundle.module.url(forResource: name, withExtension: "md", subdirectory: "Knowledge"),
-            let markdown = try? String(contentsOf: url, encoding: .utf8)
-        else { return nil }
+        guard names.contains(name), let markdown = KnowledgeContent.documents[name] else { return nil }
         let title = markdown.split(separator: "\n").first { $0.hasPrefix("# ") }.map { String($0.dropFirst(2)) } ?? name
         return KnowledgeDocument(name: name, title: title, markdown: markdown)
     }

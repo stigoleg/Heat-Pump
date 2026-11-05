@@ -85,4 +85,19 @@ public struct MaintenanceStatus: Codable, Sendable, Equatable {
     /// `ok`, `due`, `overdue`, `unknown` or `not_applicable`.
     public var status: String
     public var note: String?
+    /// Last done + recommended interval (nil when unknown or no fixed interval).
+    public var nextDue: Date?
+    public init(
+        kind: MaintenanceKind, displayName: String, lastDone: Date? = nil, daysSince: Int? = nil,
+        recommendedIntervalDays: Int? = nil, status: String, note: String? = nil, nextDue: Date? = nil
+    ) {
+        self.kind = kind
+        self.displayName = displayName
+        self.lastDone = lastDone
+        self.daysSince = daysSince
+        self.recommendedIntervalDays = recommendedIntervalDays
+        self.status = status
+        self.note = note
+        self.nextDue = nextDue
+    }
 }

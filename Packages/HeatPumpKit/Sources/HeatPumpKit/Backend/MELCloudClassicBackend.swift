@@ -151,6 +151,11 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         return devices.first { $0["DeviceID"]?.int == deviceId }?["Device"]?["WifiSignalStrength"]?.int
     }
 
+    public func resetSession() async {
+        contextKey = nil
+        listing = nil
+    }
+
     // MARK: Internals
 
     private func refreshListing() async throws -> [JSONValue] {

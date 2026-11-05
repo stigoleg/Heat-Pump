@@ -289,3 +289,22 @@ struct KnowledgeTests {
         #expect(ErrorCatalog.blinkCodes[2]?.source.contains("MSZ-LN") == true)
     }
 }
+
+@Suite("Compiled knowledge")
+struct CompiledKnowledgeTests {
+    /// Fails when Knowledge/*.md changed without running scripts/generate-knowledge.py.
+    @Test func compiledContentMatchesMarkdownFiles() throws {
+        let directory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "Sources/HeatPumpKit/Knowledge")
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "md" }
+        #expect(Set(files.map { $0.deletingPathExtension().lastPathComponent }) == Set(Knowledge.names))
+        for file in files {
+            let name = file.deletingPathExtension().lastPathComponent
+            let onDisk = try String(contentsOf: file, encoding: .utf8)
+            let compiled = try #require(Knowledge.document(named: name)).markdown
+            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(name) is out of date")
+        }
+    }
+}
