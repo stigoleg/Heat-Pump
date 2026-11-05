@@ -8,13 +8,14 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var model = model
         TabView(selection: $model.settingsTab) {
+            Tab("Generelt", systemImage: "gearshape", value: "generelt") { GeneralSettings() }
             Tab("Konto", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
             Tab("Strømpris", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
             Tab("Lokal tilkobling", systemImage: "wifi.router", value: "lokal") { LocalSettingsView() }
             Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
         }
-        .frame(width: 640, height: 600)
+        .frame(width: 700, height: 600)
     }
 }
 

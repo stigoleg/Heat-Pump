@@ -14,7 +14,7 @@ public struct ARPScanner: LocalNetworkScanning {
     public func hosts(matchingMAC mac: String) async throws -> [String] {
         guard let wanted = normalizedMAC(mac) else { return [] }
         if let found = Self.lookup(wanted) { return found }
-        guard let (own, base) = Self.localSubnet() else { return [] }
+        guard let (own, base) = Self.localSubnets().first else { return [] }
         Self.sweep(base: base, skip: own)
         try await Task.sleep(for: settle)
         if let found = Self.lookup(wanted) { return found }
@@ -30,11 +30,12 @@ public struct ARPScanner: LocalNetworkScanning {
 
     // MARK: Interface
 
-    /// The first active, non-loopback Ethernet/Wi-Fi interface with a private IPv4 address:
+    /// Active, non-loopback Ethernet/Wi-Fi interfaces with a private IPv4 address:
     /// (own address, network base of its /24), host byte order.
-    static func localSubnet() -> (own: UInt32, base: UInt32)? {
+    static func localSubnets() -> [(own: UInt32, base: UInt32)] {
+        var result: [(own: UInt32, base: UInt32)] = []
         var list: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&list) == 0, let first = list else { return nil }
+        guard getifaddrs(&list) == 0, let first = list else { return [] }
         defer { freeifaddrs(list) }
         var cursor: UnsafeMutablePointer<ifaddrs>? = first
         while let entry = cursor {
@@ -46,9 +47,9 @@ public struct ARPScanner: LocalNetworkScanning {
             else { continue }
             let ip = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { UInt32(bigEndian: $0.pointee.sin_addr.s_addr) }
             guard LocalSmartClient.validatedHost(dotted(ip)) != nil else { continue }
-            return (ip, ip & 0xFFFF_FF00)
+            result.append((ip, ip & 0xFFFF_FF00))
         }
-        return nil
+        return result
     }
 
     static func dotted(_ ip: UInt32) -> String {

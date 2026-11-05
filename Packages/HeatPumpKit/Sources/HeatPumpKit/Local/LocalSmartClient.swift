@@ -82,7 +82,8 @@ public struct LocalSmartClient: LocalStatusReading {
         self.makeIV = makeIV
     }
 
-    /// Ephemeral session: no cookies, no cache, short timeouts.
+    /// Ephemeral session: no cookies, no cache, short timeouts, and no redirects (a redirect
+    /// would re-send the request to another address).
     public static let session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = timeout
@@ -91,7 +92,7 @@ public struct LocalSmartClient: LocalStatusReading {
         config.httpMaximumConnectionsPerHost = 1
         config.urlCache = nil
         config.httpCookieStorage = nil
-        return URLSession(configuration: config)
+        return URLSession(configuration: config, delegate: NoRedirects(), delegateQueue: nil)
     }()
 
     public static let randomIV: @Sendable () -> [UInt8] = {
@@ -111,6 +112,9 @@ public struct LocalSmartClient: LocalStatusReading {
         } catch {
             throw LocalAccessError.network(error.localizedDescription)
         }
+        // Only an answer from the address that was asked counts (redirects are refused, so a
+        // 3xx arrives here as an error status).
+        guard response.url?.host == host else { throw LocalAccessError.badResponse("svar fra en annen adresse") }
         guard response.statusCode == 200 else { throw LocalAccessError.http(status: response.statusCode) }
         guard data.count <= Self.maxResponseBytes else { throw LocalAccessError.badResponse("for stort svar") }
         return try Self.parseResponse(data)
@@ -273,5 +277,15 @@ public struct LocalSmartClient: LocalStatusReading {
         }
         guard status == CCCryptorStatus(kCCSuccess) else { return nil }
         return Array(output.prefix(moved))
+    }
+}
+
+/// Refuses every HTTP redirect: the 3xx response is returned to the caller instead.
+final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        nil
     }
 }

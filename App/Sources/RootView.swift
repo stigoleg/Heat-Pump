@@ -36,6 +36,7 @@ struct RootView: View {
             }
         }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) { AppearanceMenu() }
             ToolbarItem(placement: .primaryAction) { RefreshButton() }
         }
         .task {

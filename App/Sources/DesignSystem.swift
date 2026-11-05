@@ -292,10 +292,11 @@ struct EmptyChart: View {
 
 /// KPI tiles in a grid that wraps on narrow windows.
 struct KPIRow<Content: View>: View {
+    var minimum: CGFloat = 170
     @ViewBuilder var content: Content
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: Theme.Space.l, alignment: .topLeading)], alignment: .leading, spacing: Theme.Space.l) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: minimum), spacing: Theme.Space.l, alignment: .topLeading)], alignment: .leading, spacing: Theme.Space.l) {
             content
         }
     }

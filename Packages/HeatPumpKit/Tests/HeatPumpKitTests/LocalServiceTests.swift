@@ -11,6 +11,8 @@ final class FakeLocalNetwork: Sendable {
         var frames = LocalFixture.frames
         var scans: [String] = []
         var scanResult: [String] = []
+        /// The Mac's current /24 networks: 192.168.10.0 and 192.168.1.0 ("home").
+        var subnets: [UInt32] = [0xC0A8_0A00, 0xC0A8_0100]
     }
 
     let state = Mutex(State())
@@ -19,7 +21,9 @@ final class FakeLocalNetwork: Sendable {
     var scans: [String] { state.withLock { $0.scans } }
 
     var access: LocalAccess {
-        LocalAccess(makeClient: { host in Client(host: host, network: self) }, scanner: Scanner(network: self))
+        LocalAccess(
+            makeClient: { host in Client(host: host, network: self) }, scanner: Scanner(network: self),
+            currentSubnets: { self.state.withLock { $0.subnets } })
     }
 
     struct Client: LocalStatusReading {
@@ -138,6 +142,57 @@ struct LocalServiceTests {
         let again = try await service.testLocal(host: "192.168.1.77")
         #expect(again.ok == false)  // within 20 s
         #expect(network.reads == ["192.168.1.77"])
+    }
+
+    @Test func awayFromHomeReadsNothingAndDoesNotBlameTheAdapter() async throws {
+        let service = try makeService()
+        _ = try await service.currentState()
+        try await service.saveLocalSettings(LocalSettings(enabled: true, host: "192.168.10.83"))
+        network.state.withLock { $0.subnets = [0x0A00_0000] }  // on 10.0.0.0/24, e.g. at a café
+        for _ in 0..<10 {
+            let live = try await service.liveStatus(maxAge: 0)
+            #expect(live.refreshed == false)
+            #expect(live.message?.contains("Ikke på hjemmenettet") == true)
+            #expect(live.reachability.onHomeNetwork == false)
+            clock.advance(3700)
+        }
+        #expect(network.reads.isEmpty)
+        #expect(network.scans.isEmpty)
+        #expect(try await service.localReachability().consecutiveFailures == 0)
+        #expect(try await service.healthReport().findings.allSatisfy { $0.code != "local_unreachable" })
+        // Manual actions stay possible.
+        _ = try await service.testLocal(host: "192.168.10.83")
+        #expect(network.reads == ["192.168.10.83"])
+        // Back home: reads resume.
+        network.state.withLock { $0.subnets = [0xC0A8_0A00] }
+        clock.advance(30)
+        #expect(try await service.liveStatus(maxAge: 0).refreshed)
+    }
+
+    @Test func testingAnotherAddressLeavesHistoryAndFailuresAlone() async throws {
+        let service = try makeService()
+        try await service.saveLocalSettings(LocalSettings(enabled: true, host: "192.168.10.83"))
+        network.state.withLock { $0.failingHosts = ["192.168.10.83"] }
+        _ = try await service.liveStatus(maxAge: 0)
+        #expect(try await service.localReachability().consecutiveFailures == 1)
+        clock.advance(30)
+        let other = try await service.testLocal(host: "192.168.1.77")
+        #expect(other.ok)
+        #expect(try service.store.latestLocalSample() == nil)  // not stored
+        let reach = try await service.localReachability()
+        #expect(reach.consecutiveFailures == 1)
+        #expect(reach.lastSuccess == nil)
+        // A failing test of another address does not count either.
+        network.state.withLock { $0.failingHosts = ["192.168.10.83", "192.168.1.78"] }
+        clock.advance(30)
+        #expect(try await service.testLocal(host: "192.168.1.78").ok == false)
+        #expect(try await service.localReachability().consecutiveFailures == 1)
+        // Testing the saved address is a real read: stored, failures reset.
+        network.state.withLock { $0.failingHosts = [] }
+        clock.advance(30)
+        #expect(try await service.testLocal(host: "192.168.10.83").ok)
+        #expect(try service.store.latestLocalSample() != nil)
+        #expect(try await service.localReachability().consecutiveFailures == 0)
     }
 
     @Test func discoveryFindsTheUnitByMACWithoutShowingIt() async throws {
@@ -336,5 +391,60 @@ struct LocalServiceTests {
         let entries = ARPScanner.parseRouteMessages(message + message)
         #expect(entries == Array(repeating: ARPScanner.Entry(ip: "192.168.1.42", mac: "00005e005301"), count: 2))
         #expect(normalizedMAC("00:00:5E:00:53:01") == "00005e005301")
+    }
+}
+
+@Suite("Local aggregates in SQL")
+struct LocalAggregateTests {
+    let now = Date(timeIntervalSince1970: 1_793_872_800)
+
+    @Test func bucketsMatchTheReadings() throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        // Two hours, one reading per minute: 10 min on (600 W, 40 Hz), 5 min off (4 W): 4 starts per hour.
+        let samples: [LocalSample] = (0..<120).map { i in
+            var s = LocalSample(timestamp: now.addingTimeInterval(Double(i) * 60))
+            let on = i % 15 >= 5
+            s.operating = on
+            s.compressorHz = on ? 40 : 0
+            s.powerW = on ? 600 : 4
+            s.power = true
+            s.setRaw(mode: 1, fan: 0, vaneVertical: 0, vaneHorizontal: 0)
+            s.roomTemperature = 21
+            s.outdoorTemperature = 1
+            return s
+        }
+        try store.insertLocalSamples(samples)
+        let hours = try store.localPowerBuckets(from: now, to: now.addingTimeInterval(7200), bucketSeconds: 3600)
+        #expect(hours.map(\.starts) == CompressorCycles.startsPerHour(samples, timeZone: .gmt).map(\.starts))
+        #expect(hours.map(\.count) == [60, 60])
+        let first = try #require(hours.first)
+        #expect(first.start == now)
+        #expect(abs((first.averageW ?? 0) - (40 * 600 + 20 * 4) / 60.0) < 0.01)
+        #expect(first.averageRunningHz == 40)
+        #expect(abs(first.runningShare - 40.0 / 60) < 0.001)
+        #expect(first.heatingShare == 1)
+        #expect(first.averageDelta == 20)
+        #expect(first.observedSeconds == 59 * 60)
+        #expect(hours[1].observedSeconds == 60 * 60)  // the pair across the boundary counts in the later hour
+        let total = try #require(LocalPowerBucket.merged(hours))
+        #expect(total.starts == 8)
+        #expect(total.runningSeconds == CompressorCycles.runningSeconds(in: samples))
+        #expect(total.maxW == 600 && total.minW == 4)
+        // One bucket over a custom origin; a reading exactly at `to` lands in the last bucket.
+        let one = try store.localPowerBuckets(from: now, to: now.addingTimeInterval(119 * 60), bucketSeconds: 119 * 60, origin: now)
+        #expect(one.count == 1 && one.first?.count == 120)
+    }
+
+    @Test func counterReadingsAreThinnedButKeepTheNewest() throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        try store.insertLocalSamples((0..<30).map { i in
+            var s = LocalSample(timestamp: now.addingTimeInterval(Double(i) * 60))
+            s.energyKWh = 100 + Double(i) / 10
+            return s
+        })
+        let readings = try store.localCounterReadings(from: now, to: now.addingTimeInterval(3600))
+        #expect(readings.count == 7)  // one per 5 minutes plus the newest
+        #expect(readings.first?.kWh == 100)
+        #expect(readings.last.map { abs($0.kWh - 102.9) < 1e-9 } == true)
     }
 }

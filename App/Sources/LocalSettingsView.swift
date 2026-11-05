@@ -47,7 +47,7 @@ struct LocalSettingsView: View {
                 Text("Lokal tilkobling")
             } footer: {
                 Text(
-                    "Appen spør Wi-Fi-modulen i varmepumpen om status direkte over hjemmenettet, høyst hvert 20. sekund mens appen er åpen. Da får du effekt i watt, om kompressoren går, og et nøyaktig strømforbruk per time. Appen bare leser: all styring går fortsatt via MELCloud, og ingen innstillinger i modulen endres."
+                    "Appen spør Wi-Fi-modulen i varmepumpen om status direkte over hjemmenettet: hvert minutt mens appen er åpen, og når Claude ber om fersk status (også når appen er lukket). Aldri oftere enn hvert 20. sekund, og bare når Macen er på samme nett som varmepumpen. Da får du effekt i watt, om kompressoren går, og et nøyaktig strømforbruk per time. Appen bare leser: all styring går fortsatt via MELCloud, og ingen innstillinger i modulen endres."
                 )
             }
 
@@ -86,6 +86,12 @@ struct LocalSettingsView: View {
         let reach = model.live?.reachability
         if reach?.enabled != true {
             LabeledContent("Tilstand", value: "Av")
+        } else if reach?.onHomeNetwork == false {
+            LabeledContent("Tilstand") {
+                Label("Ikke på hjemmenettet", systemImage: "house.slash").foregroundStyle(.secondary)
+            }
+            Text("Lokal avlesning er satt på pause til Macen er på samme nett som varmepumpen. Styring via MELCloud virker som før.")
+                .font(.caption).foregroundStyle(.secondary)
         } else {
             LabeledContent("Tilstand") {
                 if let failures = reach?.consecutiveFailures, failures > 0 {
@@ -132,7 +138,7 @@ struct LocalSettingsView: View {
         if let error = await model.saveLocalSettings(draft) {
             message = (false, error)
         } else {
-            message = (true, enabled ? "Lagret. Appen leser modulen hvert minutt mens den er åpen." : "Lagret. Lokal tilkobling er av.")
+            message = (true, enabled ? "Lagret. Appen leser modulen hvert minutt mens den er åpen, og Claude ved behov." : "Lagret. Lokal tilkobling er av.")
             host = model.localSettings.host ?? ""
         }
     }

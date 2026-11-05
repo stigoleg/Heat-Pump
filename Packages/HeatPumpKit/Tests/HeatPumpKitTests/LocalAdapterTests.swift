@@ -29,23 +29,28 @@ enum LocalFixture {
 
 /// Answers like the adapter: decrypts the request, records its plaintext, replies with `xml`.
 final class FakeAdapterTransport: HTTPTransport {
-    private let state = Mutex<(requests: [URLRequest], plaintexts: [String], xml: String, status: Int, error: LocalAccessError?)>(
-        ([], [], LocalFixture.replyXML(), 200, nil))
+    private let state = Mutex<(requests: [URLRequest], plaintexts: [String], xml: String, status: Int, error: LocalAccessError?, host: String?)>(
+        ([], [], LocalFixture.replyXML(), 200, nil, nil))
 
     var requests: [URLRequest] { state.withLock { $0.requests } }
     var plaintexts: [String] { state.withLock { $0.plaintexts } }
     func reply(xml: String) { state.withLock { $0.xml = xml } }
     func fail(_ error: LocalAccessError?) { state.withLock { $0.error = error } }
+    func status(_ code: Int) { state.withLock { $0.status = code } }
+    /// Pretend the answer came from another host (as after a followed redirect).
+    func answer(from host: String) { state.withLock { $0.host = host } }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (xml, status, error) = state.withLock { s in
+        let (xml, status, error, host) = state.withLock { s in
             s.requests.append(request)
             s.plaintexts.append(request.httpBody.flatMap(LocalSmartClient.decryptRequestBody) ?? "<undecryptable>")
-            return (s.xml, s.status, s.error)
+            return (s.xml, s.status, s.error, s.host)
         }
         if let error { throw error }
         let body = try LocalSmartClient.envelope(xml, iv: Array(repeating: 7, count: 16))
-        return (body, HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!)
+        var url = request.url!
+        if let host { url = URL(string: "http://\(host)/smart")! }
+        return (body, HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!)
     }
 }
 
@@ -66,6 +71,36 @@ struct LocalAdapterTests {
         let padded = try LocalSmartClient.encrypt(sixteen, iv: fixedIV)
         #expect(padded.count == 32)
         #expect(LocalSmartClient.decrypt(fixedIV + padded) == sixteen)
+    }
+
+    /// Known answer (verified with openssl): key "unregistered"+4×NUL, IV 00…0f, "<CSV></CSV>" with ISO 7816-4 padding.
+    @Test func knownAnswerVector() throws {
+        let encrypted = try LocalSmartClient.encrypt(Array("<CSV></CSV>".utf8), iv: fixedIV)
+        #expect(encrypted.map { String(format: "%02x", $0) }.joined() == "90c6d924058614106b211a0104f9c3eb")
+    }
+
+    @Test func redirectsAndForeignAnswersAreRefused() async throws {
+        // An answer that claims to come from another address is not trusted.
+        let moved = FakeAdapterTransport()
+        moved.answer(from: "192.168.1.66")
+        let client = try LocalSmartClient(host: "192.168.1.20", transport: moved)
+        await #expect(throws: LocalAccessError.badResponse("svar fra en annen adresse")) { try await client.readStatus() }
+        // A refused redirect arrives as its 3xx status and fails.
+        let redirect = FakeAdapterTransport()
+        redirect.status(307)
+        let other = try LocalSmartClient(host: "192.168.1.20", transport: redirect)
+        await #expect(throws: LocalAccessError.http(status: 307)) { try await other.readStatus() }
+        #expect(redirect.requests.count == 1)
+        // The real session's delegate refuses every redirect.
+        let task = URLSession.shared.dataTask(with: URL(string: "http://192.168.1.20/smart")!)
+        let next = await NoRedirects().urlSession(
+            URLSession.shared, task: task,
+            willPerformHTTPRedirection: HTTPURLResponse(
+                url: URL(string: "http://192.168.1.20/smart")!, statusCode: 307, httpVersion: nil,
+                headerFields: ["Location": "http://192.168.1.66/smart"])!,
+            newRequest: URLRequest(url: URL(string: "http://192.168.1.66/smart")!))
+        #expect(next == nil)
+        task.cancel()
     }
 
     @Test func isoPaddingAndNulFallback() {

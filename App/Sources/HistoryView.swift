@@ -58,6 +58,10 @@ struct HistoryView: View {
             data = await model.history(from: start, to: now)
             previous = await model.history(from: range.shifted(start, by: -1), to: start)
             energy = await model.energy(range: range)
+        }
+        // Effekt data only while that tab is shown (aggregated in SQL off the main thread).
+        .task(id: "\(range.rawValue)-\(model.revision)-\(tab == .power)") {
+            guard tab == .power else { return }
             localPower = await model.localPower(range: range)
         }
         .onChange(of: tab) { selected = nil }
@@ -501,27 +505,25 @@ struct HistoryView: View {
 
     private var localPowerContent: some View {
         let buckets = localPower.buckets
-        let readings = buckets.reduce(0) { $0 + $1.count }
-        let average = readings > 0 ? buckets.reduce(0) { $0 + $1.averageW * Double($1.count) } / Double(readings) : nil
-        let maxW = buckets.map(\.maxW).max()
-        let observed = localPower.starts.reduce(0) { $0 + $1.observedMinutes } * 60
+        let totals = localPower.totals
+        let perDay = localPower.startsUnit == .day
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            KPIRow {
+            KPIRow(minimum: 125) {
                 KPITile(
-                    label: "Snitteffekt", value: Format.watts(average), detail: "målt lokalt i perioden", systemImage: "bolt.fill",
+                    label: "Snitteffekt", value: Format.watts(totals?.averageW), detail: "målt lokalt", systemImage: "bolt.fill",
                     tint: .yellow)
-                KPITile(label: "Høyeste effekt", value: Format.watts(maxW), systemImage: "arrow.up.to.line", tint: .yellow)
+                KPITile(label: "Høyeste effekt", value: Format.watts(totals?.maxW), systemImage: "arrow.up.to.line", tint: .yellow)
                 KPITile(
                     label: "Starter siste 24 t", value: "\(localPower.startsLast24h)",
                     detail: "kompressoren startet", systemImage: "arrow.clockwise", tint: Theme.Data.orange)
                 KPITile(
-                    label: "Driftstid", value: durationText(localPower.runningSeconds),
-                    detail: observed > 0
-                        ? Norwegian.format("%.0f %% av tiden med målinger", localPower.runningSeconds / observed * 100) : nil,
+                    label: "Driftstid", value: durationText(totals?.runningSeconds ?? 0),
+                    detail: (totals?.observedSeconds ?? 0) > 0
+                        ? Norwegian.format("%.0f %% av tiden", (totals?.runningSeconds ?? 0) / (totals?.observedSeconds ?? 1) * 100) : nil,
                     systemImage: "timer", tint: Theme.Data.orange)
             }
             TrendCard(title: "Effekt", value: model.liveSample?.powerW.map { "Nå " + Format.watts(Double($0)) }) {
-                LegendDot(label: "Snitt (W)", color: .yellow)
+                LegendDot(label: "Snitt inkl. stopp (W)", color: .yellow)
             } chart: {
                 if buckets.count < 2 {
                     EmptyChart(
@@ -532,19 +534,22 @@ struct HistoryView: View {
                     powerChart(buckets).frame(height: 220)
                 }
             }
-            TrendCard(title: "Kompressor") {
-                HStack(spacing: Theme.Space.m) {
-                    LegendDot(label: "Frekvens (Hz)", color: Theme.Data.orange)
-                    LegendDot(label: "Starter per time", color: Theme.Data.purple)
-                }
+            TrendCard(title: "Kompressor", value: model.liveSample.map { $0.isRunning ? "Nå \($0.compressorHz ?? 0) Hz" : "Står nå" }) {
+                LegendDot(label: "Frekvens når den går (Hz)", color: Theme.Data.orange)
             } chart: {
                 if buckets.count < 2 {
                     EmptyChart(title: "Ingen kompressordata ennå", message: "Vises når appen har lest modulen en stund.")
                 } else {
-                    VStack(spacing: Theme.Space.l) {
-                        hzChart(buckets).frame(height: 140)
-                        startsChart(localPower.starts).frame(height: 90)
-                    }
+                    hzChart(buckets).frame(height: 140)
+                }
+            }
+            TrendCard(title: perDay ? "Starter per døgn" : "Starter per time") {
+                LegendDot(label: perDay ? "Starter per døgn" : "Fire eller flere i timen", color: perDay ? Theme.Data.purple : Theme.Status.caution)
+            } chart: {
+                if localPower.starts.isEmpty {
+                    EmptyChart(title: "Ingen starter registrert ennå", message: "Starter telles når målingene ligger tett.")
+                } else {
+                    startsChart(localPower.starts, perDay: perDay).frame(height: 110)
                 }
             }
             Text(
@@ -559,10 +564,10 @@ struct HistoryView: View {
     private func powerChart(_ buckets: [LocalPowerBucket]) -> some View {
         Chart {
             ForEach(buckets, id: \.start) { b in
-                AreaMark(x: .value("Tid", b.start), y: .value("W", b.averageW))
+                AreaMark(x: .value("Tid", b.start), y: .value("W", b.averageW ?? 0))
                     .foregroundStyle(ChartKit.areaGradient(.yellow))
                     .interpolationMethod(.stepEnd)
-                LineMark(x: .value("Tid", b.start), y: .value("W", b.averageW))
+                LineMark(x: .value("Tid", b.start), y: .value("W", b.averageW ?? 0))
                     .foregroundStyle(.yellow)
                     .interpolationMethod(.stepEnd)
             }
@@ -587,8 +592,8 @@ struct HistoryView: View {
 
     private func hzChart(_ buckets: [LocalPowerBucket]) -> some View {
         Chart {
-            ForEach(buckets, id: \.start) { b in
-                LineMark(x: .value("Tid", b.start), y: .value("Hz", b.averageHz))
+            ForEach(buckets.filter { $0.averageRunningHz != nil }, id: \.start) { b in
+                LineMark(x: .value("Tid", b.start), y: .value("Hz", b.averageRunningHz ?? 0))
                     .foregroundStyle(Theme.Data.orange)
                     .interpolationMethod(.stepEnd)
             }
@@ -599,30 +604,32 @@ struct HistoryView: View {
                         ChartTooltip(
                             title: Norwegian.dateTime(b.start),
                             rows: [
-                                ("Snitt", Norwegian.format("%.0f Hz", b.averageHz), Theme.Data.orange),
-                                ("Maks", Norwegian.format("%.0f Hz", b.maxHz), Theme.Data.orange),
+                                ("Snitt når den går", b.averageRunningHz.map { Norwegian.format("%.0f Hz", $0) } ?? "står", Theme.Data.orange),
+                                ("Maks", Norwegian.format("%.0f Hz", b.maxHz ?? 0), Theme.Data.orange),
+                                ("Går", Format.percentShare(b.runningShare), Theme.Data.orange),
                             ])
                     }
             }
         }
         .chartXScale(domain: periodStart...Date())
+        .chartYScale(domain: 0...max(60, (buckets.compactMap(\.maxHz).max() ?? 60) + 5))
         .calmYAxis { Norwegian.format("%.0f Hz", $0) }
-        .chartXAxis(.hidden)
+        .calmXAxis(powerAxis)
         .chartXSelection(value: $selected)
     }
 
-    private func startsChart(_ starts: [HourStarts]) -> some View {
+    private func startsChart(_ starts: [LocalPowerBucket], perDay: Bool) -> some View {
         Chart {
-            ForEach(starts, id: \.hour) { h in
-                BarMark(x: .value("Time", h.hour, unit: .hour), y: .value("Starter", h.starts))
-                    .foregroundStyle(h.starts >= 4 ? Theme.Status.caution : Theme.Data.purple.opacity(0.75))
+            ForEach(starts, id: \.start) { h in
+                BarMark(x: .value("Tid", h.start, unit: perDay ? .day : .hour), y: .value("Starter", h.starts))
+                    .foregroundStyle(!perDay && h.starts >= 4 ? Theme.Status.caution : Theme.Data.purple.opacity(0.75))
                     .cornerRadius(1.5)
             }
-            if let h = nearest(starts, to: selected, by: \.hour) {
-                RuleMark(x: .value("Valgt", h.hour))
+            if let h = nearest(starts, to: selected, by: \.start) {
+                RuleMark(x: .value("Valgt", h.start))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
-                        Text("\(h.starts) starter · \(Format.hour(h.hour))")
+                        Text("\(h.starts) starter · \(perDay ? Format.dayMonth(h.start) : Format.hour(h.start))")
                             .font(.caption2).monospacedDigit()
                             .padding(4)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))

@@ -66,8 +66,18 @@ extension HeatPumpService {
         return LocalReachability(
             enabled: settings.enabled, host: settings.host, lastAttempt: fetch?.lastAttempt, lastSuccess: fetch?.lastSuccess,
             consecutiveFailures: record.consecutiveFailures, failingSince: record.failingSince, lastError: record.lastError,
-            nextAttemptAllowed: next.flatMap { $0 > now() ? $0 : nil })
+            nextAttemptAllowed: next.flatMap { $0 > now() ? $0 : nil }, onHomeNetwork: settings.host.map(isOnNetwork))
     }
+
+    /// True when the Mac is on the /24 of `host` right now. Away from home every read would fail,
+    /// and the saved address may belong to some other device there, so automatic reads and
+    /// re-discovery pause.
+    func isOnNetwork(_ host: String) -> Bool {
+        guard let wanted = subnet24(host) else { return false }
+        return local.currentSubnets().contains(wanted)
+    }
+
+    static let awayMessage = "Ikke på hjemmenettet. Lokal avlesning er satt på pause til Macen er tilbake på samme nett som varmepumpen."
 
     // MARK: Reading
 
@@ -77,8 +87,10 @@ extension HeatPumpService {
         case failed(String)
     }
 
-    /// One read of `host` if the cross-process spacing allows it. Successful readings are stored.
-    func readLocal(host: String, minInterval: TimeInterval) async throws -> LocalRead {
+    /// One read of `host` if the cross-process spacing allows it. With `persist` (the saved
+    /// address) the reading is stored and success/failure is recorded; a test of another
+    /// address leaves both the history and the failure state alone.
+    func readLocal(host: String, minInterval: TimeInterval, persist: Bool = true) async throws -> LocalRead {
         let t = now()
         switch try store.reserveFetch(key: Self.localFetchKey, minInterval: minInterval, now: t, melcloud: false) {
         case .throttled(let next):
@@ -90,6 +102,7 @@ extension HeatPumpService {
                 let reply = try await local.makeClient(host).readStatus()
                 let parsed = CN105Parser.sample(reply: reply, at: now())
                 guard parsed.used > 0 else { throw LocalAccessError.noFrames }
+                guard persist else { return .sample(parsed.sample) }
                 try store.insertLocalSample(parsed.sample)
                 try store.recordFetchSuccess(key: Self.localFetchKey, now: t)
                 try store.saveSetting(LocalStatusRecord(), key: Self.localStatusKey)
@@ -97,6 +110,7 @@ extension HeatPumpService {
                 return .sample(parsed.sample)
             } catch {
                 let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                guard persist else { return .failed(message) }
                 var record = try localStatusRecord()
                 record.consecutiveFailures += 1
                 record.failingSince = record.failingSince ?? t
@@ -124,7 +138,9 @@ extension HeatPumpService {
         if !settings.enabled {
             message = LocalAccessError.notEnabled.errorDescription
         } else if !fresh {
-            if let host = settings.host {
+            if let host = settings.host, !isOnNetwork(host) {
+                message = Self.awayMessage
+            } else if let host = settings.host {
                 let record = try localStatusRecord()
                 switch try await readLocal(host: host, minInterval: Self.localBackoff(failures: record.consecutiveFailures)) {
                 case .sample(let sample):
@@ -158,7 +174,8 @@ extension HeatPumpService {
         guard let valid = LocalSmartClient.validatedHost(host) else {
             return LocalTestResult(ok: false, message: LocalAccessError.invalidHost(host).errorDescription ?? "", sample: nil)
         }
-        switch try await readLocal(host: valid, minInterval: Self.localMinInterval) {
+        let saved = try localSettings().host
+        switch try await readLocal(host: valid, minInterval: Self.localMinInterval, persist: valid == saved) {
         case .sample(let sample):
             return LocalTestResult(ok: true, message: Self.describe(sample), sample: sample)
         case .throttled(let next):
@@ -195,7 +212,8 @@ extension HeatPumpService {
     /// Re-discovery after repeated failures (the router may have given the unit a new address), at most hourly.
     func rediscoverIfDue() async throws {
         let record = try localStatusRecord()
-        guard record.consecutiveFailures >= Self.localRediscoveryAfterFailures,
+        guard let host = try localSettings().host, isOnNetwork(host),
+            record.consecutiveFailures >= Self.localRediscoveryAfterFailures,
             try store.reserveFetch(
                 key: Self.localAutoDiscoveryKey, minInterval: Self.localRediscoveryInterval, now: now(), melcloud: false)
                 == .allowed
@@ -245,32 +263,39 @@ extension HeatPumpService {
         try store.localSamples(from: from, to: to)
     }
 
-    /// Compressor starts per hour (stopped → running between readings ≤ 5 min apart).
+    /// Compressor starts per hour (stopped → running between readings ≤ 5 min apart), from SQL.
     public func compressorStarts(from: Date, to: Date) throws -> [HourStarts] {
-        CompressorCycles.startsPerHour(try store.localSamples(from: from, to: to), timeZone: timeZone)
+        try store.localPowerBuckets(from: from, to: to, bucketSeconds: 3600).map {
+            HourStarts(hour: $0.start, starts: $0.starts, observedMinutes: min(60, $0.observedSeconds / 60))
+        }
     }
 
-    /// Power and compressor frequency averaged per `bucket` seconds, for charts.
+    /// Readings aggregated per `bucket` seconds (UTC-aligned), for charts. Computed in SQL.
     public func localPowerBuckets(from: Date, to: Date, bucket: TimeInterval) throws -> [LocalPowerBucket] {
         try store.localPowerBuckets(from: from, to: to, bucketSeconds: max(60, Int(bucket)))
+    }
+
+    /// One aggregate over the whole range (totals for KPIs), or nil without readings.
+    public func localTotals(from: Date, to: Date) throws -> LocalPowerBucket? {
+        let seconds = max(1, Int(to.timeIntervalSince(from).rounded(.up)))
+        return try store.localPowerBuckets(from: from, to: to, bucketSeconds: seconds, origin: from).first
     }
 
     /// Most points `history` returns for a local metric; longer ranges are averaged per bucket.
     static let maxLocalHistoryPoints = 1500
 
     func localHistory(metric: HistoryMetric, from: Date, to: Date) throws -> [HistoryPoint] {
-        let samples = try store.localSamples(from: from, to: to)
-        if samples.count <= Self.maxLocalHistoryPoints {
-            return samples.compactMap { s in
+        if try store.localSampleCount(from: from, to: to) <= Self.maxLocalHistoryPoints {
+            return try store.localSamples(from: from, to: to).compactMap { s in
                 let value = metric == .powerW ? s.powerW : s.compressorHz
                 return value.map { HistoryPoint(timestamp: s.timestamp, value: Double($0), text: nil, source: "local") }
             }
         }
         let bucket = max(60, (to.timeIntervalSince(from) / Double(Self.maxLocalHistoryPoints)).rounded(.up))
-        return try localPowerBuckets(from: from, to: to, bucket: bucket).map { b in
-            HistoryPoint(
-                timestamp: b.start, value: ((metric == .powerW ? b.averageW : b.averageHz) * 10).rounded() / 10, text: nil,
-                source: "local")
+        return try localPowerBuckets(from: from, to: to, bucket: bucket).compactMap { b in
+            (metric == .powerW ? b.averageW : b.averageHz).map {
+                HistoryPoint(timestamp: b.start, value: ($0 * 10).rounded() / 10, text: nil, source: "local")
+            }
         }
     }
 
@@ -278,33 +303,29 @@ extension HeatPumpService {
     public func liveSummary(maxAge: TimeInterval = 60) async throws -> LiveSummary {
         let live = try await liveStatus(maxAge: maxAge)
         let t = now()
-        let day = try store.localSamples(from: t.addingTimeInterval(-86_400), to: t)
-        func starts(since seconds: TimeInterval) -> (starts: Int, observed: TimeInterval) {
-            CompressorCycles.starts(in: day.filter { $0.timestamp >= t.addingTimeInterval(-seconds) })
+        func totals(_ seconds: TimeInterval) throws -> LocalPowerBucket? { try localTotals(from: t.addingTimeInterval(-seconds), to: t) }
+        let hour = try totals(3600)
+        let day = try totals(86_400)
+        let stats = hour.flatMap { h -> LiveSummary.PowerStats? in
+            guard let average = h.averageW, let low = h.minW, let high = h.maxW else { return nil }
+            return LiveSummary.PowerStats(minW: Int(low), averageW: Int(average.rounded()), maxW: Int(high), readings: h.count)
         }
-        let lastHour = day.filter { $0.timestamp >= t.addingTimeInterval(-3600) }.compactMap(\.powerW)
-        let stats = lastHour.isEmpty
-            ? nil
-            : LiveSummary.PowerStats(
-                minW: lastHour.min() ?? 0, averageW: lastHour.reduce(0, +) / lastHour.count, maxW: lastHour.max() ?? 0,
-                readings: lastHour.count)
-        let full = starts(since: 86_400)
         return LiveSummary(
-            live: live, startsLastHour: starts(since: 3600).starts, startsLast3Hours: starts(since: 3 * 3600).starts,
-            startsLast24Hours: full.starts, observedHoursLast24: (full.observed / 360).rounded() / 10,
+            live: live, startsLastHour: hour?.starts ?? 0, startsLast3Hours: try totals(3 * 3600)?.starts ?? 0,
+            startsLast24Hours: day?.starts ?? 0, observedHoursLast24: ((day?.observedSeconds ?? 0) / 360).rounded() / 10,
             powerLast60Minutes: stats)
     }
 
-    /// Local readings for the health rules (15 days), or nil when local access was never used.
+    /// Hourly aggregates for the health rules (16 days, computed in SQL), or nil when local
+    /// access was never used.
     func localHealthInput(now t: Date) throws -> LocalHealthInput? {
         let settings = try localSettings()
-        let samples = try store.localSamples(
-            from: t.addingTimeInterval(-Double(LocalHealth.Threshold.powerBaselineDays + 1) * 86_400), to: t)
-        guard settings.enabled || !samples.isEmpty else { return nil }
+        let latest = try store.latestLocalSample()
+        guard settings.enabled || latest != nil else { return nil }
         let reach = try localReachability()
-        return LocalHealthInput(
-            enabled: settings.enabled, samples: samples, lastAttempt: reach.lastAttempt, lastSuccess: reach.lastSuccess,
-            failingSince: reach.failingSince)
+        return try LocalHealth.input(
+            store: store, now: t, enabled: settings.enabled, onHomeNetwork: reach.onHomeNetwork ?? false, latest: latest,
+            lastAttempt: reach.lastAttempt, lastSuccess: reach.lastSuccess, failingSince: reach.failingSince)
     }
 
     // MARK: Energy from the local counter

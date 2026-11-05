@@ -93,13 +93,19 @@ Gi gjerne varmepumpen fast IP-adresse i ruteren. Bytter den adresse og slutter �
 Sikkerhet og begrensninger:
 
 - **Bare lesing, håndhevet i koden.** Den lokale klienten har én operasjon: en statusforespørsel (`<CSV></CSV>` til `/smart`). Den sender aldri `CONNECT`-innstillingen (som kan koble modulen fra MELCloud), kommandoer, omstart, ECHONET eller admin-sider. En test sjekker at klartekstet er nøyaktig `<CSV></CSV>`. All styring går fortsatt via MELCloud.
-- Appen godtar bare private IPv4-adresser (10.x, 172.16–31.x, 192.168.x).
+- Appen godtar bare private IPv4-adresser (10.x, 172.16–31.x, 192.168.x), følger aldri omdirigeringer og godtar bare svar fra adressen den spurte.
+- Automatisk avlesning og automatisk søk skjer bare når Macen er på samme /24-nett som den lagrede adressen. Borte fra hjemmet settes lokal avlesning på pause («Ikke på hjemmenettet»), uten forespørsler eller søk på det andre nettet.
+- «Test» av en annen adresse enn den lagrede lagrer ingen måling og endrer ikke feiltelleren.
 - Høyst én forespørsel per 20 sekunder (felles for appen og Claude), 5 sekunders tidsavbrudd, og etter feil venter appen 2, 4, 8 og deretter 10 minutter. Appen leser hvert minutt mens den er åpen; Claude (`get_live_status`) gjenbruker en avlesning under ett minutt gammel.
-- MAC-adresse, serienummer og profilkoder fjernes rett etter dekryptering og lagres eller vises aldri.
+- MAC-adresse, serienummer og profilkoder fjernes rett etter dekryptering og lagres eller vises aldri. MCP-serveren viser heller ikke MAC-adresse eller serienummer fra MELCloud.
 - Endepunktet er uoffisielt. Det kan slutte å virke etter en fastvareoppdatering av modulen (for eksempel 43.00 eller nyere). Da virker resten av appen som før.
 - Av som standard. macOS spør første gang om appen får bruke lokalt nettverk; svar Tillat.
 
 Målingene lagres i tabellen `local_samples` (omtrent én per minutt mens appen er åpen). Etter 90 dager tynnes de ut til én per 10. minutt, og etter ett år til én per time. Helsesjekken bruker dem til regler for korte sykluser (mange kompressorstarter per time), uvanlig høyt forbruk for temperaturen, feilkode fra modulen og modul som ikke svarer lokalt. Grensene er tommelfingerregler og er beskrevet i kunnskapsdokumentet om vedlikehold.
+
+## Lys og mørk modus
+
+Velg **System**, **Lys** eller **Mørk** med knappen i verktøylinjen (halvfylt sirkel, sol eller måne), under **Visning → Utseende** (⌘⇧L bytter mellom de tre), eller under **Innstillinger → Generelt**. Valget lagres og gjelder hele appen, også Innstillinger og dialoger.
 
 ## Endringer sendes automatisk
 
@@ -130,8 +136,8 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun utvikling og tester: svarer automatisk i stedet for godkjenningsvinduet. Virker bare sammen med `VARMEPUMPE_BACKEND=mock`; med ekte MELCloud ignoreres den. |
 | `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, health, activity) |
 | `VARMEPUMPE_HISTORY_TAB` | Kun utvikling: fanen Historikk åpner på (temperature, energy, energy-kr, operation, power) |
-| `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light` eller `dark` (skjermbilder) |
-| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (konto, strompris, lokal, claude, data) |
+| `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light`, `dark` eller `system`; overstyrer valget i appen uten å lagre det (skjermbilder) |
+| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (generelt, konto, strompris, lokal, claude, data) |
 | `VARMEPUMPE_MOCK_CYCLING=short` | Kun utvikling, sammen med `VARMEPUMPE_BACKEND=mock`: den simulerte kompressoren går i korte runder, så regelen for korte sykluser kan vises |
 
 ## Appikon

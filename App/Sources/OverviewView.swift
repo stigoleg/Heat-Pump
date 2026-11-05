@@ -44,6 +44,12 @@ struct OverviewView: View {
                     model.debouncer?.edit(.temperature(value), commit: commit)
                 }
                 .frame(width: 290, height: 290)
+                .overlay(alignment: .bottom) {
+                    // The room value in the dial is local only when a newer local reading has one.
+                    if let local = model.newerLocalSample, local.roomTemperature != nil {
+                        localAge(local.timestamp, prefix: "Inne målt lokalt").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: Theme.Space.xxl) {
                         dial
@@ -87,13 +93,13 @@ struct OverviewView: View {
 
     private func facts(_ state: DeviceState) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            let local = model.newerLocalSample
+            // Per value: the outdoor temperature is local only when the local reading has one
+            // (the unit reports none while it is off), otherwise it comes from MELCloud.
+            let local = model.newerLocalSample.flatMap { $0.outdoorTemperature == nil ? nil : $0 }
             fact("Ute", systemImage: "cloud.sun.fill", tint: Theme.Data.outside) {
                 Text(Format.degrees(local?.outdoorTemperature ?? state.outdoorTemperature))
             } detail: {
-                if let local, local.outdoorTemperature != nil || local.roomTemperature != nil {
-                    Text(measuredLocallyText(local.timestamp))
-                }
+                if let local { localAge(local.timestamp, prefix: "Målt lokalt") }
             }
             fact("Effekt", systemImage: "bolt.fill", tint: .yellow) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
@@ -161,9 +167,13 @@ struct OverviewView: View {
         return Norwegian.format("%.2f kr/kWh", price.totalOre / 100)
     }
 
-    private func measuredLocallyText(_ date: Date) -> String {
-        let seconds = max(0, Int(Date().timeIntervalSince(date)))
-        return seconds < 90 ? "Målt lokalt for \(seconds) s siden" : "Målt lokalt for \(seconds / 60) min siden"
+    /// "Målt lokalt for 12 s siden", ticking every second.
+    private func localAge(_ date: Date, prefix: String) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let seconds = max(0, Int(context.date.timeIntervalSince(date)))
+            Text(seconds < 90 ? "\(prefix) for \(seconds) s siden" : "\(prefix) for \(seconds / 60) min siden")
+                .monospacedDigit()
+        }
     }
 
     private func compressorIndicator(_ sample: LocalSample) -> some View {

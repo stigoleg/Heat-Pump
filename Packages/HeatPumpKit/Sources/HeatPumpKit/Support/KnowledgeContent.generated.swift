@@ -73,9 +73,9 @@ Kilde: norsk bruksanvisning for MSZ-RW25/35/50VG, avsnittet «Rengjøring». Sl�
 Med lokal tilkobling slått på følger appen med på effekt og kompressorstarter. Grensene under er tommelfingerregler (heuristikk) for en liten veggmodell, ikke grenser fra Mitsubishi:
 
 - **Korte sykluser**: i snitt fire eller flere kompressorstarter i timen over tre timer mens den varmer, gir en advarsel. Seks eller flere starter i minst to av de tre timene gir en sterkere advarsel. Vanlige årsaker: tett luftfilter, en varmepumpe som er stor for rommet (særlig i mildvær), eller at ønsket temperatur eller viften endres ofte. Rengjør filteret, la temperaturen ligge fast og bruk gjerne vifte auto. Fortsetter det i flere dager, også når det er kaldt, ring forhandleren.
-- **Høyt forbruk for temperaturen**: appen sammenligner watt per grad forskjell mellom inne og ute (mens kompressoren går) det siste døgnet med medianen for de 14 dagene før. Mer enn 1,5 ganger det vanlige er til info, mer enn 2 ganger er en advarsel. Mulige årsaker: skittent filter, is eller snø på utedelen, mye avriming. Regelen trenger minst 7 dager med målinger.
+- **Høyt forbruk for temperaturen**: appen regner ut strøm per grad forskjell mellom inne og ute per time, med tiden kompressoren står stille medregnet (snitteffekt delt på temperaturforskjell). Det siste døgnet sammenlignes med medianen for tidligere dager med omtrent samme forskjell (innenfor 3 grader), siste 14 dager. Mer enn 1,5 ganger det vanlige er til info, mer enn 2 ganger er en advarsel. Mulige årsaker: skittent filter, is eller snø på utedelen, mye avriming. Regelen trenger minst 6 timer med varmedrift og minst 5 sammenlignbare dager, og ser bort fra timer der forskjellen er under 5 grader.
 - **Feilkode fra modulen**: modulen sender en kode (0x8000 betyr ingen feil). Annen kode vises som feil selv om MELCloud ikke har meldt den ennå.
-- **Modulen svarer ikke lokalt** i over en time: oftest ny IP-adresse fra ruteren. Bruk «Finn automatisk» i appen. Styring via MELCloud virker uansett.
+- **Modulen svarer ikke lokalt** i over en time mens Macen er på hjemmenettet: oftest ny IP-adresse fra ruteren. Bruk «Finn automatisk» i appen. Styring via MELCloud virker uansett. Er Macen på et annet nett, settes lokal avlesning bare på pause.
 
 ## Profesjonell service
 

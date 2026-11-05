@@ -10,12 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Dev only (screenshots): VARMEPUMPE_APPEARANCE=dark|light.
-        switch ProcessInfo.processInfo.environment["VARMEPUMPE_APPEARANCE"] {
-        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
-        case "light": NSApp.appearance = NSAppearance(named: .aqua)
-        default: break
-        }
+        // Saved choice (Visning → Utseende); dev VARMEPUMPE_APPEARANCE=dark|light overrides it.
+        MainActor.assumeIsolated { model.applyAppearance() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -45,6 +41,16 @@ struct VarmepumpeApp: App {
                     Task { await model.refresh(force: true) }
                 }
                 .keyboardShortcut("r")
+                Menu("Utseende") {
+                    Picker("Utseende", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
+                        ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                    Divider()
+                    Button("Bytt utseende") { model.cycleAppearance() }
+                        .keyboardShortcut("l", modifiers: [.command, .shift])
+                }
             }
         }
 

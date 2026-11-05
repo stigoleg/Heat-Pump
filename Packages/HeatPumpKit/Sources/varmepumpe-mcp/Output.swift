@@ -144,12 +144,11 @@ struct StatusView: Encodable {
     }
 }
 
+/// Device information for Claude. Serial number and MAC address are deliberately left out.
 struct DeviceInfoView: Encodable {
     var name: String
     var deviceId: Int
     var buildingId: Int
-    var serialNumber: String?
-    var macAddress: String?
     var model: String
     var firmware: FirmwareView
     var lastServiceDate: Date?

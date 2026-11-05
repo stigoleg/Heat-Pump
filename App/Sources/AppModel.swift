@@ -105,11 +105,14 @@ struct HistoryData {
     var modes: [HistoryPoint] = []
 }
 
-/// Local power data for the Effekt tab.
+/// Local power data for the Effekt tab (all aggregated in SQL by the service).
 struct LocalPowerData {
     var buckets: [LocalPowerBucket] = []
-    var starts: [HourStarts] = []
-    var runningSeconds: TimeInterval = 0
+    /// Starts per hour (per day for 1 år).
+    var starts: [LocalPowerBucket] = []
+    var startsUnit: Calendar.Component = .hour
+    /// The whole period in one bucket.
+    var totals: LocalPowerBucket?
     var startsLast24h = 0
 }
 
@@ -134,8 +137,10 @@ final class AppModel {
     var selection: Screen? = .overview
     /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
     var initialHistoryTab: String?
-    /// Selected Settings tab (konto, strompris, lokal, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
-    var settingsTab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "konto"
+    /// Selected Settings tab (generelt, konto, strompris, lokal, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
+    var settingsTab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "generelt"
+    /// Light/dark choice, stored in UserDefaults. Dev: `VARMEPUMPE_APPEARANCE` overrides it without saving.
+    private(set) var appearance: AppAppearance = .system
     var stateResult: StateResult?
     /// State as it should be after changes not yet confirmed by a refresh.
     var effectiveState: DeviceState?
@@ -182,6 +187,9 @@ final class AppModel {
             selection = screen
         }
         initialHistoryTab = environment["VARMEPUMPE_HISTORY_TAB"]
+        appearance = environment["VARMEPUMPE_APPEARANCE"].flatMap(AppAppearance.init(rawValue:))
+            ?? UserDefaults.standard.string(forKey: AppAppearance.defaultsKey).flatMap(AppAppearance.init(rawValue:))
+            ?? .system
         if let service {
             debouncer = ChangeDebouncer(
                 send: { [weak self] changes in
@@ -349,6 +357,21 @@ final class AppModel {
         return data
     }
 
+    // MARK: Appearance
+
+    func setAppearance(_ value: AppAppearance) {
+        appearance = value
+        UserDefaults.standard.set(value.rawValue, forKey: AppAppearance.defaultsKey)
+        applyAppearance()
+    }
+
+    func cycleAppearance() { setAppearance(appearance.next) }
+
+    /// App-wide, so Settings, alerts and menus follow too.
+    func applyAppearance() {
+        NSApp?.appearance = appearance.nsAppearance
+    }
+
     // MARK: Local connection
 
     /// Local reading younger than 3 minutes, or nil.
@@ -376,13 +399,15 @@ final class AppModel {
             case .year: 24 * 3600
             }
         var data = LocalPowerData()
-        // The bucket still filling up is left out (a few readings would show as a spike).
+        // The bucket still filling up, and buckets with only a couple of readings (the app was
+        // open for a moment), are left out: a single reading would show as a spike.
         data.buckets = ((try? await service.localPowerBuckets(from: from, to: to, bucket: bucket)) ?? [])
-            .filter { $0.start.addingTimeInterval(bucket) <= to }
-        let samples = (try? await service.localSamples(from: from, to: to)) ?? []
-        data.starts = CompressorCycles.startsPerHour(samples, timeZone: .current)
-        data.runningSeconds = CompressorCycles.runningSeconds(in: samples)
-        data.startsLast24h = CompressorCycles.starts(in: samples.filter { $0.timestamp >= to.addingTimeInterval(-86_400) }).starts
+            .filter { $0.start.addingTimeInterval(bucket) <= to && $0.count >= min(3, Int(bucket / 60)) }
+        data.startsUnit = range == .year ? .day : .hour
+        data.starts = range == .year
+            ? data.buckets : (try? await service.localPowerBuckets(from: from, to: to, bucket: 3600)) ?? []
+        data.totals = LocalPowerBucket.merged(data.starts)
+        data.startsLast24h = (try? await service.localTotals(from: to.addingTimeInterval(-86_400), to: to))?.starts ?? 0
         return data
     }
 

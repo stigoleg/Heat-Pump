@@ -34,6 +34,9 @@ public struct LocalReachability: Codable, Sendable, Equatable {
     public var lastError: String?
     /// Earliest next read (20 s spacing, longer after failures).
     public var nextAttemptAllowed: Date?
+    /// False when the Mac is on another network than the saved address (reads are paused);
+    /// nil without a saved address.
+    public var onHomeNetwork: Bool?
 }
 
 /// Latest local reading plus freshness.
@@ -47,17 +50,71 @@ public struct LiveStatus: Codable, Sendable, Equatable {
     public var message: String?
 }
 
-/// Power and compressor activity aggregated over one time bucket.
+/// Readings aggregated over one time bucket (computed in SQL).
 public struct LocalPowerBucket: Codable, Sendable, Equatable {
     public var start: Date
-    public var averageW: Double
-    public var maxW: Double
-    public var minW: Double
-    public var averageHz: Double
-    public var maxHz: Double
+    /// Average power over all readings, idle ones included (≈ mean power of the bucket).
+    public var averageW: Double?
+    public var maxW: Double?
+    public var minW: Double?
+    /// Average compressor frequency over all readings, stopped ones included.
+    public var averageHz: Double?
+    public var maxHz: Double?
+    /// Average frequency while the compressor runs.
+    public var averageRunningHz: Double?
     /// Share of readings with the compressor running (0…1).
     public var runningShare: Double
+    /// Share of readings with the unit on in heat mode (nil without general-state data).
+    public var heatingShare: Double?
+    /// Average indoor − outdoor temperature (readings with both).
+    public var averageDelta: Double?
+    /// Seconds covered by readings ≤ 5 min apart (starts can only be seen there).
+    public var observedSeconds: Double
+    public var runningSeconds: Double
+    public var starts: Int
     public var count: Int
+
+    public init(
+        start: Date, averageW: Double? = nil, maxW: Double? = nil, minW: Double? = nil, averageHz: Double? = nil,
+        maxHz: Double? = nil, averageRunningHz: Double? = nil, runningShare: Double = 0, heatingShare: Double? = nil,
+        averageDelta: Double? = nil, observedSeconds: Double = 0, runningSeconds: Double = 0, starts: Int = 0, count: Int = 0
+    ) {
+        self.start = start
+        self.averageW = averageW
+        self.maxW = maxW
+        self.minW = minW
+        self.averageHz = averageHz
+        self.maxHz = maxHz
+        self.averageRunningHz = averageRunningHz
+        self.runningShare = runningShare
+        self.heatingShare = heatingShare
+        self.averageDelta = averageDelta
+        self.observedSeconds = observedSeconds
+        self.runningSeconds = runningSeconds
+        self.starts = starts
+        self.count = count
+    }
+}
+
+extension LocalPowerBucket {
+    /// Several buckets combined into one (averages weighted by readings), or nil when empty.
+    public static func merged(_ buckets: [LocalPowerBucket]) -> LocalPowerBucket? {
+        guard let first = buckets.first else { return nil }
+        let count = buckets.reduce(0) { $0 + $1.count }
+        func average(_ value: (LocalPowerBucket) -> Double?) -> Double? {
+            let parts = buckets.compactMap { b in value(b).map { ($0, Double(b.count)) } }
+            let weight = parts.reduce(0) { $0 + $1.1 }
+            return weight > 0 ? parts.reduce(0) { $0 + $1.0 * $1.1 } / weight : nil
+        }
+        return LocalPowerBucket(
+            start: first.start, averageW: average(\.averageW), maxW: buckets.compactMap(\.maxW).max(),
+            minW: buckets.compactMap(\.minW).min(), averageHz: average(\.averageHz), maxHz: buckets.compactMap(\.maxHz).max(),
+            averageRunningHz: average(\.averageRunningHz), runningShare: average { $0.runningShare } ?? 0,
+            heatingShare: average(\.heatingShare), averageDelta: average(\.averageDelta),
+            observedSeconds: buckets.reduce(0) { $0 + $1.observedSeconds },
+            runningSeconds: buckets.reduce(0) { $0 + $1.runningSeconds }, starts: buckets.reduce(0) { $0 + $1.starts },
+            count: count)
+    }
 }
 
 /// Everything `get_live_status` returns.
@@ -113,24 +170,37 @@ public protocol LocalNetworkScanning: Sendable {
 public struct LocalAccess: Sendable {
     public var makeClient: @Sendable (String) throws -> any LocalStatusReading
     public var scanner: any LocalNetworkScanning
+    /// The /24 networks (network base, host byte order) the Mac is on right now. Automatic reads
+    /// only happen when the saved address is in one of them.
+    public var currentSubnets: @Sendable () -> [UInt32]
     /// Demo mode only: seed history with short compressor cycles too.
     public var simulatedShortCycling: Bool
 
     public init(
         makeClient: @escaping @Sendable (String) throws -> any LocalStatusReading, scanner: any LocalNetworkScanning,
-        simulatedShortCycling: Bool = false
+        currentSubnets: @escaping @Sendable () -> [UInt32], simulatedShortCycling: Bool = false
     ) {
         self.makeClient = makeClient
         self.scanner = scanner
+        self.currentSubnets = currentSubnets
         self.simulatedShortCycling = simulatedShortCycling
     }
 
     /// No local access (default; tests opt in with fakes).
     public static let unavailable = LocalAccess(
-        makeClient: { _ in throw LocalAccessError.notConfigured }, scanner: NoNetworkScanner())
+        makeClient: { _ in throw LocalAccessError.notConfigured }, scanner: NoNetworkScanner(), currentSubnets: { [] })
 
     /// The real adapter over HTTP on the home network.
-    public static let network = LocalAccess(makeClient: { try LocalSmartClient(host: $0) }, scanner: ARPScanner())
+    public static let network = LocalAccess(
+        makeClient: { try LocalSmartClient(host: $0) }, scanner: ARPScanner(),
+        currentSubnets: { ARPScanner.localSubnets().map(\.base) })
+}
+
+/// Network base of the /24 containing a dotted IPv4 address.
+func subnet24(_ host: String) -> UInt32? {
+    let parts = host.split(separator: ".").compactMap { UInt32($0) }
+    guard parts.count == 4, parts.allSatisfy({ $0 <= 255 }) else { return nil }
+    return parts[0] << 24 | parts[1] << 16 | parts[2] << 8
 }
 
 struct NoNetworkScanner: LocalNetworkScanning {

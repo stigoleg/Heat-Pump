@@ -64,13 +64,37 @@ extension HistoryStore {
         }
     }
 
-    /// Energy counter readings only (cheap for long ranges).
+    /// Energy counter readings for hourly energy: the first reading of every 5 minutes plus the
+    /// newest one, so long ranges stay cheap (a year is ~100k readings, ~10k after thinning).
+    /// Deltas between kept readings are still exact; only the split inside 5 minutes is linear.
     public func localCounterReadings(from: Date, to: Date) throws -> [(at: Date, kWh: Double)] {
         try pool.read { db in
-            try Row.fetchAll(
-                db, sql: "SELECT ts, energyKWh FROM local_samples WHERE ts >= ? AND ts <= ? AND energyKWh IS NOT NULL ORDER BY ts",
+            var rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT MIN(ts) AS ts, energyKWh FROM local_samples
+                    WHERE ts >= ? AND ts <= ? AND energyKWh IS NOT NULL
+                    GROUP BY CAST(strftime('%s', ts) AS INTEGER) / 300 ORDER BY ts
+                    """,
                 arguments: [from, to]
-            ).map { (at: $0["ts"], kWh: $0["energyKWh"]) }
+            ).map { (at: $0["ts"] as Date, kWh: $0["energyKWh"] as Double) }
+            if let last = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT ts, energyKWh FROM local_samples WHERE ts >= ? AND ts <= ? AND energyKWh IS NOT NULL
+                    ORDER BY ts DESC LIMIT 1
+                    """,
+                arguments: [from, to]), let at: Date = last["ts"], at > (rows.last?.at ?? .distantPast)
+            {
+                rows.append((at, last["energyKWh"]))
+            }
+            return rows
+        }
+    }
+
+    public func localSampleCount(from: Date, to: Date) throws -> Int {
+        try pool.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM local_samples WHERE ts >= ? AND ts <= ?", arguments: [from, to]) ?? 0
         }
     }
 
@@ -80,28 +104,57 @@ extension HistoryStore {
         }
     }
 
-    /// Power and compressor frequency per `bucketSeconds` (UTC-aligned buckets), for charts.
-    public func localPowerBuckets(from: Date, to: Date, bucketSeconds: Int) throws -> [LocalPowerBucket] {
-        try pool.read { db in
+    /// Aggregates per `bucketSeconds` from `origin` (default: UTC-aligned buckets), computed in
+    /// SQL so long ranges never load individual readings. Compressor starts and observed/running
+    /// time come from consecutive readings at most `CompressorCycles.maxGap` apart (the pair
+    /// belongs to the bucket of the later reading; the reading just before `from` is used too).
+    /// A reading exactly at `to` is put in the last bucket.
+    public func localPowerBuckets(from: Date, to: Date, bucketSeconds: Int, origin: Date? = nil) throws -> [LocalPowerBucket] {
+        let bucket = max(1, bucketSeconds)
+        let originSeconds = Int((origin ?? Date(timeIntervalSince1970: 0)).timeIntervalSince1970.rounded(.down))
+        let fromSeconds = Int(from.timeIntervalSince1970.rounded(.down))
+        let span = (to.timeIntervalSince1970 - Double(originSeconds)) / Double(bucket)
+        let maxIndex = max(0, Int(min(span.rounded(.up), Double(Int32.max))) - 1)
+        let gap = Int(CompressorCycles.maxGap)
+        return try pool.read { db in
             try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT CAST(strftime('%s', ts) AS INTEGER) / ? AS bucket,
+                    WITH s AS (
+                        SELECT ts, CAST(strftime('%s', ts) AS INTEGER) AS t, powerW, compressorHz,
+                            CASE WHEN operating = 1 OR compressorHz > 0 THEN 1 ELSE 0 END AS run,
+                            CASE WHEN operating IS NOT NULL OR compressorHz IS NOT NULL THEN 1 ELSE 0 END AS hasc,
+                            CASE WHEN power = 1 AND mode = 1 THEN 1.0 WHEN power IS NULL THEN NULL ELSE 0.0 END AS heat,
+                            roomTemperature - outdoorTemperature AS delta
+                        FROM local_samples WHERE ts >= ? AND ts <= ?
+                    ), p AS (
+                        SELECT *, LAG(t) OVER w AS pt, LAG(run) OVER w AS prun, LAG(hasc) OVER w AS phasc
+                        FROM s WINDOW w AS (ORDER BY ts)
+                    ), q AS (
+                        SELECT *, CASE WHEN hasc = 1 AND phasc = 1 AND t - pt > 0 AND t - pt <= ? THEN t - pt ELSE 0 END AS dt
+                        FROM p WHERE t >= ?
+                    )
+                    SELECT MIN((t - ?) / ?, ?) AS idx, COUNT(*) AS n,
                         AVG(powerW) AS avgW, MAX(powerW) AS maxW, MIN(powerW) AS minW,
                         AVG(compressorHz) AS avgHz, MAX(compressorHz) AS maxHz,
-                        AVG(CASE WHEN operating = 1 OR compressorHz > 0 THEN 1.0 ELSE 0.0 END) AS running,
-                        COUNT(*) AS n
-                    FROM local_samples WHERE ts >= ? AND ts <= ? AND powerW IS NOT NULL
-                    GROUP BY bucket ORDER BY bucket
+                        AVG(CASE WHEN run = 1 THEN compressorHz END) AS runHz,
+                        AVG(run) AS running, AVG(heat) AS heating, AVG(delta) AS delta,
+                        SUM(dt) AS observed, SUM(CASE WHEN prun = 1 THEN dt ELSE 0 END) AS runningSeconds,
+                        SUM(CASE WHEN dt > 0 AND prun = 0 AND run = 1 THEN 1 ELSE 0 END) AS starts
+                    FROM q GROUP BY idx ORDER BY idx
                     """,
-                arguments: [bucketSeconds, from, to]
+                arguments: [
+                    from.addingTimeInterval(-CompressorCycles.maxGap), to, gap, fromSeconds, originSeconds, bucket, maxIndex,
+                ]
             ).map { row in
-                let bucket: Int = row["bucket"]
+                let index: Int = row["idx"]
                 return LocalPowerBucket(
-                    start: Date(timeIntervalSince1970: TimeInterval(bucket * bucketSeconds)),
-                    averageW: row["avgW"] ?? 0, maxW: row["maxW"] ?? 0, minW: row["minW"] ?? 0,
-                    averageHz: row["avgHz"] ?? 0, maxHz: row["maxHz"] ?? 0, runningShare: row["running"] ?? 0,
-                    count: row["n"])
+                    start: Date(timeIntervalSince1970: TimeInterval(originSeconds + index * bucket)),
+                    averageW: row["avgW"], maxW: row["maxW"], minW: row["minW"],
+                    averageHz: row["avgHz"], maxHz: row["maxHz"], averageRunningHz: row["runHz"],
+                    runningShare: row["running"] ?? 0, heatingShare: row["heating"], averageDelta: row["delta"],
+                    observedSeconds: row["observed"] ?? 0, runningSeconds: row["runningSeconds"] ?? 0,
+                    starts: row["starts"] ?? 0, count: row["n"])
             }
         }
     }

@@ -1,18 +1,29 @@
 import Foundation
 
-/// What the health rules know about local access.
+/// What the health rules know about local access: aggregates computed in SQL, never raw readings.
 public struct LocalHealthInput: Sendable {
     public var enabled: Bool
-    /// Local readings of the last ~15 days, any order.
-    public var samples: [LocalSample]
+    /// False when the Mac is not on the adapter's network (no judgement about reachability then).
+    public var onHomeNetwork: Bool
+    public var latest: LocalSample?
+    /// The last three hours as three rolling one-hour buckets ending now, oldest first.
+    public var recentHours: [LocalPowerBucket]
+    /// Hourly buckets over the last ~16 days (power rule).
+    public var hourly: [LocalPowerBucket]
     public var lastAttempt: Date?
     public var lastSuccess: Date?
     /// Start of the current run of failed reads (nil when the last read worked).
     public var failingSince: Date?
 
-    public init(enabled: Bool, samples: [LocalSample], lastAttempt: Date? = nil, lastSuccess: Date? = nil, failingSince: Date? = nil) {
+    public init(
+        enabled: Bool, onHomeNetwork: Bool = true, latest: LocalSample? = nil, recentHours: [LocalPowerBucket] = [],
+        hourly: [LocalPowerBucket] = [], lastAttempt: Date? = nil, lastSuccess: Date? = nil, failingSince: Date? = nil
+    ) {
         self.enabled = enabled
-        self.samples = samples
+        self.onHomeNetwork = onHomeNetwork
+        self.latest = latest
+        self.recentHours = recentHours
+        self.hourly = hourly
         self.lastAttempt = lastAttempt
         self.lastSuccess = lastSuccess
         self.failingSince = failingSince
@@ -32,13 +43,17 @@ public enum LocalHealth {
         public static let shortCyclingWindow: TimeInterval = 3 * 3600
         /// At least this much of the window must have readings ≤ 5 min apart.
         public static let shortCyclingMinObserved: TimeInterval = 2.5 * 3600
-        /// Heuristic: W per °C (indoor − outdoor) while running, against the 14-day median.
+        /// Heuristic: energy per degree-hour (average W incl. idle / (indoor − outdoor)) over the
+        /// last 24 h against the median of earlier days with a comparable temperature difference.
         public static let powerInfoFactor = 1.5
         public static let powerWarningFactor = 2.0
         public static let powerBaselineDays = 14
-        public static let powerMinBaselineDays = 7
-        /// Readings with the compressor running needed for one value (about an hour at 1/min).
-        public static let powerMinRunningReadings = 60
+        public static let powerMinBaselineDays = 5
+        /// Hours (with ≥ 30 readings, heating, ΔT ≥ 5 °C) needed for one value, recent or per day.
+        public static let powerMinHours = 6
+        public static let powerMinReadingsPerHour = 30
+        /// Baseline hours count as comparable within this many °C of the recent average difference.
+        public static let powerComparableDelta = 3.0
         /// Below this indoor–outdoor difference the ratio is too unstable to compare.
         public static let powerMinDelta = 5.0
         public static let unreachableAfter: TimeInterval = 3600
@@ -46,14 +61,27 @@ public enum LocalHealth {
         public static let errorMaxAge: TimeInterval = 15 * 60
     }
 
+    /// Builds the input from stored readings (two small GROUP BY queries).
+    public static func input(
+        store: HistoryStore, now: Date, enabled: Bool, onHomeNetwork: Bool = true, latest: LocalSample?,
+        lastAttempt: Date? = nil, lastSuccess: Date? = nil, failingSince: Date? = nil
+    ) throws -> LocalHealthInput {
+        let windowStart = now.addingTimeInterval(-Threshold.shortCyclingWindow)
+        return LocalHealthInput(
+            enabled: enabled, onHomeNetwork: onHomeNetwork, latest: latest,
+            recentHours: try store.localPowerBuckets(from: windowStart, to: now, bucketSeconds: 3600, origin: windowStart),
+            hourly: try store.localPowerBuckets(
+                from: now.addingTimeInterval(-Double(Threshold.powerBaselineDays + 2) * 86_400), to: now, bucketSeconds: 3600),
+            lastAttempt: lastAttempt, lastSuccess: lastSuccess, failingSince: failingSince)
+    }
+
     public static func evaluate(_ input: LocalHealthInput, cloudErrorShown: Bool, now: Date, timeZone: TimeZone) -> [HealthFinding] {
-        let samples = input.samples.sorted { $0.timestamp < $1.timestamp }
         var findings: [HealthFinding] = []
-        findings += activeError(samples.last, cloudErrorShown: cloudErrorShown, now: now)
-        findings += cloudConnectOff(samples.last, now: now)
+        findings += activeError(input.latest, cloudErrorShown: cloudErrorShown, now: now)
+        findings += cloudConnectOff(input.latest, now: now)
         findings += unreachable(input, now: now)
-        findings += shortCycling(samples, now: now)
-        findings += powerVsOutdoor(samples, now: now, timeZone: timeZone)
+        findings += shortCycling(input.recentHours)
+        findings += powerVsOutdoor(input.hourly, now: now, timeZone: timeZone)
         return findings
     }
 
@@ -82,7 +110,7 @@ public enum LocalHealth {
     }
 
     static func unreachable(_ input: LocalHealthInput, now: Date) -> [HealthFinding] {
-        guard input.enabled, let since = input.failingSince, now.timeIntervalSince(since) > Threshold.unreachableAfter,
+        guard input.enabled, input.onHomeNetwork, let since = input.failingSince, now.timeIntervalSince(since) > Threshold.unreachableAfter,
             let attempt = input.lastAttempt, now.timeIntervalSince(attempt) < Threshold.unreachableAfter
         else { return [] }
         let last = input.lastSuccess.map { " Sist svar: \(Norwegian.dateTime($0))." } ?? ""
@@ -94,24 +122,15 @@ public enum LocalHealth {
         ]
     }
 
-    /// Starts and observed time per rolling hour, newest last: [now-3h, now-2h), [now-2h, now-1h), [now-1h, now].
-    static func rollingHours(_ samples: [LocalSample], now: Date) -> [(starts: Int, observed: TimeInterval)] {
-        (0..<3).reversed().map { k in
-            let end = now.addingTimeInterval(-Double(k) * 3600)
-            let start = end.addingTimeInterval(-3600)
-            return CompressorCycles.starts(in: samples.filter { $0.timestamp >= start && $0.timestamp <= end })
-        }
-    }
-
-    static func shortCycling(_ samples: [LocalSample], now: Date) -> [HealthFinding] {
-        let window = samples.filter { $0.timestamp >= now.addingTimeInterval(-Threshold.shortCyclingWindow) && $0.timestamp <= now }
-        let heating = window.filter { $0.power == true && $0.mode == .heat }
-        guard !window.isEmpty, Double(heating.count) >= 0.8 * Double(window.count) else { return [] }
-        let total = CompressorCycles.starts(in: window)
-        guard total.observed >= Threshold.shortCyclingMinObserved else { return [] }
-        let perHour = Double(total.starts) / (total.observed / 3600)
-        let hours = rollingHours(window, now: now)
-        let busyHours = hours.filter { $0.starts >= Threshold.strongStartsPerHour && $0.observed >= 50 * 60 }.count
+    static func shortCycling(_ hours: [LocalPowerBucket]) -> [HealthFinding] {
+        let count = hours.reduce(0) { $0 + $1.count }
+        guard count > 0 else { return [] }
+        let heating = hours.reduce(0.0) { $0 + ($1.heatingShare ?? 0) * Double($1.count) } / Double(count)
+        let observed = hours.reduce(0.0) { $0 + $1.observedSeconds }
+        let starts = hours.reduce(0) { $0 + $1.starts }
+        guard heating >= 0.8, observed >= Threshold.shortCyclingMinObserved else { return [] }
+        let perHour = Double(starts) / (observed / 3600)
+        let busyHours = hours.filter { $0.starts >= Threshold.strongStartsPerHour && $0.observedSeconds >= 50 * 60 }.count
         let strong = busyHours >= Threshold.strongHours
         guard strong || perHour >= Threshold.shortCyclingStartsPerHour else { return [] }
         let advice =
@@ -124,7 +143,7 @@ public enum LocalHealth {
                     code: "short_cycling_strong", severity: .warning, title: "Kompressoren starter og stopper svært ofte",
                     detail: Norwegian.format(
                         "Kompressoren har startet %d ganger de siste 3 timene, med %d eller flere starter i %d av timene. Så korte runder sliter på kompressoren og gir dårligere virkningsgrad.",
-                        total.starts, Threshold.strongStartsPerHour, busyHours),
+                        starts, Threshold.strongStartsPerHour, busyHours),
                     recommendation: advice)
             ]
         }
@@ -138,41 +157,48 @@ public enum LocalHealth {
         ]
     }
 
-    /// Average W per °C (indoor − outdoor) while the compressor runs; nil without enough data.
-    static func powerRatio(_ samples: [LocalSample]) -> Double? {
-        let running = samples.compactMap { s -> (Double, Double)? in
-            guard s.isRunning, s.mode == .heat, let watts = s.powerW, let room = s.roomTemperature,
-                let outdoor = s.outdoorTemperature, room - outdoor >= Threshold.powerMinDelta
-            else { return nil }
-            return (Double(watts), room - outdoor)
-        }
-        guard running.count >= Threshold.powerMinRunningReadings else { return nil }
-        let watts = running.map(\.0).reduce(0, +) / Double(running.count)
-        let delta = running.map(\.1).reduce(0, +) / Double(running.count)
-        return watts / delta
+    /// An hour that says something about consumption: mostly readings, heating, and a clear
+    /// indoor–outdoor difference.
+    static func usable(_ h: LocalPowerBucket) -> Bool {
+        h.count >= Threshold.powerMinReadingsPerHour && (h.heatingShare ?? 0) >= 0.8 && h.averageW != nil
+            && (h.averageDelta ?? 0) >= Threshold.powerMinDelta
     }
 
-    static func powerVsOutdoor(_ samples: [LocalSample], now: Date, timeZone: TimeZone) -> [HealthFinding] {
+    /// Energy per degree-hour in W/°C: Σ average W / Σ (indoor − outdoor) over the hours. Average
+    /// W includes the time the compressor stood still, so short runs in mild weather are not
+    /// mistaken for high consumption.
+    static func wattsPerDegree(_ hours: [LocalPowerBucket]) -> Double? {
+        let delta = hours.reduce(0.0) { $0 + ($1.averageDelta ?? 0) }
+        guard delta > 0 else { return nil }
+        return hours.reduce(0.0) { $0 + ($1.averageW ?? 0) } / delta
+    }
+
+    static func powerVsOutdoor(_ hourly: [LocalPowerBucket], now: Date, timeZone: TimeZone) -> [HealthFinding] {
         let recentStart = now.addingTimeInterval(-86_400)
-        guard let recent = powerRatio(samples.filter { $0.timestamp >= recentStart && $0.timestamp <= now }) else { return [] }
+        let recent = hourly.filter { $0.start >= recentStart && usable($0) }
+        guard recent.count >= Threshold.powerMinHours, let ratio = wattsPerDegree(recent) else { return [] }
+        let recentDelta = recent.reduce(0.0) { $0 + ($1.averageDelta ?? 0) } / Double(recent.count)
+        // Only hours with a comparable indoor–outdoor difference are a fair baseline: the same
+        // unit uses more per degree when it is very cold, and much less when it only idles.
         let calendar = WireDate.calendar(timeZone)
-        let older = samples.filter {
-            $0.timestamp < recentStart && $0.timestamp >= now.addingTimeInterval(-Double(Threshold.powerBaselineDays + 1) * 86_400)
+        let comparable = hourly.filter {
+            $0.start < recentStart && $0.start >= now.addingTimeInterval(-Double(Threshold.powerBaselineDays + 1) * 86_400)
+                && usable($0) && abs(($0.averageDelta ?? 0) - recentDelta) <= Threshold.powerComparableDelta
         }
-        let byDay = Dictionary(grouping: older) { calendar.startOfDay(for: $0.timestamp) }
-        let baseline = byDay.keys.sorted().suffix(Threshold.powerBaselineDays).compactMap { powerRatio(byDay[$0] ?? []) }
+        let byDay = Dictionary(grouping: comparable) { calendar.startOfDay(for: $0.start) }
+        let baseline = byDay.values.filter { $0.count >= Threshold.powerMinHours }.compactMap(wattsPerDegree)
         guard baseline.count >= Threshold.powerMinBaselineDays else { return [] }
         let median = HealthEngine.median(baseline)
         guard median > 0 else { return [] }
-        let factor = recent / median
+        let factor = ratio / median
         guard factor > Threshold.powerInfoFactor else { return [] }
         return [
             HealthFinding(
                 code: "power_vs_outdoor", severity: factor > Threshold.powerWarningFactor ? .warning : .info,
                 title: "Varmepumpen bruker mer strøm enn vanlig for temperaturen",
                 detail: Norwegian.format(
-                    "Siste døgn har den brukt %.0f W per grad forskjell mellom inne og ute mens kompressoren gikk, %.1f ganger det vanlige (median %.0f W per grad de siste %d dagene).",
-                    recent, factor, median, baseline.count),
+                    "Siste døgn har den brukt i snitt %.0f W per grad forskjell mellom inne og ute (%.0f grader, stopp medregnet), %.1f ganger det vanlige ved tilsvarende forskjell (median %.0f W per grad, %d dager).",
+                    ratio, recentDelta, factor, median, baseline.count),
                 recommendation: "Sjekk at luftfilteret er rent og at utedelen ikke er nediset, dekket av snø eller blokkert. Mye avriming i fuktig kuldegrader kan også gi høyere forbruk en periode. Vedvarer det i flere dager, ring forhandleren.")
         ]
     }

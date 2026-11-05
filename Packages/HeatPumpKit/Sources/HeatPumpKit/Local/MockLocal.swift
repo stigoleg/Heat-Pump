@@ -141,6 +141,7 @@ extension LocalAccess {
     public static func simulated(now: @escaping @Sendable () -> Date = { Date() }, shortCycling: Bool = false) -> LocalAccess {
         LocalAccess(
             makeClient: { try LocalSmartClient(host: $0, transport: MockLocalTransport(now: now, shortCycling: shortCycling)) },
-            scanner: MockLocalScanner(), simulatedShortCycling: shortCycling)
+            scanner: MockLocalScanner(), currentSubnets: { [subnet24(MockLocalSimulation.host) ?? 0] },
+            simulatedShortCycling: shortCycling)
     }
 }
