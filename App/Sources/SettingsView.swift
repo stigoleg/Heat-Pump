@@ -17,10 +17,16 @@ struct SettingsView: View {
 /// E-mail + password → one login and state fetch through the service.
 struct LoginForm: View {
     @Environment(AppModel.self) private var model
-    @State private var email = ""
+    @State private var email: String
     @State private var password = ""
     @State private var working = false
     @State private var result: (ok: Bool, message: String)?
+    private let onSuccess: () -> Void
+
+    init(email: String = "", onSuccess: @escaping () -> Void = {}) {
+        _email = State(initialValue: email)
+        self.onSuccess = onSuccess
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -34,8 +40,11 @@ struct LoginForm: View {
                         working = true
                         let outcome = await model.signIn(email: email, password: password)
                         result = (outcome.0, outcome.1)
-                        if outcome.0 { password = "" }
                         working = false
+                        if outcome.0 {
+                            password = ""
+                            onSuccess()
+                        }
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -55,30 +64,100 @@ struct LoginForm: View {
     }
 }
 
+/// Signed in: account details. Not signed in, or password refused: the login form.
 struct AccountSettings: View {
     @Environment(AppModel.self) private var model
     @State private var confirmingSignOut = false
+    @State private var switchingAccount = false
+    @State private var email: String?
+
+    /// Stored credentials that MELCloud has not refused.
+    private var signedIn: Bool {
+        model.hasCredentials && model.stateResult?.needsLogin != true
+    }
 
     var body: some View {
         Form {
-            Section {
-                LoginForm()
-            } header: {
-                Text("MELCloud-innlogging")
-            } footer: {
-                Text("E-post og passord lagres i nøkkelringen på Macen. Første gang MCP-serveren for Claude bruker dem, spør macOS om tilgang: velg «Tillat alltid».")
-            }
-            Section {
-                LabeledContent("Status", value: model.hasCredentials ? "Innlogging lagret" : "Ikke innlogget")
-                Button("Logg ut", role: .destructive) { confirmingSignOut = true }
-                    .disabled(!model.hasCredentials || model.isDemo)
+            if model.isDemo {
+                Section("MELCloud-konto") {
+                    Label("Demo-modus: appen viser simulerte data, og innlogging er ikke i bruk.", systemImage: "play.rectangle")
+                        .foregroundStyle(.secondary)
+                }
+            } else if signedIn && !switchingAccount {
+                accountSection
+                deviceSection
+            } else {
+                loginSection
             }
         }
         .formStyle(.grouped)
-        .confirmationDialog("Logge ut?", isPresented: $confirmingSignOut) {
-            Button("Logg ut", role: .destructive) { Task { await model.signOut() } }
+        .task(id: model.hasCredentials) { email = await model.accountEmail() }
+        .confirmationDialog("Logge ut av MELCloud?", isPresented: $confirmingSignOut) {
+            Button("Logg ut", role: .destructive) {
+                Task {
+                    await model.signOut()
+                    email = nil
+                }
+            }
         } message: {
-            Text("E-post, passord og økt slettes fra nøkkelringen. Historikken beholdes.")
+            Text("E-post, passord og økt slettes fra nøkkelringen. Historikken beholdes. Claude mister også tilgangen til varmepumpen til du logger inn igjen.")
+        }
+    }
+
+    private var accountSection: some View {
+        Section("MELCloud-konto") {
+            HStack(spacing: 14) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.blue.gradient)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(email ?? "MELCloud-konto").font(.headline)
+                    Label("Innlogget", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.green)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+            LabeledContent("Lagret i", value: "Nøkkelringen på denne Macen")
+            HStack {
+                Button("Bytt konto…") { switchingAccount = true }
+                Spacer()
+                Button("Logg ut", role: .destructive) { confirmingSignOut = true }
+            }
+        }
+    }
+
+    @ViewBuilder private var deviceSection: some View {
+        Section("Varmepumpe") {
+            if let state = model.state {
+                LabeledContent("Navn", value: state.name)
+                LabeledContent("Tilkobling") {
+                    Label(state.offline ? "Frakoblet" : "Tilkoblet", systemImage: state.offline ? "wifi.slash" : "wifi")
+                        .foregroundStyle(state.offline ? .orange : .green)
+                }
+                LabeledContent("Siste kontakt", value: Format.relative(state.lastCommunication))
+                LabeledContent("Data hentet", value: Format.relative(state.fetchedAt))
+            } else {
+                Text("Ingen data hentet ennå.").foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var loginSection: some View {
+        Section {
+            if model.hasCredentials && model.stateResult?.needsLogin == true && !switchingAccount {
+                Label("MELCloud avviste innloggingen. Skriv inn passordet på nytt.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
+            LoginForm(email: email ?? "") { switchingAccount = false }
+            if switchingAccount {
+                Button("Avbryt") { switchingAccount = false }
+            }
+        } header: {
+            Text(switchingAccount ? "Bytt MELCloud-konto" : "Logg inn på MELCloud")
+        } footer: {
+            Text("Bruk samme e-post og passord som i MELCloud-appen. De lagres i nøkkelringen på Macen. Første gang Claude bruker dem, spør macOS om tilgang: velg «Tillat alltid».")
         }
     }
 }

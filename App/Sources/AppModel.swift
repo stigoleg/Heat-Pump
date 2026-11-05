@@ -367,6 +367,11 @@ final class AppModel {
         }
     }
 
+    /// E-mail of the stored account (reads the keychain; call from Settings only).
+    func accountEmail() async -> String? {
+        await service?.accountEmail()
+    }
+
     func signOut() async {
         guard let service else { return }
         do {

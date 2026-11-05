@@ -96,6 +96,13 @@ public actor HeatPumpService {
         return stored
     }
 
+    /// E-mail of the stored MELCloud account, for display. Reads the keychain item, so call it
+    /// on demand (e.g. when Settings opens), never from polling.
+    public func accountEmail() -> String? {
+        guard let credentials else { return nil }
+        return (try? credentials.loadCredentials())?.email
+    }
+
     /// Saves new credentials and lifts a "credentials rejected" stop. Does not call the network.
     public func saveCredentials(_ new: MELCloudCredentials) throws {
         guard let credentials else { return }
