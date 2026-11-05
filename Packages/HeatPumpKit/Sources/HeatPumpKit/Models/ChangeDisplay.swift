@@ -47,6 +47,7 @@ extension DeviceChange {
         case "fanSpeed": "Viftehastighet"
         case "vaneVertical": "Vertikalt spjeld"
         case "vaneHorizontal": "Horisontalt spjeld"
+        case "weeklyTimer": "Ukeplan"
         default: field
         }
     }

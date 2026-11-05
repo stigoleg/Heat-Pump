@@ -88,7 +88,12 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_away_settings",
-            description: "Frost protection (keeps the room between a minimum and maximum temperature while the unit is otherwise off; 4–14 °C / 6–16 °C, max at least 2 °C above min) and holiday mode (start/end; the unit follows frost protection in that period) as MELCloud reports them, plus MELCloud's weekly timer (read-only: enabled, events per weekday when they can be decoded, next event). Read from MELCloud at most hourly (timer every 6 h); cached otherwise.",
+            description: "Frost protection (keeps the room between a minimum and maximum temperature while the unit is otherwise off; 4–14 °C / 6–16 °C, max at least 2 °C above min) and holiday mode (start/end; the unit follows frost protection in that period) as MELCloud reports them, plus a short view of MELCloud's weekly timer (enabled, events, next event; full plan in get_weekly_timer). Read from MELCloud at most hourly (timer every 6 h); cached otherwise.",
+            inputSchema: ["type": "object", "properties": [:]],
+            annotations: readOnly),
+        Tool(
+            name: "get_weekly_timer",
+            description: "MELCloud's weekly timer (Ukeplan): whether it is on, every season (start date, whether it is the one in force) with its events (weekday, time, on/off, mode, temperature, fan, vanes), and the next event. The plan runs in MELCloud, also when the Mac is off; a change made with set_* lasts until the next planned event. Read-only for Claude: the user creates and edits the plan in the app (Ukeplan page). Read from MELCloud at most every 6 h; cached otherwise. decoded=false means only the event count is known.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(

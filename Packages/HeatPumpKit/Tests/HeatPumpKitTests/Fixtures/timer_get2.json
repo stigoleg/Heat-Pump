@@ -1,6 +1,6 @@
-{"Enabled": true, "Seasons": [{"Name": "Vinter", "Events": [
- {"EventId": 1, "Day": 1, "Time": "06:30", "Power": true, "OperationMode": 1, "SetTemperature": 21.0},
- {"EventId": 2, "Day": 1, "Time": "22:30", "Power": true, "OperationMode": 1, "SetTemperature": 19.0},
- {"EventId": 3, "Day": 6, "Hour": 8, "Minute": 0, "Power": 1, "SetTemperature": 21.5},
- {"EventId": 4, "Day": 0, "StartTime": 1350, "Power": false}
+{"Enabled": true, "Seasons": [{"ID": 11, "Name": "Default", "StartDay": 1, "StartMonth": 1, "Colour": "#ff8800", "Events": [
+ {"ID": 101, "EventDay": 1, "EventHour": 6, "EventMinute": 30, "EventTime": "06:30:00", "Power": true, "OperationMode": 1, "SetTemperature": 21.0, "FanSpeed": 0, "VaneHorizontal": 3, "VaneVertical": 0, "Settings": "<settings></settings>", "Name": "-"},
+ {"ID": 102, "EventDay": 1, "EventHour": 22, "EventMinute": 30, "EventTime": "22:30:00", "Power": true, "OperationMode": 1, "SetTemperature": 19.0, "FanSpeed": 0, "VaneHorizontal": 3, "VaneVertical": 0, "Settings": "<settings></settings>", "Name": "-"},
+ {"ID": 103, "EventDay": 6, "EventHour": 8, "EventMinute": 0, "EventTime": "08:00:00", "Power": true, "OperationMode": 9, "SetTemperature": 21.5, "FanSpeed": 2, "VaneHorizontal": 12, "VaneVertical": 7, "Settings": "<settings></settings>", "Name": "-"},
+ {"ID": 104, "EventDay": 0, "EventTime": "22:30:00", "Power": false, "OperationMode": 1, "SetTemperature": 19.0, "FanSpeed": 0, "VaneHorizontal": 3, "VaneVertical": 0, "Settings": "<settings></settings>", "Name": "-", "Unknown": {"X": 1}}
 ]}]}

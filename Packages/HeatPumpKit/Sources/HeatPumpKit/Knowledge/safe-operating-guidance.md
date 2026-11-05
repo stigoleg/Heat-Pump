@@ -31,7 +31,7 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 - **Feriemodus**: velg start og slutt. I perioden kan varmepumpen stå av, og da er det frostsikringen som hindrer at huset blir for kaldt. Appen og Claude slår derfor ikke på feriemodus før frostsikring er på, og slår ikke av frostsikring mens feriemodus er på. Laveste temperatur på 8 °C eller mer anbefales.
 - **Tidene i feriemodus**: hvordan MELCloud lagrer tidspunktene (UTC eller lokal tid) er ikke bekreftet. Etter en endring viser appen tidene MELCloud leser tilbake ved siden av det du valgte; er de ulike (for eksempel én time forskjøvet), sjekk i MELCloud-appen.
 - Begge deler er større endringer enn å justere temperaturen, så appen ber deg bekrefte, og Claude må få godkjenning i vinduet på Macen. Funksjonene er ikke testet mot denne kontoen ennå: gjør den første endringen selv i appen og sjekk i MELCloud-appen at den er registrert.
-- **Ukeplan**: er ukeplanen i MELCloud slått på, kan varmepumpen endre temperatur eller slå seg av og på etter planen. Appen viser planen, men kan ikke endre den.
+- **Ukeplan**: er ukeplanen i MELCloud slått på, kan varmepumpen endre temperatur eller slå seg av og på etter planen. Planen ligger i MELCloud og kjører selv om Macen er av, og den samme planen vises i MELCloud-appen. En endring du gjør i Kontroll (eller som Claude gjør) varer bare til neste hendelse i planen. Planen lages og endres på siden «Ukeplan» i appen, og hver lagring teller som én av 12 sendinger i timen. Claude kan lese planen, men ikke endre den. Lagringen er ikke prøvd mot denne kontoen ennå: sjekk i MELCloud-appen at planen ser riktig ut etter første lagring.
 
 ## Fukt og lukt
 

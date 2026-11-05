@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Sidebar destinations.
 enum Screen: String, CaseIterable, Identifiable, Hashable {
-    case overview, control, history, away, health, activity
+    case overview, control, schedule, history, away, health, activity
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .overview: "Oversikt"
         case .control: "Kontroll"
+        case .schedule: "Ukeplan"
         case .history: "Historikk"
         case .away: "Borte hjemmefra"
         case .health: "Helse"
@@ -24,6 +25,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .overview: "house.fill"
         case .control: "slider.horizontal.3"
+        case .schedule: "calendar.badge.clock"
         case .history: "chart.xyaxis.line"
         case .away: "suitcase.fill"
         case .health: "heart.fill"
@@ -36,6 +38,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .overview: .blue
         case .control: .orange
+        case .schedule: .indigo
         case .history: .green
         case .away: .teal
         case .health: .red
@@ -505,6 +508,21 @@ final class AppModel {
         guard let service else { return }
         weeklyTimer = try? await service.weeklyTimer(manual: true)
         timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
+    }
+
+    /// Saves the edited weekly timer in MELCloud after the user confirmed the differences.
+    func saveWeeklyTimer(_ timer: WeeklyTimer) async -> (ok: Bool, message: String) {
+        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        let result: (Bool, String)
+        do {
+            let outcome = try await service.saveWeeklyTimer(timer, source: .app, reason: "Endret i appen (Ukeplan)")
+            result = (outcome.result == .ok, outcome.message)
+        } catch {
+            result = (false, "Ukeplanen kunne ikke lagres: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+        }
+        await reloadLocal()
+        await debouncer?.refreshBudget()
+        return result
     }
 
     // MARK: Firmware

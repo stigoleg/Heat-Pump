@@ -52,6 +52,7 @@ struct RootView: View {
             switch model.selection ?? .overview {
             case .overview: OverviewView()
             case .control: ControlView()
+            case .schedule: ScheduleView()
             case .history: HistoryView()
             case .away: AwayView()
             case .health: HealthView()

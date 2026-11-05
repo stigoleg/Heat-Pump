@@ -242,6 +242,15 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         return timer
     }
 
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws {
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)
+        let response = try await authorizedJSON("POST", "Timer/SetAta2", body: body, relogin: false)
+        Self.diagnose("Timer/SetAta2 response: \(MELCloudClassicParser.redactedShape(response))")
+        try MELCloudClassicParser.throwIfAttributeErrors(response)
+        if let message = MELCloudClassicParser.timerSaveError(response) { throw HeatPumpError.server(message) }
+        try MELCloudClassicParser.checkMutation(response)
+    }
+
     // MARK: Firmware updates (unverified endpoints; shapes logged)
 
     public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] {

@@ -40,14 +40,15 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 ## Funksjoner
 
 - **Oversikt** – termostatring du kan dra i, innetemperatur, ute, effekt, dagens forbruk og kostnad, strømpris nå, hva pumpen gjør (varmer, hviler, avriser) og værvarsel for de neste 48 timene.
-- **Kontroll** – av/på, modus, temperatur (glidebryter og stepper), viftehastighet og luftretning. Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen fra MELCloud vises nederst.
+- **Kontroll** – av/på, modus, temperatur (glidebryter og stepper), viftehastighet og luftretning. Endringer sendes automatisk et par sekunder etter at du har stilt inn.
+- **Ukeplan** – lag og endre ukeplanen i MELCloud: hendelser per ukedag med tid, av/på, modus, temperatur, vifte og luftretning, kopiering av en dag og ferdige maler (nattsenking, borte på dagtid). Planen kjører i MELCloud, også når Macen er av.
 - **Historikk** – temperatur, energi og kostnad, drift og effekt, for 24 timer, 7 dager, 30 dager eller ett år.
 - **Strømkostnad** – Norgespris, spotpris via Tibber eller spotpris fra hvakosterstrommen.no, med nettleie og strømstøtte. Prisene farges fra svært billig til svært dyr.
 - **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare. Fastvareoppdateringer av Wi-Fi-modulen kan startes og følges her.
 - **Borte hjemmefra** – frostsikring og feriemodus.
 - **Lokal tilkobling** – leser effekt, kompressor, avriming og en nøyaktig strømmåler direkte fra Wi-Fi-modulen på hjemmenettet. Bare lesing.
 - **Husets strømforbruk** – fra Tibber, med varmepumpens andel.
-- **Claude** – innebygd MCP-server med 22 verktøy, en helsesjekk og kunnskapsdokumenter om vedlikehold og feilkoder.
+- **Claude** – innebygd MCP-server med 25 verktøy, en helsesjekk og kunnskapsdokumenter om vedlikehold og feilkoder.
 - **Lys og mørk modus** – med ett klikk i verktøylinjen eller ⌘⇧L.
 
 ## Skjermbilder
@@ -102,7 +103,7 @@ Når Claude vil endre noe, viser Macen et eget vindu, «Claude vil endre varmepu
 <details>
 <summary>Verktøy og ressurser for Claude</summary>
 
-- **Lesing:** `get_status`, `get_live_status`, `get_health_report`, `get_error_log`, `get_history`, `get_energy`, `get_prices`, `get_forecast`, `get_house_consumption`, `get_maintenance_status`, `get_away_settings`, `get_firmware_status`, `get_change_log`, `get_device_info`, `refresh`
+- **Lesing:** `get_status`, `get_live_status`, `get_health_report`, `get_error_log`, `get_history`, `get_energy`, `get_prices`, `get_forecast`, `get_house_consumption`, `get_maintenance_status`, `get_away_settings`, `get_weekly_timer`, `get_firmware_status`, `get_change_log`, `get_device_info`, `refresh`
 - **Endring (med godkjenning):** `set_power`, `set_mode`, `set_temperature`, `set_fan_speed`, `set_vanes`, `set_frost_protection`, `set_holiday_mode`, `start_firmware_update`, `record_maintenance`
 - **Prompt:** `helsesjekk` – full gjennomgang med prioritert oppsummering
 - **Ressurser:** `varmepumpe://knowledge/…` – varmepumpeprofil, vedlikehold, feilkoder, når du bør ringe forhandleren og råd om trygg drift

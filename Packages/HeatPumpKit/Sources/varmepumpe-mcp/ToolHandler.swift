@@ -21,6 +21,7 @@ struct ToolHandler: Sendable {
             case "get_forecast": return try await getForecast()
             case "get_house_consumption": return try await getHouseConsumption(args)
             case "get_away_settings": return try await getAwaySettings()
+            case "get_weekly_timer": return try await getWeeklyTimer()
             case "set_frost_protection", "set_holiday_mode": return try await writeAway(params.name, args)
             case "get_firmware_status": return try await getFirmwareStatus()
             case "start_firmware_update": return try await startFirmwareUpdate(args)
@@ -351,8 +352,70 @@ struct ToolHandler: Sendable {
                 },
                 note: "Frostsikring holder rommet mellom minimum og maksimum når varmepumpen ellers er av. Feriemodus gjør at "
                     + "varmepumpen følger frostsikringen i perioden. Endepunktene er ikke verifisert mot denne kontoen ennå; "
-                    + "den første endringen bør brukeren gjøre selv i appen. Ukeplanen kan bare leses her; hendelsenes format er "
-                    + "ikke dokumentert (decoded=false betyr at bare antallet er kjent)."))
+                    + "den første endringen bør brukeren gjøre selv i appen. Hele ukeplanen står i get_weekly_timer; den endres bare "
+                    + "i appen (decoded=false betyr at bare antallet er kjent)."))
+    }
+
+    private func getWeeklyTimer() async throws -> CallTool.Result {
+        let state = try await service.currentState()
+        let timer = state.state != nil ? try await service.weeklyTimer() : try await service.storedWeeklyTimer()
+        struct Event: Encodable {
+            var weekday: String
+            var time: String
+            var action: String
+            var power: Bool?
+            var mode: String?
+            var setTemperature: Double?
+            var fanSpeed: String?
+            var vaneVertical: String?
+            var vaneHorizontal: String?
+        }
+        struct Season: Encodable {
+            var name: String
+            var startsOn: String
+            var inForce: Bool
+            var events: [Event]
+        }
+        struct View: Encodable {
+            var enabled: Bool?
+            var summary: String
+            var decoded: Bool
+            var eventCount: Int
+            var maxEvents: Int?
+            var seasons: [Season]
+            var next: String?
+            var fetchedAt: Date?
+            var note: String
+        }
+        guard let timer else {
+            return try await output(
+                View(
+                    enabled: nil, summary: "Ukeplanen er ikke hentet fra MELCloud ennå.", decoded: false, eventCount: 0, maxEvents: nil,
+                    seasons: [], next: nil, fetchedAt: nil, note: "Prøv igjen senere."),
+                state: state)
+        }
+        let now = Date()
+        let active = timer.activeSeasonIndex(on: now, timeZone: .current)
+        let next = timer.nextEvent(after: now, timeZone: .current)
+        let seasons = timer.seasons.indices.map { index in
+            let season = timer.seasons[index]
+            let events = (1...7).flatMap { season.events(on: $0) }.map { e in
+                Event(
+                    weekday: e.weekdayName, time: e.timeText, action: e.summary, power: e.power, mode: e.mode?.key,
+                    setTemperature: e.setTemperature, fanSpeed: e.fanSpeed.map { $0 == 0 ? "auto" : String($0) },
+                    vaneVertical: e.vaneVertical?.key, vaneHorizontal: e.vaneHorizontal?.key)
+            }
+            return Season(
+                name: season.name ?? "Default", startsOn: season.displayName, inForce: index == active, events: events)
+        }
+        return try await output(
+            View(
+                enabled: timer.enabled, summary: timer.summary, decoded: timer.decoded, eventCount: timer.totalEvents,
+                maxEvents: timer.maxEvents, seasons: seasons,
+                next: next.map { "\($0.event.weekdayName) \($0.event.timeText): \($0.event.summary)" }, fetchedAt: timer.fetchedAt,
+                note: "Ukeplanen ligger i MELCloud og kjører selv om Macen er av. En endring med set_* varer til neste hendelse i planen. "
+                    + "Claude kan bare lese planen; brukeren lager og endrer den i appen (siden Ukeplan)."),
+            state: state)
     }
 
     private func writeAway(_ tool: String, _ args: Arguments) async throws -> CallTool.Result {

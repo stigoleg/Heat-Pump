@@ -23,6 +23,7 @@ public actor MockBackend: HeatPumpBackend {
     public private(set) var awayReads = 0
     public private(set) var awayWrites = 0
     public private(set) var timerReads = 0
+    public private(set) var timerWrites = 0
     /// When the simulated firmware update was started (nil: still waiting for approval).
     public private(set) var firmwareApprovedAt: Date?
     public private(set) var firmwareReads = 0
@@ -154,21 +155,54 @@ public actor MockBackend: HeatPumpBackend {
         }
     }
 
-    /// A simple weekday plan in the wire shape, decoded by the same tolerant parser as the real one.
+    /// The weekly timer in the wire shape (`Timer/Get2`); a save replaces it, so a read returns it.
+    private var timerJSON: JSONValue = MockBackend.initialTimer()
+
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
         guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
         timerReads += 1
-        var events: [JSONValue] = []
-        for day in 1...5 {
-            events.append(.object(["Day": .number(Double(day)), "Time": .string("06:30"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(21)]))
-            events.append(.object(["Day": .number(Double(day)), "Time": .string("22:30"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(19)]))
-        }
-        for day in [6, 0] {
-            events.append(.object(["Day": .number(Double(day)), "Time": .string("08:00"), "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(21.5)]))
-        }
-        var timer = MELCloudClassicParser.weeklyTimer(.object(["Enabled": .bool(true), "Seasons": .array([.object(["Events": .array(events)])])]))
+        var timer = MELCloudClassicParser.weeklyTimer(timerJSON)
         timer.fetchedAt = now()
         return timer
+    }
+
+    /// Stores what `Timer/SetAta2` would receive, built by the same code as the real body.
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws {
+        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)
+        let count = body["Seasons"]?.array?.reduce(0) { $0 + ($1["Events"]?.array?.count ?? 0) } ?? 0
+        if count > Self.timerMaxEvents {
+            let response: JSONValue = .object(["Data": .object(["ErrorCode": .number(2), "MaxEvents": .number(Double(Self.timerMaxEvents))])])
+            throw HeatPumpError.server(MELCloudClassicParser.timerSaveError(response) ?? "")
+        }
+        timerWrites += 1
+        timerJSON = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": body["Seasons"] ?? .array([])])
+    }
+
+    static let timerMaxEvents = 50
+
+    /// Night setback: weekdays 06:30 → 21 °C, every night 22:30 → 19 °C, weekend 08:00 → 21,5 °C.
+    static func initialTimer() -> JSONValue {
+        var events: [JSONValue] = []
+        var id = 1
+        func event(_ day: Int, _ hour: Int, _ minute: Int, _ temperature: Double) -> JSONValue {
+            defer { id += 1 }
+            return .object([
+                "ID": .number(Double(id)), "EventDay": .number(Double(day)), "EventHour": .number(Double(hour)),
+                "EventMinute": .number(Double(minute)), "EventTime": .string(String(format: "%02d:%02d:00", hour, minute)),
+                "Power": .bool(true), "OperationMode": .number(1), "SetTemperature": .number(temperature), "FanSpeed": .number(0),
+                "VaneHorizontal": .number(3), "VaneVertical": .number(0), "Settings": .string("<settings></settings>"), "Name": .string("-"),
+            ])
+        }
+        for day in 1...5 { events.append(event(day, 6, 30, 21)) }
+        for day in 0...6 { events.append(event(day, 22, 30, 19)) }
+        for day in [6, 0] { events.append(event(day, 8, 0, 21.5)) }
+        return .object([
+            "Enabled": .bool(true),
+            "Seasons": .array([
+                .object(["ID": .number(1), "Name": .string("Default"), "StartDay": .number(1), "StartMonth": .number(1), "Events": .array(events)])
+            ]),
+        ])
     }
 
     // MARK: Firmware update (simulated: waiting → downloading 4 files → restart → done in 2 minutes)

@@ -105,8 +105,10 @@ public protocol HeatPumpBackend: Sendable {
     func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings
     /// Writes frost protection or holiday mode.
     func applyAway(_ change: AwayChange, deviceId: Int) async throws
-    /// The weekly timer (read-only).
+    /// The weekly timer with all seasons.
     func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer
+    /// Writes the whole weekly timer (every season) and whether it is on.
+    func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws
     /// MELCloud's firmware update entries for the device (`FirmwareUpdate/List2`).
     func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus]
     /// Starts (approves) the firmware update `id`. Cannot be rolled back.
@@ -123,6 +125,7 @@ extension HeatPumpBackend {
     public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings { throw HeatPumpError.validation(unsupported) }
     public func applyAway(_ change: AwayChange, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer { throw HeatPumpError.validation(unsupported) }
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] { throw HeatPumpError.validation(unsupported) }
     public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }

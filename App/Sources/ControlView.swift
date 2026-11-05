@@ -56,7 +56,7 @@ struct ControlView: View {
                 modeSection(mode, debouncer)
                 fanSection(shown, state: state, debouncer: debouncer)
                 vaneSection(shown, debouncer)
-                WeeklyTimerSection().id("timer")
+                WeeklyTimerStatus().id("timer")
                 Text(
                     "Det kan ta et par minutter før varmepumpen bekrefter. Maks \(ChangeBudget.maxChangesPerHour) sendinger per time, til sammen for appen og Claude; flere endringer rett etter hverandre samles i én sending."
                 )
@@ -394,115 +394,42 @@ extension VaneHorizontal {
     }
 }
 
-/// MELCloud's weekly timer, read-only. Events are shown in a week grid when they could be
-/// decoded; otherwise only whether the plan is on and how many events it has.
-struct WeeklyTimerSection: View {
+/// Compact status of MELCloud's weekly timer with a link to the Ukeplan page.
+struct WeeklyTimerStatus: View {
     @Environment(AppModel.self) private var model
-    @State private var fetching = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Ukeplan", hint: "Fra MELCloud, kan bare leses") {
-                Button {
-                    fetching = true
-                    Task {
-                        await model.refreshWeeklyTimer()
-                        fetching = false
-                    }
-                } label: {
-                    if fetching { ProgressView().controlSize(.small) } else { Text("Hent nå") }
+        CardSurface {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.m) {
+                    label
+                    Spacer(minLength: Theme.Space.s)
+                    button
                 }
-                .disabled(fetching)
-                .help("Henter ukeplanen fra MELCloud (høyst hvert 10. minutt; ellers automatisk hver 6. time).")
-            }
-            CardSurface {
-                if let until = model.timerRefusedUntil {
-                    Label(
-                        "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen \(Format.relative(until)), eller trykk «Hent nå».",
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else if let timer = model.weeklyTimer {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        Label(
-                            timer.enabled == true ? "Ukeplanen er på" : timer.enabled == false ? "Ukeplanen er av" : "Ukjent om ukeplanen er på",
-                            systemImage: timer.enabled == true ? "calendar.badge.clock" : "calendar")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(timer.enabled == true ? Theme.Status.info : .secondary)
-                        if timer.decoded {
-                            grid(timer)
-                            if let next = timer.nextEvent(after: Date(), timeZone: .current) {
-                                Text("Neste: \(next.event.weekdayName) kl. \(next.event.timeText) – \(next.event.summary)")
-                                    .font(.callout).foregroundStyle(.secondary)
-                            }
-                        } else {
-                            Text(
-                                timer.eventCount == 0
-                                    ? "Ingen hendelser i planen."
-                                    : "Planen har \(timer.eventCount) hendelser, men formatet er ukjent, så de kan ikke vises her ennå. Se planen i MELCloud-appen.")
-                            .font(.callout).foregroundStyle(.secondary)
-                        }
-                        Text(
-                            "Når ukeplanen er på, kan varmepumpen slå seg av og på eller endre temperatur etter planen, uavhengig av appen. "
-                                + (timer.fetchedAt.map { "Hentet \(Format.relative($0))." } ?? ""))
-                        .font(.caption).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    Text("Ukeplanen hentes fra MELCloud …").foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    label
+                    button
                 }
             }
         }
     }
 
-    /// One column per weekday with the day's events in time order; one row per day when the
-    /// window is too narrow for seven readable columns.
-    private func grid(_ timer: WeeklyTimer) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: Theme.Space.s) {
-                ForEach(1...7, id: \.self) { day in
-                    VStack(alignment: .leading, spacing: 4) {
-                        dayName(day)
-                        ForEach(Array(events(timer, day: day).enumerated()), id: \.offset) { _, event in
-                            eventCell(event, fill: true)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-            }
-            .frame(idealWidth: 7 * 72)
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ForEach(1...7, id: \.self) { day in
-                    HStack(alignment: .top, spacing: Theme.Space.s) {
-                        dayName(day).frame(width: 32, alignment: .leading)
-                        FlowLayout(spacing: 4, lineSpacing: 4, alignment: .top) {
-                            ForEach(Array(events(timer, day: day).enumerated()), id: \.offset) { _, event in eventCell(event) }
-                        }
-                    }
-                }
-            }
-        }
+    private var label: some View {
+        let timer = model.weeklyTimer
+        return Label(text(timer), systemImage: timer?.enabled == true ? "calendar.badge.clock" : "calendar")
+            .foregroundStyle(timer?.enabled == true ? Theme.Status.info : .secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func events(_ timer: WeeklyTimer, day: Int) -> [TimerEvent] {
-        timer.events.filter { $0.weekday == day }.sorted { $0.minuteOfDay < $1.minuteOfDay }
+    private var button: some View {
+        Button("Åpne ukeplanen") { model.selection = .schedule }
     }
 
-    private func dayName(_ day: Int) -> some View {
-        Text(TimerEvent.weekdayNames[day - 1].prefix(3).capitalized).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-    }
-
-    /// `fill` stretches the cell to the column width.
-    private func eventCell(_ event: TimerEvent, fill: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(event.timeText).font(.caption.monospacedDigit().weight(.medium))
-            Text(event.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
-        .background((event.power == false ? Color.gray : (event.mode?.tint ?? .orange)).opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    private func text(_ timer: WeeklyTimer?) -> String {
+        guard let timer else { return "Ukeplanen hentes fra MELCloud …" }
+        guard timer.enabled == true else { return timer.enabled == false ? "Ukeplan av" : "Ukjent om ukeplanen er på" }
+        guard let next = timer.nextEvent(after: Date(), timeZone: .current) else { return "Ukeplan på" }
+        let day = TimerEvent.shortWeekdayNames[next.event.weekday - 1]
+        return "Ukeplan på · Neste: \(day) \(next.event.timeText) \(next.event.summary)"
     }
 }

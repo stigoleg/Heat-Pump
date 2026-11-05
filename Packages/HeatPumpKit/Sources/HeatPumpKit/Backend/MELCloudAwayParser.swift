@@ -10,7 +10,8 @@ import Foundation
 /// - `GET HolidayMode/GetSettings?id=<deviceId>&tableName=DeviceLocation` → `HMEnabled, HMStartDate,
 ///   HMEndDate, StartDate/EndDate {Year…Second}`; `POST HolidayMode/Update {Enabled, StartDate, EndDate,
 ///   HMTimeZones: [{Devices: [id]}]}` with dates as described at `HolidayWireTime`.
-/// - `GET Timer/Get2?deviceId=<id>` → `{Enabled, Seasons[].Events[]}` (event schema undocumented).
+/// - `GET Timer/Get2?deviceId=<id>` → `{Enabled, Seasons[].Events[]}`; `POST Timer/SetAta2 {Devices, Seasons,
+///   TimerEnabled, SkipPage1}` → `{Data: {ErrorCode, MaxEvents}}` (shapes from the web client's script).
 extension MELCloudClassicParser {
     static func throwIfAttributeErrors(_ json: JSONValue) throws {
         if let errors = json["AttributeErrors"]?.object, !errors.isEmpty {
@@ -85,40 +86,119 @@ extension MELCloudClassicParser {
 
     // MARK: Weekly timer
 
+    /// `Timer/Get2`: `{Enabled, Seasons: [{ID, Name, StartDay, StartMonth, Events}]}`. Events are
+    /// listed only when every event of every season decodes (see `WeeklyTimer`).
     static func weeklyTimer(_ json: JSONValue) -> WeeklyTimer {
-        var raw: [JSONValue] = []
-        for season in json["Seasons"]?.array ?? [] { raw += season["Events"]?.array ?? [] }
-        raw += json["Events"]?.array ?? []
-        let events = raw.compactMap(timerEvent)
-        let decoded = !raw.isEmpty && events.count == raw.count
-        return WeeklyTimer(enabled: json["Enabled"]?.bool, events: decoded ? events : [], eventCount: raw.count, decoded: decoded)
+        var seasons: [TimerSeason] = []
+        var count = 0
+        var decoded = true
+        for season in json["Seasons"]?.array ?? [] {
+            let raw = season["Events"]?.array ?? []
+            let events = raw.compactMap(timerEvent)
+            count += raw.count
+            if events.count != raw.count || season.object == nil { decoded = false }
+            seasons.append(
+                TimerSeason(
+                    id: season["ID"]?.int, name: season["Name"]?.string, startDay: season["StartDay"]?.int,
+                    startMonth: season["StartMonth"]?.int, events: events, raw: season))
+        }
+        if json["Seasons"]?.array == nil { decoded = false }
+        return WeeklyTimer(
+            enabled: json["Enabled"]?.bool, seasons: decoded ? seasons : [], eventCount: count, decoded: decoded,
+            maxEvents: json["MaxEvents"]?.int)
     }
 
-    /// Tries the field names seen in MELCloud clients. Days are .NET `DayOfWeek` (0 = Sunday).
+    /// An air-to-air event as the web client builds it (`copyEvent`): `EventDay` (0 = Sunday …
+    /// 6 = Saturday), `EventHour`, `EventMinute` (or `EventTime` "HH:mm:ss"), `Power`,
+    /// `OperationMode`, `SetTemperature`, `FanSpeed`, `VaneHorizontal`, `VaneVertical`.
     static func timerEvent(_ json: JSONValue) -> TimerEvent? {
-        func first(_ keys: String...) -> JSONValue? {
-            for key in keys { if let value = json[key], !value.isNull { return value } }
-            return nil
+        func value(_ key: String) -> JSONValue? {
+            guard let value = json[key], !value.isNull else { return nil }
+            return value
         }
-        guard let day = first("Day", "DayOfWeek", "Weekday")?.int, (0...7).contains(day) else { return nil }
+        guard let day = value("EventDay")?.int, (0...6).contains(day) else { return nil }
         var minute: Int?
-        if let time = first("Time", "StartTime") {
-            if case .string(let text) = time {
-                let parts = text.split(separator: ":").compactMap { Int($0) }
-                if parts.count >= 2, (0..<24).contains(parts[0]), (0..<60).contains(parts[1]) { minute = parts[0] * 60 + parts[1] }
-            } else if let value = time.int, (0..<1440).contains(value) {
-                minute = value
-            }
-        } else if let hour = first("Hour")?.int, (0..<24).contains(hour) {
-            minute = hour * 60 + (first("Minute")?.int ?? 0)
+        if let hour = value("EventHour")?.int, let min = value("EventMinute")?.int, (0..<24).contains(hour), (0..<60).contains(min) {
+            minute = hour * 60 + min
+        } else if let text = value("EventTime")?.string {
+            let parts = text.split(separator: ":").compactMap { Int($0) }
+            if parts.count >= 2, (0..<24).contains(parts[0]), (0..<60).contains(parts[1]) { minute = parts[0] * 60 + parts[1] }
         }
         guard let minute else { return nil }
-        let powerValue = first("Power", "PowerOn")
-        let power = powerValue?.bool ?? powerValue?.int.map { $0 != 0 }
         return TimerEvent(
-            weekday: day == 0 ? 7 : day, minuteOfDay: minute, power: power,
-            mode: first("OperationMode", "Mode")?.int.flatMap { CloudOperationMode(raw: $0)?.mode },
-            setTemperature: first("SetTemperature", "Temperature", "SetPoint")?.double)
+            weekday: day == 0 ? 7 : day, minuteOfDay: minute, power: value("Power")?.bool,
+            mode: value("OperationMode")?.int.flatMap { CloudOperationMode(raw: $0)?.mode },
+            setTemperature: value("SetTemperature")?.double, fanSpeed: value("FanSpeed")?.int,
+            vaneHorizontal: value("VaneHorizontal")?.int.flatMap(VaneHorizontal.init(rawValue:)),
+            vaneVertical: value("VaneVertical")?.int.flatMap(VaneVertical.init(rawValue:)), raw: json)
+    }
+
+    /// `Timer/SetAta2` body: every season with its events. All fields of untouched events and
+    /// seasons go back as read; with no events at all the plan is switched off (as the web client does).
+    static func timerSetBody(timer: WeeklyTimer, deviceId: Int) -> JSONValue {
+        let seasons = timer.seasons.map(timerSeasonJSON)
+        let hasEvents = timer.seasons.contains { !$0.events.isEmpty }
+        return .object([
+            "Devices": .array([.number(Double(deviceId))]), "Seasons": .array(seasons),
+            "TimerEnabled": .bool(timer.enabled == true && hasEvents), "SkipPage1": .bool(true),
+        ])
+    }
+
+    static func timerSeasonJSON(_ season: TimerSeason) -> JSONValue {
+        var object = season.raw?.object ?? [:]
+        if object["ID"] == nil { object["ID"] = season.id.map { .number(Double($0)) } ?? .number(-1) }
+        if object["Name"] == nil { object["Name"] = .string(season.name ?? "Default") }
+        if object["StartDay"] == nil { object["StartDay"] = .number(Double(season.startDay ?? 1)) }
+        if object["StartMonth"] == nil { object["StartMonth"] = .number(Double(season.startMonth ?? 1)) }
+        object["Events"] = .array(season.events.map(timerEventJSON))
+        return .object(object)
+    }
+
+    /// An event as read goes back unchanged; an edited one keeps its unknown fields (and the
+    /// i-See variant of an unchanged mode); a new one gets the web client's `Settings` and `Name`.
+    static func timerEventJSON(_ event: TimerEvent) -> JSONValue {
+        if let raw = event.raw, timerEvent(raw) == event { return raw }
+        var object = event.raw?.object ?? ["Settings": .string("<settings></settings>"), "Name": .string("-")]
+        let isNew = event.raw == nil
+        let hour = event.minuteOfDay / 60
+        let minute = event.minuteOfDay % 60
+        object["EventDay"] = .number(Double(event.weekday == 7 ? 0 : event.weekday))
+        object["EventHour"] = .number(Double(hour))
+        object["EventMinute"] = .number(Double(minute))
+        object["EventTime"] = .string(String(format: "%02d:%02d:00", hour, minute))
+        if let power = event.power { object["Power"] = .bool(power) } else if isNew { object["Power"] = .bool(true) }
+        if let mode = event.mode {
+            if object["OperationMode"]?.int.flatMap(CloudOperationMode.init(raw:))?.mode != mode {
+                object["OperationMode"] = .number(Double(mode.rawValue))
+            }
+        }
+        if let value = event.setTemperature { object["SetTemperature"] = .number(value) }
+        if let value = event.fanSpeed { object["FanSpeed"] = .number(Double(value)) } else if isNew { object["FanSpeed"] = .number(0) }
+        if let value = event.vaneHorizontal {
+            object["VaneHorizontal"] = .number(Double(value.rawValue))
+        } else if isNew {
+            object["VaneHorizontal"] = .number(0)
+        }
+        if let value = event.vaneVertical {
+            object["VaneVertical"] = .number(Double(value.rawValue))
+        } else if isNew {
+            object["VaneVertical"] = .number(0)
+        }
+        return .object(object)
+    }
+
+    /// MELCloud's Norwegian texts for `Timer/SetAta2` `Data.ErrorCode` (index = code; out of range → 0).
+    static let timerErrorMessages = [
+        "En ukjent feil oppstod da ukeplanen skulle lagres.",
+        "Sesongene er ikke gyldige. Sjekk startdatoene.",
+        "Du kan ikke ha mer enn %MAXEVENTS% hendelser i ukeplanen (til sammen for alle sesonger).",
+    ]
+
+    /// The error text of a `Timer/SetAta2` answer, or nil for success (`ErrorCode` -1, or no `Data`).
+    static func timerSaveError(_ json: JSONValue) -> String? {
+        guard let data = json["Data"], !data.isNull, let code = data["ErrorCode"]?.int, code != -1 else { return nil }
+        let text = timerErrorMessages[timerErrorMessages.indices.contains(code) ? code : 0]
+        return text.replacingOccurrences(of: "%MAXEVENTS%", with: data["MaxEvents"]?.string ?? "det tillatte antallet")
     }
 }
 

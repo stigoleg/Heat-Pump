@@ -1,11 +1,12 @@
 import Foundation
 
-/// Frost protection, holiday mode (cloud writes) and the weekly timer (read-only).
+/// Frost protection, holiday mode and the weekly timer (cloud writes).
 ///
 /// Reads: at most hourly (away) and every 6 hours (timer) across processes, cached in
 /// `app_settings`. Writes: validated first (nothing counted or asked when invalid), Claude's need the
 /// native approval, then they take a slot in the shared 12-per-hour budget with 5 s spacing and are
-/// logged in `change_log` (`frostProtection`, `holidayMode`).
+/// logged in `change_log` (`frostProtection`, `holidayMode`, `weeklyTimer`). Only the app writes the
+/// weekly timer.
 extension HeatPumpService {
     static let awaySettingsKey = "awaySettings"
     static let weeklyTimerKey = "weeklyTimer"
@@ -24,6 +25,7 @@ extension HeatPumpService {
     /// Read-back right after a write, at most this often.
     static let verifyInterval: TimeInterval = 30
     static let awayVerifyKey = "away.verify"
+    static let timerVerifyKey = "timer.verify"
     static let awayRefusedMessage =
         "MELCloud tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
     static let timerRefusedMessage =
@@ -135,7 +137,8 @@ extension HeatPumpService {
         let t = now()
         if manual { try store.clearKeyRefusal(key: Self.timerFetchKey) }
         let cached = try storedWeeklyTimer()
-        let interval = manual ? Self.timerManualInterval : Self.timerInterval
+        // A copy cached before seasons were kept has no `fetchedAt`: read it again as soon as allowed.
+        let interval = manual || (cached != nil && cached?.fetchedAt == nil) ? Self.timerManualInterval : Self.timerInterval
         if let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
         if try endpointRefusedUntil(Self.timerFetchKey) != nil { return cached }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return cached }
@@ -237,6 +240,97 @@ extension HeatPumpService {
                         result: .failed, message: "Endringen feilet: \(message)", field: change.field,
                         oldValue: change.currentValue(in: current), newValue: change.valueDescription, blockedUntil: blocked)
                 }
+            }
+        }
+    }
+
+    // MARK: Weekly timer
+
+    /// Saves the whole weekly timer (every season) in MELCloud, after validation (nothing counted
+    /// when invalid). One change in the shared budget, logged as field `weeklyTimer` with short
+    /// summaries ("På, 6 hendelser"). Reads the plan back when the read-back limit allows it.
+    /// App only: Claude can read the plan but not write it.
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, source: ChangeSource, reason: String) async throws -> ChangeOutcome {
+        let field = "weeklyTimer"
+        let old = try storedWeeklyTimer()
+        let oldValue = old?.summary
+        let newValue = timer.summary
+        func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
+            try store.logChange(
+                ChangeRecord(
+                    timestamp: now(), source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason,
+                    result: .rejected, error: message))
+            return ChangeOutcome(
+                result: .rejected, message: "Ikke sendt: \(message)", field: field, oldValue: oldValue, newValue: newValue,
+                nextAllowed: nextAllowed, blockedUntil: blockedUntil)
+        }
+        let t = now()
+        guard let snapshot = try store.latestSnapshot() else { return try reject("Ingen status fra varmepumpen ennå.") }
+        if old?.decoded != true {
+            return try reject("Ukeplanen fra MELCloud kunne ikke leses helt, så appen endrer den ikke. Hent planen på nytt først.")
+        }
+        if let problem = timer.validationProblem(limits: snapshot.state.limits) { return try reject(problem) }
+        if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if let block = try store.blockStatus(now: t) {
+            return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
+        }
+        let deviceId = snapshot.state.deviceId
+        var waited: TimeInterval = 0
+        while true {
+            let at = now()
+            let record = ChangeRecord(
+                timestamp: at, source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason, result: .pending)
+            switch try store.reserveChange([record]) {
+            case .tooSoon(let next):
+                let wait = max(0, next.timeIntervalSince(at))
+                if waited + wait > Self.maxWriteWait {
+                    return try reject(HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
+                }
+                waited += wait
+                await sleep(wait + 0.05)
+            case .exceeded(let next):
+                return try reject(HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
+            case .reserved(let ids):
+                do {
+                    try await backend.saveWeeklyTimer(timer, deviceId: deviceId)
+                    try store.finishChange(ids: ids, result: .ok)
+                } catch {
+                    let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    try store.finishChange(ids: ids, result: .failed, error: message)
+                    let blocked = try handleAwayError(error, now: at)
+                    return ChangeOutcome(
+                        result: .failed, message: "Ukeplanen ble ikke lagret: \(message)", field: field, oldValue: oldValue,
+                        newValue: newValue, blockedUntil: blocked)
+                }
+                // Until it is read back, the cache holds what was sent (as MELCloud would return it).
+                var sent = MELCloudClassicParser.weeklyTimer(
+                    .object([
+                        "Enabled": .bool(timer.enabled == true && timer.totalEvents > 0),
+                        "Seasons": MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)["Seasons"] ?? .array([]),
+                    ]))
+                sent.fetchedAt = at
+                sent.maxEvents = timer.maxEvents
+                try store.saveSetting(sent, key: Self.weeklyTimerKey)
+                var readBack: WeeklyTimer?
+                if try store.reserveFetch(key: Self.timerVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed,
+                    var fresh = try? await backend.fetchWeeklyTimer(deviceId: deviceId)
+                {
+                    fresh.fetchedAt = fresh.fetchedAt ?? now()
+                    fresh.maxEvents = fresh.maxEvents ?? timer.maxEvents
+                    try store.saveSetting(fresh, key: Self.weeklyTimerKey)
+                    try store.recordFetchSuccess(key: Self.timerFetchKey, now: now())
+                    readBack = fresh
+                }
+                let confirmed = readBack.map { $0.decoded && $0.differences(from: sent).isEmpty }
+                let tail: String =
+                    switch confirmed {
+                    case true?: " MELCloud viser den samme planen."
+                    case false?: " MELCloud viser en annen plan enn den som ble sendt. Sjekk i MELCloud-appen."
+                    case nil: " MELCloud bekrefter ved neste henting."
+                    }
+                return ChangeOutcome(
+                    result: .ok, message: "Ukeplanen er lagret i MELCloud (\(sent.summary.lowercased())).\(tail)", field: field,
+                    oldValue: oldValue, newValue: newValue)
             }
         }
     }

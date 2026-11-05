@@ -92,20 +92,28 @@ struct AwayTests {
 
     // MARK: Timer
 
-    @Test func timerDecodesKnownShapes() throws {
+    @Test func timerDecodesTheWebClientShape() throws {
         let timer = MELCloudClassicParser.weeklyTimer(try Fixture.json("timer_get2"))
         #expect(timer.enabled == true)
         #expect(timer.eventCount == 4)
         #expect(timer.decoded)
         #expect(timer.events.count == 4)
-        #expect(timer.events[0] == TimerEvent(weekday: 1, minuteOfDay: 390, power: true, mode: .heat, setTemperature: 21))
+        var first = timer.events[0]
+        first.raw = nil
+        #expect(first == TimerEvent(
+            weekday: 1, minuteOfDay: 390, power: true, mode: .heat, setTemperature: 21, fanSpeed: 0, vaneHorizontal: .position3,
+            vaneVertical: .auto))
         #expect(timer.events[2].weekday == 6)
         #expect(timer.events[2].minuteOfDay == 480)
-        #expect(timer.events[2].power == true)
-        #expect(timer.events[3].weekday == 7)  // .NET DayOfWeek 0 = Sunday
-        #expect(timer.events[3].minuteOfDay == 1350)
+        #expect(timer.events[2].mode == .heat)  // 9 = heat with i-See
+        #expect(timer.events[2].vaneHorizontal == .swing)
+        #expect(timer.events[2].vaneVertical == .swing)
+        #expect(timer.events[3].weekday == 7)  // EventDay 0 = Sunday
+        #expect(timer.events[3].minuteOfDay == 1350)  // from EventTime
         #expect(timer.events[3].power == false)
         #expect(timer.events[0].summary == "Varme 21 °C")
+        #expect(timer.seasons.first?.id == 11)
+        #expect(timer.seasons.first?.name == "Default")
     }
 
     @Test func timerWithUnknownShapeOnlyCounts() throws {
@@ -115,6 +123,21 @@ struct AwayTests {
         #expect(!timer.decoded)
         #expect(timer.events.isEmpty)
         #expect(MELCloudClassicParser.weeklyTimer(.null).eventCount == 0)
+        // One event in an older guessed shape makes the whole plan read-only.
+        var json = try Fixture.json("timer_get2")
+        if case .object(var root) = json, case .array(var seasons)? = root["Seasons"], case .object(var season) = seasons[0],
+            case .array(var events)? = season["Events"]
+        {
+            events.append(.object(["Day": .number(1), "Time": .string("07:00"), "Power": .bool(true)]))
+            season["Events"] = .array(events)
+            seasons[0] = .object(season)
+            root["Seasons"] = .array(seasons)
+            json = .object(root)
+        }
+        let partial = MELCloudClassicParser.weeklyTimer(json)
+        #expect(partial.eventCount == 5)
+        #expect(!partial.decoded)
+        #expect(partial.seasons.isEmpty)
     }
 
     @Test func nextTimerEvent() throws {
