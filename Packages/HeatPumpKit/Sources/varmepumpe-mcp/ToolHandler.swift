@@ -114,6 +114,7 @@ struct ToolHandler: Sendable {
             var isEstimate: Bool
             var cost: CostSplit?
             var agreement: String
+            var byMode: [EnergyModeShare]?
             var buckets: [EnergyBucket]
             var note: String
         }
@@ -121,14 +122,32 @@ struct ToolHandler: Sendable {
         let buckets = try await service.energy(period: period, from: from, to: to)
         let costs = buckets.compactMap(\.cost)
         let total = costs.isEmpty ? nil : costs.reduce(CostSplit(), +).rounded()
+        var split = EnergyModeSplit()
+        for bucket in buckets {
+            guard let modes = bucket.modes else { continue }
+            split.heatingKWh += modes.heatingKWh
+            split.coolingKWh += modes.coolingKWh
+            split.autoKWh += modes.autoKWh
+            split.dryKWh += modes.dryKWh
+            split.fanKWh += modes.fanKWh
+            split.otherKWh += modes.otherKWh
+        }
+        let byMode = split.shares.map { share -> EnergyModeShare in
+            var s = share
+            s.kWh = (s.kWh * 100).rounded() / 100
+            s.share = (s.share * 1000).rounded() / 1000
+            return s
+        }
         return try await output(
             View(
                 period: period.rawValue, from: WireDate.day(from, timeZone: .current), to: WireDate.day(to, timeZone: .current),
                 totalKWh: (buckets.reduce(0) { $0 + $1.totalKWh } * 100).rounded() / 100,
                 costNok: total.map { ($0.totalNok * 100).rounded() / 100 },
                 isEstimate: buckets.contains { $0.isEstimate }, cost: total,
-                agreement: try await service.priceSettings().agreement.displayName, buckets: buckets,
+                agreement: try await service.priceSettings().agreement.displayName, byMode: byMode.isEmpty ? nil : byMode,
+                buckets: buckets,
                 note: "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. "
+                    + "byMode er MELCloud sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). "
                     + "Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. "
                     + "Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med "
                     + "døgnets snittpris fordi forbruk per time mangler."))
@@ -142,6 +161,7 @@ struct ToolHandler: Sendable {
             var energyOre: Double
             var gridOre: Double
             var supportOre: Double
+            var level: String?
         }
         struct View: Encodable {
             var agreement: String
@@ -157,7 +177,7 @@ struct ToolHandler: Sendable {
             func r(_ v: Double) -> Double { (v * 10).rounded() / 10 }
             return Hour(
                 hour: b.hour.formatted(Date.ISO8601FormatStyle(timeZone: .current)), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
-                supportOre: r(b.supportOre))
+                supportOre: r(b.supportOre), level: b.level?.rawValue)
         }
         return try await output(
             View(
@@ -166,7 +186,9 @@ struct ToolHandler: Sendable {
                 today: overview.today.map(hour), tomorrow: overview.tomorrow.isEmpty ? nil : overview.tomorrow.map(hour),
                 sync: overview.sync,
                 note: "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. "
-                    + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med."))
+                    + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med. "
+                    + "level (VERY_CHEAP … VERY_EXPENSIVE) er Tibbers nivå, eller for andre kilder samme grenser regnet mot "
+                    + "snittet siste 72 timer (spotpris). Ingen nivå med Norgespris."))
     }
 
     private func getLiveStatus() async throws -> CallTool.Result {

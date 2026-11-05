@@ -97,6 +97,60 @@ public struct PriceSettings: Codable, Sendable, Equatable {
     public static let `default` = PriceSettings()
 }
 
+/// How an hour's spot price compares with recent prices. Tibber reports it per hour; for other
+/// sources the same bands are computed against the average of the previous 72 hours.
+/// Bands as Tibber defines `PriceLevel` (developer.tibber.com API reference): very cheap ≤ 60 %,
+/// cheap ≤ 90 %, normal < 115 %, expensive < 140 %, very expensive ≥ 140 % of the trailing average.
+public enum PriceLevel: String, Codable, Sendable, CaseIterable {
+    case veryCheap = "VERY_CHEAP"
+    case cheap = "CHEAP"
+    case normal = "NORMAL"
+    case expensive = "EXPENSIVE"
+    case veryExpensive = "VERY_EXPENSIVE"
+
+    public init?(tibber: String) {
+        self.init(rawValue: tibber.uppercased())
+    }
+
+    public var displayName: String {
+        switch self {
+        case .veryCheap: "Svært billig"
+        case .cheap: "Billig"
+        case .normal: "Normal"
+        case .expensive: "Dyr"
+        case .veryExpensive: "Svært dyr"
+        }
+    }
+
+    /// Short chip text for Oversikt.
+    public var nowText: String {
+        switch self {
+        case .veryCheap: "Strømmen er svært billig nå"
+        case .cheap: "Strømmen er billig nå"
+        case .normal: "Vanlig strømpris nå"
+        case .expensive: "Strømmen er dyr nå"
+        case .veryExpensive: "Strømmen er svært dyr nå"
+        }
+    }
+
+    /// Level of `price` against `average` (nil when the average is not positive).
+    public static func relative(price: Double, average: Double) -> PriceLevel? {
+        guard average > 0 else { return nil }
+        let ratio = price / average
+        switch ratio {
+        case ...0.6: return .veryCheap
+        case ...0.9: return .cheap
+        case ..<1.15: return .normal
+        case ..<1.4: return .expensive
+        default: return .veryExpensive
+        }
+    }
+
+    /// Hours of history the computed level compares against, and how many must be known.
+    public static let trailingHours = 72
+    static let minTrailingHours = 48
+}
+
 /// Spot price for one hour as stored in `price_hourly`.
 public struct HourPrice: Codable, Sendable, Equatable {
     /// Start of the hour.
@@ -109,13 +163,16 @@ public struct HourPrice: Codable, Sendable, Equatable {
     public var spotOre: Double
     /// Spot price incl. VAT (Tibber: `total`), øre/kWh.
     public var totalOre: Double
+    /// Tibber's `level` for the hour (VERY_CHEAP … VERY_EXPENSIVE); nil for other sources.
+    public var level: String?
 
-    public init(hour: Date, area: String, source: String, spotOre: Double, totalOre: Double) {
+    public init(hour: Date, area: String, source: String, spotOre: Double, totalOre: Double, level: String? = nil) {
         self.hour = hour
         self.area = area
         self.source = source
         self.spotOre = spotOre
         self.totalOre = totalOre
+        self.level = level
     }
 }
 
@@ -131,13 +188,22 @@ public struct PriceBreakdown: Codable, Sendable, Equatable {
     public var totalOre: Double { energyOre + gridOre + supportOre }
     /// True when the grid tariff uses the day rate this hour.
     public var isDayRate: Bool
+    /// Spot price level (nil for Norgespris or without enough history).
+    public var level: PriceLevel?
+    /// True when `level` is Tibber's own; false when computed against the last 72 hours.
+    public var levelFromTibber: Bool
 
-    public init(hour: Date, energyOre: Double, gridOre: Double, supportOre: Double, isDayRate: Bool) {
+    public init(
+        hour: Date, energyOre: Double, gridOre: Double, supportOre: Double, isDayRate: Bool, level: PriceLevel? = nil,
+        levelFromTibber: Bool = false
+    ) {
         self.hour = hour
         self.energyOre = energyOre
         self.gridOre = gridOre
         self.supportOre = supportOre
         self.isDayRate = isDayRate
+        self.level = level
+        self.levelFromTibber = levelFromTibber
     }
 }
 

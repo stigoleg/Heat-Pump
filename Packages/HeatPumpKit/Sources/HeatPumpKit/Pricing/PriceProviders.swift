@@ -36,20 +36,22 @@ public protocol PriceProvider: Sendable {
 enum PriceAggregation {
     /// Averages entries by the hour they start in.
     static func hourly(
-        _ entries: [(start: Date, spotOre: Double, totalOre: Double)], area: String, source: String, timeZone: TimeZone
+        _ entries: [(start: Date, spotOre: Double, totalOre: Double, level: String?)], area: String, source: String,
+        timeZone: TimeZone
     ) -> [HourPrice] {
         let calendar = WireDate.calendar(timeZone)
-        var groups: [Date: [(Double, Double)]] = [:]
+        var groups: [Date: [(Double, Double, String?)]] = [:]
         for entry in entries {
             guard let hour = calendar.dateInterval(of: .hour, for: entry.start)?.start else { continue }
-            groups[hour, default: []].append((entry.spotOre, entry.totalOre))
+            groups[hour, default: []].append((entry.spotOre, entry.totalOre, entry.level))
         }
         return groups.keys.sorted().map { hour in
             let values = groups[hour] ?? []
             let n = Double(max(values.count, 1))
             return HourPrice(
                 hour: hour, area: area, source: source,
-                spotOre: values.map(\.0).reduce(0, +) / n, totalOre: values.map(\.1).reduce(0, +) / n)
+                spotOre: values.map(\.0).reduce(0, +) / n, totalOre: values.map(\.1).reduce(0, +) / n,
+                level: values.compactMap(\.2).first)
         }
     }
 
@@ -113,8 +115,8 @@ public struct HvaKosterStrommenProvider: PriceProvider {
             return (start, spot, spot * area.vatFactor)
         }
         return PriceAggregation.hourly(
-            entries.map { (start: $0.0, spotOre: $0.1, totalOre: $0.2) }, area: area.rawValue, source: "hvakosterstrommen",
-            timeZone: timeZone)
+            entries.map { (start: $0.0, spotOre: $0.1, totalOre: $0.2, level: nil) }, area: area.rawValue,
+            source: "hvakosterstrommen", timeZone: timeZone)
     }
 
     private func sendMapped(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -148,7 +150,7 @@ public struct TibberPriceProvider: PriceProvider {
     }
 
     static func query(rangeHours: Int) -> String {
-        let fields = "total energy tax startsAt"
+        let fields = "total energy tax startsAt level"
         var parts = ["priceInfo(resolution: HOURLY) { current { \(fields) } today { \(fields) } tomorrow { \(fields) } }"]
         if rangeHours > 0 {
             parts.append("priceInfoRange(resolution: HOURLY, last: \(min(rangeHours, 744))) { nodes { \(fields) } }")
@@ -203,13 +205,13 @@ public struct TibberPriceProvider: PriceProvider {
         }
         let info = subscription["priceInfo"]
         let lists = [info?["today"], info?["tomorrow"], subscription["priceInfoRange"]?["nodes"]]
-        var entries: [(start: Date, spotOre: Double, totalOre: Double)] = []
+        var entries: [(start: Date, spotOre: Double, totalOre: Double, level: String?)] = []
         for list in lists {
             for price in list?.array ?? [] {
                 guard let start = PriceAggregation.iso(price["startsAt"]?.string), let total = price["total"]?.double
                 else { continue }
                 let energy = price["energy"]?.double ?? total / 1.25
-                entries.append((start, energy * 100, total * 100))
+                entries.append((start, energy * 100, total * 100, price["level"]?.string))
             }
         }
         // Today/tomorrow and the range overlap; keep one value per start time.

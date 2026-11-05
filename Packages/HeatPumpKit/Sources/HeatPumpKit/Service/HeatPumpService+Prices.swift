@@ -127,11 +127,23 @@ extension HeatPumpService {
         guard var hour = calendar.dateInterval(of: .hour, for: from)?.start else { return [] }
         var spots: [Date: HourPrice] = [:]
         if let key = priceKey(settings) {
-            for p in try store.prices(source: key.source, area: key.area, from: hour, to: to) { spots[p.hour] = p }
+            let history = hour.addingTimeInterval(-Double(PriceLevel.trailingHours) * 3600)
+            for p in try store.prices(source: key.source, area: key.area, from: history, to: to) { spots[p.hour] = p }
         }
         var result: [PriceBreakdown] = []
         while hour < to {
-            if let b = PriceCalculator.breakdown(hour: hour, settings: settings, spot: spots[hour], timeZone: timeZone) {
+            if var b = PriceCalculator.breakdown(hour: hour, settings: settings, spot: spots[hour], timeZone: timeZone) {
+                if let spot = spots[hour] {
+                    if let tibber = spot.level.flatMap(PriceLevel.init(tibber:)) {
+                        (b.level, b.levelFromTibber) = (tibber, true)
+                    } else {
+                        // Same bands as Tibber, against the previous 72 hours' spot price.
+                        let trailing = (1...PriceLevel.trailingHours).compactMap { spots[hour.addingTimeInterval(-Double($0) * 3600)]?.totalOre }
+                        if trailing.count >= PriceLevel.minTrailingHours {
+                            b.level = PriceLevel.relative(price: spot.totalOre, average: trailing.reduce(0, +) / Double(trailing.count))
+                        }
+                    }
+                }
                 result.append(b)
             }
             guard let next = calendar.date(byAdding: .hour, value: 1, to: hour) else { break }

@@ -816,6 +816,7 @@ public actor HeatPumpService {
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return [] }
         var days = try store.energyDays(
             deviceId: deviceId, fromDay: WireDate.day(from, timeZone: timeZone), toDay: WireDate.day(to, timeZone: timeZone))
+        let cloudDays = Dictionary(days.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
         // Days the adapter's local counter covers completely use its exact total.
         let local = try localDayTotals(from: from, to: to)
         if !local.isEmpty {
@@ -845,6 +846,11 @@ public actor HeatPumpService {
             bucket.totalKWh += day.totalKWh
             bucket.heatingKWh += day.heatingKWh ?? 0
             bucket.days += 1
+            if let cloud = cloudDays[day.day] {
+                var split = bucket.modes ?? EnergyModeSplit()
+                split.add(cloud)
+                bucket.modes = split
+            }
             if let dayCost = costs[day.day] {
                 bucket.cost = (bucket.cost ?? CostSplit()) + dayCost.cost
                 bucket.isEstimate = bucket.isEstimate || dayCost.isEstimate
@@ -858,6 +864,7 @@ public actor HeatPumpService {
             rounded.totalKWh = (bucket.totalKWh * 100).rounded() / 100
             rounded.heatingKWh = (bucket.heatingKWh * 100).rounded() / 100
             rounded.cost = bucket.cost?.rounded()
+            rounded.modes = bucket.modes?.rounded()
             rounded.costNok = bucket.cost.map { ($0.totalNok * 100).rounded() / 100 }
             return rounded
         }

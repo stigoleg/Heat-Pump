@@ -288,6 +288,17 @@ public final class HistoryStore: Sendable {
                     ALTER TABLE local_samples ADD COLUMN runtimeMinutes INTEGER;
                     """)
         }
+        migrator.registerMigration("v8") { db in
+            // Tibber's price level per hour, and MELCloud's energy split for the remaining modes.
+            try db.execute(
+                sql: """
+                    ALTER TABLE price_hourly ADD COLUMN level TEXT;
+                    ALTER TABLE energy_daily ADD COLUMN autoKWh DOUBLE;
+                    ALTER TABLE energy_daily ADD COLUMN dryKWh DOUBLE;
+                    ALTER TABLE energy_daily ADD COLUMN fanKWh DOUBLE;
+                    ALTER TABLE energy_daily ADD COLUMN otherKWh DOUBLE;
+                    """)
+        }
         return migrator
     }
 
@@ -438,10 +449,11 @@ public final class HistoryStore: Sendable {
             for p in prices {
                 try db.execute(
                     sql: """
-                        INSERT INTO price_hourly (hour, area, source, spotOre, totalOre) VALUES (?, ?, ?, ?, ?)
-                        ON CONFLICT(hour, source, area) DO UPDATE SET spotOre = excluded.spotOre, totalOre = excluded.totalOre
+                        INSERT INTO price_hourly (hour, area, source, spotOre, totalOre, level) VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(hour, source, area) DO UPDATE SET spotOre = excluded.spotOre, totalOre = excluded.totalOre,
+                            level = COALESCE(excluded.level, level)
                         """,
-                    arguments: [p.hour, p.area, p.source, p.spotOre, p.totalOre])
+                    arguments: [p.hour, p.area, p.source, p.spotOre, p.totalOre, p.level])
             }
         }
     }
@@ -452,12 +464,14 @@ public final class HistoryStore: Sendable {
             try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT hour, area, source, spotOre, totalOre FROM price_hourly
+                    SELECT hour, area, source, spotOre, totalOre, level FROM price_hourly
                     WHERE source = ? AND area = ? AND hour >= ? AND hour < ? ORDER BY hour
                     """,
                 arguments: [source, area, from, to]
             ).map {
-                HourPrice(hour: $0["hour"], area: $0["area"], source: $0["source"], spotOre: $0["spotOre"], totalOre: $0["totalOre"])
+                HourPrice(
+                    hour: $0["hour"], area: $0["area"], source: $0["source"], spotOre: $0["spotOre"], totalOre: $0["totalOre"],
+                    level: $0["level"])
             }
         }
     }
@@ -558,12 +572,17 @@ public final class HistoryStore: Sendable {
             for d in days {
                 try db.execute(
                     sql: """
-                        INSERT INTO energy_daily (deviceId, day, totalKWh, heatingKWh, coolingKWh, updatedAt)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO energy_daily (deviceId, day, totalKWh, heatingKWh, coolingKWh, autoKWh, dryKWh, fanKWh,
+                            otherKWh, updatedAt)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(deviceId, day) DO UPDATE SET totalKWh = excluded.totalKWh,
-                            heatingKWh = excluded.heatingKWh, coolingKWh = excluded.coolingKWh, updatedAt = excluded.updatedAt
+                            heatingKWh = excluded.heatingKWh, coolingKWh = excluded.coolingKWh, autoKWh = excluded.autoKWh,
+                            dryKWh = excluded.dryKWh, fanKWh = excluded.fanKWh, otherKWh = excluded.otherKWh,
+                            updatedAt = excluded.updatedAt
                         """,
-                    arguments: [deviceId, d.day, d.totalKWh, d.heatingKWh, d.coolingKWh, now])
+                    arguments: [
+                        deviceId, d.day, d.totalKWh, d.heatingKWh, d.coolingKWh, d.autoKWh, d.dryKWh, d.fanKWh, d.otherKWh, now,
+                    ])
             }
         }
     }
@@ -572,9 +591,16 @@ public final class HistoryStore: Sendable {
         try pool.read { db in
             try Row.fetchAll(
                 db,
-                sql: "SELECT day, totalKWh, heatingKWh, coolingKWh FROM energy_daily WHERE deviceId = ? AND day >= ? AND day <= ? ORDER BY day",
+                sql: """
+                    SELECT day, totalKWh, heatingKWh, coolingKWh, autoKWh, dryKWh, fanKWh, otherKWh FROM energy_daily
+                    WHERE deviceId = ? AND day >= ? AND day <= ? ORDER BY day
+                    """,
                 arguments: [deviceId, fromDay, toDay]
-            ).map { EnergyDay(day: $0["day"], totalKWh: $0["totalKWh"], heatingKWh: $0["heatingKWh"], coolingKWh: $0["coolingKWh"]) }
+            ).map {
+                EnergyDay(
+                    day: $0["day"], totalKWh: $0["totalKWh"], heatingKWh: $0["heatingKWh"], coolingKWh: $0["coolingKWh"],
+                    autoKWh: $0["autoKWh"], dryKWh: $0["dryKWh"], fanKWh: $0["fanKWh"], otherKWh: $0["otherKWh"])
+            }
         }
     }
 

@@ -95,6 +95,9 @@ public struct EnergyBucket: Codable, Sendable, Equatable {
     public var isEstimate: Bool = false
     /// Cost split into electricity, grid tariff and support.
     public var cost: CostSplit?
+    /// kWh per mode as MELCloud reports it (nil for days MELCloud has no report for). Days the
+    /// local counter measured keep MELCloud's split, so the sum may differ slightly from `totalKWh`.
+    public var modes: EnergyModeSplit?
 }
 
 public struct MaintenanceStatus: Codable, Sendable, Equatable {

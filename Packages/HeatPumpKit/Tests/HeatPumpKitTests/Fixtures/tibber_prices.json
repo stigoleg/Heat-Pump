@@ -2,8 +2,8 @@
  "priceInfo":{
   "current":{"total":1.2,"energy":0.94,"tax":0.26,"startsAt":"2026-11-05T11:00:00.000+01:00"},
   "today":[
-   {"total":1.0,"energy":0.78,"tax":0.22,"startsAt":"2026-11-05T00:00:00.000+01:00"},
-   {"total":1.25,"energy":0.98,"tax":0.27,"startsAt":"2026-11-05T01:00:00.000+01:00"}],
+   {"total":1.0,"energy":0.78,"tax":0.22,"startsAt":"2026-11-05T00:00:00.000+01:00","level":"CHEAP"},
+   {"total":1.25,"energy":0.98,"tax":0.27,"startsAt":"2026-11-05T01:00:00.000+01:00","level":"VERY_EXPENSIVE"}],
   "tomorrow":[
    {"total":0.5,"energy":0.38,"tax":0.12,"startsAt":"2026-11-06T00:00:00.000+01:00"}]},
  "priceInfoRange":{"nodes":[

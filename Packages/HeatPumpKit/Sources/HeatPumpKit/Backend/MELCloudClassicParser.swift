@@ -440,7 +440,10 @@ enum MELCloudClassicParser {
                 return index < a.count ? a[index] : 0
             }
             let total = modes.reduce(0) { $0 + at($1) }
-            days.append(EnergyDay(day: WireDate.day(date, timeZone: timeZone), totalKWh: total, heatingKWh: at("Heating"), coolingKWh: at("Cooling")))
+            days.append(
+                EnergyDay(
+                    day: WireDate.day(date, timeZone: timeZone), totalKWh: total, heatingKWh: at("Heating"), coolingKWh: at("Cooling"),
+                    autoKWh: at("Auto"), dryKWh: at("Dry"), fanKWh: at("Fan"), otherKWh: at("Other")))
         }
         return days
     }
