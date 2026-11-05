@@ -107,6 +107,12 @@ public protocol HeatPumpBackend: Sendable {
     func applyAway(_ change: AwayChange, deviceId: Int) async throws
     /// The weekly timer (read-only).
     func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer
+    /// MELCloud's firmware update entries for the device (`FirmwareUpdate/List2`).
+    func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus]
+    /// Starts (approves) the firmware update `id`. Cannot be rolled back.
+    func approveFirmwareUpdate(id: Int, deviceId: Int) async throws
+    /// Cancels the firmware update `id` while it has not been installed.
+    func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws
 }
 
 extension HeatPumpBackend {
@@ -117,5 +123,8 @@ extension HeatPumpBackend {
     public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings { throw HeatPumpError.validation(unsupported) }
     public func applyAway(_ change: AwayChange, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer { throw HeatPumpError.validation(unsupported) }
+    public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] { throw HeatPumpError.validation(unsupported) }
+    public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
+    public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     private var unsupported: String { "Støttes ikke av denne tilkoblingen." }
 }

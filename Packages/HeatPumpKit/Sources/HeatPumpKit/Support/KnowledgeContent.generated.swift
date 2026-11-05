@@ -164,6 +164,17 @@ Råd for styring ut fra effekt:
 - Er effekten høy over lang tid selv om det ikke er kaldt ute, sjekk luftfilteret og utedelen før du endrer innstillinger.
 - Endepunktet i modulen er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker alt annet via MELCloud som før.
 
+## Fastvareoppdatering
+
+MELCloud gir beskjed når det finnes ny fastvare til Wi-Fi-modulen. Appen viser det under Helse → Fastvare, der du kan starte oppdateringen og følge den. Claude kan også starte den, men bare etter at du har godkjent det i dialogen på Macen.
+
+- **Kan ikke angres**: en fastvareoppdatering kan ikke rulles tilbake når den først er startet.
+- **Strøm og Wi-Fi**: varmepumpen må stå på strøm og ha godt Wi-Fi hele tiden. Ikke koble den fra strømnettet og ikke bruk fjernkontrollen mens oppdateringen pågår (MELCloud gir samme advarsel).
+- **Tid**: oppdateringen kan ta en stund. Wi-Fi-modulen laster ned filer og starter på nytt; så lenge kan varmepumpen ikke styres fra appen eller MELCloud.
+- **Bare eieren**: bare kontoen som eier enheten i MELCloud kan starte oppdateringen, og bare når enheten er tilkoblet.
+- **Avbryte**: mens oppdateringen venter på enheten eller laster ned, kan den avbrytes i appen.
+- **Ikke akutt**: start helst når du er hjemme og ikke trenger å endre noe den nærmeste timen.
+
 ## Sikkerhet
 
 - R32 er et brennbart kjølemiddel. Ved mistanke om lekkasje: slå av, luft ut, ingen åpen flamme, ring forhandleren.
@@ -210,7 +221,7 @@ Dette er fakta om varmepumpen, hentet fra typeskiltet og bruksanvisningen. Serie
 
 ## Sikkerhetsmerknad om Wi-Fi-modulen
 
-Wi-Fi-adaptere i samme gruppe som MSZ-RW25VG-SC1 er omfattet av sårbarheten CVE-2026-5667 (fast kodet passord for adapterens eget tilgangspunkt) for adapterversjon 42.00 og eldre. Feilen er rettet i versjon 43.00. Sårbarheten er bare relevant når enheten ikke er koblet til en ruter (oppsettmodus). Sjekk fastvareversjonen i MELCloud eller hos forhandleren, og hold enheten koblet til ruteren. Appen viser modulens fastvareversjon under Innstillinger → Konto (MELCloud oppgir for eksempel 34000, som betyr versjon 34.00). Oppdatering anbefales, men er ikke akutt så lenge enheten er koblet til hjemmenettet. Oppdateringen startes i den offisielle MELCloud-appen; Varmepumpe-appen og Claude starter ikke fastvareoppdateringer.
+Wi-Fi-adaptere i samme gruppe som MSZ-RW25VG-SC1 er omfattet av sårbarheten CVE-2026-5667 (fast kodet passord for adapterens eget tilgangspunkt) for adapterversjon 42.00 og eldre. Feilen er rettet i versjon 43.00. Sårbarheten er bare relevant når enheten ikke er koblet til en ruter (oppsettmodus). Sjekk fastvareversjonen i MELCloud eller hos forhandleren, og hold enheten koblet til ruteren. Appen viser modulens fastvareversjon under Innstillinger → Konto og Helse → Fastvare (MELCloud oppgir for eksempel 34000, som betyr versjon 34.00). Oppdatering anbefales, men er ikke akutt så lenge enheten er koblet til hjemmenettet. Oppdateringen kan startes under Helse → Fastvare, av Claude etter at du har godkjent det i dialogen, eller i MELCloud-appen. Se «Fastvareoppdatering» i rådene om trygg drift før du starter.
 """#,
         "when-to-call-dealer": #"""
 # Når bør du ringe forhandleren?

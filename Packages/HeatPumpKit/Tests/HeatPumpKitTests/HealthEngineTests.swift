@@ -168,8 +168,8 @@ struct HealthEngineTests {
         #expect(f?.severity == .info)
         #expect(f?.title == "Oppdatering tilgjengelig for Wi-Fi-modulen")
         #expect(f?.detail == "Modulen har fastvare 34.00. MELCloud har en nyere versjon klar.")
-        #expect(f?.recommendation.contains("offisielle MELCloud-appen") == true)
-        #expect(f?.recommendation.contains("starter ikke fastvareoppdateringer selv") == true)
+        #expect(f?.recommendation.contains("Helse → Fastvare") == true)
+        #expect(f?.recommendation.contains("kan ikke rulles tilbake") == true)
         // The deployment id is internal and never shown.
         #expect(f.map { !"\($0.title)\($0.detail)\($0.recommendation)".contains("987654") } == true)
         let noVersion = makeState(at: now, firmware: FirmwareInfo(deployment: "987654"))

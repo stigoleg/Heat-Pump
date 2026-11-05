@@ -43,7 +43,7 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 - **Kontroll** – av/på, modus, temperatur (glidebryter og stepper), viftehastighet og luftretning. Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen fra MELCloud vises nederst.
 - **Historikk** – temperatur, energi og kostnad, drift og effekt, for 24 timer, 7 dager, 30 dager eller ett år.
 - **Strømkostnad** – Norgespris, spotpris via Tibber eller spotpris fra hvakosterstrommen.no, med nettleie og strømstøtte. Prisene farges fra svært billig til svært dyr.
-- **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare.
+- **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare. Fastvareoppdateringer av Wi-Fi-modulen kan startes og følges her.
 - **Borte hjemmefra** – frostsikring og feriemodus.
 - **Lokal tilkobling** – leser effekt, kompressor, avriming og en nøyaktig strømmåler direkte fra Wi-Fi-modulen på hjemmenettet. Bare lesing.
 - **Husets strømforbruk** – fra Tibber, med varmepumpens andel.
@@ -97,13 +97,13 @@ claude mcp add varmepumpe --scope user -- "/Applications/Varmepumpe.app/Contents
 
 Start Claude Code på nytt og spør for eksempel «Kjør helsesjekk på varmepumpa». Første gang spør macOS om MCP-serveren får lese innloggingen i nøkkelringen; velg **Tillat alltid**.
 
-Når Claude vil endre noe, viser Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. Avvis, Esc eller ingen svar innen to minutter stopper den. Dette gjelder uansett tillatelsesmodus i Claude Code. Legg likevel ikke `set_*`-verktøyene i listen over verktøy som er tillatt uten å spørre.
+Når Claude vil endre noe, viser Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. Avvis, Esc eller ingen svar innen to minutter stopper den. Dette gjelder uansett tillatelsesmodus i Claude Code. Legg likevel ikke `set_*`-verktøyene eller `start_firmware_update` i listen over verktøy som er tillatt uten å spørre.
 
 <details>
 <summary>Verktøy og ressurser for Claude</summary>
 
-- **Lesing:** `get_status`, `get_live_status`, `get_health_report`, `get_error_log`, `get_history`, `get_energy`, `get_prices`, `get_forecast`, `get_house_consumption`, `get_maintenance_status`, `get_away_settings`, `get_change_log`, `get_device_info`, `refresh`
-- **Endring (med godkjenning):** `set_power`, `set_mode`, `set_temperature`, `set_fan_speed`, `set_vanes`, `set_frost_protection`, `set_holiday_mode`, `record_maintenance`
+- **Lesing:** `get_status`, `get_live_status`, `get_health_report`, `get_error_log`, `get_history`, `get_energy`, `get_prices`, `get_forecast`, `get_house_consumption`, `get_maintenance_status`, `get_away_settings`, `get_firmware_status`, `get_change_log`, `get_device_info`, `refresh`
+- **Endring (med godkjenning):** `set_power`, `set_mode`, `set_temperature`, `set_fan_speed`, `set_vanes`, `set_frost_protection`, `set_holiday_mode`, `start_firmware_update`, `record_maintenance`
 - **Prompt:** `helsesjekk` – full gjennomgang med prioritert oppsummering
 - **Ressurser:** `varmepumpe://knowledge/…` – varmepumpeprofil, vedlikehold, feilkoder, når du bør ringe forhandleren og råd om trygg drift
 

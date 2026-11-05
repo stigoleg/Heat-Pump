@@ -92,6 +92,11 @@ enum ToolCatalog {
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
+            name: "get_firmware_status",
+            description: "Firmware of the Wi-Fi adapter: current version, whether MELCloud has an update waiting, whether this account owns the unit (only owners may update), and MELCloud's update status (phase with Norwegian text, files downloaded x/y, minutes offline), plus canStart/startProblem and whether an update is running. MELCloud is asked only when an update waits or runs: at most every 60 s, every 15 s while it runs. Updates go through start_firmware_update.",
+            inputSchema: ["type": "object", "properties": [:]],
+            annotations: readOnly),
+        Tool(
             name: "get_maintenance_status",
             description: "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",
             inputSchema: ["type": "object", "properties": [:]],
@@ -204,6 +209,15 @@ enum ToolCatalog {
                 "required": ["enabled", "reason"],
             ],
             annotations: writeAnnotations()),
+        Tool(
+            name: "start_firmware_update",
+            description: "Start the firmware update MELCloud has waiting for the Wi-Fi adapter. Firmware CANNOT be rolled back; the pump must stay powered with good Wi-Fi, nobody may cut the power or use the remote control while it runs, and the adapter restarts (no control for a while). Check get_firmware_status first (canStart). Refused without asking when the account is not the owner, nothing waits, the unit is offline or MELCloud does not offer the update now. \(writeWarning) Counts toward the 12 writes per hour. Follow progress with get_firmware_status. Cancelling is only possible in the app.",
+            inputSchema: [
+                "type": "object",
+                "properties": ["reason": reasonProperty],
+                "required": ["reason"],
+            ],
+            annotations: writeAnnotations(destructive: true, idempotent: false)),
         Tool(
             name: "record_maintenance",
             description: "Record that a maintenance task was done (e.g. the user cleaned the air filter). Does not touch the heat pump, but writes to the shared history; only call it when the user said the task was done.",

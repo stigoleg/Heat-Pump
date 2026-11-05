@@ -23,6 +23,11 @@ public actor MockBackend: HeatPumpBackend {
     public private(set) var awayReads = 0
     public private(set) var awayWrites = 0
     public private(set) var timerReads = 0
+    /// When the simulated firmware update was started (nil: still waiting for approval).
+    public private(set) var firmwareApprovedAt: Date?
+    public private(set) var firmwareReads = 0
+    public private(set) var firmwareApprovals = 0
+    public private(set) var firmwareCancels = 0
 
     public init(timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.now = now
@@ -54,7 +59,7 @@ public actor MockBackend: HeatPumpBackend {
             hasError: false, errorCode: 8000, offline: false,
             lastCommunication: t.addingTimeInterval(-40), nextCommunication: t.addingTimeInterval(20),
             wifiSignal: -62, hasPendingCommand: false,
-            firmware: FirmwareInfo(deployment: nil, updateAborted: false, adaptorType: 4, appVersion: 34000, adapterStatus: "NORMAL"),
+            firmware: firmware(at: t),
             lastServiceDate: nil,
             energy: EnergyCounters(
                 currentConsumedKWh: Self.counterKWh(at: t), totalHeatingKWh: 1180.2, totalCoolingKWh: 54.3),
@@ -164,6 +169,57 @@ public actor MockBackend: HeatPumpBackend {
         var timer = MELCloudClassicParser.weeklyTimer(.object(["Enabled": .bool(true), "Seasons": .array([.object(["Events": .array(events)])])]))
         timer.fetchedAt = now()
         return timer
+    }
+
+    // MARK: Firmware update (simulated: waiting → downloading 4 files → restart → done in 2 minutes)
+
+    static let firmwareUpdateId = 9_001
+    static let firmwareFiles = 4
+
+    public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] {
+        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        firmwareReads += 1
+        let (phase, approval, files) = firmwareProgress(at: now())
+        return [
+            FirmwareUpdateStatus(
+                id: Self.firmwareUpdateId, deviceId: Self.deviceId, currentPhase: phase, approvalStatus: approval, minutesOffline: 0,
+                filesDownloaded: files, filesToDownload: Self.firmwareFiles, retries: 0, dateApproved: firmwareApprovedAt,
+                dateCreated: Date(timeIntervalSince1970: 1_767_236_000), lastCommunication: now().addingTimeInterval(-40))
+        ]
+    }
+
+    public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws {
+        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server("Ukjent oppdatering") }
+        let current = firmwareProgress(at: now())
+        guard FirmwareUpdatePhase.from(phase: current.phase, approval: current.approval, minutesOffline: 0).canApprove else { throw HeatPumpError.server("Oppdateringen kan ikke godkjennes nå") }
+        firmwareApprovals += 1
+        firmwareApprovedAt = now()
+    }
+
+    public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws {
+        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server("Ukjent oppdatering") }
+        firmwareCancels += 1
+        firmwareApprovedAt = nil
+    }
+
+    /// Phase, approval status and files downloaded at `t` (web client numbering).
+    private func firmwareProgress(at t: Date) -> (phase: Int, approval: Int, files: Int) {
+        guard let start = firmwareApprovedAt, t >= start else { return (0, 0, 0) }
+        let elapsed = t.timeIntervalSince(start)
+        switch elapsed {
+        case ..<20: return (1, 3, 0)
+        case ..<80: return (2, 3, min(Self.firmwareFiles, Int((elapsed - 20) / 15)))
+        case ..<100: return (6, 3, Self.firmwareFiles)
+        case ..<120: return (7, 3, Self.firmwareFiles)
+        default: return (4, 3, Self.firmwareFiles)
+        }
+    }
+
+    private func firmware(at t: Date) -> FirmwareInfo {
+        let done = firmwareProgress(at: t).phase == 4
+        return FirmwareInfo(
+            deployment: done ? nil : "4711", updateAborted: false, adaptorType: 4, appVersion: done ? 35000 : 34000,
+            adapterStatus: "NORMAL", accessLevel: FirmwareInfo.ownerAccessLevel)
     }
 
     // MARK: Simulation

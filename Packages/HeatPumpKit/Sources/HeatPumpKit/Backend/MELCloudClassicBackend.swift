@@ -242,6 +242,31 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         return timer
     }
 
+    // MARK: Firmware updates (unverified endpoints; shapes logged)
+
+    public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] {
+        let json = try await authorizedJSON(
+            "POST", "FirmwareUpdate/List2", body: MELCloudClassicParser.firmwareListBody(deviceId: deviceId), relogin: false)
+        Self.diagnose("FirmwareUpdate/List2 response: \(MELCloudClassicParser.redactedShape(json))")
+        try MELCloudClassicParser.throwIfAttributeErrors(json)
+        return MELCloudClassicParser.firmwareUpdates(json, timeZone: timeZone).filter { $0.deviceId == nil || $0.deviceId == deviceId }
+    }
+
+    public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws {
+        try await firmwareAction("FirmwareUpdate/Approve2", id: id, deviceId: deviceId)
+    }
+
+    public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws {
+        try await firmwareAction("FirmwareUpdate/Cancel2", id: id, deviceId: deviceId)
+    }
+
+    private func firmwareAction(_ path: String, id: Int, deviceId: Int) async throws {
+        let response = try await authorizedJSON(
+            "POST", path, body: MELCloudClassicParser.firmwareActionBody(id: id, deviceId: deviceId), relogin: false)
+        Self.diagnose("\(path) response: \(MELCloudClassicParser.redactedShape(response))")
+        try MELCloudClassicParser.checkMutation(response)
+    }
+
     // MARK: Internals
 
     /// Newest device object from memory or the shared cache (another process may be newer).

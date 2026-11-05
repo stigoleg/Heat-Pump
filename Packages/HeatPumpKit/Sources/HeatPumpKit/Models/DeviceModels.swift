@@ -173,17 +173,25 @@ public struct FirmwareInfo: Codable, Sendable, Equatable {
     public var appVersion: Int?
     /// `WifiAdapterStatus`, e.g. "NORMAL".
     public var adapterStatus: String?
+    /// `AccessLevel` from the device listing (4 = owner; only owners may start a firmware update).
+    public var accessLevel: Int?
 
     public init(
         deployment: String? = nil, updateAborted: Bool = false, adaptorType: Int? = nil, appVersion: Int? = nil,
-        adapterStatus: String? = nil
+        adapterStatus: String? = nil, accessLevel: Int? = nil
     ) {
         self.deployment = deployment
         self.updateAborted = updateAborted
         self.adaptorType = adaptorType
         self.appVersion = appVersion
         self.adapterStatus = adapterStatus
+        self.accessLevel = accessLevel
     }
+
+    public static let ownerAccessLevel = 4
+
+    /// True when the account owns the unit, nil when the listing did not say.
+    public var isOwner: Bool? { accessLevel.map { $0 == Self.ownerAccessLevel } }
 
     /// Adapter firmware version as shown in MELCloud, e.g. "34.00" (nil when unknown or 0).
     public var version: String? {

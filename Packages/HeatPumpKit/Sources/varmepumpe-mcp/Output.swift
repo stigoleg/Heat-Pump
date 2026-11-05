@@ -183,6 +183,53 @@ struct FirmwareView: Encodable {
         updateAborted = info.updateAborted
         adapterStatus = info.adapterStatus
         adaptorType = info.adaptorType
-        note = "Fastvareoppdateringer startes i den offisielle MELCloud-appen; dette verktøyet kan ikke starte dem."
+        note = "Status og start av oppdateringen: get_firmware_status og start_firmware_update (krever godkjenning; fastvare kan ikke rulles tilbake)."
+    }
+}
+
+/// `get_firmware_status`: what the app shows under Helse → Fastvare.
+struct FirmwareStatusView: Encodable {
+    struct Update: Encodable {
+        var phase: String
+        var status: String
+        var filesDownloaded: Int?
+        var filesToDownload: Int?
+        var retries: Int?
+        var minutesOffline: Int?
+        var currentPhase: Int?
+        var approvalStatus: Int?
+        var dateApproved: Date?
+        var dateCreated: Date?
+    }
+
+    var currentVersion: String?
+    var updateAvailable: Bool
+    var isOwner: Bool?
+    var update: Update?
+    var inProgress: Bool
+    var canStart: Bool
+    var startProblem: String?
+    var startedAt: Date?
+    var fetchedAt: Date?
+    var message: String?
+    var warnings: [String]
+
+    init(_ status: FirmwareStatus, now: Date = Date()) {
+        currentVersion = status.currentVersion
+        updateAvailable = status.updateAvailable
+        isOwner = status.isOwner
+        update = status.current.map {
+            Update(
+                phase: $0.phase.rawValue, status: $0.displayText, filesDownloaded: $0.filesDownloaded, filesToDownload: $0.filesToDownload,
+                retries: $0.retries, minutesOffline: $0.minutesOffline, currentPhase: $0.currentPhase, approvalStatus: $0.approvalStatus,
+                dateApproved: $0.dateApproved, dateCreated: $0.dateCreated)
+        }
+        inProgress = status.isInProgress(now: now)
+        canStart = status.canStart
+        startProblem = status.startProblem
+        startedAt = status.startedAt
+        fetchedAt = status.fetchedAt
+        message = status.message
+        warnings = FirmwareStatus.warnings
     }
 }

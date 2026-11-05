@@ -149,7 +149,7 @@ struct AccountSettings: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(state.firmware.version.map { "Fastvare \($0)" } ?? "Fastvare ukjent")
                         if state.firmware.updateAvailable {
-                            Text("Oppdatering tilgjengelig – startes i MELCloud-appen")
+                            Text("Oppdatering tilgjengelig – start den under Helse → Fastvare")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }

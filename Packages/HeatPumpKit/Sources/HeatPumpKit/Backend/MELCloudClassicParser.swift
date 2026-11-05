@@ -190,7 +190,8 @@ enum MELCloudClassicParser {
                 updateAborted: value("FirmwareUpdateAborted")?.bool ?? false,
                 adaptorType: value("AdaptorType")?.int,
                 appVersion: value("FirmwareAppVersion")?.int,
-                adapterStatus: value("WifiAdapterStatus")?.string.flatMap { $0.isEmpty ? nil : $0 }),
+                adapterStatus: value("WifiAdapterStatus")?.string.flatMap { $0.isEmpty ? nil : $0 },
+                accessLevel: listing?["AccessLevel"]?.int ?? value("AccessLevel")?.int),
             lastServiceDate: WireDate.parse(value("LastServiceDate")?.string, timeZone: .current),
             energy: EnergyCounters(
                 currentConsumedKWh: currentWh.map { $0 / 1000 },

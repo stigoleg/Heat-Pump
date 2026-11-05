@@ -22,6 +22,8 @@ struct ToolHandler: Sendable {
             case "get_house_consumption": return try await getHouseConsumption(args)
             case "get_away_settings": return try await getAwaySettings()
             case "set_frost_protection", "set_holiday_mode": return try await writeAway(params.name, args)
+            case "get_firmware_status": return try await getFirmwareStatus()
+            case "start_firmware_update": return try await startFirmwareUpdate(args)
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -383,6 +385,22 @@ struct ToolHandler: Sendable {
         }
         // Same native approval dialog as the other set_* tools; never bypassed.
         let outcome = try await service.applyAway(change, source: .claude, reason: reason, approver: approver)
+        return try await output(outcome, isError: outcome.result != .ok)
+    }
+
+    private func getFirmwareStatus() async throws -> CallTool.Result {
+        let state = try await service.currentState()
+        return try await output(FirmwareStatusView(try await service.firmwareStatus()), state: state)
+    }
+
+    private func startFirmwareUpdate(_ args: Arguments) async throws -> CallTool.Result {
+        guard let reason = args.string("reason")?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty else {
+            throw ArgumentError(message: "reason er påkrevd for alle endringer")
+        }
+        // Make sure a current state exists (owner, waiting update, connection).
+        _ = try await service.currentState()
+        // Same native approval dialog as the other set_* tools; never bypassed.
+        let outcome = try await service.startFirmwareUpdate(source: .claude, reason: reason, approver: approver)
         return try await output(outcome, isError: outcome.result != .ok)
     }
 

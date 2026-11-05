@@ -72,6 +72,17 @@ Råd for styring ut fra effekt:
 - Er effekten høy over lang tid selv om det ikke er kaldt ute, sjekk luftfilteret og utedelen før du endrer innstillinger.
 - Endepunktet i modulen er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker alt annet via MELCloud som før.
 
+## Fastvareoppdatering
+
+MELCloud gir beskjed når det finnes ny fastvare til Wi-Fi-modulen. Appen viser det under Helse → Fastvare, der du kan starte oppdateringen og følge den. Claude kan også starte den, men bare etter at du har godkjent det i dialogen på Macen.
+
+- **Kan ikke angres**: en fastvareoppdatering kan ikke rulles tilbake når den først er startet.
+- **Strøm og Wi-Fi**: varmepumpen må stå på strøm og ha godt Wi-Fi hele tiden. Ikke koble den fra strømnettet og ikke bruk fjernkontrollen mens oppdateringen pågår (MELCloud gir samme advarsel).
+- **Tid**: oppdateringen kan ta en stund. Wi-Fi-modulen laster ned filer og starter på nytt; så lenge kan varmepumpen ikke styres fra appen eller MELCloud.
+- **Bare eieren**: bare kontoen som eier enheten i MELCloud kan starte oppdateringen, og bare når enheten er tilkoblet.
+- **Avbryte**: mens oppdateringen venter på enheten eller laster ned, kan den avbrytes i appen.
+- **Ikke akutt**: start helst når du er hjemme og ikke trenger å endre noe den nærmeste timen.
+
 ## Sikkerhet
 
 - R32 er et brennbart kjølemiddel. Ved mistanke om lekkasje: slå av, luft ut, ingen åpen flamme, ring forhandleren.

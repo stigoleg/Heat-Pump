@@ -14,6 +14,7 @@ struct HealthView: View {
                 findings
                 errorLog
                 maintenance
+                FirmwareSection()
                 knowledge
             }
             .padding(Theme.Space.xl)

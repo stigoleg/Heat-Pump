@@ -507,6 +507,49 @@ final class AppModel {
         timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
     }
 
+    // MARK: Firmware
+
+    /// Wi-Fi adapter firmware and MELCloud's update status (Helse → Fastvare).
+    var firmware: FirmwareStatus?
+
+    /// Reads the firmware status (MELCloud at most every 60 s, every 15 s while an update runs;
+    /// `force` = "Oppdater status"). Refreshes the device state once a running update has finished.
+    func loadFirmware(force: Bool = false) async {
+        guard let service else { return }
+        let wasRunning = firmware?.isInProgress(now: Date()) == true
+        do {
+            firmware = try await service.firmwareStatus(force: force)
+        } catch {
+            lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        if wasRunning, firmware?.phase == .complete { await refresh(force: false) }
+    }
+
+    /// Starts the waiting firmware update after the user confirmed the warnings in a sheet.
+    func startFirmwareUpdate() async -> (ok: Bool, message: String) {
+        await firmwareAction { try await $0.startFirmwareUpdate(source: .app, reason: "Startet i appen (Helse → Fastvare)") }
+    }
+
+    /// Cancels a running firmware update while MELCloud still allows it.
+    func cancelFirmwareUpdate() async -> (ok: Bool, message: String) {
+        await firmwareAction { try await $0.cancelFirmwareUpdate(source: .app, reason: "Avbrutt i appen (Helse → Fastvare)") }
+    }
+
+    private func firmwareAction(_ action: (HeatPumpService) async throws -> ChangeOutcome) async -> (ok: Bool, message: String) {
+        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        let result: (Bool, String)
+        do {
+            let outcome = try await action(service)
+            result = (outcome.result == .ok, outcome.message)
+        } catch {
+            result = (false, "Kunne ikke behandles: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+        }
+        await loadFirmware()
+        await reloadLocal()
+        await debouncer?.refreshBudget()
+        return result
+    }
+
     // MARK: Appearance
 
     func setAppearance(_ value: AppAppearance) {

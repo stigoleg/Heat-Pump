@@ -198,14 +198,14 @@ public enum HealthEngine {
                     code: "firmware_pending", severity: .info, title: "Oppdatering tilgjengelig for Wi-Fi-modulen",
                     detail: detail,
                     recommendation:
-                        "Start oppdateringen i den offisielle MELCloud-appen (Innstillinger → fastvare/oppdatering for enheten), mens varmepumpen er på og har godt Wi-Fi. Varmepumpe-appen starter ikke fastvareoppdateringer selv."))
+                        "Start oppdateringen under Helse → Fastvare i denne appen (eller i MELCloud-appen) mens varmepumpen står på strøm og har godt Wi-Fi. Ikke slå av strømmen og ikke bruk fjernkontrollen mens den pågår. Fastvare kan ikke rulles tilbake."))
         }
         if state.firmware.updateAborted {
             findings.append(
                 HealthFinding(
                     code: "firmware_aborted", severity: .info, title: "Programvareoppdatering ble avbrutt",
                     detail: "Siste oppdatering av Wi-Fi-modulen ble ikke fullført.",
-                    recommendation: "Sørg for stabilt Wi-Fi. Prøv eventuelt å starte varmepumpen på nytt via sikringen. Vedvarer det, kontakt forhandleren."))
+                    recommendation: "Sørg for stabilt Wi-Fi og prøv igjen under Helse → Fastvare. Prøv eventuelt å starte varmepumpen på nytt via sikringen først. Vedvarer det, kontakt forhandleren."))
         }
         return findings
     }
