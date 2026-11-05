@@ -1,6 +1,6 @@
 # Endringslogg
 
-## [Ikke utgitt]
+## [1.1.0] – 2026-11-05
 
 - **Prognose**: ny side med værvarsel for opptil ni dager, strømpriser fremover (kjente priser og et tydelig merket anslag for de neste dagene) og forventet forbruk og kostnad per dag.
 - **Prisstyring**: senker temperaturen i dyre timer, aldri under en grense du velger og høyst et valgt antall timer per døgn. Virker bare mens appen kjører og Macen er på; når den er på, lever appen videre i menylinjen når vinduet lukkes, og temperaturen settes tilbake før Macen sover og når appen avsluttes.

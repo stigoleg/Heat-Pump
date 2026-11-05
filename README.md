@@ -86,9 +86,9 @@ Krever macOS 26 eller nyere, på Apple Silicon eller Intel.
 1. **Logg inn** med samme e-post og passord som i MELCloud-appen. Innloggingen lagres i nøkkelringen på Macen.
 2. **Velg strømavtale** under Innstillinger → Strømpris: Norgespris, spotpris via Tibber (krever en [personlig nøkkel](https://developer.tibber.com/settings/access-token)) eller spotpris uten Tibber. Nettleien er forhåndsutfylt med Elvias satser og kan endres.
 3. **Slå på lokal tilkobling** (valgfritt) under Innstillinger → Lokal tilkobling → **Finn automatisk** → **Test**. macOS spør om tilgang til lokalt nettverk; svar Tillat.
-4. **Sted for værvarsel** hentes fra MELCloud. Mangler det, legger du det inn under Innstillinger → Vær.
+4. **Sted for værvarsel** hentes fra MELCloud. Vil du ha et annet sted, søker du etter adresse eller sted under Innstillinger → Vær, eller klikker i kartet.
 
-Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. Claude kan likevel lese når appen er lukket.
+Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. Unntaket er prisstyring: når den er på, fortsetter appen i menylinjen. Claude kan likevel lese når appen er lukket.
 
 ## Koble til Claude
 
@@ -170,7 +170,7 @@ Hver endring bekreftes i et eget vindu og logges. Etter en endring viser siden b
 <details>
 <summary><b>Værvarsel og anslag</b></summary>
 
-Timevarsel fra [MET Norway](https://api.met.no/) (samme kilde som yr.no), lisens CC BY 4.0. Posisjonen rundes av til omtrent 1 km før den sendes, og vises aldri. Appen henter høyst én gang i timen og respekterer METs hurtigbufferregler. Du kan oppgi en kontakt-e-post for MET under Innstillinger → Vær; den fylles aldri inn automatisk.
+Timevarsel fra [MET Norway](https://api.met.no/) (samme kilde som yr.no), lisens CC BY 4.0. Posisjonen rundes av til omtrent 1 km før den sendes til MET. Stedssøket og kartet i innstillingene bruker Apple Kart, så det du søker etter, sendes til Apple. Appen henter høyst én gang i timen og respekterer METs hurtigbufferregler. Du kan oppgi en kontakt-e-post for MET under Innstillinger → Vær; den fylles aldri inn automatisk.
 
 Anslaget for morgendagens forbruk og kostnad bygger på sammenhengen mellom forbruk og graddager de siste 45 dagene, og vises først når det finnes minst 10 dager med data. Prognose viser det samme anslaget for hver dag i varselet, inntil sju dager fram.
 
@@ -204,7 +204,7 @@ Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste ju
 - **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app, Claude eller prisstyring), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
 - **Høflig mot MELCloud.** Status hentes høyst hvert minutt og gjenbrukes i 10 minutter. Høyst 12 endringer per time med minst 5 sekunder mellom. Ved «for mye trafikk» (HTTP 429) stopper all trafikk til sperren er over, og ved avvist passord stopper all henting til ny innlogging er lagret.
 - **Hemmeligheter** (MELCloud-innlogging, økt og Tibber-nøkkel) ligger i macOS-nøkkelringen, aldri i klartekst på disk.
-- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel) og hvakosterstrommen.no (priser). Ingen analyse eller sporing.
+- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel), hvakosterstrommen.no (priser) og Apple Kart (stedssøk i innstillingene). Ingen analyse eller sporing.
 - **Ingen offisiell feilkodetabell** for MSZ-RW er offentlig. Forklaringene av feilkoder er derfor merket med usikkerhet.
 
 Varmepumpe er ikke laget av eller tilknyttet Mitsubishi Electric. MELCloud er et varemerke for Mitsubishi Electric.
