@@ -196,6 +196,8 @@ final class AppModel {
     var longForecast: [ForecastHour] = []
     /// Price control (Prognose → Prisstyring); runs on the poll tick.
     let priceControl: PriceControlRunner
+    /// App updates from GitHub releases (Innstillinger → Generelt).
+    let updater = Updater()
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 

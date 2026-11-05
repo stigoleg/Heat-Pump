@@ -92,6 +92,7 @@ struct GeneralSettings: View {
             } footer: {
                 Text("System følger innstillingen i macOS. Du kan også bytte med knappen i verktøylinjen, eller med ⌘⇧L (Visning → Utseende).")
             }
+            UpdateSection()
         }
         .formStyle(.grouped)
     }

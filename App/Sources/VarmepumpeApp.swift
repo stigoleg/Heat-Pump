@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.applyAppearance()
             // Polling belongs to the app, so it can outlive the window while price control is on.
             model.start()
+            model.updater.start()
         }
     }
 
@@ -35,7 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        MainActor.assumeIsolated { model.stop() }
+        MainActor.assumeIsolated {
+            model.stop()
+            // A downloaded update replaces the app now (automatic mode), after any price-control restore.
+            model.updater.finishOnQuit()
+        }
     }
 }
 
@@ -56,6 +61,9 @@ struct VarmepumpeApp: App {
         }
         .defaultSize(width: 1180, height: 860)
         .commands {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesCommand(model: model)
+            }
             CommandGroup(after: .toolbar) {
                 Button("Oppdater nå") {
                     Task { await model.refresh(force: true) }

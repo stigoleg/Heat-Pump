@@ -1,5 +1,9 @@
 # Endringslogg
 
+## [1.1.5] – 2026-11-05
+
+- **Oppdateringer i appen**: appen ser etter nye versjoner på GitHub én gang i døgnet, laster dem ned og installerer dem når du avslutter appen. Du kan også velge «Installer og start på nytt». En nedlasting tas bare i bruk når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Innstillingene ligger under Innstillinger → Generelt → Oppdateringer, og menyen Varmepumpe har «Se etter oppdateringer …». Versjoner før 1.1.5 må oppdateres for hånd én gang.
+
 ## [1.1.0] – 2026-11-05
 
 - **Prognose**: ny side med værvarsel for opptil ni dager, strømpriser fremover (kjente priser og et tydelig merket anslag for de neste dagene) og forventet forbruk og kostnad per dag.

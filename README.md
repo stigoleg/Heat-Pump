@@ -81,6 +81,8 @@ Skjermbildene er tatt i demo-modus med simulerte data.
 
 Krever macOS 26 eller nyere, på Apple Silicon eller Intel.
 
+Fra versjon 1.1.5 oppdaterer appen seg selv. Den ser etter nye versjoner på GitHub én gang i døgnet, laster dem ned og installerer dem når du avslutter appen. Du kan også velge «Installer og start på nytt». En nedlasting tas bare i bruk når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Valget og knappen «Se etter nå» ligger under Innstillinger → Generelt, og menyen Varmepumpe har «Se etter oppdateringer …».
+
 ## Kom i gang
 
 1. **Logg inn** med samme e-post og passord som i MELCloud-appen. Innloggingen lagres i nøkkelringen på Macen.
@@ -204,7 +206,7 @@ Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste ju
 - **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app, Claude eller prisstyring), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
 - **Høflig mot MELCloud.** Status hentes høyst hvert minutt og gjenbrukes i 10 minutter. Høyst 12 endringer per time med minst 5 sekunder mellom. Ved «for mye trafikk» (HTTP 429) stopper all trafikk til sperren er over, og ved avvist passord stopper all henting til ny innlogging er lagret.
 - **Hemmeligheter** (MELCloud-innlogging, økt og Tibber-nøkkel) ligger i macOS-nøkkelringen, aldri i klartekst på disk.
-- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel), hvakosterstrommen.no (priser) og Apple Kart (stedssøk i innstillingene). Ingen analyse eller sporing.
+- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel), hvakosterstrommen.no (priser), Apple Kart (stedssøk i innstillingene) og GitHub (nye versjoner, én gang i døgnet). Ingen analyse eller sporing.
 - **Ingen offisiell feilkodetabell** for MSZ-RW er offentlig. Forklaringene av feilkoder er derfor merket med usikkerhet.
 
 Varmepumpe er ikke laget av eller tilknyttet Mitsubishi Electric. MELCloud er et varemerke for Mitsubishi Electric.
@@ -259,7 +261,7 @@ git tag v1.2.3
 git push origin main v1.2.3
 ```
 
-Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.zip` med SHA-256 under Releases. Teksten hentes fra CHANGELOG.md.
+Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.zip` med SHA-256 under Releases. Teksten hentes fra CHANGELOG.md. Installerte apper finner versjonen via GitHubs «latest release». Den må derfor ikke merkes som forhåndsversjon, og zip-filen må hete `Varmepumpe-<versjon>.zip`.
 
 Den trenger disse hemmelighetene i repoet:
 

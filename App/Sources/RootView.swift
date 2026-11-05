@@ -20,6 +20,7 @@ struct RootView: View {
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.isDemo { DemoBadge() }
+                    UpdateReadyBadge()
                     SettingsLink {
                         Label("Innstillinger", systemImage: "gearshape")
                     }
