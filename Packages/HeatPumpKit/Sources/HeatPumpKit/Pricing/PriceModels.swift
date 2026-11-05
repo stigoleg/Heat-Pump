@@ -177,4 +177,6 @@ public struct HourCost: Codable, Sendable, Equatable {
     public var hour: Date
     public var kWh: Double
     public var cost: CostSplit?
+    /// True when the kWh come from the adapter's exact local counter (else MELCloud's counter).
+    public var measuredLocally: Bool = false
 }

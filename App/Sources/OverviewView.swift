@@ -38,7 +38,7 @@ struct OverviewView: View {
         return CardSurface(padding: Theme.Space.xl) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 let dial = ThermostatDial(
-                    room: state.roomTemperature, setpoint: shown.setTemperature, range: range,
+                    room: model.newerLocalSample?.roomTemperature ?? state.roomTemperature, setpoint: shown.setTemperature, range: range,
                     step: state.temperatureIncrement, mode: mode, isOn: shown.power
                 ) { value, commit in
                     model.debouncer?.edit(.temperature(value), commit: commit)
@@ -87,20 +87,32 @@ struct OverviewView: View {
 
     private func facts(_ state: DeviceState) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            let local = model.newerLocalSample
             fact("Ute", systemImage: "cloud.sun.fill", tint: Theme.Data.outside) {
-                Text(Format.degrees(state.outdoorTemperature))
+                Text(Format.degrees(local?.outdoorTemperature ?? state.outdoorTemperature))
+            } detail: {
+                if let local, local.outdoorTemperature != nil || local.roomTemperature != nil {
+                    Text(measuredLocallyText(local.timestamp))
+                }
             }
             fact("Effekt", systemImage: "bolt.fill", tint: .yellow) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                    if let watts = model.estimatedPowerW {
+                    if let watts = model.liveSample?.powerW {
+                        Text(Format.watts(Double(watts)))
+                        powerSparkline
+                    } else if let watts = model.estimatedPowerW {
                         Text("≈ " + Format.watts(watts))
+                        sparkline
                     } else {
                         Text("—")
                     }
-                    sparkline
                 }
             } detail: {
-                Text(model.estimatedPowerW == nil ? "Kommer med lokal tilkobling" : "Anslag fra strømmåleren i pumpen")
+                if let sample = model.liveSample {
+                    compressorIndicator(sample)
+                } else {
+                    Text(model.estimatedPowerW == nil ? "Kommer med lokal tilkobling" : "Anslag fra strømmåleren i pumpen")
+                }
             }
             fact("I dag", systemImage: "chart.bar.fill", tint: Theme.Data.energy) {
                 Text(todayText)
@@ -147,6 +159,45 @@ struct OverviewView: View {
         let hour = Calendar.current.dateInterval(of: .hour, for: Date())?.start
         guard let price = model.todayPrices.first(where: { $0.hour == hour }) else { return "—" }
         return Norwegian.format("%.2f kr/kWh", price.totalOre / 100)
+    }
+
+    private func measuredLocallyText(_ date: Date) -> String {
+        let seconds = max(0, Int(Date().timeIntervalSince(date)))
+        return seconds < 90 ? "Målt lokalt for \(seconds) s siden" : "Målt lokalt for \(seconds / 60) min siden"
+    }
+
+    private func compressorIndicator(_ sample: LocalSample) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(sample.isRunning ? Theme.Status.good : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
+            if sample.isRunning {
+                Text("Kompressor går" + (sample.compressorHz.map { " · \($0) Hz" } ?? ""))
+            } else {
+                Text("Kompressor står")
+            }
+        }
+    }
+
+    /// Power over the last 60 minutes from local readings.
+    @ViewBuilder private var powerSparkline: some View {
+        let points = model.recentLocal.compactMap { s in s.powerW.map { (date: s.timestamp, watts: Double($0)) } }
+        if points.count >= 2 {
+            Chart(points, id: \.date) { p in
+                AreaMark(x: .value("Tid", p.date), y: .value("W", p.watts))
+                    .foregroundStyle(ChartKit.areaGradient(.yellow))
+                    .interpolationMethod(.stepEnd)
+                LineMark(x: .value("Tid", p.date), y: .value("W", p.watts))
+                    .foregroundStyle(Color.yellow)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .interpolationMethod(.stepEnd)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartYScale(domain: 0...max(100, points.map(\.watts).max() ?? 100))
+            .frame(width: 70, height: 18)
+            .accessibilityLabel("Effekt siste time")
+        }
     }
 
     /// Tiny bar sparkline of the last hours' use.

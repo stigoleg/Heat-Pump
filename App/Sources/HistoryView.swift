@@ -22,6 +22,7 @@ struct HistoryView: View {
     @State private var data = HistoryData()
     @State private var previous = HistoryData()
     @State private var energy = EnergyData()
+    @State private var localPower = LocalPowerData()
     @State private var showCost = false
     @State private var selected: Date?
     @State private var selectedPrice: Date?
@@ -57,6 +58,7 @@ struct HistoryView: View {
             data = await model.history(from: start, to: now)
             previous = await model.history(from: range.shifted(start, by: -1), to: start)
             energy = await model.energy(range: range)
+            localPower = await model.localPower(range: range)
         }
         .onChange(of: tab) { selected = nil }
         .onAppear {
@@ -474,54 +476,169 @@ struct HistoryView: View {
 
     // MARK: Power
 
-    private var powerTab: some View {
-        let hourly = energy.hourly.isEmpty ? model.todayHourly : energy.hourly
-        let watts = hourly.map { (hour: $0.hour, watts: $0.kWh * 1000) }
-        let average = watts.map(\.watts).average
+    @Environment(\.openSettings) private var openSettings
+
+    @ViewBuilder private var powerTab: some View {
+        if !model.localSettings.enabled && localPower.buckets.isEmpty {
+            CardSurface {
+                VStack(spacing: Theme.Space.m) {
+                    EmptyChart(
+                        title: "Effekt krever lokal tilkobling",
+                        message: "Slå på lokal tilkobling, så leser appen effekt i watt og kompressorens aktivitet direkte fra Wi-Fi-modulen på hjemmenettet (bare lesing).",
+                        systemImage: "bolt.badge.clock")
+                    Button("Åpne Lokal tilkobling") {
+                        model.settingsTab = "lokal"
+                        openSettings()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        } else {
+            localPowerContent
+        }
+    }
+
+    private var localPowerContent: some View {
+        let buckets = localPower.buckets
+        let readings = buckets.reduce(0) { $0 + $1.count }
+        let average = readings > 0 ? buckets.reduce(0) { $0 + $1.averageW * Double($1.count) } / Double(readings) : nil
+        let maxW = buckets.map(\.maxW).max()
+        let observed = localPower.starts.reduce(0) { $0 + $1.observedMinutes } * 60
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             KPIRow {
                 KPITile(
-                    label: "Nå (anslag)", value: model.estimatedPowerW.map { "≈ " + Format.watts($0) } ?? "—",
-                    detail: "fra strømmåleren i pumpen", systemImage: "bolt.fill", tint: .yellow)
-                KPITile(label: "Snitt", value: average.map { "≈ " + Format.watts($0) } ?? "—", systemImage: "chart.bar", tint: .yellow)
+                    label: "Snitteffekt", value: Format.watts(average), detail: "målt lokalt i perioden", systemImage: "bolt.fill",
+                    tint: .yellow)
+                KPITile(label: "Høyeste effekt", value: Format.watts(maxW), systemImage: "arrow.up.to.line", tint: .yellow)
                 KPITile(
-                    label: "Høyeste time", value: watts.map(\.watts).max().map { "≈ " + Format.watts($0) } ?? "—",
-                    systemImage: "arrow.up.to.line", tint: .yellow)
+                    label: "Starter siste 24 t", value: "\(localPower.startsLast24h)",
+                    detail: "kompressoren startet", systemImage: "arrow.clockwise", tint: Theme.Data.orange)
                 KPITile(
-                    label: "Kostnad i perioden", value: Format.kroner(energy.totalCost), systemImage: "creditcard.fill",
-                    tint: Theme.Data.purple)
+                    label: "Driftstid", value: durationText(localPower.runningSeconds),
+                    detail: observed > 0
+                        ? Norwegian.format("%.0f %% av tiden med målinger", localPower.runningSeconds / observed * 100) : nil,
+                    systemImage: "timer", tint: Theme.Data.orange)
             }
-            TrendCard(title: "Effekt per time") {
-                LegendDot(label: "Snitteffekt (W)", color: .yellow)
+            TrendCard(title: "Effekt", value: model.liveSample?.powerW.map { "Nå " + Format.watts(Double($0)) }) {
+                LegendDot(label: "Snitt (W)", color: .yellow)
             } chart: {
-                if watts.count < 2 {
+                if buckets.count < 2 {
                     EmptyChart(
-                        title: "Effekt kommer med lokal tilkobling",
-                        message: "Når appen kobles direkte til varmepumpen på hjemmenettet (fase 2), vises effekt i watt. Til da regnes et anslag fra strømmåleren i pumpen, som trenger noen timer med målinger.",
+                        title: "Ingen lokale målinger ennå",
+                        message: "Appen leser Wi-Fi-modulen hvert minutt mens den er åpen. Grafen fylles etter hvert.",
                         systemImage: "bolt.badge.clock")
                 } else {
-                    Chart(watts, id: \.hour) { w in
-                        AreaMark(x: .value("Time", w.hour), y: .value("W", w.watts))
-                            .foregroundStyle(ChartKit.areaGradient(.yellow))
-                            .interpolationMethod(.stepEnd)
-                        LineMark(x: .value("Time", w.hour), y: .value("W", w.watts))
-                            .foregroundStyle(.yellow)
-                            .interpolationMethod(.stepEnd)
-                        if let s = nearest(watts, to: selected, by: \.hour), s.hour == w.hour {
-                            RuleMark(x: .value("Valgt", s.hour))
-                                .foregroundStyle(Color.secondary.opacity(0.4))
-                                .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
-                                    ChartTooltip(title: Norwegian.dateTime(s.hour), rows: [("Effekt", "≈ " + Format.watts(s.watts), .yellow)])
-                                }
-                        }
-                    }
-                    .calmYAxis { Norwegian.format("%.0f W", $0) }
-                    .calmXAxis(range == .day ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat)
-                    .chartXSelection(value: $selected)
-                    .frame(height: 240)
+                    powerChart(buckets).frame(height: 220)
                 }
             }
+            TrendCard(title: "Kompressor") {
+                HStack(spacing: Theme.Space.m) {
+                    LegendDot(label: "Frekvens (Hz)", color: Theme.Data.orange)
+                    LegendDot(label: "Starter per time", color: Theme.Data.purple)
+                }
+            } chart: {
+                if buckets.count < 2 {
+                    EmptyChart(title: "Ingen kompressordata ennå", message: "Vises når appen har lest modulen en stund.")
+                } else {
+                    VStack(spacing: Theme.Space.l) {
+                        hzChart(buckets).frame(height: 140)
+                        startsChart(localPower.starts).frame(height: 90)
+                    }
+                }
+            }
+            Text(
+                "Målt direkte fra Wi-Fi-modulen på hjemmenettet. Starter telles bare når målingene ligger tett (minst hvert 5. minutt), altså mens appen er åpen. Én til tre starter i timen er vanlig; fire eller flere over flere timer kalles korte sykluser."
+            )
+            .font(.callout).foregroundStyle(.secondary)
         }
+    }
+
+    private var powerAxis: Date.FormatStyle { range == .day ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat }
+
+    private func powerChart(_ buckets: [LocalPowerBucket]) -> some View {
+        Chart {
+            ForEach(buckets, id: \.start) { b in
+                AreaMark(x: .value("Tid", b.start), y: .value("W", b.averageW))
+                    .foregroundStyle(ChartKit.areaGradient(.yellow))
+                    .interpolationMethod(.stepEnd)
+                LineMark(x: .value("Tid", b.start), y: .value("W", b.averageW))
+                    .foregroundStyle(.yellow)
+                    .interpolationMethod(.stepEnd)
+            }
+            if let b = nearest(buckets, to: selected, by: \.start) {
+                RuleMark(x: .value("Valgt", b.start))
+                    .foregroundStyle(Color.secondary.opacity(0.4))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                        ChartTooltip(
+                            title: Norwegian.dateTime(b.start),
+                            rows: [
+                                ("Snitt", Format.watts(b.averageW), .yellow), ("Maks", Format.watts(b.maxW), .yellow),
+                                ("Kompressor på", Format.percentShare(b.runningShare), Theme.Data.orange),
+                            ])
+                    }
+            }
+        }
+        .chartXScale(domain: periodStart...Date())
+        .calmYAxis { Norwegian.format("%.0f W", $0) }
+        .calmXAxis(powerAxis)
+        .chartXSelection(value: $selected)
+    }
+
+    private func hzChart(_ buckets: [LocalPowerBucket]) -> some View {
+        Chart {
+            ForEach(buckets, id: \.start) { b in
+                LineMark(x: .value("Tid", b.start), y: .value("Hz", b.averageHz))
+                    .foregroundStyle(Theme.Data.orange)
+                    .interpolationMethod(.stepEnd)
+            }
+            if let b = nearest(buckets, to: selected, by: \.start) {
+                RuleMark(x: .value("Valgt", b.start))
+                    .foregroundStyle(Color.secondary.opacity(0.4))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                        ChartTooltip(
+                            title: Norwegian.dateTime(b.start),
+                            rows: [
+                                ("Snitt", Norwegian.format("%.0f Hz", b.averageHz), Theme.Data.orange),
+                                ("Maks", Norwegian.format("%.0f Hz", b.maxHz), Theme.Data.orange),
+                            ])
+                    }
+            }
+        }
+        .chartXScale(domain: periodStart...Date())
+        .calmYAxis { Norwegian.format("%.0f Hz", $0) }
+        .chartXAxis(.hidden)
+        .chartXSelection(value: $selected)
+    }
+
+    private func startsChart(_ starts: [HourStarts]) -> some View {
+        Chart {
+            ForEach(starts, id: \.hour) { h in
+                BarMark(x: .value("Time", h.hour, unit: .hour), y: .value("Starter", h.starts))
+                    .foregroundStyle(h.starts >= 4 ? Theme.Status.caution : Theme.Data.purple.opacity(0.75))
+                    .cornerRadius(1.5)
+            }
+            if let h = nearest(starts, to: selected, by: \.hour) {
+                RuleMark(x: .value("Valgt", h.hour))
+                    .foregroundStyle(Color.secondary.opacity(0.4))
+                    .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
+                        Text("\(h.starts) starter · \(Format.hour(h.hour))")
+                            .font(.caption2).monospacedDigit()
+                            .padding(4)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+                    }
+            }
+        }
+        .chartXScale(domain: periodStart...Date())
+        .calmYAxis { Norwegian.format("%.0f", $0) }
+        .calmXAxis(powerAxis)
+        .chartXSelection(value: $selected)
+    }
+
+    private func durationText(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds / 60)
+        if minutes < 60 { return "\(minutes) min" }
+        return "\(minutes / 60) t \(minutes % 60) min"
     }
 }
 

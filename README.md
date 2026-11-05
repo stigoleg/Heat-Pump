@@ -44,7 +44,7 @@ VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=/tmp/varmepumpe-demo.sqlite \
   build/DerivedData/Build/Products/Debug/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp
 ```
 
-Appen viser merket «Demo-data». MCP-serveren i demo-modus viser godkjenningsvinduet som ellers, med mindre `VARMEPUMPE_APPROVAL` er satt. Den simulerte varmepumpen gir realistiske vinterdata og en feil i feilloggen omtrent hver 17. dag.
+Appen viser merket «Demo-data». MCP-serveren i demo-modus viser godkjenningsvinduet som ellers, med mindre `VARMEPUMPE_APPROVAL` er satt. Den simulerte varmepumpen gir realistiske vinterdata og en feil i feilloggen omtrent hver 17. dag. I demo-modus er lokal tilkobling slått på mot en simulert Wi-Fi-modul (192.168.1.50) som svarer gjennom samme kryptering og tolkning som den ekte, med kompressorrunder på 300–1200 W og en uke med målinger fra start.
 
 ## Koble til Claude Code
 
@@ -78,6 +78,29 @@ Nettleiens energiledd er forhåndsutfylt med Elvias satser for husholdninger fra
 
 Kostnad per døgn = forbruk × (strøm + nettleie − støtte). Har appen forbruk per time (fra strømmåleren i pumpen, målt mens appen er åpen), brukes timeprisen for hver time. Ellers prises døgnets kWh med døgnets snittpris, og beløpet merkes «anslag». Priser hentes høyst én gang i timen, morgendagens priser først etter kl. 13.30.
 
+## Lokal tilkobling (effekt og kompressor)
+
+Wi-Fi-modulen i varmepumpen svarer også direkte på hjemmenettet. Under **Innstillinger → Lokal tilkobling** kan appen lese den der, i tillegg til MELCloud. Det gir effekt i watt, om kompressoren går (og hvor fort, i Hz), antall kompressorstarter per time, raskere temperaturer, feilkoden fra innedelen og en nøyaktig strømmåler (0,1 kWh), slik at kostnaden per time blir eksakt i stedet for et anslag.
+
+Slik slår du det på:
+
+1. Åpne Innstillinger → Lokal tilkobling.
+2. Trykk **Finn automatisk**. Appen prøver først lagret adresse, og leter ellers på Macens eget nett (/24) etter varmepumpens maskinvareadresse fra MELCloud. Adressen vises ikke. Du kan også skrive inn IP-adressen fra ruterens enhetsliste.
+3. Trykk **Test** (viser fastvareversjon, Wi-Fi-signal, effekt og temperaturer), slå på bryteren og trykk **Lagre**.
+
+Gi gjerne varmepumpen fast IP-adresse i ruteren. Bytter den adresse og slutter å svare, prøver appen å finne den igjen automatisk, høyst én gang i timen.
+
+Sikkerhet og begrensninger:
+
+- **Bare lesing, håndhevet i koden.** Den lokale klienten har én operasjon: en statusforespørsel (`<CSV></CSV>` til `/smart`). Den sender aldri `CONNECT`-innstillingen (som kan koble modulen fra MELCloud), kommandoer, omstart, ECHONET eller admin-sider. En test sjekker at klartekstet er nøyaktig `<CSV></CSV>`. All styring går fortsatt via MELCloud.
+- Appen godtar bare private IPv4-adresser (10.x, 172.16–31.x, 192.168.x).
+- Høyst én forespørsel per 20 sekunder (felles for appen og Claude), 5 sekunders tidsavbrudd, og etter feil venter appen 2, 4, 8 og deretter 10 minutter. Appen leser hvert minutt mens den er åpen; Claude (`get_live_status`) gjenbruker en avlesning under ett minutt gammel.
+- MAC-adresse, serienummer og profilkoder fjernes rett etter dekryptering og lagres eller vises aldri.
+- Endepunktet er uoffisielt. Det kan slutte å virke etter en fastvareoppdatering av modulen (for eksempel 43.00 eller nyere). Da virker resten av appen som før.
+- Av som standard. macOS spør første gang om appen får bruke lokalt nettverk; svar Tillat.
+
+Målingene lagres i tabellen `local_samples` (omtrent én per minutt mens appen er åpen). Etter 90 dager tynnes de ut til én per 10. minutt, og etter ett år til én per time. Helsesjekken bruker dem til regler for korte sykluser (mange kompressorstarter per time), uvanlig høyt forbruk for temperaturen, feilkode fra modulen og modul som ikke svarer lokalt. Grensene er tommelfingerregler og er beskrevet i kunnskapsdokumentet om vedlikehold.
+
 ## Endringer sendes automatisk
 
 Endringer i Kontroll og på termostaten på Oversikt sendes automatisk omtrent 2 sekunder etter siste justering (for glidebryter og termostathjul: etter at du slipper). Flere justeringer samles i én sending. Stiller du tilbake til nåværende verdi, sendes ingenting. Merket øverst viser «Endret…», «Sender…», «Sendt – venter på pumpen», «Bekreftet» eller «Feil: …». Er grensen på 12 sendinger per time nådd, venter endringen og sendes når det er lov igjen. Når færre enn 4 sendinger gjenstår denne timen, vises antallet.
@@ -108,7 +131,8 @@ Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite
 | `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, health, activity) |
 | `VARMEPUMPE_HISTORY_TAB` | Kun utvikling: fanen Historikk åpner på (temperature, energy, energy-kr, operation, power) |
 | `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light` eller `dark` (skjermbilder) |
-| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (konto, strompris, claude, data) |
+| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (konto, strompris, lokal, claude, data) |
+| `VARMEPUMPE_MOCK_CYCLING=short` | Kun utvikling, sammen med `VARMEPUMPE_BACKEND=mock`: den simulerte kompressoren går i korte runder, så regelen for korte sykluser kan vises |
 
 ## Appikon
 

@@ -32,6 +32,8 @@ public actor HeatPumpService {
     private var device: DeviceSummary?
     /// Builds the price source for the current settings (nil for Norgespris or a missing token).
     let priceProvider: @Sendable (PriceSettings) -> (any PriceProvider)?
+    /// Read-only access to the Wi-Fi adapter on the home network (unavailable unless injected).
+    let local: LocalAccess
 
     public init(
         backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
@@ -40,9 +42,11 @@ public actor HeatPumpService {
         sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(for: .seconds(max(0, seconds)))
         },
-        priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil }
+        priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil },
+        local: LocalAccess = .unavailable
     ) {
         self.priceProvider = priceProvider
+        self.local = local
         self.backend = backend
         self.store = store
         self.credentials = credentials
@@ -58,7 +62,9 @@ public actor HeatPumpService {
     ) throws -> HeatPumpService {
         let store = try HistoryStore(path: HistoryStore.defaultPath(environment: environment))
         if isMock(environment: environment) {
-            return HeatPumpService(backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() })
+            return HeatPumpService(
+                backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() },
+                local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"))
         }
         let credentials = KeychainCredentialStore(environment: environment)
         return HeatPumpService(
@@ -71,7 +77,7 @@ public actor HeatPumpService {
                     // Read only when prices are actually fetched (at most hourly).
                     return credentials.loadTibberToken().map { TibberPriceProvider(token: $0) }
                 }
-            })
+            }, local: .network)
     }
 
     public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
@@ -751,7 +757,7 @@ public actor HeatPumpService {
                     deviceId: $0, fromDay: WireDate.day(since, timeZone: timeZone), toDay: WireDate.day(t, timeZone: timeZone))
             } ?? [],
             maintenance: try store.maintenanceRecords(limit: 500),
-            now: t, timeZone: timeZone, blockedUntil: try store.blockedUntil(now: t))
+            now: t, timeZone: timeZone, blockedUntil: try store.blockedUntil(now: t), local: try localHealthInput(now: t))
         return HealthEngine.evaluate(input)
     }
 
@@ -762,6 +768,7 @@ public actor HeatPumpService {
     }
 
     public func history(metric: HistoryMetric, from: Date, to: Date) throws -> [HistoryPoint] {
+        if metric.isLocal { return try localHistory(metric: metric, from: from, to: to) }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return [] }
         var points: [HistoryPoint] = try store.snapshots(deviceId: deviceId, from: from, to: to).compactMap { s in
             switch metric {
@@ -770,6 +777,7 @@ public actor HeatPumpService {
             case .setTemperature: s.setTemperature.map { HistoryPoint(timestamp: s.fetchedAt, value: $0, text: nil, source: "snapshot") }
             case .mode: HistoryPoint(timestamp: s.fetchedAt, value: s.mode.map { Double($0.rawValue) }, text: s.mode?.key, source: "snapshot")
             case .power: HistoryPoint(timestamp: s.fetchedAt, value: s.power ? 1 : 0, text: s.power ? "on" : "off", source: "snapshot")
+            case .powerW, .compressorHz: nil
             }
         }
         if [.roomTemperature, .outdoorTemperature, .setTemperature].contains(metric) {
@@ -806,8 +814,18 @@ public actor HeatPumpService {
 
     public func energy(period: EnergyPeriod, from: Date, to: Date) throws -> [EnergyBucket] {
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return [] }
-        let days = try store.energyDays(
+        var days = try store.energyDays(
             deviceId: deviceId, fromDay: WireDate.day(from, timeZone: timeZone), toDay: WireDate.day(to, timeZone: timeZone))
+        // Days the adapter's local counter covers completely use its exact total.
+        let local = try localDayTotals(from: from, to: to)
+        if !local.isEmpty {
+            var byDay = Dictionary(days.map { ($0.day, $0) }, uniquingKeysWith: { a, _ in a })
+            for (day, kWh) in local {
+                let cooling = byDay[day]?.coolingKWh
+                byDay[day] = EnergyDay(day: day, totalKWh: kWh, heatingKWh: max(0, kWh - (cooling ?? 0)), coolingKWh: cooling)
+            }
+            days = byDay.values.sorted { $0.day < $1.day }
+        }
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = timeZone
         let costs = try dayCosts(days: days)

@@ -100,7 +100,7 @@ public final class HistoryStore: Sendable {
     static let indefinite = Date(timeIntervalSince1970: 253_402_300_799)  // 9999-12-31
 
     public let path: String
-    private let pool: DatabasePool
+    let pool: DatabasePool
 
     public init(path: String) throws {
         self.path = path
@@ -247,6 +247,35 @@ public final class HistoryStore: Sendable {
                         key TEXT PRIMARY KEY,
                         json TEXT NOT NULL
                     );
+                    """)
+        }
+        migrator.registerMigration("v6") { db in
+            // Readings from the Wi-Fi adapter on the home network (read-only local access).
+            try db.execute(
+                sql: """
+                    CREATE TABLE local_samples (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ts DATETIME NOT NULL,
+                        power BOOLEAN,
+                        mode INTEGER,
+                        iSee BOOLEAN,
+                        setTemperature DOUBLE,
+                        fan INTEGER,
+                        vaneVertical INTEGER,
+                        vaneHorizontal INTEGER,
+                        roomTemperature DOUBLE,
+                        roomTemperature2 DOUBLE,
+                        outdoorTemperature DOUBLE,
+                        compressorHz INTEGER,
+                        operating BOOLEAN,
+                        powerW INTEGER,
+                        energyKWh DOUBLE,
+                        errorCode INTEGER,
+                        rssi INTEGER,
+                        adapterVersion TEXT,
+                        cloudConnected BOOLEAN
+                    );
+                    CREATE INDEX local_samples_ts ON local_samples(ts);
                     """)
         }
         return migrator

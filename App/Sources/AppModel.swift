@@ -105,6 +105,14 @@ struct HistoryData {
     var modes: [HistoryPoint] = []
 }
 
+/// Local power data for the Effekt tab.
+struct LocalPowerData {
+    var buckets: [LocalPowerBucket] = []
+    var starts: [HourStarts] = []
+    var runningSeconds: TimeInterval = 0
+    var startsLast24h = 0
+}
+
 /// Energy and cost for one period, with the previous period for comparison.
 struct EnergyData {
     var buckets: [EnergyBucket] = []
@@ -126,6 +134,8 @@ final class AppModel {
     var selection: Screen? = .overview
     /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
     var initialHistoryTab: String?
+    /// Selected Settings tab (konto, strompris, lokal, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
+    var settingsTab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "konto"
     var stateResult: StateResult?
     /// State as it should be after changes not yet confirmed by a refresh.
     var effectiveState: DeviceState?
@@ -146,6 +156,11 @@ final class AppModel {
     var todayHourly: [HourCost] = []
     var estimatedPowerW: Double?
     var priceMessage: String?
+    /// Latest local reading from the Wi-Fi adapter and its reachability.
+    var live: LiveStatus?
+    /// Local readings of the last 60 minutes (power sparkline).
+    var recentLocal: [LocalSample] = []
+    var localSettings = LocalSettings.default
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 
@@ -250,6 +265,8 @@ final class AppModel {
         }
         let sync = try? await service.syncPrices()
         priceMessage = sync?.status == .failed ? sync?.message : nil
+        // Local adapter: one read per poll at most (the service enforces 20 s spacing and back-off).
+        if (try? await service.localSettings())?.enabled == true { _ = try? await service.liveStatus(maxAge: 50) }
         await reloadLocal()
         await debouncer?.refreshBudget()
         await deliverNotifications()
@@ -277,6 +294,10 @@ final class AppModel {
             }
             todayHourly = try await service.hourlyConsumption(from: now.addingTimeInterval(-86_400), to: now)
             estimatedPowerW = try await service.estimatedPowerW()
+            localSettings = try await service.localSettings()
+            // Stored reading only; never reads the adapter.
+            live = try await service.storedLiveStatus()
+            recentLocal = try await service.localSamples(from: now.addingTimeInterval(-3600), to: now)
         } catch {
             lastError = error.localizedDescription
         }
@@ -326,6 +347,74 @@ final class AppModel {
             data.previousHourly = (try? await service.hourlyConsumption(from: previousFrom, to: from)) ?? []
         }
         return data
+    }
+
+    // MARK: Local connection
+
+    /// Local reading younger than 3 minutes, or nil.
+    var liveSample: LocalSample? {
+        guard let sample = live?.sample, Date().timeIntervalSince(sample.timestamp) < 180 else { return nil }
+        return sample
+    }
+
+    /// Local reading newer than the cloud snapshot (for temperatures on Oversikt), or nil.
+    var newerLocalSample: LocalSample? {
+        guard let sample = liveSample else { return nil }
+        guard let state else { return sample }
+        return sample.timestamp > state.fetchedAt ? sample : nil
+    }
+
+    func localPower(range: HistoryRange) async -> LocalPowerData {
+        guard let service else { return LocalPowerData() }
+        let to = Date()
+        let from = range.start(now: to)
+        let bucket: TimeInterval =
+            switch range {
+            case .day: 5 * 60
+            case .week: 30 * 60
+            case .month: 2 * 3600
+            case .year: 24 * 3600
+            }
+        var data = LocalPowerData()
+        // The bucket still filling up is left out (a few readings would show as a spike).
+        data.buckets = ((try? await service.localPowerBuckets(from: from, to: to, bucket: bucket)) ?? [])
+            .filter { $0.start.addingTimeInterval(bucket) <= to }
+        let samples = (try? await service.localSamples(from: from, to: to)) ?? []
+        data.starts = CompressorCycles.startsPerHour(samples, timeZone: .current)
+        data.runningSeconds = CompressorCycles.runningSeconds(in: samples)
+        data.startsLast24h = CompressorCycles.starts(in: samples.filter { $0.timestamp >= to.addingTimeInterval(-86_400) }).starts
+        return data
+    }
+
+    /// Saves the local settings. Returns a Norwegian error, or nil.
+    func saveLocalSettings(_ settings: LocalSettings) async -> String? {
+        guard let service else { return startupError }
+        do {
+            try await service.saveLocalSettings(settings)
+            localSettings = try await service.localSettings()
+            if localSettings.enabled { _ = try? await service.liveStatus(maxAge: 0) }
+            await reloadLocal()
+            return nil
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func testLocal(host: String) async -> LocalTestResult {
+        guard let service else { return LocalTestResult(ok: false, message: startupError ?? "", sample: nil) }
+        let result = (try? await service.testLocal(host: host))
+            ?? LocalTestResult(ok: false, message: "Testen kunne ikke kjøres.", sample: nil)
+        await reloadLocal()
+        return result
+    }
+
+    func discoverLocal() async -> LocalDiscoveryResult {
+        guard let service else { return LocalDiscoveryResult(host: nil, message: startupError ?? "") }
+        let result = (try? await service.discoverLocal())
+            ?? LocalDiscoveryResult(host: nil, message: "Søket kunne ikke kjøres.")
+        localSettings = (try? await service.localSettings()) ?? localSettings
+        await reloadLocal()
+        return result
     }
 
     // MARK: Prices

@@ -36,7 +36,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_history",
-            description: "Time series for one metric from polled snapshots and the MELCloud temperature log. Timestamps are ISO 8601.",
+            description: "Time series for one metric from polled snapshots and the MELCloud temperature log. power_w (W) and compressor_hz come from the local Wi-Fi adapter readings (only when local access is on; long ranges are averaged per bucket, source \"local\"). Timestamps are ISO 8601.",
             inputSchema: [
                 "type": "object",
                 "properties": [
@@ -65,6 +65,11 @@ enum ToolCatalog {
             description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy part − strømstøtte. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
+        Tool(
+            name: "get_live_status",
+            description: "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, age of the reading, compressor starts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
+            inputSchema: ["type": "object", "properties": [:]],
+            annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),
         Tool(
             name: "get_maintenance_status",
             description: "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",

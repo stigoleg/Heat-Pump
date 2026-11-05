@@ -68,6 +68,15 @@ Kilde: norsk bruksanvisning for MSZ-RW25/35/50VG, avsnittet «Rengjøring». Sl�
 - Ikke ta på metalldelene eller i-see-sensoren.
 - Ikke vask innsiden av innedelen selv. Det skal forhandleren gjøre.
 
+## Tegn fra lokale målinger
+
+Med lokal tilkobling slått på følger appen med på effekt og kompressorstarter. Grensene under er tommelfingerregler (heuristikk) for en liten veggmodell, ikke grenser fra Mitsubishi:
+
+- **Korte sykluser**: i snitt fire eller flere kompressorstarter i timen over tre timer mens den varmer, gir en advarsel. Seks eller flere starter i minst to av de tre timene gir en sterkere advarsel. Vanlige årsaker: tett luftfilter, en varmepumpe som er stor for rommet (særlig i mildvær), eller at ønsket temperatur eller viften endres ofte. Rengjør filteret, la temperaturen ligge fast og bruk gjerne vifte auto. Fortsetter det i flere dager, også når det er kaldt, ring forhandleren.
+- **Høyt forbruk for temperaturen**: appen sammenligner watt per grad forskjell mellom inne og ute (mens kompressoren går) det siste døgnet med medianen for de 14 dagene før. Mer enn 1,5 ganger det vanlige er til info, mer enn 2 ganger er en advarsel. Mulige årsaker: skittent filter, is eller snø på utedelen, mye avriming. Regelen trenger minst 7 dager med målinger.
+- **Feilkode fra modulen**: modulen sender en kode (0x8000 betyr ingen feil). Annen kode vises som feil selv om MELCloud ikke har meldt den ennå.
+- **Modulen svarer ikke lokalt** i over en time: oftest ny IP-adresse fra ruteren. Bruk «Finn automatisk» i appen. Styring via MELCloud virker uansett.
+
 ## Profesjonell service
 
 Etter noen sesonger bør enheten undersøkes og rengjøres innvendig av forhandleren (bruksanvisningen sier dette krever spesialkompetanse). Et vanlig intervall er hvert 2.–3. år, oftere ved mye bruk. Dette intervallet er en tommelfingerregel, ikke et krav fra Mitsubishi.
@@ -121,6 +130,21 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 - Unngå store hopp (mer enn 2 °C) og å slå varmepumpen av og på for å spare. Hyppig av/på sliter på kompressoren, og det koster mer å varme opp igjen et nedkjølt hus.
 - Med Norgespris er prisen lik hele døgnet; da sparer du mest på jevn, litt lavere temperatur. Nettleien er likevel lavere om natten og i helgene.
 - Kostnaden appen viser er strøm + nettleiens energiledd − strømstøtte. Kapasitetsleddet (fastleddet) er ikke med, fordi det avhenger av hele husets høyeste forbruk.
+
+## Lokale målinger (effekt og kompressor)
+
+Når lokal tilkobling er slått på i appen, leser appen Wi-Fi-modulen direkte på hjemmenettet (bare lesing, aldri styring). Det gir:
+
+- **Effekt (W)**: hva hele varmepumpen trekker akkurat nå. Rundt 4 W betyr at kompressoren står (bare elektronikk og vifte i hvile). Mens den varmer er 300–1200 W vanlig for denne størrelsen; mer når det er kaldt ute eller når den varmer opp et kaldt rom.
+- **Kompressor (Hz)**: hvor hardt kompressoren jobber. 0 Hz betyr at den står. Lav, jevn frekvens over lang tid er det mest effektive.
+- **Strømmåler**: en teller i pumpen med 0,1 kWh oppløsning. Den gir nøyaktig forbruk per time, så kostnaden blir eksakt (ikke anslag) for døgn appen har målt hele.
+- **Kompressorstarter per time**: Én til tre starter i timen er normalt. Mange korte runder (fire eller flere i timen over flere timer) kalles korte sykluser og sliter på kompressoren. Se «Vedlikehold» for hva du kan gjøre.
+
+Råd for styring ut fra effekt:
+
+- Unngå å skru ønsket temperatur mye opp og ned. Hvert hopp gir en kraftig start med høy effekt.
+- Er effekten høy over lang tid selv om det ikke er kaldt ute, sjekk luftfilteret og utedelen før du endrer innstillinger.
+- Endepunktet i modulen er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker alt annet via MELCloud som før.
 
 ## Sikkerhet
 

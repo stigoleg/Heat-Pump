@@ -14,12 +14,15 @@ public struct HealthInput: Sendable {
     public var timeZone: TimeZone
     /// Set while MELCloud blocks our requests; explains why data is old.
     public var blockedUntil: Date?
+    /// Local adapter readings and reachability (nil when local access was never used).
+    public var local: LocalHealthInput?
 
     public init(
         latestState: DeviceState?, snapshots: [DeviceState] = [], temperaturePoints: [TemperaturePoint] = [],
         errorEvents: [ErrorLogEntry] = [], energyDays: [EnergyDay] = [], maintenance: [MaintenanceRecord] = [],
-        now: Date, timeZone: TimeZone = .current, blockedUntil: Date? = nil
+        now: Date, timeZone: TimeZone = .current, blockedUntil: Date? = nil, local: LocalHealthInput? = nil
     ) {
+        self.local = local
         self.latestState = latestState
         self.snapshots = snapshots
         self.temperaturePoints = temperaturePoints
@@ -67,6 +70,10 @@ public enum HealthEngine {
                     code: "no_data", severity: .info, title: "Ikke nok data ennå",
                     detail: "Det er ikke hentet noen status fra varmepumpen ennå, så helsesjekken er begrenset.",
                     recommendation: "Hent status (oppdater) og kjør helsesjekken igjen om litt."))
+        }
+        if let local = input.local {
+            findings += LocalHealth.evaluate(local, cloudErrorShown: findings.contains { ["active_error", "error_flag"].contains($0.code) },
+                                             now: input.now, timeZone: input.timeZone)
         }
         findings += errorLog(input)
         findings += energyAnomaly(input)

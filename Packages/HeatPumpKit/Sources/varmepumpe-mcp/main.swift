@@ -11,7 +11,9 @@ let instructions = """
     ("Godkjenn"/"Avvis", rejected after 120 s without an answer); the change is only sent if the \
     user clicks Godkjenn. Never chain several changes without asking. The user is not a heat-pump \
     expert; answer in Norwegian bokmål. Data may be cached: check meta.dataAgeSeconds and \
-    meta.blockedUntil. MELCloud blocks accounts that poll too often, so do not call refresh repeatedly.
+    meta.blockedUntil. MELCloud blocks accounts that poll too often, so do not call refresh repeatedly. \
+    When local access is on, get_live_status gives live power (W), compressor activity and starts per \
+    hour straight from the adapter on the home network (read-only); use it for "what is it doing now".
     """
 
 let healthCheckPrompt = """
@@ -21,6 +23,7 @@ let healthCheckPrompt = """
     3. Kall get_error_log med days=90.
     4. Kall get_history for room_temperature og outdoor_temperature for de siste 7 dagene.
     5. Kall get_maintenance_status.
+    6. Kall get_live_status (gir bare data hvis lokal tilkobling er slått på; ellers hopp over).
 
     Skriv deretter en kort, prioritert oppsummering på norsk bokmål for en som ikke kan noe om varmepumper:
     - **Dette er i orden**

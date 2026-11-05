@@ -132,6 +132,11 @@ enum Format {
         return Norwegian.format("%.0f W", value)
     }
 
+    /// 0…1 as "42 %".
+    static func percentShare(_ value: Double) -> String {
+        Norwegian.format("%.0f %%", value * 100)
+    }
+
     static func percent(_ value: Double) -> String {
         Norwegian.format("%+.0f %%", value)
     }

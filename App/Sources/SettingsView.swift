@@ -3,17 +3,18 @@ import HeatPumpKit
 import SwiftUI
 
 struct SettingsView: View {
-    /// Dev only (`VARMEPUMPE_SETTINGS_TAB`, screenshots): konto, strompris, claude or data.
-    @State private var tab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "konto"
+    @Environment(AppModel.self) private var model
 
     var body: some View {
-        TabView(selection: $tab) {
+        @Bindable var model = model
+        TabView(selection: $model.settingsTab) {
             Tab("Konto", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
             Tab("Strømpris", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
+            Tab("Lokal tilkobling", systemImage: "wifi.router", value: "lokal") { LocalSettingsView() }
             Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
         }
-        .frame(width: 600, height: 560)
+        .frame(width: 640, height: 600)
     }
 }
 
@@ -264,6 +265,7 @@ struct DataSettings: View {
         case "report.temperatureLog": "Temperaturlogg"
         case "report.energy": "Energi"
         case let key where key.hasPrefix("prices."): "Strømpriser"
+        case "local": "Lokal tilkobling"
         default: key
         }
     }

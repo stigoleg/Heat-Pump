@@ -58,13 +58,21 @@ public enum HistoryMetric: String, Codable, Sendable, CaseIterable {
     case setTemperature = "set_temperature"
     case mode
     case power
+    /// Electrical power in W from the local adapter.
+    case powerW = "power_w"
+    /// Compressor frequency in Hz from the local adapter.
+    case compressorHz = "compressor_hz"
+
+    /// Metrics that come from local adapter readings instead of MELCloud.
+    public var isLocal: Bool { self == .powerW || self == .compressorHz }
 }
 
 public struct HistoryPoint: Codable, Sendable, Equatable {
     public var timestamp: Date
     public var value: Double?
     public var text: String?
-    /// `snapshot` (polled state) or `log` (MELCloud temperature log).
+    /// `snapshot` (polled state), `log` (MELCloud temperature log) or `local` (Wi-Fi adapter on
+    /// the home network; averaged per bucket when there are many readings).
     public var source: String
 }
 

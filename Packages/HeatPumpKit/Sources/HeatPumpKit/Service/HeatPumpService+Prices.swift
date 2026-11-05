@@ -177,17 +177,33 @@ extension HeatPumpService {
         }
     }
 
-    /// kWh per hour from the energy counter in snapshots, with cost where prices are known.
+    /// kWh per hour with cost where prices are known. The adapter's local counter (exact,
+    /// 0.1 kWh) wins for hours it covers (≥ 55 min); otherwise MELCloud's counter in snapshots,
+    /// and a partly covered local hour only when MELCloud has nothing for it.
     public func hourlyConsumption(from: Date, to: Date) throws -> [HourCost] {
         let samples = try counterSamples(from: from.addingTimeInterval(-CounterSampler.maxGap), to: to)
-        let hourly = CounterSampler.hourly(samples, timeZone: timeZone).filter { $0.key >= from && $0.key < to }
+        let cloud = CounterSampler.hourly(samples, timeZone: timeZone).filter { $0.key >= from && $0.key < to }
+        let local = try localHourly(from: from, to: to)
         let prices = Dictionary(
             try priceBreakdowns(from: from, to: to).map { ($0.hour, $0) }, uniquingKeysWith: { a, _ in a })
-        return hourly.keys.sorted().map { hour in
-            let kWh = hourly[hour] ?? 0
-            return HourCost(hour: hour, kWh: kWh, cost: prices[hour].map { CostSplit(kWh: kWh, price: $0).rounded() })
+        return Set(cloud.keys).union(local.keys).sorted().compactMap { hour in
+            let (kWh, isLocal): (Double, Bool)
+            if let l = local[hour], l.covered >= Self.localHourCoverage {
+                (kWh, isLocal) = (l.kWh, true)
+            } else if let c = cloud[hour] {
+                (kWh, isLocal) = (c, false)
+            } else if let l = local[hour] {
+                (kWh, isLocal) = (l.kWh, true)
+            } else {
+                return nil
+            }
+            return HourCost(
+                hour: hour, kWh: kWh, cost: prices[hour].map { CostSplit(kWh: kWh, price: $0).rounded() }, measuredLocally: isLocal)
         }
     }
+
+    /// Seconds of an hour the local counter must cover to replace MELCloud's value.
+    static let localHourCoverage: TimeInterval = 55 * 60
 
     /// Average power over the last 20–90 minutes from the energy counter (an estimate; the
     /// counter changes in coarse steps). Nil when there is too little data.
@@ -227,6 +243,7 @@ extension HeatPumpService {
     public func seedDemoHistoryIfNeeded() async throws {
         guard let mock = backend as? MockBackend else { return }
         let t = now()
+        try seedDemoLocalIfNeeded(now: t)
         let existing = try store.snapshots(deviceId: MockBackend.deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
         guard existing.isEmpty else { return }
         var at = t.addingTimeInterval(-48 * 3600)
@@ -234,5 +251,18 @@ extension HeatPumpService {
             try store.insertSnapshot(await mock.state(at: at))
             at = at.addingTimeInterval(15 * 60)
         }
+    }
+
+    /// Demo mode: turns local access on (simulated adapter) the first time, and while it is on
+    /// fills the last 7 days with one simulated reading per minute.
+    func seedDemoLocalIfNeeded(now t: Date) throws {
+        if try store.setting(LocalSettings.self, key: Self.localSettingsKey) == nil {
+            try saveLocalSettings(LocalSettings(enabled: true, host: MockLocalSimulation.host))
+        }
+        let from = t.addingTimeInterval(-7 * 86_400)
+        guard try localSettings().enabled, try store.localSamples(from: from, to: t.addingTimeInterval(-3600)).isEmpty
+        else { return }
+        try store.insertLocalSamples(
+            MockLocalSimulation.samples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling))
     }
 }

@@ -40,6 +40,21 @@ Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne
 - Med Norgespris er prisen lik hele døgnet; da sparer du mest på jevn, litt lavere temperatur. Nettleien er likevel lavere om natten og i helgene.
 - Kostnaden appen viser er strøm + nettleiens energiledd − strømstøtte. Kapasitetsleddet (fastleddet) er ikke med, fordi det avhenger av hele husets høyeste forbruk.
 
+## Lokale målinger (effekt og kompressor)
+
+Når lokal tilkobling er slått på i appen, leser appen Wi-Fi-modulen direkte på hjemmenettet (bare lesing, aldri styring). Det gir:
+
+- **Effekt (W)**: hva hele varmepumpen trekker akkurat nå. Rundt 4 W betyr at kompressoren står (bare elektronikk og vifte i hvile). Mens den varmer er 300–1200 W vanlig for denne størrelsen; mer når det er kaldt ute eller når den varmer opp et kaldt rom.
+- **Kompressor (Hz)**: hvor hardt kompressoren jobber. 0 Hz betyr at den står. Lav, jevn frekvens over lang tid er det mest effektive.
+- **Strømmåler**: en teller i pumpen med 0,1 kWh oppløsning. Den gir nøyaktig forbruk per time, så kostnaden blir eksakt (ikke anslag) for døgn appen har målt hele.
+- **Kompressorstarter per time**: Én til tre starter i timen er normalt. Mange korte runder (fire eller flere i timen over flere timer) kalles korte sykluser og sliter på kompressoren. Se «Vedlikehold» for hva du kan gjøre.
+
+Råd for styring ut fra effekt:
+
+- Unngå å skru ønsket temperatur mye opp og ned. Hvert hopp gir en kraftig start med høy effekt.
+- Er effekten høy over lang tid selv om det ikke er kaldt ute, sjekk luftfilteret og utedelen før du endrer innstillinger.
+- Endepunktet i modulen er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker alt annet via MELCloud som før.
+
 ## Sikkerhet
 
 - R32 er et brennbart kjølemiddel. Ved mistanke om lekkasje: slå av, luft ut, ingen åpen flamme, ring forhandleren.

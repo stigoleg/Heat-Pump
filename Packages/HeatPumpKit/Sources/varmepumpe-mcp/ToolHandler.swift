@@ -17,6 +17,7 @@ struct ToolHandler: Sendable {
             case "get_history": return try await getHistory(args)
             case "get_energy": return try await getEnergy(args)
             case "get_prices": return try await getPrices()
+            case "get_live_status": return try await getLiveStatus()
             case "get_maintenance_status": return try await output(try await service.maintenanceStatus())
             case "get_change_log": return try await getChangeLog(args)
             case "get_device_info": return try await getDeviceInfo()
@@ -166,6 +167,65 @@ struct ToolHandler: Sendable {
                 sync: overview.sync,
                 note: "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. "
                     + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med."))
+    }
+
+    private func getLiveStatus() async throws -> CallTool.Result {
+        let summary = try await service.liveSummary(maxAge: 60)
+        struct Reading: Encodable {
+            var timestamp: Date
+            var ageSeconds: Int?
+            var powerW: Int?
+            var compressorHz: Int?
+            var compressorRunning: Bool
+            var roomTemperature: Double?
+            var outdoorTemperature: Double?
+            var setTemperature: Double?
+            var power: Bool?
+            var mode: String?
+            var modeName: String?
+            var fanSpeed: String?
+            var errorCode: String?
+            var hasError: Bool
+            var energyCounterKWh: Double?
+            var adapterVersion: String?
+            var rssiDbm: Int?
+            var cloudConnected: Bool?
+        }
+        struct View: Encodable {
+            var enabled: Bool
+            var reading: Reading?
+            var refreshed: Bool
+            var message: String?
+            var lastSuccess: Date?
+            var consecutiveFailures: Int
+            var lastError: String?
+            var startsLastHour: Int
+            var startsLast3Hours: Int
+            var startsLast24Hours: Int
+            var observedHoursLast24: Double
+            var powerLast60Minutes: LiveSummary.PowerStats?
+            var note: String
+        }
+        let live = summary.live
+        let reading = live.sample.map { s in
+            Reading(
+                timestamp: s.timestamp, ageSeconds: live.ageSeconds, powerW: s.powerW, compressorHz: s.compressorHz,
+                compressorRunning: s.isRunning, roomTemperature: s.roomTemperature, outdoorTemperature: s.outdoorTemperature,
+                setTemperature: s.setTemperature, power: s.power, mode: s.mode?.key, modeName: s.mode?.displayName,
+                fanSpeed: s.fanSpeed.map { $0 == 0 ? "auto" : String($0) },
+                errorCode: s.errorCode.map { String(format: "0x%04X", $0) }, hasError: s.hasError, energyCounterKWh: s.energyKWh,
+                adapterVersion: s.adapterVersion, rssiDbm: s.rssi, cloudConnected: s.cloudConnected)
+        }
+        return try await output(
+            View(
+                enabled: live.reachability.enabled, reading: reading, refreshed: live.refreshed, message: live.message,
+                lastSuccess: live.reachability.lastSuccess, consecutiveFailures: live.reachability.consecutiveFailures,
+                lastError: live.reachability.lastError, startsLastHour: summary.startsLastHour,
+                startsLast3Hours: summary.startsLast3Hours, startsLast24Hours: summary.startsLast24Hours,
+                observedHoursLast24: summary.observedHoursLast24, powerLast60Minutes: summary.powerLast60Minutes,
+                note: "Lest lokalt fra Wi-Fi-modulen (kun lesing). Effekten gjelder hele varmepumpen. "
+                    + "Kompressorstarter telles bare når appen eller Claude har lest minst hvert 5. minutt; "
+                    + "observedHoursLast24 sier hvor mye av døgnet som er dekket. Feilkode 0x8000 betyr ingen feil."))
     }
 
     private func getChangeLog(_ args: Arguments) async throws -> CallTool.Result {
