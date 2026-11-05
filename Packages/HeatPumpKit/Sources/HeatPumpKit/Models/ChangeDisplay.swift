@@ -84,6 +84,7 @@ extension ChangeSource {
         switch self {
         case .app: "App"
         case .claude: "Claude"
+        case .automation: "Prisstyring"
         }
     }
 }

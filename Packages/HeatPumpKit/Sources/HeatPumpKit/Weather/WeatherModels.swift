@@ -12,13 +12,16 @@ public struct ForecastHour: Codable, Sendable, Equatable {
     public var cloudFraction: Double?
     /// mm the next hour (nil beyond the hourly part of the forecast).
     public var precipitation: Double?
-    /// MET symbol code, e.g. `clearsky_day`.
+    /// MET symbol code for the next hour, e.g. `clearsky_day` (beyond the hourly part: the next 6 hours).
     public var symbol: String?
+    /// mm the next 6 hours (MET gives this for every entry; beyond the hourly part it is the only amount).
+    public var precipitation6h: Double?
 
     public init(
         time: Date, temperature: Double, windSpeed: Double? = nil, humidity: Double? = nil, cloudFraction: Double? = nil,
-        precipitation: Double? = nil, symbol: String? = nil
+        precipitation: Double? = nil, symbol: String? = nil, precipitation6h: Double? = nil
     ) {
+        self.precipitation6h = precipitation6h
         self.time = time
         self.temperature = temperature
         self.windSpeed = windSpeed

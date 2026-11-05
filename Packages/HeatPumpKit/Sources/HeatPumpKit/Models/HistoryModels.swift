@@ -157,6 +157,8 @@ public struct MaintenanceRecord: Codable, Sendable, Equatable {
 public enum ChangeSource: String, Codable, Sendable, CaseIterable {
     case app
     case claude
+    /// The app's price control (Prognose → Prisstyring).
+    case automation
 }
 
 public enum ChangeResult: String, Codable, Sendable {

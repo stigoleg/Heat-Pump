@@ -62,7 +62,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_prices",
-            description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy part − strømstøtte. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
+            description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy part − strømstøtte. For spot agreements also a clearly labelled ESTIMATE (\"anslag\") for the hours after the published prices up to 7 days ahead (median and 25–75 % band per day and for the next 48 hours; built from the last 4 weeks of prices and the weather forecast; uncertain, not a published price). Also the app's price control (Prisstyring: lowers the setpoint in expensive hours while the app runs): settings, status and plan, read-only — Claude cannot turn it on or off or change it. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
@@ -108,12 +108,12 @@ enum ToolCatalog {
             annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),
         Tool(
             name: "get_change_log",
-            description: "Recent changes to the heat pump (from the app or Claude) with old/new value, reason and result (ok/failed/rejected/pending).",
+            description: "Recent changes to the heat pump (from the app, Claude or the app's price control, source automation) with old/new value, reason and result (ok/failed/rejected/pending).",
             inputSchema: [
                 "type": "object",
                 "properties": [
                     "limit": ["type": "integer", "minimum": 1, "maximum": 500, "description": "Default 20."],
-                    "source": ["type": "string", "enum": ["app", "claude"]],
+                    "source": ["type": "string", "enum": ["app", "claude", "automation"]],
                 ],
             ],
             annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),

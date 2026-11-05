@@ -266,6 +266,23 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         return candidates.min { $0.1 < $1.1 }
     }
 
+    /// The event of the active season that last fired at or before `date` (searching back one
+    /// week) and when it fired, or nil when the plan is off, unread or empty.
+    public func event(inForceAt date: Date, timeZone: TimeZone) -> (event: TimerEvent, date: Date)? {
+        guard enabled == true, decoded, let index = activeSeasonIndex(on: date, timeZone: timeZone) else { return nil }
+        let calendar = WireDate.calendar(timeZone)
+        let candidates = seasons[index].events.compactMap { event -> (TimerEvent, Date)? in
+            let weekday = event.weekday == 7 ? 1 : event.weekday + 1
+            let components = DateComponents(hour: event.minuteOfDay / 60, minute: event.minuteOfDay % 60, weekday: weekday)
+            guard
+                let last = calendar.nextDate(
+                    after: date.addingTimeInterval(1), matching: components, matchingPolicy: .nextTime, direction: .backward)
+            else { return nil }
+            return (event, last)
+        }
+        return candidates.max { $0.1 < $1.1 }
+    }
+
     // MARK: Editing (the web client's semantics)
 
     /// Makes sure there is a season to edit (a new plan gets the web client's default season).

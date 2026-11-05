@@ -327,6 +327,10 @@ public final class HistoryStore: Sendable {
                     );
                     """)
         }
+        migrator.registerMigration("v11") { db in
+            // MET's precipitation for the next 6 hours (the only amount beyond the hourly part).
+            try db.execute(sql: "ALTER TABLE weather_forecast ADD COLUMN precipitation6h DOUBLE")
+        }
         return migrator
     }
 

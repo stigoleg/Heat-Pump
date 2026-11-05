@@ -6,13 +6,14 @@ struct ActivityView: View {
     @State private var filter: Filter = .all
 
     enum Filter: String, CaseIterable, Identifiable {
-        case all, claude, app
+        case all, claude, app, automation
         var id: String { rawValue }
         var title: String {
             switch self {
             case .all: "Alle"
             case .claude: "Claude"
             case .app: "App"
+            case .automation: "Prisstyring"
             }
         }
     }
@@ -29,6 +30,7 @@ struct ActivityView: View {
                 case .all: true
                 case .claude: record.source == .claude
                 case .app: record.source == .app
+                case .automation: record.source == .automation
                 }
             }
             .enumerated()
@@ -84,8 +86,8 @@ struct ActivityRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Image(systemName: record.source == .claude ? "sparkles" : "macwindow")
-                .foregroundStyle(record.source == .claude ? Color.purple : Color.secondary)
+            Image(systemName: record.source.systemImage)
+                .foregroundStyle(record.source.tint)
                 .frame(width: 18)
                 .help(record.source.displayName)
             VStack(alignment: .leading, spacing: 3) {
@@ -126,5 +128,23 @@ struct ActivityRow: View {
         return Text(record.result.displayName)
             .foregroundStyle(color)
             .help(record.error ?? "")
+    }
+}
+
+extension ChangeSource {
+    var systemImage: String {
+        switch self {
+        case .claude: "sparkles"
+        case .app: "macwindow"
+        case .automation: "bolt.badge.clock"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .claude: .purple
+        case .app: .secondary
+        case .automation: .cyan
+        }
     }
 }
