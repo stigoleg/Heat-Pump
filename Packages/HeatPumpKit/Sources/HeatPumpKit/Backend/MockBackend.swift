@@ -188,10 +188,27 @@ public actor MockBackend: HeatPumpBackend {
             throw HeatPumpError.server(MELCloudClassicParser.timerSaveError(response) ?? "")
         }
         timerWrites += 1
-        timerJSON = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": body["Seasons"] ?? .array([])])
+        // Like MELCloud, new seasons and events get IDs.
+        let seasons = (body["Seasons"]?.array ?? []).map { season -> JSONValue in
+            guard case .object(var object) = season else { return season }
+            if (object["ID"]?.int ?? -1) < 0 { object["ID"] = .number(Double(nextTimerId())) }
+            object["Events"] = .array((object["Events"]?.array ?? []).map { event in
+                guard case .object(var fields) = event, fields["ID"] == nil else { return event }
+                fields["ID"] = .number(Double(nextTimerId()))
+                return .object(fields)
+            })
+            return .object(object)
+        }
+        timerJSON = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": .array(seasons)])
     }
 
     static let timerMaxEvents = 50
+    private var lastTimerId = 1_000
+
+    private func nextTimerId() -> Int {
+        lastTimerId += 1
+        return lastTimerId
+    }
 
     /// Night setback: weekdays 06:30 → 21 °C, every night 22:30 → 19 °C, weekend 08:00 → 21,5 °C.
     static func initialTimer() -> JSONValue {

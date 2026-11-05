@@ -146,10 +146,13 @@ extension HeatPumpService {
         // A copy cached before seasons were kept has no `fetchedAt`: read it again as soon as allowed.
         let interval =
             maxAge ?? (manual || (cached != nil && cached?.fetchedAt == nil) ? Self.timerManualInterval : Self.timerInterval)
-        if let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
+        let pending = cached?.pendingSince != nil
+        if !pending, let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
         if try endpointRefusedUntil(Self.timerFetchKey) != nil { return cached }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return cached }
-        switch try store.reserveFetch(key: Self.timerFetchKey, minInterval: interval, now: t) {
+        // A save that could not be read back right away is read back once the 30 s spacing allows.
+        let (key, spacing) = pending ? (Self.timerVerifyKey, Self.verifyInterval) : (Self.timerFetchKey, interval)
+        switch try store.reserveFetch(key: key, minInterval: spacing, now: t) {
         case .throttled, .blocked, .credentialsRejected:
             return cached
         case .allowed:
@@ -328,6 +331,7 @@ extension HeatPumpService {
                     ]))
                 sent.fetchedAt = at
                 sent.maxEvents = timer.maxEvents
+                sent.pendingSince = at
                 try store.saveSetting(sent, key: Self.weeklyTimerKey)
                 var readBack: WeeklyTimer?
                 if try store.reserveFetch(key: Self.timerVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed,

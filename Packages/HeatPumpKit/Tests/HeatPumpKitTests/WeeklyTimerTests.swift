@@ -400,6 +400,58 @@ struct WeeklyTimerTests {
         #expect(!later.hasSameContent(as: fresh))
     }
 
+    @Test func idsAssignedByMELCloudAreNotAChange() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let backend = MockBackend(timeZone: .gmt, now: clock.provider)
+        let service = makeService(store: store, backend: backend)
+        _ = try await service.currentState()
+        let base = try #require(try await service.weeklyTimer())
+        var first = base
+        first.put(newEvent(12 * 60, 20), on: [3])
+        #expect(try await service.saveWeeklyTimer(first, base: base, source: .app, reason: "x").result == .ok)
+        // Second save soon after: the read-back is skipped (30 s), so the cache holds the plan as sent,
+        // without the IDs MELCloud gives the new event.
+        clock.advance(16)
+        let afterFirst = try #require(try await service.storedWeeklyTimer())
+        var second = afterFirst
+        second.put(newEvent(13 * 60, 20), on: [4])
+        let secondOutcome = try await service.saveWeeklyTimer(second, base: afterFirst, source: .app, reason: "x")
+        #expect(secondOutcome.result == .ok)
+        let sent = try #require(try await service.storedWeeklyTimer())
+        #expect(sent.pendingSince != nil)
+        #expect(sent.seasons[0].events(on: 4).first { $0.minuteOfDay == 13 * 60 }?.raw?["ID"] == nil)
+        // A third edit right away is accepted: MELCloud's copy only differs by the new IDs.
+        clock.advance(16)
+        var third = sent
+        third.put(newEvent(14 * 60, 20), on: [5])
+        let thirdOutcome = try await service.saveWeeklyTimer(third, base: sent, source: .app, reason: "x")
+        #expect(thirdOutcome.result == .ok)
+        #expect(await backend.timerWrites == 3)
+        // That save could read back again (30 s since the first).
+        let confirmed = try #require(try await service.storedWeeklyTimer())
+        #expect(confirmed.pendingSince == nil)
+        // A skipped read-back happens on the next poll once the spacing allows.
+        clock.advance(16)
+        var fourth = confirmed
+        fourth.put(newEvent(15 * 60, 20), on: [5])
+        #expect(try await service.saveWeeklyTimer(fourth, base: confirmed, source: .app, reason: "x").result == .ok)
+        #expect(try await service.storedWeeklyTimer()?.pendingSince != nil)
+        clock.advance(31)
+        let reads = await backend.timerReads
+        let readBack = try #require(try await service.weeklyTimer())
+        #expect(await backend.timerReads == reads + 1)
+        #expect(readBack.pendingSince == nil)
+        #expect(readBack.seasons[0].events.allSatisfy { $0.raw?["ID"] != nil })
+        #expect(readBack.hasSameContent(as: fourth))
+        // A real difference still counts.
+        var other = readBack
+        other.seasons[0].events[0].fanSpeed = 4
+        #expect(!other.hasSameContent(as: readBack))
+        var reordered = readBack
+        reordered.seasons[0].events.reverse()
+        #expect(reordered.hasSameContent(as: readBack))
+    }
+
     @Test func failedFreshReadSendsNothing() async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)

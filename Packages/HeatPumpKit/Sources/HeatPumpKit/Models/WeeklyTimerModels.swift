@@ -190,6 +190,9 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     public var fetchedAt: Date?
     /// MELCloud's limit on events (all seasons together), when known.
     public var maxEvents: Int?
+    /// Set when the cache holds a plan as sent that MELCloud has not been read back for yet; the
+    /// next `weeklyTimer()` reads it as soon as the read-back spacing allows.
+    public var pendingSince: Date?
 
     public init(
         enabled: Bool?, seasons: [TimerSeason], eventCount: Int? = nil, decoded: Bool, fetchedAt: Date? = nil, maxEvents: Int? = nil
@@ -203,7 +206,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, seasons, eventCount, decoded, fetchedAt, maxEvents
+        case enabled, seasons, eventCount, decoded, fetchedAt, maxEvents, pendingSince
     }
 
     private enum LegacyKeys: String, CodingKey {
@@ -217,6 +220,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled)
         eventCount = try container.decodeIfPresent(Int.self, forKey: .eventCount) ?? 0
         maxEvents = try container.decodeIfPresent(Int.self, forKey: .maxEvents)
+        pendingSince = try container.decodeIfPresent(Date.self, forKey: .pendingSince)
         if let seasons = try container.decodeIfPresent([TimerSeason].self, forKey: .seasons) {
             self.seasons = seasons
             decoded = try container.decodeIfPresent(Bool.self, forKey: .decoded) ?? false
@@ -236,11 +240,28 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// Number of events in all seasons (counted from the seasons when they were decoded).
     public var totalEvents: Int { decoded ? seasons.reduce(0) { $0 + $1.events.count } : eventCount }
 
-    /// Same plan as MELCloud would get it (on/off and every season with its events as sent),
-    /// regardless of when it was read.
+    /// The same plan in effect: on/off, and per season its name, start and the multiset of events
+    /// (day, time, power, mode, temperature, fan, vanes as they would be sent). Server-assigned or
+    /// cosmetic fields (IDs, `Name`, `Settings`, `EventTime` formatting), order and read time do not
+    /// count, so a plan MELCloud gave IDs after a save still matches what was sent.
     public func hasSameContent(as other: WeeklyTimer) -> Bool {
-        decoded && other.decoded && (enabled == true) == (other.enabled == true)
-            && seasons.map(MELCloudClassicParser.timerSeasonJSON) == other.seasons.map(MELCloudClassicParser.timerSeasonJSON)
+        decoded && other.decoded && (enabled == true) == (other.enabled == true) && contentKey == other.contentKey
+    }
+
+    private var contentKey: [String] {
+        seasons.map { season in
+            let events = season.events.map { event -> String in
+                let wire = MELCloudClassicParser.timerEventJSON(event)
+                let fields: [String] = [
+                    "\(event.weekday)", "\(event.minuteOfDay)", wire["Power"]?.bool.map { "\($0)" } ?? "-",
+                    wire["OperationMode"]?.int.map { "\($0)" } ?? "-", wire["SetTemperature"]?.double.map { "\($0)" } ?? "-",
+                    wire["FanSpeed"]?.int.map { "\($0)" } ?? "-", wire["VaneHorizontal"]?.int.map { "\($0)" } ?? "-",
+                    wire["VaneVertical"]?.int.map { "\($0)" } ?? "-",
+                ]
+                return fields.joined(separator: ",")
+            }
+            return "\(season.name ?? "Default")|\(season.startDay ?? 1).\(season.startMonth ?? 1)|" + events.sorted().joined(separator: ";")
+        }.sorted()
     }
 
     /// "På, 6 hendelser" (change log and dialogs).
