@@ -1,0 +1,34 @@
+// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "HeatPumpKit",
+    platforms: [.macOS("26.0")],
+    products: [
+        .library(name: "HeatPumpKit", targets: ["HeatPumpKit"]),
+        .executable(name: "varmepumpe-mcp", targets: ["varmepumpe-mcp"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.12.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.1"),
+    ],
+    targets: [
+        .target(
+            name: "HeatPumpKit",
+            dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
+            resources: [.copy("Knowledge")]
+        ),
+        .executableTarget(
+            name: "varmepumpe-mcp",
+            dependencies: [
+                "HeatPumpKit",
+                .product(name: "MCP", package: "swift-sdk"),
+            ]
+        ),
+        .testTarget(
+            name: "HeatPumpKitTests",
+            dependencies: ["HeatPumpKit"],
+            resources: [.copy("Fixtures")]
+        ),
+    ]
+)

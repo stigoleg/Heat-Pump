@@ -1,0 +1,8 @@
+{
+  "Heating": [8.5, 9.1, 0.0], "Cooling": [0.0, 0.0, 0.0], "Auto": [0.2, 0.0, 0.0],
+  "Dry": [0.0, 0.0, 0.0], "Fan": [0.1, 0.0, 0.0], "Other": [0.0, null, 0.0],
+  "Labels": [3, 4, 5], "LabelType": 1,
+  "TotalHeatingConsumed": 17.6, "TotalCoolingConsumed": 0, "TotalAutoConsumed": 0.2,
+  "TotalDryConsumed": 0, "TotalFanConsumed": 0.1, "TotalOtherConsumed": 0,
+  "UsageDisclaimerPercentages": "", "CO2": 0, "Coefficient": 1.0
+}

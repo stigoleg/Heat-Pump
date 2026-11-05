@@ -1,0 +1,6 @@
+[
+  {"DeviceId": 100001, "StartDate": "2026-10-20T03:12:00", "EndDate": "2026-10-20T03:16:00", "Duration": 4, "ErrorMessage": "Kommunikasjonsfeil mellom innedel og utedel"},
+  {"DeviceId": 100001, "StartDate": "2026-09-01T14:00:00.5", "EndDate": "0001-01-01T00:00:00", "ErrorMessage": "  Feil på romtemperaturføler  "},
+  {"DeviceId": 100001, "StartDate": "0001-01-01T00:00:00", "EndDate": null, "ErrorMessage": "Sentinel skal hoppes over"},
+  {"DeviceId": 100001, "StartDate": "2026-08-01T10:00:00", "EndDate": null, "ErrorMessage": ""}
+]

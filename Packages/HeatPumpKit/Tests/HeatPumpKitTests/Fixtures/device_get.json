@@ -1,0 +1,11 @@
+{
+  "EffectiveFlags": 0, "LocalIPAddress": null, "RoomTemperature": 20.0, "SetTemperature": 21.5,
+  "SetFanSpeed": 2, "OperationMode": 1, "VaneHorizontal": 3, "VaneVertical": 7, "Name": null,
+  "NumberOfFanSpeeds": 5, "WeatherObservations": [], "ErrorMessage": null, "ErrorCode": 8000,
+  "DefaultHeatingSetTemperature": 23.0, "DefaultCoolingSetTemperature": 21.0, "HideVaneControls": false,
+  "HideDryModeControl": false, "RoomTemperatureLabel": 0, "InStandbyMode": false, "TemperatureIncrementOverride": 0,
+  "ProhibitSetTemperature": false, "ProhibitOperationMode": false, "ProhibitPower": false,
+  "DeviceID": 100001, "DeviceType": 0, "LastCommunication": "2026-11-05T09:58:12.345",
+  "NextCommunication": "2026-11-05T09:59:12.345", "Power": true, "HasPendingCommand": false,
+  "Offline": false, "Scene": null, "SceneOwner": null
+}

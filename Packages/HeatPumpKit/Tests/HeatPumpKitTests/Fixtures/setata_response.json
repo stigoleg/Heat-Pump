@@ -1,0 +1,4 @@
+{"EffectiveFlags": 4, "LocalIPAddress": null, "RoomTemperature": 20.5, "SetTemperature": 21.5, "SetFanSpeed": 0,
+ "OperationMode": 1, "VaneHorizontal": 3, "VaneVertical": 0, "NumberOfFanSpeeds": 5, "DeviceID": 100001,
+ "DeviceType": 0, "LastCommunication": "2026-11-05T09:58:12.345", "NextCommunication": "2026-11-05T09:59:12.345",
+ "Power": true, "HasPendingCommand": true, "Offline": false}
