@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Sidebar destinations.
 enum Screen: String, CaseIterable, Identifiable, Hashable {
-    case overview, control, schedule, history, away, health, activity
+    case overview, control, schedule, history, outlook, away, health, activity
 
     var id: String { rawValue }
 
@@ -15,6 +15,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .control: "Kontroll"
         case .schedule: "Ukeplan"
         case .history: "Historikk"
+        case .outlook: "Prognose"
         case .away: "Borte hjemmefra"
         case .health: "Helse"
         case .activity: "Claude-aktivitet"
@@ -27,6 +28,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .control: "slider.horizontal.3"
         case .schedule: "calendar.badge.clock"
         case .history: "chart.xyaxis.line"
+        case .outlook: "chart.line.uptrend.xyaxis"
         case .away: "suitcase.fill"
         case .health: "heart.fill"
         case .activity: "sparkles"
@@ -40,6 +42,7 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
         case .control: .orange
         case .schedule: .indigo
         case .history: .green
+        case .outlook: .cyan
         case .away: .teal
         case .health: .red
         case .activity: .purple
@@ -185,6 +188,14 @@ final class AppModel {
     var weeklyTimer: WeeklyTimer?
     /// Unsaved edits of the Ukeplan page while another page is shown.
     var scheduleDraft: ScheduleDraft?
+    /// Prices from now on with the estimate after the published ones (Prognose).
+    var priceOutlook: PriceOutlook?
+    /// Expected use and cost per forecast day from tomorrow (Prognose).
+    var dailyOutlook: [DayOutlook] = []
+    /// The whole stored forecast from this hour (up to nine days; Prognose).
+    var longForecast: [ForecastHour] = []
+    /// Price control (Prognose → Prisstyring); runs on the poll tick.
+    let priceControl: PriceControlRunner
     /// Bumped after every reload so views can refetch derived data (charts).
     var revision = 0
 
@@ -209,15 +220,32 @@ final class AppModel {
         appearance = environment["VARMEPUMPE_APPEARANCE"].flatMap(AppAppearance.init(rawValue:))
             ?? UserDefaults.standard.string(forKey: AppAppearance.defaultsKey).flatMap(AppAppearance.init(rawValue:))
             ?? .system
+        priceControl = PriceControlRunner(service: service)
         if let service {
             debouncer = ChangeDebouncer(
                 send: { [weak self] changes in
                     let outcomes = try await service.apply(changes, source: .app, reason: ChangeDebouncer.reason)
+                    // A setpoint the user chose becomes price control's comfort temperature.
+                    for case .temperature(let value) in changes where outcomes.contains(where: { $0.result == .ok }) {
+                        await self?.priceControl.userChangedSetpoint(value)
+                    }
                     await self?.afterSend()
                     return outcomes
                 },
                 budget: { try await service.writeBudget() })
         }
+        priceControl.afterChange = { [weak self] in await self?.afterPriceControl() }
+    }
+
+    /// After a price-control tick or switch: the state the write reported, and (outside a poll,
+    /// which reloads anyway) the change log and the rest.
+    private func afterPriceControl() async {
+        guard let service else { return }
+        if let cached = try? await service.cachedState(), cached != stateResult?.state {
+            stateResult?.state = cached
+            debouncer?.updateLive(cached)
+        }
+        if !isRefreshing { await reloadLocal() }
     }
 
     /// Shows the state reported by the write right away (no extra network call) and logs it.
@@ -262,6 +290,7 @@ final class AppModel {
             if let keychain { await Task.detached { keychain.migrateAccessIfNeeded() }.value }
             await self?.checkTibberToken()
             if let service = self?.service, service.isDemo { try? await service.seedDemoHistoryIfNeeded() }
+            await self?.priceControl.load()
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh(force: false)
@@ -274,7 +303,11 @@ final class AppModel {
         }
     }
 
-    /// Stops polling (window closed / app quitting). The app only polls while open.
+    /// True while price control is on: closing the window keeps the app and its polling running.
+    var keepsRunningInBackground: Bool { priceControl.enabled }
+
+    /// Stops polling (window closed / app quitting). The app only polls while open, unless price
+    /// control is on.
     func stop() {
         pollTask?.cancel()
         pollTask = nil
@@ -308,6 +341,7 @@ final class AppModel {
         }
         // Local adapter: one read per poll at most (the service enforces 20 s spacing and back-off).
         if (try? await service.localSettings())?.enabled == true { _ = try? await service.liveStatus(maxAge: 50) }
+        await priceControl.tick()
         await reloadLocal()
         await debouncer?.refreshBudget()
         await deliverNotifications()
@@ -352,6 +386,9 @@ final class AppModel {
             }
             weeklyTimer = try await service.storedWeeklyTimer()
             timerRefusedUntil = try await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
+            priceOutlook = try await service.priceOutlook()
+            dailyOutlook = try await service.dailyOutlook()
+            longForecast = try await service.weatherForecast(from: hourStart, to: hourStart.addingTimeInterval(10 * 86_400)).hours
         } catch {
             lastError = error.localizedDescription
         }

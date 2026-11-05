@@ -56,7 +56,8 @@ public struct METForecastProvider: WeatherProviding {
         }
     }
 
-    /// `properties.timeseries[]` → hours with `instant.details` and the next hour's symbol/precipitation.
+    /// `properties.timeseries[]` → hours with `instant.details`, the next hour's symbol/precipitation
+    /// and the next 6 hours' precipitation (and symbol where the hourly part has ended).
     static func parse(_ data: Data) throws -> [ForecastHour] {
         let json: JSONValue
         do { json = try JSONValue.parse(data) } catch { throw WeatherError.decoding("ugyldig JSON") }
@@ -66,10 +67,13 @@ public struct METForecastProvider: WeatherProviding {
                 let details = entry["data"]?["instant"]?["details"], let temperature = details["air_temperature"]?.double
             else { return nil }
             let next = entry["data"]?["next_1_hours"]
+            let six = entry["data"]?["next_6_hours"]
             return ForecastHour(
                 time: time, temperature: temperature, windSpeed: details["wind_speed"]?.double,
                 humidity: details["relative_humidity"]?.double, cloudFraction: details["cloud_area_fraction"]?.double,
-                precipitation: next?["details"]?["precipitation_amount"]?.double, symbol: next?["summary"]?["symbol_code"]?.string)
+                precipitation: next?["details"]?["precipitation_amount"]?.double,
+                symbol: next?["summary"]?["symbol_code"]?.string ?? six?["summary"]?["symbol_code"]?.string,
+                precipitation6h: six?["details"]?["precipitation_amount"]?.double)
         }
     }
 
@@ -83,7 +87,8 @@ public struct METForecastProvider: WeatherProviding {
     }
 }
 
-/// Demo forecast: `MockBackend`'s outdoor model continued into the future, nine days hourly.
+/// Demo forecast: `MockBackend`'s outdoor model continued into the future. Like MET: hourly for
+/// 60 hours, then one entry per 6 hours up to nine days, with made-up showers and symbols.
 public struct MockWeatherProvider: WeatherProviding {
     private let now: @Sendable () -> Date
 
@@ -93,12 +98,21 @@ public struct MockWeatherProvider: WeatherProviding {
 
     public func fetch(latitude: Double, longitude: Double, ifModifiedSince: String?) async throws -> WeatherResponse {
         let start = (now().timeIntervalSince1970 / 3600).rounded(.down) * 3600
-        let hours = (0..<(9 * 24)).map { h -> ForecastHour in
+        let first = Int(start / 3600)
+        let offsets = Array(0..<60) + (60..<(9 * 24)).filter { (first + $0) % 6 == 0 }
+        let hours = offsets.map { h -> ForecastHour in
             let t = Date(timeIntervalSince1970: start + Double(h) * 3600)
             let temperature = (MockBackend.outdoorTemperature(at: t) * 10).rounded() / 10
+            // Showers on some days, from smooth waves so every run shows the same weather.
+            let wave = sin(t.timeIntervalSince1970 / 86_400 * 1.7) + 0.4 * sin(t.timeIntervalSince1970 / 18_000)
+            let rain = max(0, (wave - 0.6) * 1.2)
+            let symbol =
+                rain > 0.3 ? (temperature < 0 ? "snow" : "rain")
+                : wave > 0.2 ? "cloudy" : wave > -0.4 ? "partlycloudy_day" : "clearsky_day"
             return ForecastHour(
                 time: t, temperature: temperature, windSpeed: 2 + 2 * abs(sin(Double(h) / 7)), humidity: 85,
-                cloudFraction: 60, precipitation: h < 48 ? 0 : nil, symbol: "cloudy")
+                cloudFraction: 60, precipitation: h < 60 ? (rain * 10).rounded() / 10 : nil, symbol: symbol,
+                precipitation6h: (rain * 60).rounded() / 10)
         }
         return WeatherResponse(status: 200, hours: hours, lastModified: nil, expires: now().addingTimeInterval(1800))
     }

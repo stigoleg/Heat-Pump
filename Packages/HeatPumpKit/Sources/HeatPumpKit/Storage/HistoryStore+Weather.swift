@@ -18,13 +18,17 @@ extension HistoryStore {
             for h in hours {
                 try db.execute(
                     sql: """
-                        INSERT INTO weather_forecast (hour, temp, wind, humidity, cloud, precipitation, symbol, fetchedAt)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO weather_forecast (hour, temp, wind, humidity, cloud, precipitation, precipitation6h, symbol, fetchedAt)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(hour) DO UPDATE SET temp = excluded.temp, wind = excluded.wind, humidity = excluded.humidity,
-                            cloud = excluded.cloud, precipitation = excluded.precipitation, symbol = excluded.symbol,
+                            cloud = excluded.cloud, precipitation = excluded.precipitation,
+                            precipitation6h = excluded.precipitation6h, symbol = excluded.symbol,
                             fetchedAt = excluded.fetchedAt
                         """,
-                    arguments: [h.time, h.temperature, h.windSpeed, h.humidity, h.cloudFraction, h.precipitation, h.symbol, fetchedAt])
+                    arguments: [
+                        h.time, h.temperature, h.windSpeed, h.humidity, h.cloudFraction, h.precipitation, h.precipitation6h, h.symbol,
+                        fetchedAt,
+                    ])
             }
         }
     }
@@ -37,7 +41,8 @@ extension HistoryStore {
             ).map {
                 ForecastHour(
                     time: $0["hour"], temperature: $0["temp"], windSpeed: $0["wind"], humidity: $0["humidity"],
-                    cloudFraction: $0["cloud"], precipitation: $0["precipitation"], symbol: $0["symbol"])
+                    cloudFraction: $0["cloud"], precipitation: $0["precipitation"], symbol: $0["symbol"],
+                    precipitation6h: $0["precipitation6h"])
             }
         }
     }

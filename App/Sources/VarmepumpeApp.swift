@@ -2,16 +2,35 @@ import AppKit
 import HeatPumpKit
 import SwiftUI
 
-/// Quits when the last window closes (normal window app, no background polling) and stops
-/// the poll task on the way out.
+/// Quits when the last window closes (normal window app, polling only while open) and stops
+/// the poll task on the way out. While price control is on, the app keeps running with a
+/// menu-bar item and keeps polling, and it sets the temperature back before quitting.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor let model = AppModel()
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        MainActor.assumeIsolated { !model.keepsRunningInBackground }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Saved choice (Visning → Utseende); dev VARMEPUMPE_APPEARANCE=dark|light overrides it.
-        MainActor.assumeIsolated { model.applyAppearance() }
+        MainActor.assumeIsolated {
+            model.applyAppearance()
+            // Polling belongs to the app, so it can outlive the window while price control is on.
+            model.start()
+        }
+    }
+
+    /// With price control on, the base temperature is set back first (at most 5 s).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        MainActor.assumeIsolated {
+            guard model.keepsRunningInBackground else { return .terminateNow }
+            Task { @MainActor in
+                await model.priceControl.restoreBeforeQuit()
+                NSApp.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -32,7 +51,7 @@ struct VarmepumpeApp: App {
                 .environment(\.locale, Norwegian.locale)
                 .frame(minWidth: 620, minHeight: 580)
                 .task { model.start() }
-                .onDisappear { model.stop() }
+                .onDisappear { if !model.keepsRunningInBackground { model.stop() } }
         }
         .defaultSize(width: 1180, height: 860)
         .commands {
@@ -61,5 +80,14 @@ struct VarmepumpeApp: App {
         }
         .defaultSize(width: 700, height: 600)
         .windowResizability(.contentMinSize)
+
+        // Only while price control is on.
+        MenuBarExtra(isInserted: Binding(get: { model.priceControl.enabled }, set: { _ in })) {
+            PriceControlMenu()
+                .environment(model)
+                .environment(\.locale, Norwegian.locale)
+        } label: {
+            Label("Varmepumpe – prisstyring", systemImage: "bolt.badge.clock")
+        }
     }
 }

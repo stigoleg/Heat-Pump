@@ -188,24 +188,116 @@ struct ToolHandler: Sendable {
             var today: [Hour]
             var tomorrow: [Hour]?
             var sync: PriceSync?
+            var estimate: Estimate?
+            var priceControl: PriceControl
             var note: String
         }
+        struct EstimateHour: Encodable {
+            var hour: String
+            var medianOre: Double
+            var lowOre: Double
+            var highOre: Double
+        }
+        struct EstimateDay: Encodable {
+            var day: String
+            var meanOre: Double
+            var lowOre: Double
+            var highOre: Double
+            var cheapestHour: String?
+            var mostExpensiveHour: String?
+        }
+        struct Estimate: Encodable {
+            var label = "anslag"
+            var basisDays: Int?
+            var temperatureAdjusted: Bool
+            var days: [EstimateDay]
+            var next48Hours: [EstimateHour]
+            var method: String
+        }
+        struct Step: Encodable {
+            var from: String
+            var to: String
+            var kind: String
+            var targetC: Double
+            var baseC: Double
+            var reason: String
+            var text: String
+        }
+        struct PriceControl: Encodable {
+            var enabled: Bool
+            var reduceExpensiveC: Double
+            var reduceVeryExpensiveC: Double
+            var minimumC: Double
+            var preheat: Bool
+            var baseSource: String
+            var comfortC: Double?
+            var appRunning: Bool
+            var status: String?
+            var statusKind: String?
+            var statusAt: Date?
+            var problem: String?
+            var plan: [Step]
+            var planNote: String?
+            var note: String
+        }
+        func r(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+        func iso(_ date: Date) -> String { date.formatted(Date.ISO8601FormatStyle(timeZone: .current)) }
         func hour(_ b: PriceBreakdown) -> Hour {
-            func r(_ v: Double) -> Double { (v * 10).rounded() / 10 }
-            return Hour(
-                hour: b.hour.formatted(Date.ISO8601FormatStyle(timeZone: .current)), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
+            Hour(
+                hour: iso(b.hour), totalOre: r(b.totalOre), energyOre: r(b.energyOre), gridOre: r(b.gridOre),
                 supportOre: r(b.supportOre), level: b.level?.rawValue)
         }
+        let outlook = try await service.priceOutlook()
+        var estimate: Estimate?
+        if !outlook.estimate.isEmpty {
+            let calendar = Calendar.current
+            let days = Dictionary(grouping: outlook.estimate) { calendar.startOfDay(for: $0.hour) }.sorted { $0.key < $1.key }
+                .map { day, hours in
+                    let n = Double(hours.count)
+                    return EstimateDay(
+                        day: WireDate.day(day, timeZone: .current), meanOre: r(hours.reduce(0) { $0 + $1.totalOre } / n),
+                        lowOre: r(hours.reduce(0) { $0 + $1.lowOre } / n), highOre: r(hours.reduce(0) { $0 + $1.highOre } / n),
+                        cheapestHour: hours.min { $0.totalOre < $1.totalOre }.map { iso($0.hour) },
+                        mostExpensiveHour: hours.max { $0.totalOre < $1.totalOre }.map { iso($0.hour) })
+                }
+            estimate = Estimate(
+                basisDays: outlook.basisDays, temperatureAdjusted: outlook.temperatureAdjusted, days: days,
+                next48Hours: outlook.estimate.prefix(48).map {
+                    EstimateHour(hour: iso($0.hour), medianOre: r($0.totalOre), lowOre: r($0.lowOre), highOre: r($0.highOre))
+                },
+                method: PriceOutlook.methodText)
+        }
+        let control = try await service.priceControlOverview()
+        let now = Date()
+        let priceControl = PriceControl(
+            enabled: control.settings.enabled, reduceExpensiveC: control.settings.reduceExpensive,
+            reduceVeryExpensiveC: control.settings.reduceVeryExpensive, minimumC: control.settings.minimumTemperature,
+            preheat: control.settings.preheat, baseSource: control.plan.baseSource.rawValue, comfortC: control.settings.comfortTemperature,
+            appRunning: control.appRunning, status: control.status?.text, statusKind: control.status?.kind.rawValue,
+            statusAt: control.status?.updatedAt, problem: control.status?.problem,
+            plan: control.plan.changes.map {
+                Step(
+                    from: iso($0.start), to: iso($0.end), kind: $0.kind.rawValue, targetC: $0.target, baseC: $0.base, reason: $0.reason,
+                    text: $0.summary(now: now, timeZone: .current))
+            },
+            planNote: control.plan.note,
+            note: "Prisstyringen kjører bare i appen mens Macen er på og våken, og bare i varmemodus. Den senker ønsket "
+                + "temperatur i dyre timer (aldri under minimumC, endrer aldri av/på eller modus) og setter den tilbake etterpå. "
+                + "Planen bygger bare på publiserte priser, ikke på anslaget. Claude kan lese den, men ikke slå den av eller på "
+                + "eller endre innstillingene; det gjør brukeren under Prognose i appen. Endringene vises i endringsloggen med "
+                + "source automation. appRunning false betyr at appen ikke har rapportert de siste minuttene.")
         return try await output(
             View(
                 agreement: overview.agreement.rawValue, agreementName: overview.agreementName,
                 current: overview.current.map(hour), cheapestAhead: overview.cheapestAhead.map(hour),
                 today: overview.today.map(hour), tomorrow: overview.tomorrow.isEmpty ? nil : overview.tomorrow.map(hour),
-                sync: overview.sync,
+                sync: overview.sync, estimate: estimate, priceControl: priceControl,
                 note: "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. "
                     + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med. "
                     + "level (VERY_CHEAP … VERY_EXPENSIVE) er Tibbers nivå, eller for andre kilder samme grenser regnet mot "
-                    + "snittet siste 72 timer (spotpris). Ingen nivå med Norgespris."))
+                    + "snittet siste 72 timer (spotpris). Ingen nivå med Norgespris. estimate er et ANSLAG (usikkert), ikke "
+                    + "publiserte priser: median og 25–75 %-område i samme grunnlag som totalOre; si alltid at det er et anslag."
+                    + (outlook.estimateMissing.map { " Ingen anslag: " + $0 } ?? "")))
     }
 
     private func getForecast() async throws -> CallTool.Result {

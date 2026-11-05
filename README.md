@@ -43,6 +43,8 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 - **Kontroll** – av/på, modus, temperatur (glidebryter og stepper), viftehastighet og luftretning. Endringer sendes automatisk et par sekunder etter at du har stilt inn.
 - **Ukeplan** – lag og endre ukeplanen i MELCloud: hendelser per ukedag med tid, av/på, modus, temperatur, vifte og luftretning, kopiering av en dag og ferdige maler (nattsenking, borte på dagtid). Planen kjører i MELCloud, også når Macen er av.
 - **Historikk** – temperatur, energi og kostnad, drift og effekt, for 24 timer, 7 dager, 30 dager eller ett år.
+- **Prognose** – været de neste 48 timene og ni dager fram, strømpris en uke fram (publiserte priser og et tydelig merket anslag for dagene etter), forventet forbruk og kostnad per dag, og prisstyring.
+- **Prisstyring** – senker ønsket temperatur i dyre timer og setter den tilbake etterpå. Virker bare mens appen kjører og Macen er på og våken; med prisstyring på fortsetter appen i menylinjen når vinduet lukkes.
 - **Strømkostnad** – Norgespris, spotpris via Tibber eller spotpris fra hvakosterstrommen.no, med nettleie og strømstøtte. Prisene farges fra svært billig til svært dyr.
 - **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare. Fastvareoppdateringer av Wi-Fi-modulen kan startes og følges her.
 - **Borte hjemmefra** – frostsikring og feriemodus.
@@ -170,7 +172,23 @@ Hver endring bekreftes i et eget vindu og logges. Etter en endring viser siden b
 
 Timevarsel fra [MET Norway](https://api.met.no/) (samme kilde som yr.no), lisens CC BY 4.0. Posisjonen rundes av til omtrent 1 km før den sendes, og vises aldri. Appen henter høyst én gang i timen og respekterer METs hurtigbufferregler. Du kan oppgi en kontakt-e-post for MET under Innstillinger → Vær; den fylles aldri inn automatisk.
 
-Anslaget for morgendagens forbruk og kostnad bygger på sammenhengen mellom forbruk og graddager de siste 45 dagene, og vises først når det finnes minst 10 dager med data.
+Anslaget for morgendagens forbruk og kostnad bygger på sammenhengen mellom forbruk og graddager de siste 45 dagene, og vises først når det finnes minst 10 dager med data. Prognose viser det samme anslaget for hver dag i varselet, inntil sju dager fram.
+
+**Prisanslag.** For timene etter de publiserte prisene (morgendagens kommer rundt kl. 13) viser Prognose et anslag: døgnprofilen per time de siste 28 dagene (hverdager og helg/helligdag hver for seg), skalert til snittet den siste uka. Har dagsprisen fulgt utetemperaturen de siste 30 dagene (|r| ≥ 0,4, minst 14 dager), flyttes nivået etter værvarselet. Området rundt anslaget er 25–75-persentilen av feilene metoden ville gjort de siste ukene. Krever minst 14 dager med lagrede priser; med Norgespris trengs det ikke.
+
+</details>
+
+<details>
+<summary><b>Prisstyring</b></summary>
+
+Slås på under Prognose. I timer Tibber (eller appen, mot snittet siste 72 timer) merker som dyre, senkes ønsket temperatur 1 °C, i svært dyre 2 °C, aldri under en laveste temperatur (standard 18 °C). Valgfritt: +1 °C i opptil to av de billigste timene de fire timene før en dyr periode. Grunnlaget er temperaturen i ukeplanen når den er på, ellers den temperaturen du sist stilte inn selv.
+
+- Bruker bare publiserte priser, aldri anslaget, og bare i varmemodus. Av/på og modus endres aldri.
+- Høyst én endring i timen, og bare ved skifte i planen. Den står over når feriemodus er på, når pumpen er av, ved sperre fra MELCloud og ti minutter rundt hendelser i ukeplanen.
+- Endrer du temperaturen selv, tar den pause til neste skifte, og din temperatur blir den nye grunntemperaturen.
+- Når den slås av, før Macen sover og når appen avsluttes, settes temperaturen tilbake først. Skjer ikke det (strømbrudd, krasj), blir temperaturen stående, men aldri lavere enn laveste temperatur. Neste gang appen starter, retter den seg etter planen.
+- Med prisstyring på lukkes ikke appen når vinduet lukkes. Den ligger i menylinjen med pris nå, temperatur, status og neste steg, og der kan du åpne vinduet, slå av prisstyringen eller avslutte.
+- Endringene logges med kilde «Prisstyring» og teller i de 12 endringene per time. Claude kan lese status og plan (`get_prices`), men ikke endre dem.
 
 </details>
 
@@ -183,7 +201,7 @@ Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste ju
 
 ## Sikkerhet og personvern
 
-- **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app eller Claude), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
+- **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app, Claude eller prisstyring), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
 - **Høflig mot MELCloud.** Status hentes høyst hvert minutt og gjenbrukes i 10 minutter. Høyst 12 endringer per time med minst 5 sekunder mellom. Ved «for mye trafikk» (HTTP 429) stopper all trafikk til sperren er over, og ved avvist passord stopper all henting til ny innlogging er lagret.
 - **Hemmeligheter** (MELCloud-innlogging, økt og Tibber-nøkkel) ligger i macOS-nøkkelringen, aldri i klartekst på disk.
 - **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel) og hvakosterstrommen.no (priser). Ingen analyse eller sporing.
