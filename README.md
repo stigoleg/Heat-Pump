@@ -1,197 +1,258 @@
-# Varmepumpe
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="Varmepumpe-ikonet">
+</p>
 
-Styring og helseovervåking av en Mitsubishi Electric MSZ-RW25VG (luft-til-luft) via klassisk MELCloud, for macOS. Prosjektet har to deler:
+<h1 align="center">Varmepumpe</h1>
 
-- **Varmepumpe.app** (`App/`): Mac-appen med oversikt, kontroll, historikk, helse, Claude-aktivitet og innstillinger.
-- **HeatPumpKit** (`Packages/HeatPumpKit`): felles Swift-bibliotek med MELCloud-klient, lokal historikk i SQLite, helsemotor og kunnskapsdokumenter. All logikk ligger her; appen er bare visning.
-- **varmepumpe-mcp**: en MCP-server (stdio) som lar Claude lese status og historikk og foreslå endringer. Den bygges inn i appen under `Varmepumpe.app/Contents/Helpers/`.
+<p align="center">
+  En Mac-app for styring og helseovervåking av en Mitsubishi Electric-varmepumpe (luft-til-luft) via MELCloud, med Claude som rådgiver.
+</p>
 
-## Bygg og test
+<p align="center">
+  <a href="https://github.com/stigoleg/Heat-Pump/actions/workflows/ci.yml"><img src="https://github.com/stigoleg/Heat-Pump/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/stigoleg/Heat-Pump/releases/latest"><img src="https://img.shields.io/github/v/release/stigoleg/Heat-Pump" alt="Siste versjon"></a>
+  <img src="https://img.shields.io/badge/macOS-26%2B-blue" alt="macOS 26+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/lisens-GPL--3.0-green" alt="GPL-3.0"></a>
+</p>
 
-Krever Xcode 27 / Swift 6.4, macOS 26 og [XcodeGen](https://github.com/yonaskolb/XcodeGen). `project.yml` er kilden; `.xcodeproj` lages og sjekkes ikke inn.
+<p align="center">
+  <img src="docs/screenshots/oversikt-lys.png" width="49%" alt="Oversikt i lys modus">
+  <img src="docs/screenshots/oversikt-mork.png" width="49%" alt="Oversikt i mørk modus">
+</p>
 
-```sh
-make build     # Release-bygg, signert: build/DerivedData/Build/Products/Release/Varmepumpe.app
-make test      # enhetstestene i HeatPumpKit
-make install   # bygg og kopier til /Applications (avslutt appen først)
-make demo      # Debug-bygg med simulerte data, egen database i build/demo/
-make check     # tester + Debug-bygg
-make clean
-```
+Den offisielle MELCloud-appen gir lite oversikt. Varmepumpe samler status, styring, historikk, strømkostnad og helse i ett ryddig vindu, skrevet for folk som ikke kan noe om varmepumper. Claude kan lese alt appen ser og foreslå tiltak, men hver endring på pumpen må godkjennes av deg.
 
-Uten make:
+Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-modeller i klassisk MELCloud bør også virke, men er ikke testet. Appen er på norsk.
 
-```sh
-xcodegen generate
-xcodebuild -scheme Varmepumpe -configuration Debug -derivedDataPath build/DerivedData build
-cd Packages/HeatPumpKit && swift test
-```
+## Innhold
 
-Appen signeres med «Apple Development»-sertifikatet (team `49P95434EE`, som er teamet i sertifikatet), med hardened runtime og uten App Sandbox, slik at appen og MCP-serveren deler database og nøkkelring.
+- [Funksjoner](#funksjoner)
+- [Skjermbilder](#skjermbilder)
+- [Installer](#installer)
+- [Kom i gang](#kom-i-gang)
+- [Koble til Claude](#koble-til-claude)
+- [Slik virker det](#slik-virker-det)
+- [Sikkerhet og personvern](#sikkerhet-og-personvern)
+- [Utvikling](#utvikling)
+- [Lage en ny versjon](#lage-en-ny-versjon)
+- [Lisens](#lisens)
 
-Kunnskapsdokumentene i `Packages/HeatPumpKit/Sources/HeatPumpKit/Knowledge/*.md` kompileres inn i koden. Etter endringer i dem:
+## Funksjoner
 
-```sh
-python3 Packages/HeatPumpKit/scripts/generate-knowledge.py
-```
+- **Oversikt** – termostatring du kan dra i, innetemperatur, ute, effekt, dagens forbruk og kostnad, strømpris nå, hva pumpen gjør (varmer, hviler, avriser) og værvarsel for de neste 48 timene.
+- **Kontroll** – av/på, modus, temperatur (glidebryter og stepper), viftehastighet og luftretning. Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen fra MELCloud vises nederst.
+- **Historikk** – temperatur, energi og kostnad, drift og effekt, for 24 timer, 7 dager, 30 dager eller ett år.
+- **Strømkostnad** – Norgespris, spotpris via Tibber eller spotpris fra hvakosterstrommen.no, med nettleie og strømstøtte. Prisene farges fra svært billig til svært dyr.
+- **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare.
+- **Borte hjemmefra** – frostsikring og feriemodus.
+- **Lokal tilkobling** – leser effekt, kompressor, avriming og en nøyaktig strømmåler direkte fra Wi-Fi-modulen på hjemmenettet. Bare lesing.
+- **Husets strømforbruk** – fra Tibber, med varmepumpens andel.
+- **Claude** – innebygd MCP-server med 22 verktøy, en helsesjekk og kunnskapsdokumenter om vedlikehold og feilkoder.
+- **Lys og mørk modus** – med ett klikk i verktøylinjen eller ⌘⇧L.
 
-En test feiler hvis dette er glemt.
+## Skjermbilder
+
+| Kontroll | Helse |
+|---|---|
+| <img src="docs/screenshots/kontroll.png" alt="Kontroll"> | <img src="docs/screenshots/helse.png" alt="Helse"> |
+
+| Historikk: temperatur | Historikk: energi og kostnad |
+|---|---|
+| <img src="docs/screenshots/historikk-temperatur.png" alt="Temperaturhistorikk"> | <img src="docs/screenshots/historikk-energi.png" alt="Energi og kostnad"> |
+
+| Historikk: effekt | Historikk: drift |
+|---|---|
+| <img src="docs/screenshots/historikk-effekt.png" alt="Effekt"> | <img src="docs/screenshots/historikk-drift.png" alt="Drift"> |
+
+| Borte hjemmefra | Innstillinger: strømpris |
+|---|---|
+| <img src="docs/screenshots/borte.png" alt="Borte hjemmefra"> | <img src="docs/screenshots/innstillinger-strompris.png" alt="Strømpris"> |
+
+Skjermbildene er tatt i demo-modus med simulerte data.
 
 ## Installer
 
-Kopier `Varmepumpe.app` til Programmer-mappen. Første gang uten innlogging viser appen en velkomstside der du logger inn på MELCloud. Appen henter bare data mens vinduet er åpent, og avsluttes når du lukker det.
+1. Last ned `Varmepumpe-<versjon>.zip` fra [siste versjon](https://github.com/stigoleg/Heat-Pump/releases/latest).
+2. Pakk ut og flytt `Varmepumpe.app` til Programmer.
+3. Åpne appen. Den er signert med Developer ID og notarisert av Apple, så den åpnes uten advarsel.
 
-## Kjør med simulert varmepumpe (demo)
+Krever macOS 26 eller nyere, på Apple Silicon eller Intel.
 
-```sh
-open -n --env VARMEPUMPE_BACKEND=mock --env VARMEPUMPE_DB_PATH=/tmp/varmepumpe-demo.sqlite \
-  build/DerivedData/Build/Products/Debug/Varmepumpe.app
+## Kom i gang
 
-VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=/tmp/varmepumpe-demo.sqlite \
-  build/DerivedData/Build/Products/Debug/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp
-```
+1. **Logg inn** med samme e-post og passord som i MELCloud-appen. Innloggingen lagres i nøkkelringen på Macen.
+2. **Velg strømavtale** under Innstillinger → Strømpris: Norgespris, spotpris via Tibber (krever en [personlig nøkkel](https://developer.tibber.com/settings/access-token)) eller spotpris uten Tibber. Nettleien er forhåndsutfylt med Elvias satser og kan endres.
+3. **Slå på lokal tilkobling** (valgfritt) under Innstillinger → Lokal tilkobling → **Finn automatisk** → **Test**. macOS spør om tilgang til lokalt nettverk; svar Tillat.
+4. **Sted for værvarsel** hentes fra MELCloud. Mangler det, legger du det inn under Innstillinger → Vær.
 
-Appen viser merket «Demo-data». MCP-serveren i demo-modus viser godkjenningsvinduet som ellers, med mindre `VARMEPUMPE_APPROVAL` er satt. Demoen har også simulert værvarsel (Oslo), husets forbruk, avriming, frostsikring/feriemodus og en ukeplan, og fyller 45 dager med utetemperaturer så anslaget for i morgen kan vises. Den simulerte varmepumpen gir realistiske vinterdata og en feil i feilloggen omtrent hver 17. dag. I demo-modus er lokal tilkobling slått på mot en simulert Wi-Fi-modul (192.168.1.50) som svarer gjennom samme kryptering og tolkning som den ekte, med kompressorrunder på 300–1200 W og en uke med målinger fra start.
+Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. Claude kan likevel lese når appen er lukket.
 
-## Koble til Claude Code
+## Koble til Claude
 
-Innstillinger → Claude i appen viser den nøyaktige kommandoen med riktig sti, med en kopier-knapp. For en app i Programmer-mappen:
+Innstillinger → Claude viser kommandoen med riktig sti og en kopier-knapp:
 
 ```sh
 claude mcp add varmepumpe --scope user -- "/Applications/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp"
 ```
 
-Hver endring må godkjennes i vinduet på Macen. Ikke legg likevel `set_*`-verktøyene til i Claudes liste over verktøy som er tillatt uten å spørre.
+Start Claude Code på nytt og spør for eksempel «Kjør helsesjekk på varmepumpa». Første gang spør macOS om MCP-serveren får lese innloggingen i nøkkelringen; velg **Tillat alltid**.
 
-Prompten `helsesjekk` gir en full helsesjekk med prioritert oppsummering. Kunnskapsdokumentene er tilgjengelige som ressurser under `varmepumpe://knowledge/…`.
+Når Claude vil endre noe, viser Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. Avvis, Esc eller ingen svar innen to minutter stopper den. Dette gjelder uansett tillatelsesmodus i Claude Code. Legg likevel ikke `set_*`-verktøyene i listen over verktøy som er tillatt uten å spørre.
 
-## Innlogging
+<details>
+<summary>Verktøy og ressurser for Claude</summary>
 
-E-post og passord legges inn i appen (Innstillinger → Konto, eller velkomstsiden). De lagres i macOS-nøkkelringen (tjeneste `com.stigole.varmepumpe`), aldri i klartekst på disk. Øktnøkkelen (ContextKey) lagres samme sted.
+- **Lesing:** `get_status`, `get_live_status`, `get_health_report`, `get_error_log`, `get_history`, `get_energy`, `get_prices`, `get_forecast`, `get_house_consumption`, `get_maintenance_status`, `get_away_settings`, `get_change_log`, `get_device_info`, `refresh`
+- **Endring (med godkjenning):** `set_power`, `set_mode`, `set_temperature`, `set_fan_speed`, `set_vanes`, `set_frost_protection`, `set_holiday_mode`, `record_maintenance`
+- **Prompt:** `helsesjekk` – full gjennomgang med prioritert oppsummering
+- **Ressurser:** `varmepumpe://knowledge/…` – varmepumpeprofil, vedlikehold, feilkoder, når du bør ringe forhandleren og råd om trygg drift
 
-Valgt løsning: vanlig nøkkelring-element i innloggingsnøkkelringen. Den fungerer for et kommandolinjeverktøy uten provisioneringsprofil. Programmet som lagret elementet har tilgang automatisk. Første gang det andre programmet (appen eller MCP-serveren) leser det, spør macOS om tilgang: velg **Tillat alltid**.
+</details>
 
-Kun for utvikling: miljøvariablene `MELCLOUD_EMAIL` og `MELCLOUD_PASSWORD` brukes i stedet for nøkkelringen når begge er satt. Ikke bruk dette i daglig drift.
+## Slik virker det
 
-## Strømpris og kostnad
+```
+Varmepumpe.app (SwiftUI)          varmepumpe-mcp (stdio, i Contents/Helpers)
+        \                                  /
+         HeatPumpKit (Swift-pakke)
+           HeatPumpService – hurtigbuffer, grenser for trafikk, revisjonslogg
+           MELCloud-klient (styring) · lokal klient (bare lesing) · Tibber · MET
+           HistoryStore    – SQLite i ~/Library/Application Support/Varmepumpe/
+           HealthEngine    – regelbasert helsevurdering
+           Knowledge/*.md  – kunnskap som appen og Claude bruker
+```
 
-Velg strømavtale under **Innstillinger → Strømpris**:
+Appen og MCP-serveren deler én database, slik at det finnes én hurtigbuffer, én historikk og én felles grense for trafikk mot MELCloud, uansett hvem som spør.
 
-- **Norgespris**: fast pris per kWh (standard 50 øre inkl. mva, kan endres). Ingen strømstøtte.
-- **Spotpris via Tibber**: lag en personlig nøkkel på <https://developer.tibber.com/settings/access-token>, lim den inn og trykk **Lagre og test**. Nøkkelen lagres i nøkkelringen (tjeneste `com.stigole.varmepumpe`, konto `tibber-token`) og brukes bare når timepriser hentes.
-- **Spotpris uten Tibber**: timepriser fra hvakosterstrommen.no for valgt prisområde (NO1–NO5), med påslaget fra strømselskapet. Mva legges til (ikke i NO4).
+<details>
+<summary><b>Strømpris og kostnad</b></summary>
 
-Nettleiens energiledd er forhåndsutfylt med Elvias satser for husholdninger fra 1. juli 2026 (dag 46,40 øre, natt/helg/helligdag 31,40 øre, inkl. avgifter og mva) og kan endres. Kapasitetsleddet er ikke med, fordi det avhenger av hele husets høyeste forbruk. For spotavtaler trekkes strømstøtte fra: staten dekker 90 % av timeprisen over 77 øre/kWh eks. mva (96,25 øre inkl. mva) i 2026.
+- **Norgespris:** fast pris per kWh (standard 50 øre inkl. mva., 40 øre i NO4). Ingen strømstøtte.
+- **Spotpris via Tibber:** timepriser fra Tibber med din personlige nøkkel.
+- **Spotpris uten Tibber:** timepriser fra hvakosterstrommen.no for valgt prisområde, med påslaget fra strømselskapet. Mva. legges til (ikke i NO4).
 
-Kostnad per døgn = forbruk × (strøm + nettleie − støtte). Har appen forbruk per time (fra strømmåleren i pumpen, målt mens appen er åpen), brukes timeprisen for hver time. Ellers prises døgnets kWh med døgnets snittpris, og beløpet merkes «anslag». Priser hentes høyst én gang i timen, morgendagens priser først etter kl. 13.30.
+Nettleiens energiledd er forhåndsutfylt med Elvias satser for husholdninger fra 1. juli 2026: dag 46,40 øre og natt/helg/helligdag 31,40 øre, inkl. avgifter og mva. Kapasitetsleddet er ikke med, fordi det avhenger av hele husets høyeste forbruk. For spotavtaler trekkes strømstøtten fra: staten dekker 90 % av timeprisen over 96,25 øre/kWh inkl. mva. (2026).
 
-## Lokal tilkobling (effekt og kompressor)
+Kostnad = forbruk × (strøm + nettleie − støtte). Med lokal tilkobling brukes målt forbruk per time. Ellers prises døgnets forbruk med døgnets snittpris, og beløpet merkes «anslag». Priser hentes høyst én gang i timen.
 
-Wi-Fi-modulen i varmepumpen svarer også direkte på hjemmenettet. Under **Innstillinger → Lokal tilkobling** kan appen lese den der, i tillegg til MELCloud. Det gir effekt i watt, om kompressoren går (og hvor fort, i Hz), antall kompressorstarter per time, raskere temperaturer, feilkoden fra innedelen og en nøyaktig strømmåler (0,1 kWh), slik at kostnaden per time blir eksakt i stedet for et anslag.
+</details>
 
-Slik slår du det på:
+<details>
+<summary><b>Lokal tilkobling</b></summary>
 
-1. Åpne Innstillinger → Lokal tilkobling.
-2. Trykk **Finn automatisk**. Appen prøver først lagret adresse, og leter ellers på Macens eget nett (/24) etter varmepumpens maskinvareadresse fra MELCloud. Adressen vises ikke. Du kan også skrive inn IP-adressen fra ruterens enhetsliste.
-3. Trykk **Test** (viser fastvareversjon, Wi-Fi-signal, effekt og temperaturer), slå på bryteren og trykk **Lagre**.
+Wi-Fi-modulen svarer også direkte på hjemmenettet. Appen kan lese den der i tillegg til MELCloud. Det gir effekt i watt, kompressorfrekvens og -starter, avriming, raskere temperaturer, feilkoden fra innedelen og en strømmåler med 0,1 kWh oppløsning.
 
-Gi gjerne varmepumpen fast IP-adresse i ruteren. Bytter den adresse og slutter å svare, prøver appen å finne den igjen automatisk, høyst én gang i timen.
+- **Bare lesing, håndhevet i koden.** Klienten har én operasjon: en statusforespørsel (`<CSV></CSV>` til `/smart`). Den sender aldri `CONNECT`-innstillingen (som kan koble modulen fra MELCloud), kommandoer, omstart eller admin-forespørsler. All styring går via MELCloud.
+- Bare private IPv4-adresser, ingen omdirigeringer, og bare svar fra adressen den spurte.
+- Leser bare når Macen er på samme nett som pumpen. Borte fra hjemmet står lokal lesing på pause.
+- Høyst én forespørsel per 20 sekunder, felles for appen og Claude, med lengre pauser etter feil.
+- MAC-adresse og serienummer fjernes rett etter dekryptering og lagres eller vises aldri.
+- Endepunktet er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker resten av appen som før.
+- Av som standard.
 
-Sikkerhet og begrensninger:
+Helsereglene for korte sykluser, forbruk per grad og avriming bygger på disse målingene. Grensene er tommelfingerregler og står i kunnskapsdokumentet om vedlikehold.
 
-- **Bare lesing, håndhevet i koden.** Den lokale klienten har én operasjon: en statusforespørsel (`<CSV></CSV>` til `/smart`). Den sender aldri `CONNECT`-innstillingen (som kan koble modulen fra MELCloud), kommandoer, omstart, ECHONET eller admin-sider. En test sjekker at klartekstet er nøyaktig `<CSV></CSV>`. All styring går fortsatt via MELCloud.
-- Appen godtar bare private IPv4-adresser (10.x, 172.16–31.x, 192.168.x), følger aldri omdirigeringer og godtar bare svar fra adressen den spurte.
-- Automatisk avlesning og automatisk søk skjer bare når Macen er på samme /24-nett som den lagrede adressen. Borte fra hjemmet settes lokal avlesning på pause («Ikke på hjemmenettet»), uten forespørsler eller søk på det andre nettet.
-- «Test» av en annen adresse enn den lagrede lagrer ingen måling og endrer ikke feiltelleren.
-- Høyst én forespørsel per 20 sekunder (felles for appen og Claude), 5 sekunders tidsavbrudd, og etter feil venter appen 2, 4, 8 og deretter 10 minutter. Appen leser hvert minutt mens den er åpen; Claude (`get_live_status`) gjenbruker en avlesning under ett minutt gammel.
-- MAC-adresse, serienummer og profilkoder fjernes rett etter dekryptering og lagres eller vises aldri. MCP-serveren viser heller ikke MAC-adresse eller serienummer fra MELCloud.
-- Endepunktet er uoffisielt. Det kan slutte å virke etter en fastvareoppdatering av modulen (for eksempel 43.00 eller nyere). Da virker resten av appen som før.
-- Av som standard. macOS spør første gang om appen får bruke lokalt nettverk; svar Tillat.
+</details>
 
-Målingene lagres i tabellen `local_samples` (omtrent én per minutt mens appen er åpen). Etter 90 dager tynnes de ut til én per 10. minutt, og etter ett år til én per time. Helsesjekken bruker dem til regler for korte sykluser (mange kompressorstarter per time), uvanlig høyt forbruk for temperaturen, feilkode fra modulen og modul som ikke svarer lokalt. Grensene er tommelfingerregler og er beskrevet i kunnskapsdokumentet om vedlikehold.
+<details>
+<summary><b>Borte hjemmefra</b></summary>
 
-### Hva varmepumpen gjør nå (avriming og hvile)
+- **Frostsikring** holder rommet mellom laveste (4–14 °C) og høyeste (6–16 °C) temperatur når pumpen ellers står av.
+- **Feriemodus** gjelder fra og til en gitt tid. Fordi pumpen kan stå av i perioden, kan feriemodus bare slås på når frostsikringen er på, og frostsikringen kan ikke slås av mens feriemodus gjelder.
 
-Med lokal tilkobling leser appen også hvilken fase innedelen er i. Under termostaten på Oversikt står det for eksempel «Varmer», «Hviler (ønsket temperatur nådd)», «Forvarmer» eller «Avriser – det kan blåse lite eller kaldt i noen minutter». Historikk → Drift får en egen rad «Lokalt» (går, hviler, avriser), og Effekt-grafen markerer avriming. Helsesjekken sier fra hvis utedelen avriser uvanlig ofte (mer enn tre ganger i timen tre timer på rad, eller mer enn 20 % av tiden siste døgn når det er mildere enn −5 °C); grensene er tommelfingerregler. Innedelens egen minutteller vises som «Driftstid totalt (ifølge innedelen)» under Helse og Innstillinger → Konto. Hva telleren måler nøyaktig, er ikke bekreftet av Mitsubishi.
+Hver endring bekreftes i et eget vindu og logges. Etter en endring viser siden både det som ble sendt og det MELCloud leser tilbake. Sammenlign første gang med MELCloud-appen.
 
-Byte-betydningene kommer fra to uavhengige kildeprosjekter (MitsubishiCN105ESPHome og pymitsubishi). De er enige om plasseringen, men bare det første navngir fasene, og de er uenige om to av verdiene for auto-modus. Disse vises derfor bare som rå tall til Claude.
+</details>
 
-## Værvarsel
+<details>
+<summary><b>Værvarsel og anslag</b></summary>
 
-Appen henter timevarsel fra MET Norway (Locationforecast 2.0, samme kilde som yr.no) og viser de neste 48 timene på Oversikt og som stiplet fortsettelse etter «nå» i Historikk → Temperatur (24 t og 7 d). Værdata: MET Norway, CC BY 4.0.
+Timevarsel fra [MET Norway](https://api.met.no/) (samme kilde som yr.no), lisens CC BY 4.0. Posisjonen rundes av til omtrent 1 km før den sendes, og vises aldri. Appen henter høyst én gang i timen og respekterer METs hurtigbufferregler. Du kan oppgi en kontakt-e-post for MET under Innstillinger → Vær; den fylles aldri inn automatisk.
 
-- **Sted**: posisjonen til bygget i MELCloud, eller egne koordinater under **Innstillinger → Vær** (egne koordinater vinner). Koordinatene rundes av til to desimaler (omtrent 1 km) før de sendes, og vises aldri i appen, til Claude eller i logger.
-- **Høflig henting**: høyst én gang i timen (felles for appen og Claude), bare når METs kopi er utløpt (`Expires`), med `If-Modified-Since`. Svar 203, 403 og 429 håndteres; 429 gjør at appen venter.
-- **Identifikasjon**: MET krever at hver forespørsel sier hvem den kommer fra. Appen sender `Varmepumpe-macOS/<versjon> (personlig bruk)`. Fyller du inn **Kontakt-e-post for MET**, legges den til, så MET kan ta kontakt i stedet for å stenge tilgangen. E-posten fylles aldri inn automatisk.
-- **Anslag for i morgen**: «Anslag i morgen: ~12 kWh · ~14 kr». Appen finner sammenhengen mellom forbruk og graddager (grense 17 °C) fra minst 10 av de siste 45 dagene og bruker morgendagens varsel og priser (før kl. 13 dagens timepriser for spotavtaler). Anslaget vises med et usikkerhetsområde, og skjules når det er for lite data.
+Anslaget for morgendagens forbruk og kostnad bygger på sammenhengen mellom forbruk og graddager de siste 45 dagene, og vises først når det finnes minst 10 dager med data.
 
-## Husets strømforbruk (Tibber)
+</details>
 
-Har du lagt inn en Tibber-nøkkel (Innstillinger → Strømpris), henter appen hele husets forbruk per time fra Tibber: én gang opptil 31 dager bakover, deretter bare nye timer, høyst én gang i timen. Under **Historikk → Energi og kostnad** viser «Varmepumpens andel av husets strøm» huset og varmepumpen per time (24 t) eller per døgn, og en linje som «Varmepumpen sto for 34 % av strømmen i går». Varmepumpens tall er målt lokalt der det finnes, ellers anslått fra MELCloud. Tibbers egen kostnad for huset vises som kontrolltall; appens egen kostnadsberegning med nettleie er uendret.
+<details>
+<summary><b>Endringer sendes automatisk</b></summary>
 
-Under samme fane viser **Fordeling på modus** hvordan MELCloud fordeler forbruket på varme, kjøling, auto, avfukting, vifte og annet.
+Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste justering. Flere justeringer samles i én sending, og stiller du tilbake til nåværende verdi, sendes ingenting. Merket øverst viser «Endret…», «Sender…», «Sendt – venter på pumpen», «Bekreftet» eller feilen. Hver sending inneholder hele innstillingsobjektet fra MELCloud, slik at felt du ikke endret, beholder verdien.
 
-## Prisnivå
+</details>
 
-Timeprisene i Historikk farges fra «svært billig» (grønn) til «svært dyr» (rød). Med Tibber brukes Tibbers eget nivå; med spotpris uten Tibber regner appen ut det samme mot snittet de siste 72 timene (≤ 60 %, ≤ 90 %, < 115 %, < 140 %, ≥ 140 %). Oversikt viser et merke som «Strømmen er billig nå». Med Norgespris er prisen fast, og nivå vises ikke.
+## Sikkerhet og personvern
 
-## Borte hjemmefra (frostsikring og feriemodus)
+- **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app eller Claude), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
+- **Høflig mot MELCloud.** Status hentes høyst hvert minutt og gjenbrukes i 10 minutter. Høyst 12 endringer per time med minst 5 sekunder mellom. Ved «for mye trafikk» (HTTP 429) stopper all trafikk til sperren er over, og ved avvist passord stopper all henting til ny innlogging er lagret.
+- **Hemmeligheter** (MELCloud-innlogging, økt og Tibber-nøkkel) ligger i macOS-nøkkelringen, aldri i klartekst på disk.
+- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel) og hvakosterstrommen.no (priser). Ingen analyse eller sporing.
+- **Ingen offisiell feilkodetabell** for MSZ-RW er offentlig. Forklaringene av feilkoder er derfor merket med usikkerhet.
 
-Den nye siden **Borte hjemmefra** viser og endrer to innstillinger som lagres i MELCloud:
+Varmepumpe er ikke laget av eller tilknyttet Mitsubishi Electric. MELCloud er et varemerke for Mitsubishi Electric.
 
-- **Frostsikring**: holder rommet mellom laveste (4–14 °C) og høyeste (6–16 °C) temperatur når varmepumpen ellers står av; høyeste må være minst 2 °C over laveste.
-- **Feriemodus**: fra og til (norsk tid). I perioden kan varmepumpen stå av, så feriemodus slås bare på når frostsikring er kjent som på (område vises i bekreftelsen; under 8 °C gir en advarsel), og frostsikring kan ikke slås av mens feriemodus er på. Appen sender tidene som UTC (slik melcloud-api gjør); siden viser tidene MELCloud leser tilbake ved siden av det som ble sendt, så en forskyvning synes. Sammenlign første gang med MELCloud-appen.
+## Utvikling
 
-Disse sendes ikke automatisk: hver endring bekreftes i et eget vindu, teller som én av de 12 sendingene i timen (med 5 sekunder mellom), og logges (`frostProtection`, `holidayMode`). Claude kan foreslå dem med `set_frost_protection` og `set_holiday_mode`, men de sendes bare etter godkjenning i vinduet på Macen. Innstillingene leses fra MELCloud høyst én gang i timen.
+Krever Xcode 27 (Swift 6.4), macOS 26 og [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`). `project.yml` er kilden; `.xcodeproj` lages og sjekkes ikke inn.
 
-Svarer MELCloud at kontoen ikke får bruke disse endepunktene (HTTP 401/403 rett etter en vellykket statushenting), logger appen aldri inn på nytt for dem, viser «MELCloud tillot ikke å lese …» og venter et døgn (eller til du trykker «Prøv igjen» / «Hent nå»). Resten av appen påvirkes ikke.
+```sh
+make build     # signert Release-bygg i build/DerivedData
+make test      # enhetstestene i HeatPumpKit
+make install   # bygg og kopier til /Applications (avslutt appen først)
+make demo      # appen med simulerte data og egen database i build/demo/
+make check     # tester og Debug-bygg
+make clean
+```
 
-Endepunktene er ikke prøvd mot en ekte konto ennå. Svarene tolkes tolerant, svarformen (bare nøkler og typer, ingen verdier) skrives til stderr med prefikset `[melcloud]`, og avviser MELCloud endringen, vises feilen. Gjør den første endringen selv og sjekk i MELCloud-appen at den er registrert.
+Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened runtime og uten App Sandbox, slik at appen og MCP-serveren deler database og nøkkelring.
 
-## Ukeplan
+**Demo-modus** (`make demo`, eller `VARMEPUMPE_BACKEND=mock`) gir en simulert varmepumpe med vinterdata, lokal Wi-Fi-modul, priser, vær, husets forbruk og av og til en feil. Ingen kall går til MELCloud.
 
-Nederst i **Kontroll** vises ukeplanen fra MELCloud (bare lesing), hentet høyst hver 6. time eller med **Hent nå** (høyst hvert 10. minutt). Formatet på hendelsene er ikke dokumentert: kan alle tolkes, vises de per ukedag; ellers bare om planen er på og hvor mange hendelser den har. Er planen på, sier appen og Claude fra om at varmepumpen kan endre seg selv etter planen.
+**Kunnskapsdokumentene** i `Packages/HeatPumpKit/Sources/HeatPumpKit/Knowledge/*.md` kompileres inn i koden. Kjør `python3 Packages/HeatPumpKit/scripts/generate-knowledge.py` etter endringer; en test feiler hvis det er glemt.
 
-## Lys og mørk modus
+**Appikonet** lages fra `App/Icon/AppIcon.svg` med `App/Icon/render.sh` (krever `brew install librsvg`).
 
-Velg **System**, **Lys** eller **Mørk** med knappen i verktøylinjen (halvfylt sirkel, sol eller måne), under **Visning → Utseende** (⌘⇧L bytter mellom de tre), eller under **Innstillinger → Generelt**. Valget lagres og gjelder hele appen, også Innstillinger og dialoger.
-
-## Endringer sendes automatisk
-
-Endringer i Kontroll og på termostaten på Oversikt sendes automatisk omtrent 2 sekunder etter siste justering (for glidebryter og termostathjul: etter at du slipper). Flere justeringer samles i én sending. Stiller du tilbake til nåværende verdi, sendes ingenting. Merket øverst viser «Endret…», «Sender…», «Sendt – venter på pumpen», «Bekreftet» eller «Feil: …». Er grensen på 12 sendinger per time nådd, venter endringen og sendes når det er lov igjen. Når færre enn 4 sendinger gjenstår denne timen, vises antallet.
-
-## Data
-
-Historikken ligger i `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite` (WAL-modus), delt mellom appen og MCP-serveren. `VARMEPUMPE_DB_PATH` overstyrer stien. Nye tabeller i denne runden: `weather_forecast` (MET, opptil 9 døgn), `house_consumption_hourly` (Tibber); `local_samples` har fått fase/trinn/driftstid, `energy_daily` resten av modusene og `price_hourly` Tibbers prisnivå. Frostsikring, feriemodus og ukeplan mellomlagres i `app_settings`.
-
-## Sikkerhet og begrensninger
-
-- **Lese fritt, skrive bare med godkjenning.** Når Claude kaller et `set_*`-verktøy, viser MCP-serveren selv et vindu på Macen: «Claude vil endre varmepumpen», med endringen og Claudes begrunnelse. Endringen sendes bare hvis du trykker **Godkjenn**. **Avvis** (standardknappen, også Return og Esc), ingen svar innen 120 sekunder, eller at vinduet ikke kan vises (ingen grafisk økt), gjør at endringen ikke sendes. Dette gjelder uansett klient og tillatelsesmodus i Claude Code. Avviste endringer logges.
-- Alle endringer logges med kilde (app eller claude), gammel og ny verdi, begrunnelse og resultat.
-- Maks 12 sendinger per time og minst 5 sekunder mellom to sendinger, til sammen for appen og Claude. Endringer fra appen sendes automatisk og samlet som én sending. Frostsikring og feriemodus teller også, men sendes aldri automatisk: appen ber om bekreftelse først.
-- Andre tjenester: MET Norway (værvarsel, høyst én gang i timen, avrundede koordinater) og Tibber (priser og husets forbruk, høyst én gang i timen hver, bare med nøkkel).
-- Godtar ikke MELCloud e-post eller passord, stopper all henting til ny innlogging er lagret, så kontoen ikke blir sperret.
-- Status hentes fra MELCloud høyst én gang i minuttet, og ellers fra lageret når dataene er yngre enn 10 minutter. Historikk hentes høyst én gang i timen per rapporttype.
-- Svarer MELCloud med «for mye trafikk» (HTTP 429), stopper alle nettverkskall i begge programmer til blokkeringen er over (Retry-After, ellers 2 timer).
-- Ønsket temperatur rundes til 0,5 °C og avvises utenfor enhetens grenser for valgt modus.
-- Feilkodeforklaringer er usikre: det finnes ingen offentlig feilkodetabell for MSZ-RW i MELCloud.
-
-## Variabler
+<details>
+<summary>Miljøvariabler</summary>
 
 | Variabel | Betydning |
 |---|---|
-| `VARMEPUMPE_BACKEND=mock` | Bruk simulert varmepumpe |
+| `VARMEPUMPE_BACKEND=mock` | Simulert varmepumpe |
 | `VARMEPUMPE_DB_PATH` | Sti til SQLite-databasen |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Kun utvikling: innlogging uten nøkkelring |
-| `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun utvikling og tester: svarer automatisk i stedet for godkjenningsvinduet. Virker bare sammen med `VARMEPUMPE_BACKEND=mock`; med ekte MELCloud ignoreres den. |
-| `VARMEPUMPE_SCREEN` | Kun utvikling: skjermen appen åpner på (overview, control, history, away, health, activity) |
-| `VARMEPUMPE_HISTORY_TAB` | Kun utvikling: fanen Historikk åpner på (temperature, energy, energy-kr, operation, power) |
-| `VARMEPUMPE_HISTORY_RANGE` | Kun utvikling: perioden Historikk åpner på (day, week, month, year) |
-| `VARMEPUMPE_SCROLL_TO` | Kun utvikling: ruller til en seksjon etter tre sekunder, for skjermbilder (weather på Oversikt; modes, house, prices i Historikk; timer i Kontroll) |
-| `VARMEPUMPE_APPEARANCE` | Kun utvikling: `light`, `dark` eller `system`; overstyrer valget i appen uten å lagre det (skjermbilder) |
-| `VARMEPUMPE_SETTINGS_TAB` | Kun utvikling: åpner Innstillinger på fanen (generelt, konto, strompris, lokal, vaer, claude, data) |
-| `VARMEPUMPE_MOCK_CYCLING=short` | Kun utvikling, sammen med `VARMEPUMPE_BACKEND=mock`: den simulerte kompressoren går i korte runder, så regelen for korte sykluser kan vises |
+| `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun tester: svarer i stedet for godkjenningsvinduet. Virker bare med `VARMEPUMPE_BACKEND=mock`. |
+| `VARMEPUMPE_SCREEN` | Startskjerm: overview, control, history, away, health, activity |
+| `VARMEPUMPE_HISTORY_TAB` | Startfane i Historikk: temperature, energy, energy-kr, operation, power |
+| `VARMEPUMPE_HISTORY_RANGE` | Startperiode i Historikk: day, week, month, year |
+| `VARMEPUMPE_SCROLL_TO` | Ruller til en seksjon etter tre sekunder (skjermbilder) |
+| `VARMEPUMPE_APPEARANCE` | `light`, `dark` eller `system`, uten å lagre valget |
+| `VARMEPUMPE_SETTINGS_TAB` | Åpner Innstillinger på fanen: generelt, konto, strompris, lokal, vaer, claude, data |
+| `VARMEPUMPE_MOCK_CYCLING=short` | Simulert kompressor går i korte runder |
 
-## Appikon
+</details>
 
-Kilden er `App/Icon/AppIcon.svg`. Kjør `App/Icon/render.sh` (krever `rsvg-convert`, `brew install librsvg`) for å lage alle størrelser i `App/Assets.xcassets/AppIcon.appiconset`.
+## Lage en ny versjon
+
+Versjoner bygges, signeres med Developer ID, notariseres og publiseres av GitHub Actions ([`release.yml`](.github/workflows/release.yml)) når en tag som `v1.2.3` pushes:
+
+```sh
+# Oppdater CHANGELOG.md og versjonen i project.yml (MARKETING_VERSION), commit, så:
+git tag v1.2.3
+git push origin main v1.2.3
+```
+
+Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.zip` med SHA-256 under Releases. Teksten hentes fra CHANGELOG.md.
+
+Den trenger disse hemmelighetene i repoet:
+
+| Hemmelighet | Innhold |
+|---|---|
+| `MACOS_CERTIFICATE_P12` | base64 av eksportert «Developer ID Application»-sertifikat med nøkkel (.p12) |
+| `MACOS_CERTIFICATE_PASSWORD` | passordet til .p12-filen |
+| `NOTARY_KEY_P8`, `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | App Store Connect API-nøkkel (base64 av .p8), eller: |
+| `NOTARY_APPLE_ID`, `NOTARY_PASSWORD` | Apple-ID og app-spesifikt passord |
+
+Lokalt gjør `make release VERSION=1.2.3 NOTARY_PROFILE=<profil>` det samme, med en profil lagret med `xcrun notarytool store-credentials`.
+
+## Lisens
+
+[GPL-3.0](LICENSE). Du kan bruke, endre og dele programmet, men endrede versjoner som deles må også ha åpen kildekode under samme lisens.

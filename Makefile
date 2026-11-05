@@ -3,6 +3,8 @@
 #   make test     HeatPumpKit unit tests
 #   make install  build, then copy to /Applications (refuses while the app is running)
 #   make demo     run the Debug build with simulated data (no MELCloud calls)
+#   make release VERSION=1.2.3 [NOTARY_PROFILE=varmepumpe]
+#                 Developer ID signed + notarized zip in build/release (CI does this on tags)
 
 SCHEME       := Varmepumpe
 DERIVED      := build/DerivedData
@@ -12,7 +14,7 @@ DEBUG_APP    := $(DERIVED)/Build/Products/Debug/$(SCHEME).app
 INSTALL_DIR  := /Applications
 DEMO_DB      := build/demo/varmepumpe.sqlite
 
-.PHONY: all build buil debug test check install demo project clean
+.PHONY: all build buil debug test check install demo release project clean
 
 all: build
 
@@ -48,6 +50,10 @@ install: build
 demo: debug
 	mkdir -p $(dir $(DEMO_DB))
 	VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=$(abspath $(DEMO_DB)) $(DEBUG_APP)/Contents/MacOS/$(SCHEME)
+
+release:
+	@test -n "$(VERSION)" || { echo "Bruk: make release VERSION=1.2.3 [NOTARY_PROFILE=navn]"; exit 1; }
+	NOTARY_PROFILE=$(NOTARY_PROFILE) scripts/release.sh $(VERSION)
 
 clean:
 	rm -rf build Varmepumpe.xcodeproj

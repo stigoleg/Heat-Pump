@@ -1,0 +1,124 @@
+name: Release
+
+# Push a tag like v1.2.3 to build, sign with Developer ID, notarize and publish a GitHub release.
+#
+# Required repository secrets:
+#   MACOS_CERTIFICATE_P12        base64 of the exported "Developer ID Application" certificate + key (.p12)
+#   MACOS_CERTIFICATE_PASSWORD   password of the .p12
+#   Notarization, either an App Store Connect API key:
+#     NOTARY_KEY_P8              base64 of the AuthKey_XXXX.p8 file
+#     NOTARY_KEY_ID, NOTARY_ISSUER_ID
+#   or an Apple ID with an app-specific password:
+#     NOTARY_APPLE_ID, NOTARY_PASSWORD   (team id is 49P95434EE)
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without "v", e.g. 1.0.0 (the tag v<version> must exist)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then v="${{ github.event.inputs.version }}"; else v="${GITHUB_REF_NAME#v}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Select Xcode 27
+        run: |
+          xcode=$(ls -d /Applications/Xcode_27*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Unit tests
+        run: make test
+
+      - name: Import signing certificate
+        env:
+          P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -hex 24)
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          security find-identity -v -p codesigning "$keychain"
+          echo "SIGN_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+      - name: Prepare notarization credentials
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          if [ -n "$NOTARY_KEY_P8" ]; then
+            echo "$NOTARY_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+            {
+              echo "NOTARY_KEY_PATH=$RUNNER_TEMP/notary.p8"
+              echo "NOTARY_KEY_ID=$NOTARY_KEY_ID"
+              echo "NOTARY_ISSUER_ID=$NOTARY_ISSUER_ID"
+            } >> "$GITHUB_ENV"
+          elif [ -n "$NOTARY_APPLE_ID" ]; then
+            {
+              echo "NOTARY_APPLE_ID=$NOTARY_APPLE_ID"
+              echo "NOTARY_PASSWORD=$NOTARY_PASSWORD"
+              echo "NOTARY_TEAM_ID=49P95434EE"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::error::No notarization secrets configured" && exit 1
+          fi
+
+      - name: Build, sign and notarize
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/release.sh "${{ steps.version.outputs.version }}"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.version.outputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
+          notes="$RUNNER_TEMP/notes.md"
+          # Section for this version from CHANGELOG.md, if present.
+          awk -v v="$v" '$0 ~ "^## \\[?"v"\\]?" {p=1; next} /^## / && p {exit} p' CHANGELOG.md > "$notes" || true
+          [ -s "$notes" ] || echo "Varmepumpe $v" > "$notes"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" build/release/Varmepumpe-$v.zip build/release/Varmepumpe-$v.zip.sha256 --clobber
+          else
+            gh release create "$tag" build/release/Varmepumpe-$v.zip build/release/Varmepumpe-$v.zip.sha256 \
+              --title "Varmepumpe $v" --notes-file "$notes" --verify-tag
+          fi
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          [ -n "${SIGN_KEYCHAIN:-}" ] && security delete-keychain "$SIGN_KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/notary.p8"
