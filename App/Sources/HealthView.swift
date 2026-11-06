@@ -33,25 +33,25 @@ struct HealthView: View {
         KPIRow {
             if let report = model.health {
                 KPITile(
-                    label: "Helse", value: report.overall == .ok ? "Alt OK" : report.overall.displayName,
-                    detail: "\(report.findings.filter { $0.severity != .ok }.count) ting å se på",
+                    label: "Health", value: report.overall == .ok ? String(localized: "All OK") : report.overall.displayName,
+                    detail: "\(report.findings.filter { $0.severity != .ok }.count) things to check",
                     systemImage: report.overall.systemImage, tint: report.overall.color)
             }
             ForEach(model.maintenance.filter { $0.recommendedIntervalDays != nil }, id: \.kind) { item in
                 KPITile(
                     label: .verbatim(item.displayName),
-                    value: item.nextDue.map { Format.dayMonth($0) } ?? "Ikke registrert",
-                    detail: item.nextDue == nil ? "Registrer når du har gjort det" : "neste gang",
+                    value: item.nextDue.map { Format.dayMonth($0) } ?? String(localized: "Not recorded"),
+                    detail: item.nextDue == nil ? "Record it when you have done it" : "next time",
                     systemImage: icon(item.status), tint: color(item.status))
             }
             if let hours = model.live?.sample?.runtimeHours {
                 KPITile(
-                    label: "Driftstid totalt", value: Display.format("%d t", hours), detail: "ifølge innedelen (trolig siden montering)",
+                    label: "Total runtime", value: String(localized: "\(hours) h"), detail: "according to the indoor unit (probably since installation)",
                     systemImage: "hourglass", tint: Theme.Data.orange)
             }
             KPITile(
-                label: "Feil siste 90 dager", value: "\(model.errorLog.count)",
-                detail: model.errorLog.first.map { "Siste: \(Display.date($0.start))" }, systemImage: "list.bullet.rectangle",
+                label: "Errors, last 90 days", value: "\(model.errorLog.count)",
+                detail: model.errorLog.first.map { "Latest: \(Display.date($0.start))" }, systemImage: "list.bullet.rectangle",
                 tint: model.errorLog.isEmpty ? Theme.Status.good : Theme.Status.caution)
         }
     }
@@ -59,10 +59,10 @@ struct HealthView: View {
     @ViewBuilder private var findings: some View {
         if let report = model.health {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                SectionHeader("Funn", hint: "Viktigst først")
+                SectionHeader("Findings", hint: "Most important first")
                 ForEach(report.findings) { finding in
                     InsightCard(
-                        title: .verbatim(finding.title), detail: "\(finding.detail)\nRåd: \(finding.recommendation)",
+                        title: .verbatim(finding.title), detail: "\(finding.detail)\nAdvice: \(finding.recommendation)",
                         systemImage: finding.severity.systemImage, tint: finding.severity.color)
                     .textSelection(.enabled)
                 }
@@ -72,11 +72,11 @@ struct HealthView: View {
 
     private var errorLog: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Feillogg", hint: "90 dager")
+            SectionHeader("Error log", hint: "90 days")
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if model.errorLog.isEmpty {
-                        Label("Ingen feil registrert de siste 90 dagene.", systemImage: "checkmark.circle.fill")
+                        Label("No errors recorded in the last 90 days.", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(Array(model.errorLog.enumerated()), id: \.offset) { index, entry in
@@ -97,7 +97,7 @@ struct HealthView: View {
                                         Text(Display.dateTime(entry.start)).foregroundStyle(.secondary)
                                     }
                                 }
-                                Text(entry.end.map { "Gikk over \(Display.dateTime($0))" } ?? "Ikke registrert som avsluttet")
+                                Text(entry.end.map { String(localized: "Cleared \(Display.dateTime($0))") } ?? String(localized: "Not recorded as cleared"))
                                     .font(.caption).foregroundStyle(.secondary)
                                 if explanation.confidence != .melcloud || ErrorCatalog.hasExplanation(errorCode: entry.code.flatMap(Int.init)) {
                                     Text(explanation.explanation).font(.callout)
@@ -113,15 +113,15 @@ struct HealthView: View {
 
     private func confidenceNote(_ confidence: CatalogConfidence) -> String {
         switch confidence {
-        case .melcloud: "Feilteksten kommer fra MELCloud."
-        case .medium: "Forklaringen er hentet fra en beslektet modell og er sannsynlig, men ikke sikker."
+        case .melcloud: String(localized: "The error text comes from MELCloud.")
+        case .medium: String(localized: "The explanation comes from a related model and is likely, but not certain.")
         case .low, .unknown: ErrorCatalog.caveat
         }
     }
 
     private var maintenance: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Vedlikehold", hint: "Luftfilter hver 2. uke, luktfilter hver 3. måned")
+            SectionHeader("Maintenance", hint: "Air filter every 2 weeks, deodorizing filter every 3 months")
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ForEach(Array(model.maintenance.enumerated()), id: \.offset) { index, item in
@@ -133,7 +133,7 @@ struct HealthView: View {
                                 Text(detail(item)).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Registrer utført") { recording = item.kind }
+                            Button("Record as Done") { recording = item.kind }
                         }
                     }
                 }
@@ -144,12 +144,12 @@ struct HealthView: View {
     private func detail(_ item: MaintenanceStatus) -> String {
         var parts: [String] = []
         if let last = item.lastDone {
-            parts.append("Sist: \(Display.date(last))")
+            parts.append(String(localized: "Last: \(Display.date(last))"))
         } else if item.recommendedIntervalDays != nil {
-            parts.append("Ikke registrert")
+            parts.append(String(localized: "Not recorded"))
         }
-        if let next = item.nextDue { parts.append("Neste: \(Display.date(next))") }
-        if let days = item.recommendedIntervalDays { parts.append("hver \(days). dag") }
+        if let next = item.nextDue { parts.append(String(localized: "Next: \(Display.date(next))")) }
+        if let days = item.recommendedIntervalDays { parts.append(String(localized: "every \(days) days")) }
         return parts.joined(separator: " · ")
     }
 
@@ -173,7 +173,7 @@ struct HealthView: View {
 
     private var knowledge: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionHeader("Les mer")
+            SectionHeader("Read more")
             ForEach(Knowledge.all(), id: \.name) { doc in
                 Button {
                     document = KnowledgeDocumentItem(document: doc)
@@ -206,17 +206,17 @@ struct RecordMaintenanceSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Registrer: \(kind.displayName)").font(.title2.weight(.semibold))
+            Text("Record: \(kind.displayName)").font(.title2.weight(.semibold))
             Form {
-                DatePicker("Dato", selection: $date, in: ...Date(), displayedComponents: [.date])
-                TextField("Merknad (valgfritt)", text: $note, axis: .vertical)
+                DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: [.date])
+                TextField("Note (optional)", text: $note, axis: .vertical)
             }
             .formStyle(.grouped)
             if let error { Text(error).foregroundStyle(.red) }
             HStack {
                 Spacer()
-                Button("Avbryt", role: .cancel) { dismiss() }
-                Button("Lagre") {
+                Button("Cancel", role: .cancel) { dismiss() }
+                Button("Save") {
                     Task {
                         saving = true
                         error = await model.recordMaintenance(kind: kind, date: date, note: note)

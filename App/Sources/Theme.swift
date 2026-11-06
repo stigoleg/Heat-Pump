@@ -160,7 +160,7 @@ enum Format {
 
     static func kroner(_ value: Double?) -> String {
         guard let value else { return "–" }
-        return Display.format("%.2f kr", value)
+        return String(localized: "\(Display.format("%.2f", value)) NOK")
     }
 
     static func ore(_ value: Double?) -> String {
@@ -183,14 +183,14 @@ enum Format {
     }
 
     static func relative(_ date: Date?, now: Date = Date()) -> String {
-        guard let date else { return "ukjent" }
-        if abs(now.timeIntervalSince(date)) < 45 { return "akkurat nå" }
+        guard let date else { return String(localized: "unknown") }
+        if abs(now.timeIntervalSince(date)) < 45 { return String(localized: "just now") }
         return date.formatted(Date.RelativeFormatStyle(presentation: .named, unitsStyle: .wide).locale(Display.locale))
     }
 
     static func countdown(to date: Date, now: Date) -> String {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
-        if seconds >= 3600 { return "\(seconds / 3600) t \(seconds % 3600 / 60) min" }
+        if seconds >= 3600 { return String(localized: "\(seconds / 3600) h \(seconds % 3600 / 60) min") }
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 

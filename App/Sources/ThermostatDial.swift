@@ -60,9 +60,9 @@ struct ThermostatDial: View {
         .onKeyPress(.downArrow) { nudge(-1); return .handled }
         .onKeyPress(.leftArrow) { nudge(-1); return .handled }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ønsket temperatur")
+        .accessibilityLabel("Target temperature")
         .accessibilityValue(Format.temperature(setpoint))
-        .accessibilityHint(room.map { "Inne er det \(Format.temperature($0))." } ?? "")
+        .accessibilityHint(room.map { String(localized: "It is \(Format.temperature($0)) indoors.") } ?? "")
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: nudge(+1)
@@ -100,17 +100,17 @@ struct ThermostatDial: View {
             .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
             .frame(width: size, height: size)
             .contentShape(Circle().inset(by: -10))
-            .help("Dra for å endre ønsket temperatur")
+            .help("Drag to change the target temperature")
     }
 
     private func centre(size: CGFloat) -> some View {
         VStack(spacing: size * 0.02) {
-            Text("Inne").font(.callout).foregroundStyle(.secondary)
+            Text("Indoor").font(.callout).foregroundStyle(.secondary)
             Text(Format.degrees(room))
                 .font(.system(size: size * 0.2, weight: .light, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
-            Text("Ønsket \(Format.temperature(shown))")
+            Text("Target \(Format.temperature(shown))")
                 .font(.system(size: max(13, size * 0.055), weight: .medium, design: .rounded))
                 .foregroundStyle(tint)
                 .monospacedDigit()
@@ -120,7 +120,7 @@ struct ThermostatDial: View {
             }
             .padding(.top, size * 0.03)
             if !isOn {
-                Text("Av").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Off").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             }
         }
     }
@@ -135,7 +135,7 @@ struct ThermostatDial: View {
                 .background(Color.primary.opacity(0.06), in: Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(delta > 0 ? "Varmere" : "Kaldere")
+        .accessibilityLabel(delta > 0 ? Text("Warmer") : Text("Colder"))
         .disabled(delta > 0 ? setpoint >= range.upperBound : setpoint <= range.lowerBound)
     }
 
