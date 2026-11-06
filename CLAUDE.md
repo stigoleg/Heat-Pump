@@ -18,7 +18,7 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 | `Packages/HeatPumpKit/Sources/varmepumpe-mcp` | MCP server embedded in the app bundle (`Contents/Helpers`); tools in `Tools.swift`, handlers in `ToolHandler.swift` |
 | `Packages/HeatPumpKit/Tests/HeatPumpKitTests` | Swift Testing suites, JSON fixtures, `TestSupport.swift` helpers |
 | `project.yml` | XcodeGen source of truth; `.xcodeproj` is generated and not checked in |
-| `scripts/` | `l10n.py` (catalogs), `release.sh`, `screenshot.sh`, `parity.sh` |
+| `scripts/` | `l10n.py` (catalogs), `release.sh`, `screenshot.sh`, `parity.sh`, `new-integration.py` (scaffold) |
 
 The app holds no business rules: views call `AppModel` or their device's model, which call the kit. Keep it that way.
 
@@ -33,6 +33,7 @@ python3 scripts/l10n.py check                     # what CI runs for translation
 python3 Packages/HeatPumpKit/scripts/generate-knowledge.py   # after editing Knowledge/*.md
 scripts/screenshot.sh out.png VARMEPUMPE_SCREEN=…   # one demo window, fixed size
 scripts/parity.sh capture|compare …                 # visual regression check
+python3 scripts/new-integration.py <TypeName> --id <id> --kind <DeviceKind>   # scaffold an integration target
 ```
 
 New Swift files in `App/Sources` are picked up by `make debug`/`make check` (they run XcodeGen).
@@ -81,3 +82,5 @@ New Swift files in `App/Sources` are picked up by `make debug`/`make check` (the
 | `localization` | adding or changing user-facing text, plurals, translations |
 | `screenshots` | README/demo screenshots or visual parity checks |
 | `release` | preparing a version, CHANGELOG, tag and GitHub release |
+| `add-integration` | a new heat pump brand or another kind of equipment (scaffold, contract, drivers, demo) |
+| `add-feature` | a new feature, screen, setting or MCP tool end to end (kit → app → MCP → tests → docs) |

@@ -175,6 +175,20 @@ helper (`MeterTools`, kept apart from the heat pump's by `ToolCatalog.canAnswer`
 kind and capability). The compiler points at each switch over `DeviceService`, `DeviceKind` and
 `DeviceScreen` that needs a case.
 
+### Extending
+
+- **A new integration** (another heat pump brand, or equipment such as an energy meter, water
+  heater or EV charger): the `add-integration` skill
+  ([.claude/skills/add-integration/SKILL.md](../.claude/skills/add-integration/SKILL.md)).
+  `python3 scripts/new-integration.py <TypeName> --id <id> --kind <DeviceKind>` creates the
+  target, a connection with the kind's minimum drivers, tests on `StubTransport` and a fixture,
+  and registers it in `Package.swift` and `IntegrationCatalog.all`.
+- **A new feature, screen, setting or MCP tool**: the `add-feature` skill
+  ([.claude/skills/add-feature/SKILL.md](../.claude/skills/add-feature/SKILL.md)), which traces
+  Away from model to MCP tool and lists the write rules and the final checklist.
+- Views follow the `design-system` skill, texts the `localization` skill, screenshots and parity
+  the `screenshots` skill.
+
 ### Known couplings (what the platform work removes)
 
 Device models have air-to-air fields; the generic error text fallback (`errorDescription`) still
