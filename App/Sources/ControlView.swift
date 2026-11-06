@@ -14,8 +14,8 @@ struct ControlView: View {
                 content(state: state, debouncer: debouncer)
             } else {
                 ContentUnavailableView(
-                    "Ingen status ennå", systemImage: "slider.horizontal.3",
-                    description: Text("Kontrollene blir tilgjengelige når status er hentet."))
+                    "No status yet", systemImage: "slider.horizontal.3",
+                    description: Text("The controls become available once the status has been fetched."))
             }
         }
     }
@@ -29,9 +29,9 @@ struct ControlView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     StatusBanner(bottomSpacing: Theme.Space.l)
                     HStack(alignment: .center, spacing: Theme.Space.m) {
-                        Text(
-                            "Endringer sendes automatisk et par sekunder etter at du har stilt inn."
-                                + (model.weeklyTimer?.enabled == true ? " Ukeplanen i MELCloud er på, så varmepumpen kan også endre seg selv." : ""))
+                        (model.weeklyTimer?.enabled == true
+                            ? Text("Changes are sent automatically a few seconds after you set them. The weekly schedule in MELCloud is on, so the heat pump can also change by itself.")
+                            : Text("Changes are sent automatically a few seconds after you set them."))
                             .font(.callout).foregroundStyle(.secondary)
                         Spacer(minLength: Theme.Space.s)
                         StatusChip(status: debouncer.status, remaining: debouncer.remainingThisHour)
@@ -39,8 +39,8 @@ struct ControlView: View {
                 }
                 if mode == nil {
                     InsightCard(
-                        title: "Modus ukjent – velg modus",
-                        detail: "Varmepumpen rapporterer ingen gyldig modus. Velg for eksempel Varme under Modus før du endrer temperaturen.",
+                        title: "Mode unknown – choose a mode",
+                        detail: "The heat pump reports no valid mode. Choose Heat under Mode, for example, before you change the temperature.",
                         systemImage: "questionmark.circle.fill", tint: Theme.Status.caution)
                 }
                 ViewThatFits(in: .horizontal) {
@@ -58,7 +58,7 @@ struct ControlView: View {
                 vaneSection(shown, debouncer)
                 WeeklyTimerStatus().id("timer")
                 Text(
-                    "Det kan ta et par minutter før varmepumpen bekrefter. Maks \(ChangeBudget.maxChangesPerHour) sendinger per time, til sammen for appen og Claude; flere endringer rett etter hverandre samles i én sending."
+                    "It can take a couple of minutes before the heat pump confirms. At most \(ChangeBudget.maxChangesPerHour) sends per hour, in total for the app and Claude; several changes in a row are combined into one send."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -87,10 +87,10 @@ struct ControlView: View {
                             in: Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(shown.power ? "Slå av varmepumpen" : "Slå på varmepumpen")
-                Text(shown.power ? "Varmepumpen er på" : "Varmepumpen er av")
+                .accessibilityLabel(shown.power ? Text("Turn off the heat pump") : Text("Turn on the heat pump"))
+                (shown.power ? Text("The heat pump is on") : Text("The heat pump is off"))
                     .font(.headline)
-                Text("Trykk for å slå \(shown.power ? "av" : "på").").font(.caption).foregroundStyle(.secondary)
+                (shown.power ? Text("Click to turn it off.") : Text("Click to turn it on.")).font(.caption).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
         }
@@ -113,9 +113,9 @@ struct ControlView: View {
         return CardSurface {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
-                    Label("Ønsket temperatur", systemImage: "thermometer.medium").foregroundStyle(.secondary)
+                    Label("Target temperature", systemImage: "thermometer.medium").foregroundStyle(.secondary)
                     Spacer()
-                    Text("Inne nå \(Format.temperature(state.roomTemperature))").font(.callout).foregroundStyle(.secondary)
+                    Text("Indoors now \(Format.temperature(state.roomTemperature))").font(.callout).foregroundStyle(.secondary)
                 }
                 HStack(alignment: .center, spacing: Theme.Space.l) {
                     Text(Format.temperature(shown.setTemperature))
@@ -124,11 +124,11 @@ struct ControlView: View {
                         .foregroundStyle(tint)
                         .contentTransition(.numericText())
                     Spacer()
-                    Stepper("Ønsket temperatur", value: Binding(get: { shown.setTemperature }, set: { debouncer.edit(.temperature($0)) }), in: range, step: step)
+                    Stepper("Target temperature", value: Binding(get: { shown.setTemperature }, set: { debouncer.edit(.temperature($0)) }), in: range, step: step)
                         .labelsHidden()
                 }
                 Slider(value: binding, in: range, step: step) {
-                    Text("Ønsket temperatur")
+                    Text("Target temperature")
                 } minimumValueLabel: {
                     Text(Display.format("%.0f°", range.lowerBound)).font(.caption)
                 } maximumValueLabel: {
@@ -140,9 +140,7 @@ struct ControlView: View {
                 .labelsHidden()
                 .tint(tint)
                 Text(
-                    Display.format(
-                        "Tillatt i %@: %.0f–%.0f °C. Små justeringer (1–2 grader) er nok.",
-                        (mode?.displayName ?? "varme").lowercased(), range.lowerBound, range.upperBound)
+                    "Allowed in \((mode?.displayName ?? String(localized: "heat")).lowercased()) mode: \(Display.format("%.0f–%.0f °C", range.lowerBound, range.upperBound)). Small adjustments (1–2 degrees) are enough."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }
@@ -153,7 +151,7 @@ struct ControlView: View {
 
     private func modeSection(_ current: OperationMode?, _ debouncer: ChangeDebouncer) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Modus", hint: "Varme er riktig valg om vinteren")
+            SectionHeader("Mode", hint: "Heat is the right choice in winter")
             let modes: [OperationMode] = [.heat, .cool, .dry, .fan, .auto]
             // Spread over the full width when there is room; wrap to more lines when narrow.
             ViewThatFits(in: .horizontal) {
@@ -164,7 +162,7 @@ struct ControlView: View {
                     ForEach(modes, id: \.self) { modeButton($0, current: current, debouncer) }
                 }
             }
-            Text(current.map(modeHelp) ?? "Modus ukjent – velg modus.").font(.caption).foregroundStyle(.secondary)
+            Text(current.map(modeHelp) ?? String(localized: "Mode unknown – choose a mode.")).font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -193,11 +191,11 @@ struct ControlView: View {
 
     private func modeHelp(_ mode: OperationMode) -> String {
         switch mode {
-        case .heat: "Varme: varmer opp rommet til ønsket temperatur."
-        case .cool: "Kjøling: kjøler ned rommet om sommeren."
-        case .dry: "Avfukting: tar fukt ut av lufta, med litt kjøling."
-        case .fan: "Vifte: sirkulerer lufta uten å varme eller kjøle."
-        case .auto: "Auto: velger selv mellom varme og kjøling."
+        case .heat: String(localized: "Heat: warms the room to the target temperature.")
+        case .cool: String(localized: "Cool: cools the room in summer.")
+        case .dry: String(localized: "Dry: takes moisture out of the air, with a little cooling.")
+        case .fan: String(localized: "Fan: circulates the air without heating or cooling.")
+        case .auto: String(localized: "Auto: chooses between heating and cooling by itself.")
         }
     }
 
@@ -206,7 +204,7 @@ struct ControlView: View {
     private func fanSection(_ shown: ControlSettings, state: DeviceState, debouncer: ChangeDebouncer) -> some View {
         let speeds = (state.hasAutomaticFanSpeed ? [0] : []) + Array(1...max(state.numberOfFanSpeeds, 1))
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Viftehastighet", hint: "Auto er stillest og passer nesten alltid")
+            SectionHeader("Fan speed", hint: "Auto is the quietest and almost always fits")
             HStack(spacing: 0) {
                 ForEach(speeds, id: \.self) { speed in
                     let selected = shown.fanSpeed == speed
@@ -226,7 +224,7 @@ struct ControlView: View {
                                     }
                                 }
                                 .frame(height: 22, alignment: .bottom)
-                                Text("\(speed)").font(.caption)
+                                Text(verbatim: "\(speed)").font(.caption)
                             }
                         }
                         .foregroundStyle(selected ? Color.primary : Color.secondary)
@@ -240,7 +238,7 @@ struct ControlView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(speed == 0 ? "Vifte auto" : "Viftehastighet \(speed)")
+                    .accessibilityLabel(speed == 0 ? Text("Fan auto") : Text("Fan speed \(speed)"))
                     .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
@@ -253,16 +251,16 @@ struct ControlView: View {
 
     private func vaneSection(_ shown: ControlSettings, _ debouncer: ChangeDebouncer) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Luftretning", hint: "Ved oppvarming: nederste stilling eller Auto, så varmen når gulvet")
+            SectionHeader("Airflow direction", hint: "When heating: the lowest position or Auto, so the heat reaches the floor")
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: Theme.Space.l, alignment: .top)], spacing: Theme.Space.l) {
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Text("Opp/ned").font(.callout).foregroundStyle(.secondary)
+                        Text("Up/down").font(.callout).foregroundStyle(.secondary)
                         FlowLayout(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
                             ForEach(VaneVertical.allCases, id: \.self) { vane in
                                 VaneButton(
                                     selected: shown.vaneVertical == vane, title: vane.shortTitle,
-                                    accessibility: "Opp/ned: \(vane.displayName)"
+                                    accessibility: String(localized: "Up/down: \(vane.displayName)")
                                 ) {
                                     VaneGlyph(kind: vane.glyph(vertical: true))
                                 } action: { debouncer.edit(.vaneVertical(vane)) }
@@ -272,12 +270,12 @@ struct ControlView: View {
                 }
                 CardSurface {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Text("Venstre/høyre").font(.callout).foregroundStyle(.secondary)
+                        Text("Left/right").font(.callout).foregroundStyle(.secondary)
                         FlowLayout(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
                             ForEach(VaneHorizontal.allCases, id: \.self) { vane in
                                 VaneButton(
                                     selected: shown.vaneHorizontal == vane, title: vane.shortTitle,
-                                    accessibility: "Venstre/høyre: \(vane.displayName)"
+                                    accessibility: String(localized: "Left/right: \(vane.displayName)")
                                 ) {
                                     VaneGlyph(kind: vane.glyph)
                                 } action: { debouncer.edit(.vaneHorizontal(vane)) }
@@ -357,8 +355,8 @@ struct VaneGlyph: View {
 extension VaneVertical {
     var shortTitle: String {
         switch self {
-        case .auto: "Auto"
-        case .swing: "Sving"
+        case .auto: String(localized: "Auto")
+        case .swing: String(localized: "Swing")
         default: "\(rawValue)"
         }
     }
@@ -376,9 +374,9 @@ extension VaneVertical {
 extension VaneHorizontal {
     var shortTitle: String {
         switch self {
-        case .auto: "Auto"
-        case .swing: "Sving"
-        case .split: "Delt"
+        case .auto: String(localized: "Auto")
+        case .swing: String(localized: "Swing")
+        case .split: String(localized: "Split")
         default: "\(rawValue)"
         }
     }
@@ -394,7 +392,7 @@ extension VaneHorizontal {
     }
 }
 
-/// Compact status of MELCloud's weekly timer with a link to the Ukeplan page.
+/// Compact status of MELCloud's weekly timer with a link to the Weekly schedule page.
 struct WeeklyTimerStatus: View {
     @Environment(AppModel.self) private var model
 
@@ -422,14 +420,14 @@ struct WeeklyTimerStatus: View {
     }
 
     private var button: some View {
-        Button("Åpne ukeplanen") { model.selection = .schedule }
+        Button("Open Weekly Schedule") { model.selection = .schedule }
     }
 
     private func text(_ timer: WeeklyTimer?) -> String {
-        guard let timer else { return "Ukeplanen hentes fra MELCloud …" }
-        guard timer.enabled == true else { return timer.enabled == false ? "Ukeplan av" : "Ukjent om ukeplanen er på" }
-        guard let next = timer.nextEvent(after: Date(), timeZone: .current) else { return "Ukeplan på" }
+        guard let timer else { return String(localized: "Fetching the weekly schedule from MELCloud…") }
+        guard timer.enabled == true else { return timer.enabled == false ? String(localized: "Weekly schedule off") : String(localized: "Unknown whether the weekly schedule is on") }
+        guard let next = timer.nextEvent(after: Date(), timeZone: .current) else { return String(localized: "Weekly schedule on") }
         let day = TimerEvent.shortWeekdayNames[next.event.weekday - 1]
-        return "Ukeplan på · Neste: \(day) \(next.event.timeText) \(next.event.summary)"
+        return String(localized: "Weekly schedule on · Next: \(day) \(next.event.timeText) \(next.event.summary)")
     }
 }

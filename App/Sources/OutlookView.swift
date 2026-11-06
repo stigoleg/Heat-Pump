@@ -2,7 +2,7 @@ import Charts
 import HeatPumpKit
 import SwiftUI
 
-/// Prognose: the weather ahead, published and estimated electricity prices, expected use and
+/// Forecast: the weather ahead, published and estimated electricity prices, expected use and
 /// cost per day, and price control.
 struct OutlookView: View {
     @Environment(AppModel.self) private var model
@@ -32,16 +32,16 @@ struct OutlookView: View {
     private var weatherSection: some View {
         let hours = Array(model.longForecast.prefix { $0.time < Date().addingTimeInterval(48 * 3600) })
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Vær", hint: (model.weatherLocation?.displayName).map(LocalizedStringKey.verbatim))
-            TrendCard(title: "Neste 48 timer") {
+            SectionHeader("Weather", hint: (model.weatherLocation?.displayName).map(LocalizedStringKey.verbatim))
+            TrendCard(title: "Next 48 hours") {
                 FlowLayout {
-                    LegendDot(label: "Temperatur", color: Theme.Data.outside)
-                    LegendDot(label: "Nedbør (mm)", color: Theme.Data.blue.opacity(0.35))
+                    LegendDot(label: "Temperature", color: Theme.Data.outside)
+                    LegendDot(label: "Precipitation (mm)", color: Theme.Data.blue.opacity(0.35))
                 }
             } chart: {
                 if hours.isEmpty {
                     EmptyChart(
-                        title: "Ingen værvarsel ennå", message: model.weatherMessage.map { .verbatim($0) } ?? "Varselet hentes fra MET Norway.",
+                        title: "No weather forecast yet", message: model.weatherMessage.map { .verbatim($0) } ?? "The forecast is fetched from MET Norway.",
                         systemImage: "cloud.sun")
                 } else {
                     weatherChart(hours).frame(height: 200)
@@ -70,25 +70,25 @@ struct OutlookView: View {
             ForEach(hours, id: \.time) { h in
                 if let mm = h.precipitation, mm > 0 {
                     BarMark(
-                        x: .value("Tid", h.time, unit: .hour), yStart: .value("mm", low), yEnd: .value("mm", low + min(mm, 6) * mmScale)
+                        x: .value("Time", h.time, unit: .hour), yStart: .value("mm", low), yEnd: .value("mm", low + min(mm, 6) * mmScale)
                     )
                     .foregroundStyle(Theme.Data.blue.opacity(0.35))
                 }
-                LineMark(x: .value("Tid", h.time), y: .value("°C", h.temperature))
+                LineMark(x: .value("Time", h.time), y: .value("°C", h.temperature))
                     .foregroundStyle(Theme.Data.outside)
                     .interpolationMethod(.monotone)
             }
-            if low < 0, high > 0 { RuleMark(y: .value("0", 0)).foregroundStyle(Color.secondary.opacity(0.25)) }
+            if low < 0, high > 0 { RuleMark(y: .value("Freezing point", 0)).foregroundStyle(Color.secondary.opacity(0.25)) }
             if let h = nearest(hours, to: selectedWeather, by: \.time) {
-                RuleMark(x: .value("Valgt", h.time))
+                RuleMark(x: .value("Selected", h.time))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
                             title: Format.weekdayHour(h.time),
                             rows: [
-                                ("Ute", Format.temperature(h.temperature), Theme.Data.outside),
-                                ("Nedbør", h.precipitation.map { Display.format("%.1f mm", $0) } ?? "–", Theme.Data.blue),
-                                ("Vind", h.windSpeed.map { Display.format("%.0f m/s", $0) } ?? "–", .secondary),
+                                ("Outdoor", Format.temperature(h.temperature), Theme.Data.outside),
+                                ("Precipitation", h.precipitation.map { Display.format("%.1f mm", $0) } ?? "–", Theme.Data.blue),
+                                ("Wind", h.windSpeed.map { Display.format("%.0f m/s", $0) } ?? "–", .secondary),
                             ])
                     }
             }
@@ -97,7 +97,7 @@ struct OutlookView: View {
         .calmYAxis { Display.format("%.0f°", $0) }
         .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
         .chartXSelection(value: $selectedWeather)
-        .accessibilityLabel("Temperatur og nedbør neste 48 timer")
+        .accessibilityLabel("Temperature and precipitation, next 48 hours")
     }
 
     // MARK: Prices
@@ -109,10 +109,10 @@ struct OutlookView: View {
         let now = Date()
         let current = known.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Strømpris", hint: outlook.map { .verbatim($0.agreement.displayName) })
+            SectionHeader("Electricity price", hint: outlook.map { .verbatim($0.agreement.displayName) })
             TrendCard(
-                title: "Neste 7 dager",
-                value: current.map { Display.format("Nå %.2f kr/kWh", $0.totalOre / 100) }
+                title: "Next 7 days",
+                value: current.map { String(localized: "Now \(Display.format("%.2f", $0.totalOre / 100)) NOK/kWh") }
             ) {
                 FlowLayout {
                     if known.contains(where: { $0.level != nil }) {
@@ -120,14 +120,14 @@ struct OutlookView: View {
                             LegendDot(label: .verbatim($0.displayName), color: $0.color)
                         }
                     } else {
-                        LegendDot(label: "Kjent pris", color: Theme.Data.purple)
+                        LegendDot(label: "Known price", color: Theme.Data.purple)
                     }
-                    if !estimate.isEmpty { LegendDot(label: "Anslag (usikkert)", color: .secondary, dashed: true) }
+                    if !estimate.isEmpty { LegendDot(label: "Estimate (uncertain)", color: .secondary, dashed: true) }
                 }
             } chart: {
                 if known.isEmpty && estimate.isEmpty {
                     EmptyChart(
-                        title: "Ingen priser ennå", message: model.priceMessage.map { .verbatim($0) } ?? "Velg strømavtale under Innstillinger → Strømpris.",
+                        title: "No prices yet", message: model.priceMessage.map { .verbatim($0) } ?? "Choose an electricity contract under Settings → Electricity price.",
                         systemImage: "bolt.horizontal")
                 } else {
                     priceChart(known: known, estimate: estimate).frame(height: 220)
@@ -140,74 +140,76 @@ struct OutlookView: View {
     private func priceExplanation(_ outlook: PriceOutlook?) -> String {
         guard let outlook else { return "" }
         if outlook.agreement == .norgespris {
-            return Display.format("Norgespris er %.0f øre/kWh hele døgnet; søylene viser den pluss nettleien, som er lavere om natten og i helgene. Ingen anslag trengs.", model.priceSettings.norgesprisOre)
+            return String(
+                localized: "Norgespris is \(Display.format("%.0f", model.priceSettings.norgesprisOre)) øre/kWh around the clock; the bars show it plus the grid tariff, which is lower at night and on weekends. No estimate is needed.")
         }
-        var text = "Søylene er publiserte priser (strøm, nettleie og strømstøtte). "
         if !outlook.estimate.isEmpty {
-            text += "Det stiplede er et anslag med usikkerhetsområde, ikke en pris: " + PriceOutlook.methodText.prefix(1).lowercased()
-                + PriceOutlook.methodText.dropFirst()
+            let method = PriceOutlook.methodText.prefix(1).lowercased() + PriceOutlook.methodText.dropFirst()
+            return String(
+                localized: "The bars are published prices (electricity, grid tariff and electricity subsidy). The dashed line is an estimate with a range of uncertainty, not a price: \(method)")
         } else if let missing = outlook.estimateMissing {
-            text += missing + " Virkelige priser for i morgen kommer rundt kl. 13."
+            return String(
+                localized: "The bars are published prices (electricity, grid tariff and electricity subsidy). \(missing) Real prices for tomorrow come around 13:00.")
         } else {
-            text += "Virkelige priser for i morgen kommer rundt kl. 13."
+            return String(
+                localized: "The bars are published prices (electricity, grid tariff and electricity subsidy). Real prices for tomorrow come around 13:00.")
         }
-        return text
     }
 
     private func priceChart(known: [PriceBreakdown], estimate: [EstimatedPrice]) -> some View {
         let now = Date()
         return Chart {
             ForEach(known, id: \.hour) { p in
-                BarMark(x: .value("Time", p.hour, unit: .hour), y: .value("kr/kWh", p.totalOre / 100))
+                BarMark(x: .value("Hour", p.hour, unit: .hour), y: .value("NOK/kWh", p.totalOre / 100))
                     .foregroundStyle((p.level?.color ?? Theme.Data.purple).opacity(0.85))
             }
             ForEach(estimate, id: \.hour) { e in
                 AreaMark(
-                    x: .value("Time", e.hour), yStart: .value("Lav", e.lowOre / 100), yEnd: .value("Høy", e.highOre / 100),
-                    series: .value("Serie", "band")
+                    x: .value("Hour", e.hour), yStart: .value("Low", e.lowOre / 100), yEnd: .value("High", e.highOre / 100),
+                    series: .value("Series", "band")
                 )
                 .foregroundStyle(Color.secondary.opacity(0.16))
                 .interpolationMethod(.monotone)
-                LineMark(x: .value("Time", e.hour), y: .value("kr/kWh", e.totalOre / 100), series: .value("Serie", "anslag"))
+                LineMark(x: .value("Hour", e.hour), y: .value("NOK/kWh", e.totalOre / 100), series: .value("Series", "estimate"))
                     .foregroundStyle(Color.secondary)
                     .lineStyle(ChartKit.previousStroke)
                     .interpolationMethod(.monotone)
             }
-            RuleMark(x: .value("Nå", now))
+            RuleMark(x: .value("Now", now))
                 .foregroundStyle(Theme.Status.caution)
                 .lineStyle(StrokeStyle(lineWidth: 1.5))
                 .annotation(position: .top, alignment: .center, spacing: 2) {
-                    Text("nå").font(.caption2.weight(.semibold)).foregroundStyle(Theme.Status.caution)
+                    Text("now").font(.caption2.weight(.semibold)).foregroundStyle(Theme.Status.caution)
                 }
             if let first = estimate.first {
-                RuleMark(x: .value("Anslag", first.hour))
+                RuleMark(x: .value("Estimate", first.hour))
                     .foregroundStyle(Color.secondary.opacity(0.35))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
                     .annotation(position: .top, alignment: .leading, spacing: 2) {
-                        Text("anslag →").font(.caption2).foregroundStyle(.secondary)
+                        Text("estimate →").font(.caption2).foregroundStyle(.secondary)
                     }
             }
             if let selectedPrice {
                 if let p = known.first(where: { $0.hour <= selectedPrice && selectedPrice < $0.hour.addingTimeInterval(3600) }) {
-                    RuleMark(x: .value("Valgt", p.hour, unit: .hour))
+                    RuleMark(x: .value("Selected", p.hour, unit: .hour))
                         .foregroundStyle(Color.secondary.opacity(0.25))
                         .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                             ChartTooltip(
                                 title: Display.dateTime(p.hour),
                                 rows: [
-                                    ("Totalt", Display.format("%.2f kr", p.totalOre / 100), .primary),
-                                    ("Nivå", p.level?.displayName ?? "–", p.level?.color ?? .secondary),
+                                    ("Total", Format.kroner(p.totalOre / 100), .primary),
+                                    ("Level", p.level?.displayName ?? "–", p.level?.color ?? .secondary),
                                 ])
                         }
                 } else if let e = nearest(estimate, to: selectedPrice, by: \.hour) {
-                    RuleMark(x: .value("Valgt", e.hour))
+                    RuleMark(x: .value("Selected", e.hour))
                         .foregroundStyle(Color.secondary.opacity(0.25))
                         .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                             ChartTooltip(
                                 title: Display.dateTime(e.hour),
                                 rows: [
-                                    ("Anslag", Display.format("%.2f kr", e.totalOre / 100), .secondary),
-                                    ("Trolig", Display.format("%.2f–%.2f kr", e.lowOre / 100, e.highOre / 100), .secondary),
+                                    ("Estimate", Format.kroner(e.totalOre / 100), .secondary),
+                                    ("Likely", String(localized: "\(Display.format("%.2f–%.2f", e.lowOre / 100, e.highOre / 100)) NOK"), .secondary),
                                 ])
                         }
                 }
@@ -216,18 +218,18 @@ struct OutlookView: View {
         .calmYAxis { Display.format("%.1f", $0) }
         .calmXAxis(Date.FormatStyle().weekday(.abbreviated).day(), count: 8)
         .chartXSelection(value: $selectedPrice)
-        .accessibilityLabel("Strømpris neste 7 dager, kjente priser og anslag")
+        .accessibilityLabel("Electricity price, next 7 days, known prices and estimate")
     }
 
     // MARK: Use and cost
 
     @ViewBuilder private var useSection: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Forventet forbruk og kostnad", hint: "Anslag per døgn")
+            SectionHeader("Expected consumption and cost", hint: "Estimate per day")
             if model.dailyOutlook.isEmpty {
                 InsightCard(
-                    title: "Ikke nok data ennå",
-                    detail: "Anslaget trenger minst \(DegreeDayModel.minDays) dager med forbruk og utetemperatur, og et værvarsel.",
+                    title: "Not enough data yet",
+                    detail: "The estimate needs at least \(DegreeDayModel.minDays) days of consumption and outdoor temperature, and a weather forecast.",
                     systemImage: "chart.bar.doc.horizontal", tint: .secondary)
             } else {
                 LazyVGrid(
@@ -237,7 +239,7 @@ struct OutlookView: View {
                     ForEach(model.dailyOutlook, id: \.day) { DayOutlookCard(day: $0) }
                 }
                 Text(
-                    "Grovt anslag: forbruket mot hvor kaldt det har vært de siste ukene, værvarselet og prisene. Dager merket «prisanslag» bruker anslåtte priser for timene uten publisert pris."
+                    "Rough estimate: consumption against how cold it has been over the last few weeks, the weather forecast and the prices. Days marked “price estimate” use estimated prices for the hours without a published price."
                 )
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -327,7 +329,7 @@ struct WeatherDayCard: View {
     }
 
     private var title: String {
-        if Calendar.current.isDateInToday(day.date) { return "I dag" }
+        if Calendar.current.isDateInToday(day.date) { return String(localized: "Today") }
         return day.date.formatted(Date.FormatStyle().weekday(.abbreviated).day().locale(Display.locale))
     }
 }
@@ -343,21 +345,23 @@ struct DayOutlookCard: View {
                 Text("~" + Display.format("%.0f kWh", day.kWh))
                     .font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
                 if day.kWhLow.rounded() != day.kWhHigh.rounded() {
-                    Text(Display.format("ca. %.0f–%.0f kWh", day.kWhLow, day.kWhHigh)).font(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: "about \(Display.format("%.0f–%.0f", day.kWhLow, day.kWhHigh)) kWh")).font(.caption).foregroundStyle(.secondary)
                 }
-                Text(day.costNok.map { "~" + Display.format("%.0f kr", $0) } ?? "kostnad ukjent")
+                Text(day.costNok.map { String(localized: "~\(Display.format("%.0f", $0)) NOK") } ?? String(localized: "cost unknown"))
                     .font(.body.weight(.medium)).monospacedDigit()
-                Text(Display.format("%.0f° i snitt · ", day.meanOutdoor) + (day.usesEstimatedPrices ? "prisanslag" : "kjente priser"))
+                (day.usesEstimatedPrices
+                    ? Text("\(Display.format("%.0f°", day.meanOutdoor)) average · price estimate")
+                    : Text("\(Display.format("%.0f°", day.meanOutdoor)) average · known prices"))
                     .font(.caption).foregroundStyle(day.usesEstimatedPrices ? .secondary : .primary)
             }
         }
-        .help("Anslag ut fra værvarselet og egne målinger. \(day.knownPriceHours) timer med publisert pris, \(day.estimatedPriceHours) med anslått pris.")
+        .help("Estimate based on the weather forecast and own measurements. \(day.knownPriceHours) hours with a published price, \(day.estimatedPriceHours) with an estimated price.")
     }
 }
 
 // MARK: - Price control
 
-/// Prisstyring: switch with the warning, settings, status now and the plan.
+/// Price control: switch with the warning, settings, status now and the plan.
 struct PriceControlSection: View {
     @Environment(AppModel.self) private var model
     @State private var draft = PriceControlSettings.default
@@ -367,7 +371,7 @@ struct PriceControlSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Prisstyring", hint: "Senker temperaturen når strømmen er dyr")
+            SectionHeader("Price control", hint: "Lowers the temperature when electricity is expensive")
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     toggleRow
@@ -385,13 +389,13 @@ struct PriceControlSection: View {
     private var toggleRow: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Prisstyring").font(.headline)
+                Text("Price control").font(.headline)
                 Text(baseText).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             if runner.isBusy { ProgressView().controlSize(.small) }
             Toggle(
-                "Prisstyring",
+                "Price control",
                 isOn: Binding(get: { runner.enabled }, set: { on in Task { await runner.setEnabled(on) } })
             )
             .toggleStyle(.switch)
@@ -402,19 +406,18 @@ struct PriceControlSection: View {
 
     private var baseText: String {
         switch runner.plan?.baseSource ?? .unknown {
-        case .schedule: return "Senker fra temperaturen i ukeplanen."
+        case .schedule: return String(localized: "Lowers from the temperature in the weekly schedule.")
         case .comfort:
-            return "Senker fra din vanlige temperatur, " + (runner.settings.comfortTemperature.map(TimerEventText.temperature) ?? "–")
-                + " (den du sist stilte inn selv)."
-        case .unknown: return "Senker fra temperaturen varmepumpen står på når du slår den på."
+            let comfort = runner.settings.comfortTemperature.map(TimerEventText.temperature) ?? "–"
+            return String(localized: "Lowers from your usual temperature, \(comfort) (the one you last set yourself).")
+        case .unknown: return String(localized: "Lowers from the temperature the heat pump is set to when you turn it on.")
         }
     }
 
     private var warning: some View {
         Label {
             Text(
-                "Prisstyringen virker bare mens appen kjører og Macen er på og våken. Når du lukker vinduet, fortsetter appen i menylinjen. Når Macen skal sove eller appen avsluttes, settes temperaturen tilbake først. Skjer ikke det (strømbrudd, krasj), blir temperaturen stående – men aldri lavere enn "
-                    + TimerEventText.temperature(draft.minimumTemperature) + "."
+                "Price control only works while the app is running and the Mac is on and awake. When you close the window, the app keeps running in the menu bar. When the Mac goes to sleep or the app quits, the temperature is restored first. If that does not happen (power cut, crash), the temperature stays where it is – but never lower than \(TimerEventText.temperature(draft.minimumTemperature))."
             )
             .font(.callout)
             .fixedSize(horizontal: false, vertical: true)
@@ -426,24 +429,24 @@ struct PriceControlSection: View {
     private var settings: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Stepper(value: binding(\.reduceExpensive), in: PriceControlSettings.reductionRange, step: 0.5) {
-                Text("Senk i dyre timer: ") + Text(Display.format("%.1f °C", draft.reduceExpensive)).monospacedDigit()
+                Text("Lower in expensive hours: \(Text(Display.format("%.1f °C", draft.reduceExpensive)).monospacedDigit())")
             }
             Stepper(value: binding(\.reduceVeryExpensive), in: PriceControlSettings.reductionRange, step: 0.5) {
-                Text("Senk i svært dyre timer: ") + Text(Display.format("%.1f °C", draft.reduceVeryExpensive)).monospacedDigit()
+                Text("Lower in very expensive hours: \(Text(Display.format("%.1f °C", draft.reduceVeryExpensive)).monospacedDigit())")
             }
             Stepper(value: binding(\.minimumTemperature), in: PriceControlSettings.minimumRange, step: 0.5) {
-                Text("Aldri lavere enn: ") + Text(Display.format("%.1f °C", draft.minimumTemperature)).monospacedDigit()
+                Text("Never lower than: \(Text(Display.format("%.1f °C", draft.minimumTemperature)).monospacedDigit())")
             }
             Stepper(value: binding(\.maxReducedHoursPerDay), in: PriceControlSettings.reducedHoursRange) {
-                Text("Senk høyst \(Text(String(draft.maxReducedHoursPerDay)).monospacedDigit()) \(draft.maxReducedHoursPerDay == 1 ? "time" : "timer") per døgn")
+                Text("Lower at most \(draft.maxReducedHoursPerDay) hours per day").monospacedDigit()
             }
             Toggle(isOn: binding(\.preheat)) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Forvarm litt før dyre timer")
-                    Text("+1 °C i opptil to av de billigste timene de fire timene før.").font(.caption).foregroundStyle(.secondary)
+                    Text("Preheat a little before expensive hours")
+                    Text("+1 °C in up to two of the cheapest of the four hours before.").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Text("Bare i varmemodus. Av/på og modus endres aldri. Prisstyringen står over feriemodus og hendelser i ukeplanen, og tar pause til neste skifte når du endrer temperaturen selv.")
+            Text("Heat mode only. On/off and mode are never changed. Price control overrides holiday mode and events in the weekly schedule, and pauses until the next change when you change the temperature yourself.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if let saveError { Text(saveError).font(.caption).foregroundStyle(Theme.Status.bad) }
         }
@@ -466,7 +469,7 @@ struct PriceControlSection: View {
             if runner.enabled, let status = runner.status {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Nå: " + status.text).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                        Text("Now: \(status.text)").font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
                         if let problem = status.problem {
                             Text(problem).font(.caption).foregroundStyle(Theme.Status.caution).fixedSize(horizontal: false, vertical: true)
                         }
@@ -476,13 +479,13 @@ struct PriceControlSection: View {
                 }
             }
             if let message = runner.message { Text(message).font(.callout).foregroundStyle(.secondary) }
-            Text(runner.enabled ? "Plan de neste 36 timene" : "Slik ville planen sett ut de neste 36 timene")
+            (runner.enabled ? Text("Plan for the next 36 hours") : Text("What the plan would look like for the next 36 hours"))
                 .font(.callout.weight(.semibold)).padding(.top, Theme.Space.xs)
             let changes = plan?.changes ?? []
             if let note = plan?.note {
                 Text(note).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else if changes.isEmpty {
-                Text("Ingen dyre timer i de publiserte prisene, så temperaturen står som den er.")
+                Text("No expensive hours in the published prices, so the temperature stays as it is.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 ForEach(changes, id: \.start) { step in
@@ -495,13 +498,10 @@ struct PriceControlSection: View {
                 }
             }
             if let over = plan?.overDailyLimit, over > 0 {
-                Text(
-                    "\(over) dyre " + (over == 1 ? "time" : "timer") + " senkes ikke, fordi høyst \(runner.settings.maxReducedHoursPerDay) "
-                        + (runner.settings.maxReducedHoursPerDay == 1 ? "time" : "timer") + " senkes per døgn."
-                )
+                Text("Expensive hours not lowered: \(over) (the limit is \(runner.settings.maxReducedHoursPerDay) per day).")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            Text("Høyst \(runner.settings.maxReducedHoursPerDay) " + (runner.settings.maxReducedHoursPerDay == 1 ? "time" : "timer") + " senkes per døgn, de dyreste først. Planen bruker bare publiserte priser, ikke anslaget. Endringene vises under Claude-aktivitet med kilden «Prisstyring».")
+            Text("At most \(runner.settings.maxReducedHoursPerDay) hours are lowered per day, the most expensive first. The plan only uses published prices, not the estimate. The changes are shown under Claude activity with the source “Price control”.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -547,19 +547,26 @@ struct PriceControlMenu: View {
     var body: some View {
         let now = Date()
         let current = model.todayPrices.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }
-        Text(
-            current.map { Display.format("Strøm nå: %.2f kr/kWh", $0.totalOre / 100) + ($0.level.map { " · " + $0.displayName } ?? "") }
-                ?? "Strøm nå: –")
-        if let state = model.state {
-            Text("Inne " + Format.temperature(state.roomTemperature) + " · ønsket " + Format.temperature(state.setTemperature))
+        if let current {
+            let price = Display.format("%.2f", current.totalOre / 100)
+            if let level = current.level {
+                Text("Electricity now: \(price) NOK/kWh · \(level.displayName)")
+            } else {
+                Text("Electricity now: \(price) NOK/kWh")
+            }
+        } else {
+            Text("Electricity now: –")
         }
-        Text("Prisstyring: " + (model.priceControl.status?.text ?? "starter …"))
+        if let state = model.state {
+            Text("Indoor \(Format.temperature(state.roomTemperature)) · target \(Format.temperature(state.setTemperature))")
+        }
+        Text("Price control: \(model.priceControl.status?.text ?? String(localized: "starting…"))")
         if let next = model.priceControl.status?.nextStep {
-            Text("Neste: " + next.summary(now: now, timeZone: .current))
+            Text("Next: \(next.summary(now: now, timeZone: .current))")
         }
         Divider()
-        Button("Åpne Varmepumpe") { showWindow() }
-        Button("Slå av prisstyring") {
+        Button("Open Heat Pump") { showWindow() }
+        Button("Turn Off Price Control") {
             Task {
                 await model.priceControl.setEnabled(false)
                 // Back to the normal app: without a window open it quits, as when the last window closes.
@@ -568,7 +575,7 @@ struct PriceControlMenu: View {
         }
         .disabled(model.priceControl.isBusy)
         Divider()
-        Button("Avslutt Varmepumpe") { NSApp.terminate(nil) }
+        Button("Quit Heat Pump") { NSApp.terminate(nil) }
     }
 
     private func showWindow() {

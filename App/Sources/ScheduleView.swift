@@ -1,7 +1,7 @@
 import HeatPumpKit
 import SwiftUI
 
-/// MELCloud's weekly timer. Edits go into a draft; "Lagre i MELCloud" shows the differences and
+/// MELCloud's weekly timer. Edits go into a draft; "Save to MELCloud" shows the differences and
 /// sends the whole plan after confirmation. A plan the app could not decode is never editable.
 struct ScheduleView: View {
     @Environment(AppModel.self) private var model
@@ -31,8 +31,8 @@ struct ScheduleView: View {
                         .disabled(sending)
                 } else if let timer = model.weeklyTimer, !timer.decoded {
                     InsightCard(
-                        title: timer.eventCount == 0 ? "Ukeplanen kunne ikke leses" : "Planen har \(timer.eventCount) hendelser i et ukjent format",
-                        detail: "Appen viser og endrer bare planer den kan lese helt, så den ikke sletter hendelser den ikke forstår. Se og endre planen i MELCloud-appen, eller trykk «Hent nå».",
+                        title: timer.eventCount == 0 ? "The weekly schedule could not be read" : "The schedule has \(timer.eventCount) events in an unknown format",
+                        detail: "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the MELCloud app, or click “Fetch Now”.",
                         systemImage: "questionmark.circle.fill", tint: Theme.Status.caution)
                 }
                 footer
@@ -75,21 +75,21 @@ struct ScheduleView: View {
                 })
         }
         .sheet(isPresented: $confirming) { confirmSheet }
-        .confirmationDialog("Hente planen på nytt?", isPresented: $confirmingReload) {
-            Button("Forkast endringene og hent planen", role: .destructive) { Task { await reload() } }
-            Button("Avbryt", role: .cancel) {}
+        .confirmationDialog("Fetch the schedule again?", isPresented: $confirmingReload) {
+            Button("Discard Changes and Fetch Schedule", role: .destructive) { Task { await reload() } }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Endringene du har gjort her forsvinner. Planen hentes fra MELCloud, og du kan gjøre endringene igjen.")
+            Text("The changes you have made here will be lost. The schedule is fetched from MELCloud, and you can make the changes again.")
         }
         .confirmationDialog(
-            "Bruke malen «\(template?.title ?? "")»?", isPresented: Binding(get: { template != nil }, set: { if !$0 { template = nil } }),
+            "Use the template “\(template?.title ?? "")”?", isPresented: Binding(get: { template != nil }, set: { if !$0 { template = nil } }),
             presenting: template
         ) { template in
-            Button("Erstatt alle hendelser", role: .destructive) { applyTemplate(template, replace: true) }
-            Button("Legg til i planen") { applyTemplate(template, replace: false) }
-            Button("Avbryt", role: .cancel) {}
+            Button("Replace All Events", role: .destructive) { applyTemplate(template, replace: true) }
+            Button("Add to Schedule") { applyTemplate(template, replace: false) }
+            Button("Cancel", role: .cancel) {}
         } message: { template in
-            Text("\(template.detail) Varme. Du kan endre temperaturene etterpå. Ingenting lagres før du trykker «Lagre i MELCloud».")
+            Text("\(template.detail) Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to MELCloud”.")
         }
     }
 
@@ -123,7 +123,7 @@ struct ScheduleView: View {
         sync(force: true)
     }
 
-    /// "Hent planen på nytt": reads the plan (the save attempt usually just did) and drops the draft.
+    /// "Fetch Schedule Again": reads the plan (the save attempt usually just did) and drops the draft.
     private func reload() async {
         fetching = true
         await model.loadWeeklyTimerForEditing()
@@ -152,7 +152,7 @@ struct ScheduleView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Ukeplan", hint: model.weeklyTimer?.fetchedAt.map { "Hentet \(Format.relative($0))" }) {
+            SectionHeader(title: "Weekly schedule", hint: model.weeklyTimer?.fetchedAt.map { "Fetched \(Format.relative($0))" }) {
                 Button {
                     fetching = true
                     Task {
@@ -160,26 +160,26 @@ struct ScheduleView: View {
                         fetching = false
                     }
                 } label: {
-                    if fetching { ProgressView().controlSize(.small) } else { Text("Hent nå") }
+                    if fetching { ProgressView().controlSize(.small) } else { Text("Fetch Now") }
                 }
                 .disabled(fetching || hasChanges)
-                .help(hasChanges ? "Lagre eller forkast endringene først." : "Henter ukeplanen fra MELCloud (høyst hvert 10. minutt; ellers automatisk hver 6. time).")
+                .help(hasChanges ? "Save or discard the changes first." : "Fetches the weekly schedule from MELCloud (at most every 10 minutes; otherwise automatically every 6 hours).")
             }
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if let until = model.timerRefusedUntil {
                         Label(
-                            "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen \(Format.relative(until)), eller trykk «Hent nå».",
+                            "MELCloud did not allow reading the weekly schedule for this account. The app will try again \(Format.relative(until)), or click “Fetch Now”.",
                             systemImage: "exclamationmark.triangle"
                         )
                         .foregroundStyle(Theme.Status.caution)
                     }
                     if let draft, draft.decoded, draft.enabled == nil {
                         // MELCloud did not say: never shown (or saved) as off by guess.
-                        LabeledContent("Ukjent om ukeplanen er på") {
-                            Picker("Ukeplanen", selection: Binding(get: { draft.enabled }, set: { self.draft?.enabled = $0; outcome = nil })) {
-                                Text("På").tag(Bool?.some(true))
-                                Text("Av").tag(Bool?.some(false))
+                        LabeledContent("Unknown whether the weekly schedule is on") {
+                            Picker("Weekly schedule", selection: Binding(get: { draft.enabled }, set: { self.draft?.enabled = $0; outcome = nil })) {
+                                Text("On").tag(Bool?.some(true))
+                                Text("Off").tag(Bool?.some(false))
                             }
                             .pickerStyle(.segmented)
                             .labelsHidden()
@@ -187,26 +187,26 @@ struct ScheduleView: View {
                         }
                         .font(.body.weight(.medium))
                         .disabled(sending)
-                        Text("MELCloud oppga ikke om planen er på. Velg på eller av før du lagrer.")
+                        Text("MELCloud did not say whether the schedule is on. Choose on or off before you save.")
                             .font(.callout).foregroundStyle(Theme.Status.caution)
                     } else if let draft, draft.decoded {
                         Toggle(
-                            "Ukeplanen er på",
+                            "The weekly schedule is on",
                             isOn: Binding(get: { draft.enabled == true }, set: { self.draft?.enabled = $0; outcome = nil })
                         )
                         .toggleStyle(.switch)
                         .font(.body.weight(.medium))
                         .disabled(sending)
                     } else if model.weeklyTimer == nil {
-                        Text("Ukeplanen hentes fra MELCloud …").foregroundStyle(.secondary)
+                        Text("Fetching the weekly schedule from MELCloud…").foregroundStyle(.secondary)
                     }
                     Text(
-                        "Planen ligger i MELCloud og kjører også når Macen er av, og den samme planen vises i MELCloud-appen. Endringer du gjør i Kontroll varer til neste hendelse i planen."
+                        "The schedule is stored in MELCloud and also runs when the Mac is off, and the same schedule is shown in the MELCloud app. Changes you make in Control last until the next event in the schedule."
                     )
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     if let next = model.weeklyTimer?.nextEvent(after: Date(), timeZone: .current) {
                         Label(
-                            "Neste: \(next.event.weekdayName) kl. \(next.event.timeText) – \(next.event.summary)",
+                            "Next: \(next.event.weekdayName) at \(next.event.timeText) – \(next.event.summary)",
                             systemImage: "clock")
                         .font(.callout)
                     }
@@ -223,7 +223,7 @@ struct ScheduleView: View {
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             FlowLayout(spacing: Theme.Space.m, alignment: .center) {
                 if draft.seasons.count > 1 {
-                    Picker("Sesong", selection: $season) {
+                    Picker("Season", selection: $season) {
                         ForEach(draft.seasons.indices, id: \.self) { index in
                             Text(draft.seasons[index].displayName).tag(index)
                         }
@@ -233,14 +233,14 @@ struct ScheduleView: View {
                 Button {
                     editor = newEvent(days: TimerEvent.weekdays)
                 } label: {
-                    Label("Ny hendelse", systemImage: "plus")
+                    Label("New event", systemImage: "plus")
                 }
                 Menu {
                     ForEach(TimerTemplate.allCases) { item in
-                        Button("\(item.title): \(item.detail)") { template = item }
+                        Button { template = item } label: { Text(verbatim: "\(item.title): \(item.detail)") }
                     }
                 } label: {
-                    Label("Mal", systemImage: "wand.and.stars")
+                    Label("Template", systemImage: "wand.and.stars")
                 }
                 .fixedSize()
             }
@@ -274,7 +274,7 @@ struct ScheduleView: View {
                 }
             }
             if current.events.isEmpty {
-                Text("Ingen hendelser ennå. Legg til en hendelse eller velg en mal.").font(.callout).foregroundStyle(.secondary)
+                Text("No events yet. Add an event or choose a template.").font(.callout).foregroundStyle(.secondary)
             }
             saveBar(draft)
         }
@@ -286,10 +286,10 @@ struct ScheduleView: View {
                 .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             Spacer(minLength: 0)
             Menu {
-                Section("Kopier \(TimerEvent.weekdayNames[day - 1]) til") {
-                    Button("Hverdager") { copy(day, to: TimerEvent.weekdays) }
-                    Button("Helg") { copy(day, to: TimerEvent.weekend) }
-                    Button("Alle dager") { copy(day, to: TimerEvent.allDays) }
+                Section("Copy \(TimerEvent.weekdayNames[day - 1]) to") {
+                    Button("Weekdays") { copy(day, to: TimerEvent.weekdays) }
+                    Button("Weekend") { copy(day, to: TimerEvent.weekend) }
+                    Button("All Days") { copy(day, to: TimerEvent.allDays) }
                     Divider()
                     ForEach((1...7).filter { $0 != day }, id: \.self) { target in
                         Button(TimerEvent.weekdayNames[target - 1].capitalized) { copy(day, to: [target]) }
@@ -302,7 +302,7 @@ struct ScheduleView: View {
             .menuIndicator(.hidden)
             .fixedSize()
             .disabled(season.events(on: day).isEmpty)
-            .help("Kopier dag til …")
+            .help("Copy day to…")
         }
     }
 
@@ -318,7 +318,7 @@ struct ScheduleView: View {
             Image(systemName: "plus").font(.caption).frame(maxWidth: .infinity, minHeight: 18)
         }
         .buttonStyle(.borderless)
-        .help("Ny hendelse \(TimerEvent.weekdayNames[day - 1])")
+        .help("New event on \(TimerEvent.weekdayNames[day - 1])")
         .frame(minWidth: 28)
     }
 
@@ -340,7 +340,7 @@ struct ScheduleView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Endre hendelsen")
+        .help("Edit the event")
     }
 
     // MARK: Saving
@@ -349,10 +349,10 @@ struct ScheduleView: View {
         let problem = draft.validationProblem(limits: model.state?.limits)
         if changedElsewhere || outcome?.message.contains(HeatPumpService.timerChangedMessage) == true {
             InsightCard(
-                title: "Planen er endret i MELCloud",
-                detail: "Planen i MELCloud er ikke lenger den du begynte å redigere, så appen lagrer ikke over den. Hent planen på nytt og gjør endringene igjen.",
+                title: "The schedule has changed in MELCloud",
+                detail: "The schedule in MELCloud is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again.",
                 systemImage: "arrow.triangle.2.circlepath", tint: Theme.Status.caution)
-            Button("Hent planen på nytt…") { confirmingReload = true }
+            Button("Fetch Schedule Again…") { confirmingReload = true }
                 .disabled(fetching || sending)
         }
         if hasChanges {
@@ -361,12 +361,12 @@ struct ScheduleView: View {
             }
             ViewThatFits(in: .horizontal) {
                 HStack {
-                    Text("Endringene er ikke lagret ennå.").font(.callout).foregroundStyle(.secondary)
+                    Text("The changes are not saved yet.").font(.callout).foregroundStyle(.secondary)
                     Spacer()
                     saveButtons(problem: problem)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Endringene er ikke lagret ennå.").font(.callout).foregroundStyle(.secondary)
+                    Text("The changes are not saved yet.").font(.callout).foregroundStyle(.secondary)
                     HStack { saveButtons(problem: problem) }
                 }
             }
@@ -374,31 +374,31 @@ struct ScheduleView: View {
     }
 
     @ViewBuilder private func saveButtons(problem: String?) -> some View {
-        Button("Forkast endringer", role: .destructive) { discard() }
+        Button("Discard Changes", role: .destructive) { discard() }
             .disabled(sending)
-        Button("Lagre i MELCloud…") { confirming = true }
+        Button("Save to MELCloud…") { confirming = true }
             .buttonStyle(.borderedProminent)
             .disabled(problem != nil || sending)
     }
 
     @ViewBuilder private var footer: some View {
         if sending {
-            ProgressView("Lagrer i MELCloud …").controlSize(.small)
+            ProgressView("Saving to MELCloud…").controlSize(.small)
         }
         if let outcome {
             InsightCard(
-                title: outcome.ok ? "Lagret i MELCloud" : "Ikke lagret", detail: .verbatim(outcome.message),
+                title: outcome.ok ? "Saved to MELCloud" : "Not saved", detail: .verbatim(outcome.message),
                 systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                 tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }
-        Text("Lagringen er ny og ikke prøvd mot din konto ennå. Sjekk gjerne i MELCloud-appen at planen er riktig. Hver lagring teller som én av \(ChangeBudget.maxChangesPerHour) sendinger i timen.")
+        Text("Saving is new and has not been tried against your account yet. Feel free to check in the MELCloud app that the schedule is correct. Each save counts as one of \(ChangeBudget.maxChangesPerHour) sends per hour.")
             .font(.caption).foregroundStyle(.secondary)
     }
 
     private var confirmSheet: some View {
         let lines = draft.flatMap { d in base.map { d.differences(from: $0) } } ?? []
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Label("Lagre ukeplanen i MELCloud", systemImage: "calendar.badge.clock").font(.title2.bold())
+            Label("Save the weekly schedule to MELCloud", systemImage: "calendar.badge.clock").font(.title2.bold())
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
@@ -409,14 +409,14 @@ struct ScheduleView: View {
             }
             .frame(maxHeight: 260)
             Text(
-                "Hele planen sendes (\(draft?.summary.lowercased() ?? "")). Den gjelder fra neste hendelse og kjører i MELCloud også når Macen er av."
+                "The whole schedule is sent (\(draft?.summary.lowercased() ?? "")). It applies from the next event and runs in MELCloud even when the Mac is off."
             )
             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
-                Button("Avbryt", role: .cancel) { confirming = false }
+                Button("Cancel", role: .cancel) { confirming = false }
                     .keyboardShortcut(.cancelAction)
-                Button("Lagre i MELCloud") {
+                Button("Save to MELCloud") {
                     confirming = false
                     guard let draft, let base else { return }
                     sending = true
@@ -434,7 +434,7 @@ struct ScheduleView: View {
     }
 }
 
-/// Unsaved edits of the Ukeplan page, kept in `AppModel` while another page is shown.
+/// Unsaved edits of the Weekly schedule page, kept in `AppModel` while another page is shown.
 struct ScheduleDraft {
     var base: WeeklyTimer
     var draft: WeeklyTimer
@@ -450,7 +450,7 @@ struct EditorItem: Identifiable {
 }
 
 /// Sheet for one event: days, time, on/off, mode, temperature, fan and vanes. Changes go into the
-/// draft ("Bruk"); nothing is sent from here.
+/// draft ("Apply"); nothing is sent from here.
 struct EventEditorSheet: View {
     let item: EditorItem
     let limits: TemperatureLimits
@@ -481,9 +481,9 @@ struct EventEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Text(item.original == nil ? "Ny hendelse" : "Endre hendelse").font(.title2.bold())
+            Text(item.original == nil ? "New event" : "Edit event").font(.title2.bold())
             Form {
-                LabeledContent("Dager") {
+                LabeledContent("Days") {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         FlowLayout(spacing: 4, lineSpacing: 4) {
                             ForEach(1...7, id: \.self) { day in
@@ -497,34 +497,34 @@ struct EventEditorSheet: View {
                             }
                         }
                         HStack(spacing: Theme.Space.s) {
-                            Button("Hverdager") { days = TimerEvent.weekdays }
-                            Button("Helg") { days = TimerEvent.weekend }
-                            Button("Alle dager") { days = TimerEvent.allDays }
+                            Button("Weekdays") { days = TimerEvent.weekdays }
+                            Button("Weekend") { days = TimerEvent.weekend }
+                            Button("All Days") { days = TimerEvent.allDays }
                         }
                         .controlSize(.small)
                     }
                 }
-                LabeledContent("Tid") {
+                LabeledContent("Time") {
                     HStack(spacing: 4) {
-                        Picker("Time", selection: $event.minuteOfDay.hour) {
+                        Picker("Hour", selection: $event.minuteOfDay.hour) {
                             ForEach(0..<24, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
                         }
                         .labelsHidden().fixedSize()
-                        Text(":")
-                        Picker("Minutt", selection: $event.minuteOfDay.minute) {
+                        Text(verbatim: ":")
+                        Picker("Minute", selection: $event.minuteOfDay.minute) {
                             ForEach(minuteOptions, id: \.self) { Text(String(format: "%02d", $0)).tag($0) }
                         }
                         .labelsHidden().fixedSize()
                     }
                 }
-                Picker("Av/på", selection: Binding(get: { event.power != false }, set: { event.power = $0 })) {
-                    Text("På").tag(true)
-                    Text("Av").tag(false)
+                Picker("On/off", selection: Binding(get: { event.power != false }, set: { event.power = $0 })) {
+                    Text("On").tag(true)
+                    Text("Off").tag(false)
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
                 Group {
-                    Picker("Modus", selection: Binding(get: { mode }, set: { setMode($0) })) {
+                    Picker("Mode", selection: Binding(get: { mode }, set: { setMode($0) })) {
                         ForEach(OperationMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
                     .fixedSize()
@@ -532,37 +532,37 @@ struct EventEditorSheet: View {
                         value: Binding(get: { event.setTemperature ?? range.lowerBound }, set: { event.setTemperature = $0 }), in: range,
                         step: 0.5
                     ) {
-                        Text("Temperatur: \(Text(Format.temperature(event.setTemperature)).monospacedDigit().bold())")
+                        Text("Temperature: \(Text(Format.temperature(event.setTemperature)).monospacedDigit().bold())")
                     }
-                    Picker("Vifte", selection: Binding(get: { event.fanSpeed ?? 0 }, set: { event.fanSpeed = $0 })) {
-                        ForEach(fanOptions, id: \.self) { Text($0 == 0 ? "Auto" : "\($0)").tag($0) }
+                    Picker("Fan", selection: Binding(get: { event.fanSpeed ?? 0 }, set: { event.fanSpeed = $0 })) {
+                        ForEach(fanOptions, id: \.self) { ($0 == 0 ? Text("Auto") : Text(verbatim: "\($0)")).tag($0) }
                     }
                     .fixedSize()
-                    Picker("Spjeld opp/ned", selection: Binding(get: { event.vaneVertical ?? .auto }, set: { event.vaneVertical = $0 })) {
+                    Picker("Airflow up/down", selection: Binding(get: { event.vaneVertical ?? .auto }, set: { event.vaneVertical = $0 })) {
                         ForEach(VaneVertical.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
                     .fixedSize()
-                    Picker("Spjeld side", selection: Binding(get: { event.vaneHorizontal ?? .auto }, set: { event.vaneHorizontal = $0 })) {
+                    Picker("Airflow left/right", selection: Binding(get: { event.vaneHorizontal ?? .auto }, set: { event.vaneHorizontal = $0 })) {
                         ForEach(VaneHorizontal.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
                     .fixedSize()
                 }
                 .disabled(event.power == false)
             }
-            Text("Endringen lagres i MELCloud først når du trykker «Lagre i MELCloud» på siden.")
+            Text("The change is saved to MELCloud only when you click “Save to MELCloud” on the page.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 if let delete {
-                    Button("Slett", role: .destructive) {
+                    Button("Delete", role: .destructive) {
                         delete()
                         dismiss()
                     }
-                    .help("Sletter hendelsen kl. \(item.event.timeText) på alle dagene den gjelder")
+                    .help("Deletes the event at \(item.event.timeText) on all the days it applies to")
                 }
                 Spacer()
-                Button("Avbryt", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Bruk") {
+                Button("Apply") {
                     apply(event, days)
                     dismiss()
                 }
