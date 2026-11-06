@@ -5,7 +5,7 @@ import SwiftUI
 /// confirmation sheet with the warnings (firmware cannot be rolled back). While an update runs and
 /// the page is visible, the status is read every 15 s.
 struct FirmwareSection: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @State private var confirming = false
     @State private var confirmingCancel = false
     @State private var sending = false

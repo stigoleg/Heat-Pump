@@ -36,7 +36,7 @@ Formatting: `Format.temperature/degrees/kWh/kroner/ore/watts/percent/percentShar
 
 ```swift
 struct ExampleView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model   // a device screen; AppModel for app-wide
 
     var body: some View {
         ScrollView {
@@ -70,8 +70,12 @@ struct ExampleView: View {
 - Footnotes: `.font(.caption).foregroundStyle(.secondary)`.
 - For dev screenshots, give sections `.id("name")` and wrap the ScrollView in a
   `ScrollViewReader` with `.devScrollTarget(proxy)` (see `OverviewView`).
-- Register a new screen in `Screen` (`AppModel.swift`: `title`, `systemImage`, `color`) and in the
-  `detail` switch in `RootView.swift`.
+- Register a new screen in `Screen` (`AppModel.swift`: `title`, `systemImage`, `color`). A device
+  screen also goes into `DeviceScreen` and `DeviceNavigation.screens` (kit) and
+  `DeviceUIRegistry` (app); a Home screen into `HomeScreen` and the `detail` switch in `RootView.swift`.
+- Device screens read `@Environment(HeatPumpDeviceModel.self) private var model` (the device's
+  state and actions) and `@Environment(AppModel.self) private var app` (prices, weather,
+  navigation, settings tab).
 
 ## Components
 

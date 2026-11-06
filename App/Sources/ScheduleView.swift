@@ -4,7 +4,7 @@ import SwiftUI
 /// MELCloud's weekly timer. Edits go into a draft; "Save to MELCloud" shows the differences and
 /// sends the whole plan after confirmation. A plan the app could not decode is never editable.
 struct ScheduleView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     /// The plan as read from MELCloud and the edited copy.
     @State private var base: WeeklyTimer?
     @State private var draft: WeeklyTimer?
@@ -458,7 +458,7 @@ struct EventEditorSheet: View {
     let hasAutomaticFan: Bool
     let apply: (TimerEvent, Set<Int>) -> Void
     let delete: (() -> Void)?
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var event: TimerEvent
     @State private var days: Set<Int>

@@ -252,7 +252,7 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 | `VARMEPUMPE_DB_PATH` | Sti til SQLite-databasen |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Kun utvikling: innlogging uten nøkkelring |
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun tester: svarer i stedet for godkjenningsvinduet. Virker bare med `VARMEPUMPE_BACKEND=mock`. |
-| `VARMEPUMPE_SCREEN` | Startskjerm: overview, control, history, away, health, activity |
+| `VARMEPUMPE_SCREEN` | Startskjerm: overview, control, schedule, history, outlook, away, health, activity; med to eller flere enheter også `home`, `home/forecast`, `home/activity` og `<enhetsnøkkel>/<skjerm>` (f.eks. `demo:100002/control`) |
 | `VARMEPUMPE_HISTORY_TAB` | Startfane i Historikk: temperature, energy, energy-kr, operation, power |
 | `VARMEPUMPE_HISTORY_RANGE` | Startperiode i Historikk: day, week, month, year |
 | `VARMEPUMPE_SCROLL_TO` | Ruller til en seksjon etter tre sekunder (skjermbilder) |

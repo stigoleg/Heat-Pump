@@ -4,7 +4,7 @@ import SwiftUI
 /// Controls. Every edit goes into one draft that is sent automatically about 2 s after the
 /// last change (see `ChangeDebouncer`); the chip at the top shows how far it has come.
 struct ControlView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     /// True while the slider is dragged; edits then wait for the release.
     @State private var sliderEditing = false
 
@@ -402,7 +402,8 @@ extension VaneHorizontal {
 
 /// Compact status of MELCloud's weekly timer with a link to the Weekly schedule page.
 struct WeeklyTimerStatus: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
+    @Environment(AppModel.self) private var app
 
     var body: some View {
         CardSurface {
@@ -428,7 +429,7 @@ struct WeeklyTimerStatus: View {
     }
 
     private var button: some View {
-        Button("Open Weekly Schedule") { model.selection = .schedule }
+        Button("Open Weekly Schedule") { app.selection = .schedule }
     }
 
     private func text(_ timer: WeeklyTimer?) -> String {

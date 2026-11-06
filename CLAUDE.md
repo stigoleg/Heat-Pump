@@ -11,7 +11,7 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 
 | Path | What |
 |---|---|
-| `App/Sources` | SwiftUI app: `AppModel` (`@MainActor @Observable`), one `XView.swift` per screen, Settings tabs, design system (`Theme.swift`, `DesignSystem.swift`, `ChartKit.swift`, `Components.swift`) |
+| `App/Sources` | SwiftUI app: `AppModel` (`@MainActor @Observable`, app-wide) with a model per device (`DeviceModels.swift`) and `DeviceUIRegistry`, one `XView.swift` per screen, Settings tabs, design system (`Theme.swift`, `DesignSystem.swift`, `ChartKit.swift`, `Components.swift`) |
 | `App/Resources` | String catalogs: `Localizable.xcstrings` (app), `HeatPumpKit.xcstrings` (package), `InfoPlist.xcstrings` |
 | `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
 | `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `DemoIntegration`, `Integrations` | Integrations (backend, error codes, health rules, knowledge docs) and `IntegrationCatalog`; see the module map in docs/architecture.md |
@@ -20,7 +20,7 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 | `project.yml` | XcodeGen source of truth; `.xcodeproj` is generated and not checked in |
 | `scripts/` | `l10n.py` (catalogs), `release.sh`, `screenshot.sh`, `parity.sh` |
 
-The app holds no business rules: views call `AppModel`, which calls the kit. Keep it that way.
+The app holds no business rules: views call `AppModel` or their device's model, which call the kit. Keep it that way.
 
 ## Commands
 

@@ -4,7 +4,8 @@ import SwiftUI
 
 /// Thermostat-centred overview: dial, key numbers, last 24 hours, and the most important hint.
 struct OverviewView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
+    @Environment(AppModel.self) private var app
     @State private var history = HistoryData()
     @State private var selected: Date?
     @State private var selectedForecast: Date?
@@ -19,7 +20,7 @@ struct OverviewView: View {
                     last24(state)
                     weather.id("weather")
                     insight
-                } else if model.startupError == nil {
+                } else if app.startupError == nil {
                     ContentUnavailableView(
                         "No status yet", systemImage: "thermometer.medium",
                         description: Text("Fetching status from the heat pump…"))
@@ -82,20 +83,20 @@ struct OverviewView: View {
                         title: mode.map { .verbatim($0.displayName) } ?? "Mode unknown – choose a mode",
                         systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
                     ) {
-                        model.selection = .control
+                        app.selection = .control
                     }
                     SettingChip(title: shown.power ? "On" : "Off", systemImage: "power", tint: shown.power ? Theme.Status.good : .secondary) {
-                        model.selection = .control
+                        app.selection = .control
                     }
                     SettingChip(
                         title: shown.fanSpeed == 0 ? "Fan auto" : "Fan \(shown.fanSpeed)", systemImage: "fan",
                         tint: Theme.Data.blue
-                    ) { model.selection = .control }
+                    ) { app.selection = .control }
                     SettingChip(
                         title: state.offline ? "Disconnected" : "Connected",
                         systemImage: state.offline ? "wifi.slash" : "wifi",
                         tint: state.offline ? Theme.Status.caution : Theme.Status.good
-                    ) { model.selection = .control }
+                    ) { app.selection = .control }
                     priceChip
                 }
             }
@@ -103,10 +104,10 @@ struct OverviewView: View {
     }
 
     @ViewBuilder private var priceChip: some View {
-        if let level = model.currentPriceLevel {
+        if let level = app.currentPriceLevel {
             SettingChip(title: .verbatim(level.nowText), systemImage: "bolt.horizontal.fill", tint: level.color) {
-                model.initialHistoryTab = "energy"
-                model.selection = .history
+                app.initialHistoryTab = "energy"
+                app.selection = .history
             }
             .help("Price level this hour compared with the last few days")
         }
@@ -165,7 +166,7 @@ struct OverviewView: View {
             fact("Price now", systemImage: "bolt.horizontal.fill", tint: Theme.Data.electricity) {
                 Text(currentPriceText)
             } detail: {
-                Text(model.priceSettings.agreement.displayName)
+                Text(app.priceSettings.agreement.displayName)
             }
             if let report = model.health {
                 fact("Health", systemImage: report.overall.systemImage, tint: report.overall.color) {
@@ -201,7 +202,7 @@ struct OverviewView: View {
 
     private var currentPriceText: String {
         let hour = Calendar.current.dateInterval(of: .hour, for: Date())?.start
-        guard let price = model.todayPrices.first(where: { $0.hour == hour }) else { return "—" }
+        guard let price = app.todayPrices.first(where: { $0.hour == hour }) else { return "—" }
         return String(localized: "\(Display.format("%.2f", price.totalOre / 100)) NOK/kWh")
     }
 
@@ -357,7 +358,7 @@ struct OverviewView: View {
     private func costBars(from start: Date) -> Bars {
         let cost = model.todayHourly.compactMap { h in h.cost.map { (h.hour, $0.totalNok) } }.filter { $0.0 >= start }
         if !cost.isEmpty { return Bars(values: cost, isCost: true) }
-        let prices = (model.todayPrices + model.tomorrowPrices).filter { $0.hour >= start && $0.hour <= Date() }
+        let prices = (app.todayPrices + app.tomorrowPrices).filter { $0.hour >= start && $0.hour <= Date() }
         return Bars(values: prices.map { ($0.hour, $0.totalOre / 100) }, isCost: false)
     }
 
@@ -388,16 +389,16 @@ struct OverviewView: View {
     // MARK: Weather
 
     @ViewBuilder private var weather: some View {
-        let hours = model.forecast
+        let hours = app.forecast
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Weather next 48 h", hint: model.weatherLocation.map { .verbatim($0.displayName(serviceName: model.serviceName)) }) {
+            SectionHeader(title: "Weather next 48 h", hint: app.weatherLocation.map { .verbatim($0.displayName(serviceName: model.serviceName)) }) {
                 Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
             }
             CardSurface {
                 if hours.count < 2 {
                     EmptyChart(
                         title: "No weather forecast yet",
-                        message: model.weatherMessage.map { .verbatim($0) } ?? "The weather forecast is fetched from MET Norway at most once an hour.",
+                        message: app.weatherMessage.map { .verbatim($0) } ?? "The weather forecast is fetched from MET Norway at most once an hour.",
                         systemImage: "cloud.sun")
                 } else {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -500,8 +501,8 @@ struct OverviewView: View {
             InsightCard(
                 title: .verbatim(finding.title), detail: .verbatim(finding.recommendation), systemImage: finding.severity.systemImage,
                 tint: finding.severity.color
-            ) { model.selection = .health }
-        } else if let message = model.priceMessage {
+            ) { app.selection = .health }
+        } else if let message = app.priceMessage {
             InsightCard(title: "Electricity price", detail: .verbatim(message), systemImage: "exclamationmark.triangle.fill", tint: Theme.Status.caution)
         }
     }

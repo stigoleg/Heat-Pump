@@ -11,7 +11,11 @@ struct SettingsView: View {
             Tab("General", systemImage: "gearshape", value: "generelt") { GeneralSettings() }
             Tab("Account", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
             Tab("Electricity price", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
-            Tab("Local connection", systemImage: "wifi.router", value: "lokal") { LocalSettingsView() }
+            // The local connection is the integration's own section (MELCloud's adapter on the
+            // home network), shown while a device has it.
+            if !DeviceUIRegistry.localConnectionDevices(model.devices).isEmpty {
+                Tab("Local connection", systemImage: "wifi.router", value: "lokal") { LocalConnectionTab() }
+            }
             Tab("Weather", systemImage: "cloud.sun", value: "vaer") { WeatherSettingsView() }
             Tab("Claude", systemImage: "sparkles", value: "claude") { ClaudeSettings() }
             Tab("Data", systemImage: "externaldrive", value: "data") { DataSettings() }
@@ -19,38 +23,50 @@ struct SettingsView: View {
         // Resizable down to 560 × 480; opens at the ideal size.
         .frame(minWidth: 560, idealWidth: 700, maxWidth: .infinity, minHeight: 480, idealHeight: 600, maxHeight: .infinity)
         .background(ResizableWindow())
+        // The device shown in the main window, or the only one.
+        .environment(model.selectedHeatPump)
     }
 }
 
-/// E-mail + password → one login and state fetch through the service.
+/// An integration's sign-in fields (`CredentialField`) → one login and state fetch through the
+/// hub. MELCloud's are e-mail and password.
 struct LoginForm: View {
     @Environment(AppModel.self) private var model
-    @State private var email: String
-    @State private var password = ""
+    let integration: any Integration
+    /// Adds the integration (Add Integration…) instead of signing in to an active one.
+    var adding = false
+    @State private var values: [String: String]
     @State private var working = false
     @State private var result: (ok: Bool, message: String)?
     private let onSuccess: () -> Void
 
-    init(email: String = "", onSuccess: @escaping () -> Void = {}) {
-        _email = State(initialValue: email)
+    init(integration: any Integration, email: String = "", adding: Bool = false, onSuccess: @escaping () -> Void = {}) {
+        self.integration = integration
+        self.adding = adding
+        _values = State(initialValue: Dictionary(
+            integration.credentialFields.filter { $0.kind == .email }.map { ($0.id, email) }, uniquingKeysWith: { a, _ in a }))
         self.onSuccess = onSuccess
     }
 
+    private var fields: [CredentialField] { model.credentialFields(for: integration) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("Email", text: $email)
-                .textContentType(.username)
-            SecureField("Password", text: $password)
-                .textContentType(.password)
+            ForEach(fields) { field in
+                fieldView(field)
+            }
             HStack {
-                Button("Sign In and Test") {
+                Button(adding ? "Add and Sign In" : "Sign In and Test") {
                     Task {
                         working = true
-                        let outcome = await model.signIn(email: email, password: password)
+                        let outcome =
+                            adding
+                            ? await model.addIntegration(integration, values: values)
+                            : await model.signIn(integration: integration, values: values)
                         result = (outcome.0, outcome.1)
                         working = false
                         if outcome.0 {
-                            password = ""
+                            for field in fields where field.isSecret { values[field.id] = "" }
                             onSuccess()
                         }
                     }
@@ -70,26 +86,51 @@ struct LoginForm: View {
         }
         .textFieldStyle(.roundedBorder)
     }
+
+    @ViewBuilder private func fieldView(_ field: CredentialField) -> some View {
+        let value = Binding(get: { values[field.id] ?? "" }, set: { values[field.id] = $0 })
+        switch field.kind {
+        case .email:
+            TextField("Email", text: value)
+                .textContentType(.username)
+        case .password:
+            SecureField("Password", text: value)
+                .textContentType(.password)
+        case .token:
+            SecureField("Token", text: value)
+        }
+    }
 }
 
-/// Signed in: account details. Not signed in, or password refused: the login form.
+/// Signed in: account details. Not signed in, or password refused: the login form. With two or
+/// more integrations: a section per integration; with two or more devices: the device list.
 struct AccountSettings: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AppModel.self) private var app
+    @Environment(HeatPumpDeviceModel.self) private var model
     @State private var confirmingSignOut = false
     @State private var switchingAccount = false
+    @State private var addingIntegration = false
     @State private var email: String?
+    @State private var allDevices: [DeviceDescriptor] = []
 
     /// Stored credentials that MELCloud has not refused.
     private var signedIn: Bool {
         model.hasCredentials && model.stateResult?.needsLogin != true
     }
 
+    private var multipleIntegrations: Bool { app.activeIntegrations.count >= 2 }
+
     var body: some View {
         Form {
-            if model.isDemo {
+            if app.isDemo {
                 Section("\(model.serviceName) account") {
                     Label("Demo mode: the app shows simulated data, and sign-in is not used.", systemImage: "play.rectangle")
                         .foregroundStyle(.secondary)
+                }
+                deviceSection
+            } else if multipleIntegrations {
+                ForEach(app.activeIntegrations, id: \.id) { integration in
+                    IntegrationSection(integration: integration)
                 }
                 deviceSection
             } else if signedIn && !switchingAccount {
@@ -98,13 +139,28 @@ struct AccountSettings: View {
             } else {
                 loginSection
             }
+            if allDevices.count >= 2 || multipleIntegrations {
+                DevicesSection(devices: allDevices) { allDevices = await app.allDevices() }
+            }
+            if !app.addableIntegrations.isEmpty {
+                Section {
+                    Button("Add Integration…") { addingIntegration = true }
+                }
+            }
         }
         .formStyle(.grouped)
         .task(id: model.hasCredentials) { email = await model.accountEmail() }
+        .task(id: app.devices.count) {
+            await app.loadIntegrations()
+            allDevices = await app.allDevices()
+        }
+        .sheet(isPresented: $addingIntegration) {
+            AddIntegrationSheet(integrations: app.addableIntegrations)
+        }
         .confirmationDialog("Sign out of \(model.serviceName)?", isPresented: $confirmingSignOut) {
             Button("Sign Out", role: .destructive) {
                 Task {
-                    await model.signOut()
+                    await app.signOut(integration: model.integration)
                     email = nil
                 }
             }
@@ -180,7 +236,7 @@ struct AccountSettings: View {
                 Label("\(model.serviceName) rejected the sign-in. Enter the password again.", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
-            LoginForm(email: email ?? "") { switchingAccount = false }
+            LoginForm(integration: model.integration, email: email ?? "") { switchingAccount = false }
             if switchingAccount {
                 Button("Cancel") { switchingAccount = false }
             }
@@ -238,14 +294,15 @@ struct ClaudeSettings: View {
 }
 
 struct DataSettings: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AppModel.self) private var app
+    @Environment(HeatPumpDeviceModel.self) private var model
 
     var body: some View {
         Form {
             Section("Database") {
-                Text(model.dbPath).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                Text(app.dbPath).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
                 Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: model.dbPath)])
+                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: app.dbPath)])
                 }
             }
             Section {

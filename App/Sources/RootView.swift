@@ -6,16 +6,8 @@ struct RootView: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        @Bindable var model = model
         NavigationSplitView {
-            List(Screen.allCases, selection: $model.selection) { screen in
-                Label {
-                    Text(screen.title)
-                } icon: {
-                    IconBadge(systemImage: screen.systemImage, color: screen.color)
-                }
-                .tag(screen)
-            }
+            sidebar
             .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 240)
             .safeAreaInset(edge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -32,8 +24,8 @@ struct RootView: View {
         } detail: {
             NavigationStack {
                 detail
-                    .navigationTitle(model.selection?.title ?? String(localized: "Heat Pump"))
-                    .navigationSubtitle(model.deviceName)
+                    .navigationTitle(title)
+                    .navigationSubtitle(subtitle)
             }
         }
         .toolbar {
@@ -44,27 +36,95 @@ struct RootView: View {
             // Dev only (screenshots): open Settings on a given tab without keyboard input.
             if ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] != nil { openSettings() }
         }
+        // Home and the toolbar use the primary device; device screens get their own.
+        .environment(model.primaryHeatPump)
+    }
+
+    private var selection: Binding<AppRoute?> {
+        Binding(get: { model.currentRoute }, set: { route in if let route { model.route = route } })
+    }
+
+    // MARK: Sidebar
+
+    /// One device: today's flat list. Two or more: Home, then a group per device.
+    @ViewBuilder private var sidebar: some View {
+        if model.isGrouped {
+            List(selection: selection) {
+                Section("Home") {
+                    ForEach(DeviceNavigation.homeScreens, id: \.self) { screen in
+                        row(screen.title, systemImage: screen.systemImage, color: screen.color)
+                            .tag(AppRoute.home(screen))
+                    }
+                }
+                ForEach(model.devices.indices, id: \.self) { index in
+                    let device = model.devices[index]
+                    Section {
+                        ForEach(DeviceUIRegistry.screens(for: device), id: \.self) { screen in
+                            row(screen.screen.title, systemImage: screen.screen.systemImage, color: screen.screen.color)
+                                .tag(AppRoute.device(device.key, screen))
+                        }
+                    } header: {
+                        Text(device.displayName)
+                    }
+                }
+            }
+        } else {
+            List(flatScreens, selection: selection) { screen in
+                row(screen.title, systemImage: screen.systemImage, color: screen.color)
+                    .tag(screen.route)
+            }
+        }
+    }
+
+    /// The single device's screens with Forecast and Claude activity in today's order.
+    private var flatScreens: [Screen] {
+        let available = DeviceUIRegistry.screens(for: model.primaryHeatPump)
+        return Screen.allCases.filter { screen in screen.deviceScreen.map(available.contains) ?? true }
+    }
+
+    private func row(_ title: String, systemImage: String, color: Color) -> some View {
+        Label {
+            Text(title)
+        } icon: {
+            IconBadge(systemImage: systemImage, color: color)
+        }
+    }
+
+    // MARK: Detail
+
+    private var title: String {
+        switch model.currentRoute {
+        case .home(let screen): screen.title
+        case .device(_, let screen): screen.screen.title
+        }
+    }
+
+    /// The device's name; on Home screens with two or more devices, the app's.
+    private var subtitle: String {
+        guard model.isGrouped else { return model.primaryHeatPump.deviceName }
+        switch model.currentRoute {
+        case .home: return String(localized: "Heat Pump")
+        case .device(let key, _): return model.device(for: key)?.displayName ?? String(localized: "Heat Pump")
+        }
     }
 
     @ViewBuilder private var detail: some View {
         if model.needsOnboarding {
             OnboardingView()
         } else {
-            switch model.selection ?? .overview {
-            case .overview: OverviewView()
-            case .control: ControlView()
-            case .schedule: ScheduleView()
-            case .history: HistoryView()
-            case .outlook: OutlookView()
-            case .away: AwayView()
-            case .health: HealthView()
-            case .activity: ActivityView()
+            switch model.currentRoute {
+            case .home(.overview): HomeOverviewView()
+            case .home(.forecast): OutlookView()
+            case .home(.activity): ActivityView()
+            case .device(let key, let screen):
+                if let device = model.device(for: key) { DeviceUIRegistry.screen(screen, of: device) }
             }
         }
     }
 }
 
 /// Refresh that respects the service's throttle and shows a countdown.
+/// Refreshes every device; the countdown is the shown device's.
 struct RefreshButton: View {
     @Environment(AppModel.self) private var model
 
@@ -89,11 +149,12 @@ struct RefreshButton: View {
     }
 
     private func waitUntil(now: Date) -> Date? {
-        guard let result = model.stateResult else { return nil }
+        let device = model.selectedHeatPump
+        guard let result = device.stateResult else { return nil }
         if let until = result.blockedUntil, until > now { return until }
         if let next = result.nextRefreshAllowed, next > now { return next }
         if result.refreshed, let fetched = result.fetchedAt {
-            let next = fetched.addingTimeInterval(model.service?.policy.minRefreshInterval ?? RateLimitPolicy.standard.minRefreshInterval)
+            let next = fetched.addingTimeInterval(device.service?.policy.minRefreshInterval ?? RateLimitPolicy.standard.minRefreshInterval)
             if next > now { return next }
         }
         return nil
@@ -101,7 +162,7 @@ struct RefreshButton: View {
 }
 
 struct OnboardingView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
 
     var body: some View {
         ScrollView {
@@ -115,7 +176,7 @@ struct OnboardingView: View {
                     "The app fetches status from the heat pump through \(model.serviceName), the same service the \(model.integration.brandName) app uses. Sign in with the email and password for your \(model.serviceName) account. The password is stored securely in the keychain on the Mac."
                 )
                 .fixedSize(horizontal: false, vertical: true)
-                LoginForm()
+                LoginForm(integration: model.integration)
                     .frame(maxWidth: 420)
             }
             .padding(32)

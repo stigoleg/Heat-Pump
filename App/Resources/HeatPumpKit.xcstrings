@@ -5701,6 +5701,17 @@
         }
       }
     },
+    "These are the whole house's figures. The heat pump's share is per device: ask again with device as one of: %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette er tallene for hele huset. Varmepumpens andel gjelder én enhet: spør igjen med device satt til en av disse: %@."
+          }
+        }
+      }
+    },
     "This can be perfectly normal when it is very cold outdoors, or right after the temperature has been turned up. Check that the air filter is clean, that nothing blocks the airflow, and that the outdoor unit is not covered by snow or ice. If it persists in mild weather, call the dealer." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6318,6 +6329,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Svakt Wi-Fi-signal"
+          }
+        }
+      }
+    },
+    "Weather and prices are the same for every device. The estimate for tomorrow is per device: ask again with device as one of: %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vær og priser er de samme for alle enheter. Anslaget for i morgen gjelder én enhet: spør igjen med device satt til en av disse: %@."
           }
         }
       }

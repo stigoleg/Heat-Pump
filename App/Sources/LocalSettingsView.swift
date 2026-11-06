@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Settings → Local connection: read-only access to the Wi-Fi adapter on the home network.
 struct LocalSettingsView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @State private var enabled = false
     @State private var host = ""
     @State private var loaded = false

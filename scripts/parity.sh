@@ -4,6 +4,9 @@
 #   scripts/parity.sh capture <dir>          screenshots of every screen, History tab and
 #                                            Settings tab (English light, Overview dark,
 #                                            Norwegian light) in demo mode
+#   scripts/parity.sh capture-multi <dir>    the same with two demo devices (Home, the second
+#                                            device's screens, Account, Local connection);
+#                                            keep it in its own folder
 #   scripts/parity.sh compare <before> <after>
 #                                            per image: % of differing pixels, and a diff image
 #                                            in <after>/diff/ for anything above 0.5 %
@@ -35,6 +38,24 @@ capture() {
     LANG_CODE=en $shot $dir/en-overview-dark.png VARMEPUMPE_SCREEN=overview VARMEPUMPE_APPEARANCE=dark
 }
 
+# Two simulated heat pumps (VARMEPUMPE_DEMO_DEVICES); the default capture stays single-device.
+capture_multi() {
+    local dir=$1
+    mkdir -p $dir
+    local shot=scripts/screenshot.sh
+    local bedroom=demo:100002
+    for lang in en nb; do
+        for screen in home home/forecast home/activity $bedroom/overview $bedroom/control $bedroom/history; do
+            LANG_CODE=$lang $shot $dir/$lang-${screen//[:\/]/-}.png VARMEPUMPE_SCREEN=$screen \
+                VARMEPUMPE_DEMO_DEVICES=heatpump,heatpump VARMEPUMPE_APPEARANCE=light
+        done
+        for tab in konto lokal; do
+            LANG_CODE=$lang WINDOW=settings MAXPX=1400 $shot $dir/$lang-settings-$tab.png \
+                VARMEPUMPE_SETTINGS_TAB=$tab VARMEPUMPE_DEMO_DEVICES=heatpump,heatpump VARMEPUMPE_APPEARANCE=light
+        done
+    done
+}
+
 compare() {
     local before=$1 after=$2
     local tool=build/tools/image-diff
@@ -64,6 +85,7 @@ compare() {
 
 case ${1:-} in
     capture) capture ${2:?directory} ;;
+    capture-multi) capture_multi ${2:?directory} ;;
     compare) compare ${2:?before} ${3:?after} ;;
-    *) echo "usage: scripts/parity.sh capture <dir> | compare <before> <after>" >&2; exit 2 ;;
+    *) echo "usage: scripts/parity.sh capture <dir> | capture-multi <dir> | compare <before> <after>" >&2; exit 2 ;;
 esac

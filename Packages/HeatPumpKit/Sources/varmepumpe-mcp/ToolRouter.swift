@@ -33,7 +33,16 @@ struct ToolRouter: Sendable {
                 let control = try await hub.priceControlService()
                 return await ToolHandler(service: primary, approver: approver, priceControlService: control).handle(params)
             }
-            let device = try choose(devices, capability: capability, argument: Arguments(params.arguments).string("device"))
+            let argument = Arguments(params.arguments).string("device")
+            let able = devices.filter { $0.capabilities.contains(capability) }
+            if Self.answeredWithoutDevice.contains(params.name), able.count >= 2,
+                argument?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+            {
+                // Weather, prices and the house's use are the same for every device: answer those
+                // and name the choices for the device's own part.
+                return await ToolHandler(service: primary, approver: approver, deviceChoices: choices(able)).handle(params)
+            }
+            let device = try choose(devices, capability: capability, argument: argument)
             guard let service = try await hub.heatPumpService(for: device.key) else {
                 return ToolOutput.failure(L10n.format("Unknown device: %@. Choose one of: %@.", device.name, choices(devices)))
             }
@@ -46,6 +55,9 @@ struct ToolRouter: Sendable {
             return ToolOutput.failure((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }
     }
+
+    /// Device tools whose shared part (weather, prices, the house) is answered without `device`.
+    static let answeredWithoutDevice: Set<String> = ["get_forecast", "get_house_consumption"]
 
     /// The device `argument` names (key or name, case-insensitive), else the only device with
     /// `capability`.

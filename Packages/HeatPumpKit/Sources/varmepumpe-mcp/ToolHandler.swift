@@ -9,6 +9,9 @@ struct ToolHandler: Sendable {
     let approver: any ChangeApprover
     /// The service price control runs on (`get_prices`); the device's own service by default.
     var priceControlService: HeatPumpService?
+    /// Set when a device tool is answered without `device` (two or more devices could answer):
+    /// only the parts every device shares, with a note naming these choices for the rest.
+    var deviceChoices: String?
 
     func handle(_ params: CallTool.Parameters) async -> CallTool.Result {
         let args = Arguments(params.arguments)
@@ -349,7 +352,12 @@ struct ToolHandler: Sendable {
                 priceLevel: prices[h.time]?.level?.rawValue)
         }
         let priced = hours.filter { $0.priceOre != nil }
-        let tomorrow = try await service.tomorrowEstimate()
+        let tomorrow = deviceChoices == nil ? try await service.tomorrowEstimate() : nil
+        let deviceNote = deviceChoices.map {
+            L10n.format(
+                "Weather and prices are the same for every device. The estimate for tomorrow is per device: ask again with device as one of: %@.",
+                $0)
+        }
         return try await output(
             View(
                 location: forecast.location?.displayName(serviceName: service.serviceName), locationSource: forecast.location?.source.rawValue,
@@ -358,7 +366,8 @@ struct ToolHandler: Sendable {
                 cheapestHours: Array(priced.sorted { ($0.priceOre ?? 0) < ($1.priceOre ?? 0) }.prefix(3)),
                 mostExpensiveHours: Array(priced.sorted { ($0.priceOre ?? 0) > ($1.priceOre ?? 0) }.prefix(3)),
                 tomorrow: tomorrow, tomorrowText: tomorrow?.shortText, attribution: WeatherForecast.attribution,
-                note: L10n.tr(
+                note: deviceNote
+                    ?? L10n.tr(
                     "The estimate for tomorrow is a simple model (consumption against degree days, base 17 °C) from this heat pump's own data, with an uncertainty range (kWhLow–kWhHigh). pricesFromToday means tomorrow's prices have not arrived yet and today's hourly prices are used. Pre-heating: at most 1 °C up a couple of hours before a cold and expensive period, and back afterwards; avoid frequent on/off and big jumps."
                 )))
     }
@@ -368,6 +377,27 @@ struct ToolHandler: Sendable {
         let to = args.date("to") ?? Date()
         let from = args.date("from") ?? Calendar.current.startOfDay(for: to.addingTimeInterval(-7 * 86_400))
         let summary = try await service.houseShare(from: from, to: to)
+        if let deviceChoices {
+            struct HouseDay: Encodable {
+                var day: String
+                var houseKWh: Double
+                var houseCostNokFromTibber: Double?
+            }
+            struct HouseView: Encodable {
+                var sync: HouseSync
+                var days: [HouseDay]
+                var note: String
+            }
+            let days = summary.days.map { HouseDay(day: $0.day, houseKWh: $0.houseKWh, houseCostNokFromTibber: $0.houseCostNok) }
+            return try await output(
+                HouseView(
+                    sync: sync, days: days,
+                    note: sync.status == .notConfigured && days.isEmpty
+                        ? L10n.tr("Requires a Tibber token (Settings → Electricity price in the app).")
+                        : L10n.format(
+                            "These are the whole house's figures. The heat pump's share is per device: ask again with device as one of: %@.",
+                            deviceChoices)))
+        }
         struct Day: Encodable {
             var day: String
             var houseKWh: Double

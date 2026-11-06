@@ -1,13 +1,16 @@
 import HeatPumpKit
 import SwiftUI
 
-/// Banner for stale, blocked or failed data, from `StateResult`.
+/// Banner for stale, blocked or failed data, from the device's `StateResult`.
 struct StatusBanner: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
+    @Environment(AppModel.self) private var app
     /// Outer padding, applied only when there is something to show.
     var inset: CGFloat = 0
     /// Space below the banner, only when it is shown (so an empty banner takes no room).
     var bottomSpacing: CGFloat = 0
+    /// False on Home with two or more devices: each device's card shows its own state.
+    var showsDevice = true
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -34,8 +37,8 @@ struct StatusBanner: View {
     }
 
     private func message(now: Date) -> Message? {
-        if let error = model.startupError { return Message(text: error, icon: "xmark.octagon", color: .red) }
-        guard let result = model.stateResult else { return nil }
+        if let error = app.startupError { return Message(text: error, icon: "xmark.octagon", color: .red) }
+        guard showsDevice, let result = model.stateResult else { return nil }
         if result.needsLogin {
             return Message(
                 text: result.blockMessage ?? result.error ?? String(localized: "Log in to \(model.serviceName) in Settings."),

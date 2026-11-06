@@ -4,7 +4,7 @@ import SwiftUI
 /// Frost protection and holiday mode in MELCloud. Unlike Control these are not sent
 /// automatically: each change is confirmed in a sheet first.
 struct AwayView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @State private var frostEnabled = false
     @State private var frostMin = 8.0
     @State private var frostMax = 12.0

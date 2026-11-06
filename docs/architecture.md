@@ -26,8 +26,8 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   The services are the only thing that talks to the network. The app and the MCP helper each build
   a hub (`IntegrationCatalog.makeHub`) and share the SQLite database and keychain, so rate limits,
   blocks and the change budget hold across both processes. Active integrations are stored in
-  `app_settings.integrations` (MELCloud until changed; demo mode: the demo only). The app serves
-  the primary device (`primaryService()`); the MCP helper chooses per call (`ToolRouter`).
+  `app_settings.integrations` (MELCloud until changed; demo mode: the demo only). The app keeps
+  a model per enabled device (see "The app" below); the MCP helper chooses per call (`ToolRouter`).
 - **Cache first.** Reads return the stored snapshot unless it is older than the allowed age;
   `HistoryStore.reserveFetch` decides whether a network call may happen.
 - **Writes** go through validation → safety checks → change budget (`reserveChange`) → optional
@@ -97,11 +97,45 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 - **Knowledge**: `knowledge: KnowledgeSource`.
 - **Persisted identifiers**: `sourceTag` is stored with error-log entries and away settings.
 
+### The app (`App/Sources`)
+
+- **`AppModel`** holds what is app-wide: the hub, the route, appearance, language, updates, the
+  shared energy context (prices, weather, outlook; read through the primary device's service),
+  price control (`PriceControlRunner` on `DeviceHub.priceControlService()`), notifications and
+  `devices: [any DeviceModel]`, one model per enabled device in registry order
+  (`syncDevices()`, no network, at every poll). Before any device is known it holds the primary
+  service's model, which keeps its model when the first sign-in finds the device.
+- **Device models** (`DeviceModels.swift`): `HeatPumpDeviceModel` (`@MainActor @Observable`) holds
+  one heat pump's state, history, health, away modes, weekly timer, firmware, local connection,
+  debouncer and actions. Device screens read it from the environment
+  (`@Environment(HeatPumpDeviceModel.self)`) and app-wide data from `AppModel`.
+- **Polling**: one loop, every 60 s. Devices are polled stalest first (`pollState`), then the
+  shared syncs, then each device's slower reads (`pollDetails`), price control, the reloads and
+  notifications (per device; with two or more the title names the device). An integration allows
+  one state fetch a minute for its account, so devices sharing one take turns.
+- **Routing** (`DeviceNavigation` in the kit, tested): `AppRoute.home(HomeScreen)` or
+  `.device(DeviceKey?, DeviceScreen)` (nil: the primary device). With one device the sidebar is
+  the flat list it always was; with two or more it has Home (overview of all devices, Forecast,
+  Claude activity) and a group per device. `VARMEPUMPE_SCREEN` takes today's values, `home`,
+  `home/<screen>` and `<device key>/<screen>`.
+- **`DeviceUIRegistry`** maps a device to its screens (kind and capabilities), the views behind
+  them (with the model injected), its Home card and its Settings (today the local connection).
+- **Settings**: the sign-in form comes from the integration's `credentialFields`. With two or more
+  integrations Account has a section per integration; with two or more devices a device list
+  (rename, turn on/off, refresh the list). "Add Integration…" appears only when the catalog has an
+  integration that is not active (the demo is never offered).
+
+**Adding a device kind** (e.g. the energy meter): a `DeviceService` case in the kit; its screens in
+`DeviceNavigation.screens(kind:capabilities:)`; a `final class …DeviceModel: DeviceModel` in the
+app, created in `AppModel.syncDevices()` from its `DeviceService` case; its screen views, Home card
+and Settings in `DeviceUIRegistry`. The compiler points at each switch over `DeviceService`,
+`DeviceKind` and `DeviceScreen` that needs a case.
+
 ### Known couplings (what the platform work removes)
 
-Device models have air-to-air fields; the app serves only the hub's primary device, so every
-screen assumes one heat pump; the generic error text fallback (`errorDescription`) still names the
-primary device's service.
+Device models have air-to-air fields; the generic error text fallback (`errorDescription`) still
+names the primary device's service; prices, weather and price control's settings are shared, and
+price control steers one heat pump at a time.
 
 ## Direction: an integration platform
 
@@ -119,8 +153,8 @@ one heat pump the app looks and behaves exactly as before.**
   to; screens and MCP tools appear only for devices that have the capability.
 - **Each integration owns its rules**: credential fields (drive a generic sign-in form), rate-limit
   policy, error texts, health checks and knowledge documents.
-- **`DeviceHub`** is the entry point; per-device services do the work (done in phase 4a; the
-  app UI for several devices follows).
+- **`DeviceHub`** is the entry point; per-device services do the work (phase 4a); the app has a
+  model per device (phase 4b).
 - **Several devices at once.** With two or more, the sidebar gets a Home group (overview of all
   devices, Forecast, Claude activity) and a group per device.
 

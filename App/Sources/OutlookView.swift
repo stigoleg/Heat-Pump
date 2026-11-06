@@ -13,7 +13,7 @@ struct OutlookView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    StatusBanner()
+                    StatusBanner(showsDevice: !model.isGrouped)
                     weatherSection
                     priceSection.id("prices")
                     useSection.id("use")
@@ -223,10 +223,24 @@ struct OutlookView: View {
 
     // MARK: Use and cost
 
+    /// One device: its estimate. Two or more: one section per heat pump, named.
     @ViewBuilder private var useSection: some View {
+        if model.isGrouped {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                ForEach(model.heatPumps.indices, id: \.self) { index in
+                    let device = model.heatPumps[index]
+                    useSection(device.dailyOutlook, hint: .verbatim(device.displayName))
+                }
+            }
+        } else {
+            useSection(model.primaryHeatPump.dailyOutlook, hint: "Estimate per day")
+        }
+    }
+
+    private func useSection(_ dailyOutlook: [DayOutlook], hint: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Expected consumption and cost", hint: "Estimate per day")
-            if model.dailyOutlook.isEmpty {
+            SectionHeader("Expected consumption and cost", hint: hint)
+            if dailyOutlook.isEmpty {
                 InsightCard(
                     title: "Not enough data yet",
                     detail: "The estimate needs at least \(DegreeDayModel.minDays) days of consumption and outdoor temperature, and a weather forecast.",
@@ -236,7 +250,7 @@ struct OutlookView: View {
                     columns: [GridItem(.adaptive(minimum: 150), spacing: Theme.Space.m, alignment: .top)], alignment: .leading,
                     spacing: Theme.Space.m
                 ) {
-                    ForEach(model.dailyOutlook, id: \.day) { DayOutlookCard(day: $0) }
+                    ForEach(dailyOutlook, id: \.day) { DayOutlookCard(day: $0) }
                 }
                 Text(
                     "Rough estimate: consumption against how cold it has been over the last few weeks, the weather forecast and the prices. Days marked “price estimate” use estimated prices for the hours without a published price."
@@ -374,6 +388,10 @@ struct PriceControlSection: View {
             SectionHeader("Price control", hint: "Lowers the temperature when electricity is expensive")
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    if model.priceControlCandidates.count >= 2 {
+                        devicePicker
+                        Divider()
+                    }
                     toggleRow
                     warning
                     Divider()
@@ -400,7 +418,24 @@ struct PriceControlSection: View {
             )
             .toggleStyle(.switch)
             .labelsHidden()
-            .disabled(runner.isBusy || model.service == nil)
+            .disabled(runner.isBusy || runner.service == nil)
+        }
+    }
+
+    /// Two or more heat pumps: which one price control steers.
+    private var devicePicker: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Picker(
+                "Heat pump",
+                selection: Binding(
+                    get: { model.priceControlDevice },
+                    set: { key in if let key { Task { await model.setPriceControlDevice(key) } } })
+            ) {
+                ForEach(model.priceControlCandidates, id: \.key) { Text($0.displayName).tag($0.key) }
+            }
+            .disabled(runner.isBusy)
+            Text("Price control steers one heat pump. Choosing another turns it off first, which sets the temperature back.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -557,8 +592,13 @@ struct PriceControlMenu: View {
         } else {
             Text("Electricity now: –")
         }
-        if let state = model.state {
-            Text("Indoor \(Format.temperature(state.roomTemperature)) · target \(Format.temperature(state.setTemperature))")
+        let device = model.heatPumps.first { $0.service != nil && $0.service === model.priceControl.service } ?? model.primaryHeatPump
+        if let state = device.state {
+            if model.isGrouped {
+                Text("\(device.displayName): indoor \(Format.temperature(state.roomTemperature)) · target \(Format.temperature(state.setTemperature))")
+            } else {
+                Text("Indoor \(Format.temperature(state.roomTemperature)) · target \(Format.temperature(state.setTemperature))")
+            }
         }
         Text("Price control: \(model.priceControl.status?.text ?? String(localized: "starting…"))")
         if let next = model.priceControl.status?.nextStep {

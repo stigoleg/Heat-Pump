@@ -211,6 +211,16 @@
         }
       }
     },
+    "%@: indoor %@ · target %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: inne %2$@ · ønsket %3$@"
+          }
+        }
+      }
+    },
     "%lld changes left this hour" : {
       "localizations" : {
         "en" : {
@@ -471,6 +481,16 @@
         }
       }
     },
+    "A device that is turned off keeps its history; the app and Claude leave it alone until you turn it on again. Refreshing the list asks each service once, within its limits." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En enhet som er slått av, beholder historikken sin. Appen og Claude lar den være til du slår den på igjen. Når du oppdaterer listen, spørres hver tjeneste én gang, innenfor grensene."
+          }
+        }
+      }
+    },
     "Account" : {
       "localizations" : {
         "nb" : {
@@ -491,6 +511,36 @@
         }
       }
     },
+    "Add Integration" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til integrasjon"
+          }
+        }
+      }
+    },
+    "Add Integration…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til integrasjon …"
+          }
+        }
+      }
+    },
+    "Add and Sign In" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til og logg inn"
+          }
+        }
+      }
+    },
     "Add to Schedule" : {
       "localizations" : {
         "nb" : {
@@ -501,12 +551,32 @@
         }
       }
     },
+    "Added." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagt til."
+          }
+        }
+      }
+    },
     "Air filter every 2 weeks, deodorizing filter every 3 months" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Luftfilter hver 2. uke, luktfilter hver 3. måned"
+          }
+        }
+      }
+    },
+    "Air-to-air heat pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luft-til-luft-varmepumpe"
           }
         }
       }
@@ -1021,6 +1091,16 @@
         }
       }
     },
+    "Click a device to open it" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klikk på en enhet for å åpne den"
+          }
+        }
+      }
+    },
     "Click in the map to place or move the pin." : {
       "localizations" : {
         "nb" : {
@@ -1147,6 +1227,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Koble til Claude"
+          }
+        }
+      }
+    },
+    "Connect another service, so its devices show up in the app next to the ones you have." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble til en tjeneste til, så vises enhetene derfra i appen ved siden av dem du har."
           }
         }
       }
@@ -1521,6 +1611,26 @@
         }
       }
     },
+    "Device" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enhet"
+          }
+        }
+      }
+    },
+    "Devices" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enheter"
+          }
+        }
+      }
+    },
     "Discard Changes" : {
       "localizations" : {
         "nb" : {
@@ -1797,6 +1907,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Energi og kostnad"
+          }
+        }
+      }
+    },
+    "Energy meter" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømmåler"
           }
         }
       }
@@ -2097,6 +2217,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ukeplanen hentes fra %@ …"
+          }
+        }
+      }
+    },
+    "Fill in every field." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fyll ut alle feltene."
           }
         }
       }
@@ -2511,6 +2641,16 @@
         }
       }
     },
+    "Home" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hjem"
+          }
+        }
+      }
+    },
     "Hour" : {
       "localizations" : {
         "nb" : {
@@ -2617,6 +2757,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok – appen vet ikke om den er på. Tidene er norsk tid."
+          }
+        }
+      }
+    },
+    "In use" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I bruk"
           }
         }
       }
@@ -3191,6 +3341,16 @@
         }
       }
     },
+    "Mode unknown" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent modus"
+          }
+        }
+      }
+    },
     "Mode unknown – choose a mode" : {
       "localizations" : {
         "nb" : {
@@ -3307,6 +3467,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ny hendelse %@"
+          }
+        }
+      }
+    },
+    "Next 24 h: %@ to %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste 24 t: %1$@ til %2$@"
           }
         }
       }
@@ -3851,6 +4021,16 @@
         }
       }
     },
+    "Open %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne %@"
+          }
+        }
+      }
+    },
     "Open Control" : {
       "localizations" : {
         "nb" : {
@@ -4161,6 +4341,16 @@
         }
       }
     },
+    "Price control steers one heat pump. Choosing another turns it off first, which sets the temperature back." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring styrer én varmepumpe. Velger du en annen, slås prisstyring først av, og temperaturen settes tilbake."
+          }
+        }
+      }
+    },
     "Price control: %@" : {
       "localizations" : {
         "nb" : {
@@ -4291,6 +4481,16 @@
         }
       }
     },
+    "Refresh Device List" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater enhetslisten"
+          }
+        }
+      }
+    },
     "Refresh Now" : {
       "localizations" : {
         "nb" : {
@@ -4307,6 +4507,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Oppdater status"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern"
+          }
+        }
+      }
+    },
+    "Remove %@?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjerne %@?"
+          }
+        }
+      }
+    },
+    "Remove…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjern …"
           }
         }
       }
@@ -4757,6 +4987,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Serie"
+          }
+        }
+      }
+    },
+    "Service" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjeneste"
           }
         }
       }
@@ -5781,6 +6021,16 @@
         }
       }
     },
+    "The sign-in is deleted from the keychain and the app stops fetching from %@. The devices' history is kept and comes back if you add it again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innloggingen slettes fra nøkkelringen, og appen slutter å hente fra %@. Historikken til enhetene beholdes og kommer tilbake hvis du legger til integrasjonen igjen."
+          }
+        }
+      }
+    },
     "The sign-in is saved. Wait a little before testing again (at %@ at the earliest)." : {
       "localizations" : {
         "nb" : {
@@ -6017,6 +6267,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bytt utseende"
+          }
+        }
+      }
+    },
+    "Token" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token"
           }
         }
       }
@@ -6497,6 +6757,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Når huset står tomt"
+          }
+        }
+      }
+    },
+    "Whether the app and Claude use this device" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om appen og Claude bruker denne enheten"
           }
         }
       }

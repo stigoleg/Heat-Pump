@@ -122,4 +122,26 @@ struct MCPCatalogTests {
         let prices = await router.handle(CallTool.Parameters(name: "get_prices", arguments: [:]))
         #expect(prices.isError != true)
     }
+
+    @Test func forecastAndHouseWithoutDeviceAnswerTheSharedParts() async throws {
+        let router = ToolRouter(hub: try makeHub(), approver: FixedApprover(.approved))
+
+        let forecast = await router.handle(CallTool.Parameters(name: "get_forecast", arguments: [:]))
+        #expect(forecast.isError != true)
+        #expect(text(forecast).contains(#""hours""#))
+        #expect(!text(forecast).contains(#""tomorrow""#))
+        #expect(text(forecast).contains("demo:100002"))
+
+        let own = await router.handle(CallTool.Parameters(name: "get_forecast", arguments: ["device": "demo:100002"]))
+        #expect(own.isError != true)
+        #expect(!text(own).contains("ask again with device"))
+
+        let house = await router.handle(CallTool.Parameters(name: "get_house_consumption", arguments: [:]))
+        #expect(house.isError != true)
+        #expect(!text(house).contains("heatPumpShare"))
+
+        // Other device tools still need the choice.
+        let energy = await router.handle(CallTool.Parameters(name: "get_energy", arguments: [:]))
+        #expect(energy.isError == true)
+    }
 }

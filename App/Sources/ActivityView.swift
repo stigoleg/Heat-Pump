@@ -21,12 +21,21 @@ struct ActivityView: View {
     struct Row: Identifiable {
         let id: Int64
         let record: ChangeRecord
+        /// The device's name, with two or more devices.
+        var device: String?
+    }
+
+    /// One device: its changes. Two or more: every device's, with its name.
+    private var changes: [(device: String?, record: ChangeRecord)] {
+        guard model.isGrouped else { return model.primaryHeatPump.changes.map { (nil, $0) } }
+        return model.allChanges.map { ($0.device?.name, $0.record) }
     }
 
     private var rows: [Row] {
-        model.changes
-            .filter { record in
-                switch filter {
+        changes
+            .filter { change in
+                let record = change.record
+                return switch filter {
                 case .all: true
                 case .claude: record.source == .claude
                 case .app: record.source == .app
@@ -34,7 +43,7 @@ struct ActivityView: View {
                 }
             }
             .enumerated()
-            .map { index, record in Row(id: record.id ?? Int64(-index - 1), record: record) }
+            .map { index, change in Row(id: change.record.id ?? Int64(-index - 1), record: change.record, device: change.device) }
     }
 
     var body: some View {
@@ -69,7 +78,7 @@ struct ActivityView: View {
                     .frame(maxHeight: .infinity, alignment: .top)
             } else {
                 List(rows) { row in
-                    ActivityRow(record: row.record)
+                    ActivityRow(record: row.record, device: row.device)
                 }
                 .listStyle(.inset(alternatesRowBackgrounds: true))
             }
@@ -83,6 +92,8 @@ struct ActivityView: View {
 /// One change: what, when, who, old → new, why and the result.
 struct ActivityRow: View {
     let record: ChangeRecord
+    /// The device's name, shown with two or more devices.
+    var device: String?
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -103,8 +114,14 @@ struct ActivityRow: View {
                         resultLabel(record)
                     }
                 }
-                Text(verbatim: "\(record.source.displayName) · \(Display.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
-                    .font(.callout).foregroundStyle(.secondary)
+                Group {
+                    if let device {
+                        Text(verbatim: "\(device) · \(record.source.displayName) · \(Display.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
+                    } else {
+                        Text(verbatim: "\(record.source.displayName) · \(Display.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
+                    }
+                }
+                .font(.callout).foregroundStyle(.secondary)
                 if let reason = record.reason, !reason.isEmpty {
                     Text("Reason: \(reason)").font(.callout)
                 }

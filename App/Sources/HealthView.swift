@@ -2,7 +2,7 @@ import HeatPumpKit
 import SwiftUI
 
 struct HealthView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @State private var recording: MaintenanceKind?
     @State private var document: KnowledgeDocumentItem?
 
@@ -197,7 +197,7 @@ struct KnowledgeDocumentItem: Identifiable {
 
 struct RecordMaintenanceSheet: View {
     let kind: MaintenanceKind
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var date = Date()
     @State private var note = ""

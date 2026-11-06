@@ -253,7 +253,7 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 | `VARMEPUMPE_DB_PATH` | Path to the SQLite database |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Development only: sign in without the keychain |
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Tests only: answers instead of the approval window. Works only with `VARMEPUMPE_BACKEND=mock`. |
-| `VARMEPUMPE_SCREEN` | Start screen: overview, control, history, away, health, activity |
+| `VARMEPUMPE_SCREEN` | Start screen: overview, control, schedule, history, outlook, away, health, activity; with two or more devices also `home`, `home/forecast`, `home/activity` and `<device key>/<screen>` (e.g. `demo:100002/control`) |
 | `VARMEPUMPE_HISTORY_TAB` | Start tab in History: temperature, energy, energy-kr, operation, power |
 | `VARMEPUMPE_HISTORY_RANGE` | Start period in History: day, week, month, year |
 | `VARMEPUMPE_SCROLL_TO` | Scrolls to a section after three seconds (screenshots) |

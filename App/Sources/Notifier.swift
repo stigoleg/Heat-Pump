@@ -9,16 +9,21 @@ final class Notifier {
     private let memoryKey = "notificationMemory"
     private let askedKey = "askedNotificationPermission"
 
-    var memory: NotificationMemory {
-        get {
-            guard let data = defaults.data(forKey: memoryKey),
-                let memory = try? JSONDecoder().decode(NotificationMemory.self, from: data)
-            else { return NotificationMemory() }
-            return memory
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue) { defaults.set(data, forKey: memoryKey) }
-        }
+    /// What was already sent for a device: nil is the first device (the memory from before
+    /// devices), any other device has its own.
+    func memory(for device: DeviceKey?) -> NotificationMemory {
+        guard let data = defaults.data(forKey: key(device)),
+            let memory = try? JSONDecoder().decode(NotificationMemory.self, from: data)
+        else { return NotificationMemory() }
+        return memory
+    }
+
+    func setMemory(_ memory: NotificationMemory, for device: DeviceKey?) {
+        if let data = try? JSONEncoder().encode(memory) { defaults.set(data, forKey: key(device)) }
+    }
+
+    private func key(_ device: DeviceKey?) -> String {
+        device.map { "\(memoryKey)@\($0.rawValue)" } ?? memoryKey
     }
 
     /// Asks for permission on first launch only.

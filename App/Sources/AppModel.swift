@@ -135,161 +135,255 @@ struct EnergyData {
     var previousHourly: [HourCost] = []
 }
 
-/// App state. Wraps the primary device's `HeatPumpService` actor from the `DeviceHub`; all rules
-/// (caching, rate limits, validation, logging) live in HeatPumpKit.
+/// App state: the hub, the device models (one per enabled device), navigation, appearance,
+/// updates, the shared energy context (prices, weather, outlook), price control and
+/// notifications. Each device's own state and actions live in its model (`HeatPumpDeviceModel`);
+/// all rules (caching, rate limits, validation, logging) live in HeatPumpKit.
 @MainActor
 @Observable
 final class AppModel {
     /// Every device and integration; nil when the database could not be opened.
     let hub: DeviceHub?
-    /// The primary device's service (the one the app shows).
-    let service: HeatPumpService?
     let startupError: String?
     let isDemo: Bool
-    /// The integration this process runs (also without a service, e.g. when the database failed).
-    let integration: any Integration
-    /// The service as texts name it, e.g. "MELCloud".
-    var serviceName: String { integration.displayName }
-    /// The integration's error-code explanations.
-    var errorCodes: any ErrorCodeExplaining { integration.errorCodes }
-    /// The integration's knowledge documents.
-    var knowledge: Knowledge { Knowledge(integration: integration) }
+    /// The integration this process starts with (also without a service, e.g. when the database
+    /// failed); a device's model knows its own.
+    let launchIntegration: any Integration
 
-    var selection: Screen? = .overview
+    /// The enabled devices in the registry's order. Never empty: before any device is known it
+    /// holds the primary service's model, which finds its device on the first fetch.
+    private(set) var devices: [any DeviceModel]
+    /// Shown when no heat pump model exists (keeps views that need one working).
+    @ObservationIgnored private let fallbackHeatPump: HeatPumpDeviceModel
+
+    /// Where the main window is (Sidebar). Dev: `VARMEPUMPE_SCREEN`.
+    var route: AppRoute = .device(nil, .overview)
     /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
     var initialHistoryTab: String?
     /// Selected Settings tab (generelt, konto, strompris, lokal, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
     var settingsTab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "generelt"
     /// Light/dark choice, stored in UserDefaults. Dev: `VARMEPUMPE_APPEARANCE` overrides it without saving.
     private(set) var appearance: AppAppearance = .system
-    var stateResult: StateResult?
-    /// State as it should be after changes not yet confirmed by a refresh.
-    var effectiveState: DeviceState?
-    var health: HealthReport?
-    var maintenance: [MaintenanceStatus] = []
-    var errorLog: [ErrorLogEntry] = []
-    var changes: [ChangeRecord] = []
-    var fetchStatus: [FetchStateRow] = []
-    var hasCredentials = true
     var isRefreshing = false
     var lastError: String?
-    /// Sends edits from Kontroll and the dial automatically.
-    private(set) var debouncer: ChangeDebouncer?
     var priceSettings = PriceSettings.default
     var todayPrices: [PriceBreakdown] = []
     var tomorrowPrices: [PriceBreakdown] = []
-    var today: EnergyBucket?
-    var todayHourly: [HourCost] = []
-    var estimatedPowerW: Double?
     var priceMessage: String?
-    /// Latest local reading from the Wi-Fi adapter and its reachability.
-    var live: LiveStatus?
-    /// Local readings of the last 60 minutes (power sparkline).
-    var recentLocal: [LocalSample] = []
-    var localSettings = LocalSettings.default
-    /// MET forecast for the next 48 hours, where it is for, and the estimate for tomorrow.
+    /// MET forecast for the next 48 hours and where it is for.
     var forecast: [ForecastHour] = []
     var weatherLocation: WeatherLocation?
     var weatherFetchedAt: Date?
     var weatherMessage: String?
-    var tomorrow: TomorrowEstimate?
     var weatherSettings = WeatherSettings.default
-    /// Frost protection and holiday mode (cached; read from MELCloud at most hourly).
-    var away: AwaySettings?
-    /// MELCloud's weekly timer (cached; read at most every 6 hours).
-    var weeklyTimer: WeeklyTimer?
-    /// Unsaved edits of the Ukeplan page while another page is shown.
-    var scheduleDraft: ScheduleDraft?
     /// Prices from now on with the estimate after the published ones (Prognose).
     var priceOutlook: PriceOutlook?
-    /// Expected use and cost per forecast day from tomorrow (Prognose).
-    var dailyOutlook: [DayOutlook] = []
     /// The whole stored forecast from this hour (up to nine days; Prognose).
     var longForecast: [ForecastHour] = []
+    /// Every device's changes with the device (Claude activity with two or more devices).
+    var allChanges: [(device: DeviceDescriptor?, record: ChangeRecord)] = []
     /// Price control (Prognose → Prisstyring); runs on the poll tick.
     let priceControl: PriceControlRunner
+    /// The device price control steers (nil until known).
+    private(set) var priceControlDevice: DeviceKey?
     /// App updates from GitHub releases (Innstillinger → Generelt).
     let updater = Updater()
-    /// Bumped after every reload so views can refetch derived data (charts).
-    var revision = 0
 
     private var pollTask: Task<Void, Never>?
     private let notifier = Notifier()
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        integration = IntegrationCatalog.current(environment: environment)
+        launchIntegration = IntegrationCatalog.current(environment: environment)
+        let service: HeatPumpService?
         do {
             let hub = try IntegrationCatalog.makeHub(environment: environment)
             self.hub = hub
-            self.service = hub.primaryAtLaunch
+            service = hub.primaryAtLaunch
             self.isDemo = hub.isDemo
             self.startupError = nil
         } catch {
             self.hub = nil
-            self.service = nil
+            service = nil
             self.isDemo = IntegrationCatalog.isDemo(environment: environment)
             self.startupError = String(localized: "Could not open the database: \(error.localizedDescription)")
         }
-        if let screen = environment["VARMEPUMPE_SCREEN"].flatMap(Screen.init(rawValue:)) {
-            selection = screen
+        let primary = HeatPumpDeviceModel(service: service, integration: launchIntegration, startupError: startupError)
+        devices = [primary]
+        fallbackHeatPump = service == nil ? primary : HeatPumpDeviceModel(service: nil, integration: launchIntegration, startupError: startupError)
+        if let route = environment["VARMEPUMPE_SCREEN"].flatMap(DeviceNavigation.route(devScreen:)) {
+            self.route = route
         }
         initialHistoryTab = environment["VARMEPUMPE_HISTORY_TAB"]
         appearance = environment["VARMEPUMPE_APPEARANCE"].flatMap(AppAppearance.init(rawValue:))
             ?? UserDefaults.standard.string(forKey: AppAppearance.defaultsKey).flatMap(AppAppearance.init(rawValue:))
             ?? .system
         priceControl = PriceControlRunner(service: service)
-        if let service {
-            debouncer = ChangeDebouncer(
-                send: { [weak self] changes in
-                    let outcomes = try await service.apply(changes, source: .app, reason: ChangeDebouncer.reason)
-                    // A setpoint the user chose becomes price control's comfort temperature.
-                    for case .temperature(let value) in changes where outcomes.contains(where: { $0.result == .ok }) {
-                        await self?.priceControl.userChangedSetpoint(value)
-                    }
-                    await self?.afterSend()
-                    return outcomes
-                },
-                budget: { try await service.writeBudget() })
-        }
+        connect(primary)
         priceControl.afterChange = { [weak self] in await self?.afterPriceControl() }
+    }
+
+    /// Wires a heat pump's model to the app: its setpoints feed price control when it is price
+    /// control's device, and a finished firmware update refreshes.
+    private func connect(_ device: HeatPumpDeviceModel) {
+        device.onUserSetpoint = { [weak self, weak device] value in
+            guard let self, let device, device.service != nil, device.service === self.priceControl.service else { return }
+            await self.priceControl.userChangedSetpoint(value)
+        }
+        device.onNeedsRefresh = { [weak self] in await self?.refresh(force: false) }
     }
 
     /// After a price-control tick or switch: the state the write reported, and (outside a poll,
     /// which reloads anyway) the change log and the rest.
     private func afterPriceControl() async {
-        guard let service else { return }
-        if let cached = try? await service.cachedState(), cached != stateResult?.state {
-            stateResult?.state = cached
-            debouncer?.updateLive(cached)
-        }
+        guard let device = heatPumps.first(where: { $0.service != nil && $0.service === priceControl.service }) else { return }
+        await device.takeCachedState()
         if !isRefreshing { await reloadLocal() }
     }
 
-    /// Shows the state reported by the write right away (no extra network call) and logs it.
-    private func afterSend() async {
-        guard let service else { return }
-        if let cached = try? await service.cachedState() {
-            stateResult?.state = cached
-            debouncer?.updateLive(cached)
-        }
-        await reloadLocal()
+    // MARK: Devices
+
+    var heatPumps: [HeatPumpDeviceModel] { devices.compactMap { $0 as? HeatPumpDeviceModel } }
+
+    /// The first heat pump: what the app shows with one device, and the screens of Home use.
+    var primaryHeatPump: HeatPumpDeviceModel { heatPumps.first ?? fallbackHeatPump }
+
+    /// Two or more devices: the sidebar has Home and one group per device.
+    var isGrouped: Bool { DeviceNavigation.isGrouped(deviceCount: devices.count) }
+
+    var descriptors: [DeviceDescriptor] { devices.compactMap(\.descriptor) }
+
+    /// The device of `key` (nil: the primary device).
+    func device(for key: DeviceKey?) -> (any DeviceModel)? {
+        guard let key else { return devices.first }
+        return devices.first { $0.key == key }
     }
 
-    var state: DeviceState? { stateResult?.state }
+    /// The heat pump the current route is about, else the primary one (Home, Settings).
+    var selectedHeatPump: HeatPumpDeviceModel {
+        if case .device(let key, _) = currentRoute, let device = device(for: key) as? HeatPumpDeviceModel { return device }
+        return primaryHeatPump
+    }
 
-    var deviceName: String { state?.name ?? String(localized: "Heat pump") }
+    /// The primary service: shared reads (prices, weather, outlook) go through it, as before
+    /// devices.
+    var service: HeatPumpService? { primaryHeatPump.service }
+
+    /// The service as app-wide texts name it (the primary device's), e.g. "MELCloud".
+    var serviceName: String { primaryHeatPump.serviceName }
+
+    /// Matches the device models to the hub's enabled devices (no network). A model is kept as
+    /// long as the hub serves its device with the same service, so a device found by the first
+    /// sign-in keeps the model that was showing it.
+    func syncDevices() async {
+        guard let hub else { return }
+        do {
+            var next: [any DeviceModel] = []
+            for descriptor in try await hub.devices() {
+                switch try await hub.service(for: descriptor.key) {
+                case .heatPump(let service):
+                    let model = heatPumps.first { $0.service === service } ?? makeHeatPump(service)
+                    if model.descriptor != descriptor { model.descriptor = descriptor }
+                    next.append(model)
+                case nil: continue
+                }
+            }
+            if next.isEmpty {
+                // No device known yet: the primary service finds its device on the first fetch.
+                let service = try await hub.primaryService()
+                let model = heatPumps.first { $0.service === service } ?? makeHeatPump(service)
+                if model.descriptor != nil { model.descriptor = nil }
+                next = [model]
+            }
+            if next.map(ObjectIdentifier.init) != devices.map(ObjectIdentifier.init) { devices = next }
+            await loadIntegrations()
+            let controlled = try await hub.priceControlService()
+            if controlled !== priceControl.service, !priceControl.isBusy { await priceControl.use(controlled) }
+            let key = try await hub.priceControlDevice()
+            if key != priceControlDevice { priceControlDevice = key }
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    private func makeHeatPump(_ service: HeatPumpService?) -> HeatPumpDeviceModel {
+        let model = HeatPumpDeviceModel(service: service, integration: launchIntegration, startupError: startupError)
+        connect(model)
+        return model
+    }
+
+    /// Every device of the active integrations, disabled ones too (Settings → Account). In demo
+    /// mode only the simulated units `VARMEPUMPE_DEMO_DEVICES` asks for (the others are disabled
+    /// by the demo, not by the user).
+    func allDevices() async -> [DeviceDescriptor] {
+        let devices = (try? await hub?.allDevices()) ?? []
+        return isDemo ? devices.filter(\.isEnabled) : devices
+    }
+
+    func setEnabled(_ enabled: Bool, device key: DeviceKey) async -> String? {
+        guard let hub else { return startupError }
+        do {
+            try await hub.setEnabled(enabled, for: key)
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        await syncDevices()
+        await reloadLocal()
+        return nil
+    }
+
+    func rename(_ key: DeviceKey, to name: String) async -> String? {
+        guard let hub else { return startupError }
+        do {
+            try await hub.rename(key, to: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        await syncDevices()
+        return nil
+    }
+
+    /// Lists the accounts' devices again (one request per integration, under its spacing).
+    func refreshDeviceList() async -> String? {
+        guard let hub else { return startupError }
+        do {
+            _ = try await hub.refreshDeviceList()
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        await syncDevices()
+        await reloadLocal()
+        return nil
+    }
+
+    // MARK: Navigation
+
+    /// The route as shown: with one device every device route is the primary device's.
+    var currentRoute: AppRoute { DeviceNavigation.normalized(route, devices: descriptors) }
+
+    /// The sidebar screen of the current route, for views that move to another screen of the same
+    /// device ("Open Control") or to a Home screen.
+    var selection: Screen? {
+        get { Screen(currentRoute) }
+        set {
+            guard let newValue else { return }
+            switch newValue {
+            case .outlook: route = .home(.forecast)
+            case .activity: route = .home(.activity)
+            default:
+                guard let screen = newValue.deviceScreen else { return }
+                if case .device(let key, _) = currentRoute {
+                    route = .device(key, screen)
+                } else {
+                    route = .device(nil, screen)
+                }
+            }
+        }
+    }
 
     var needsOnboarding: Bool {
-        guard !isDemo, service != nil else { return false }
-        return !hasCredentials || (stateResult?.needsLogin == true && state == nil)
-    }
-
-    /// True while a sent change is not yet reflected in fresh data from the unit.
-    var isAwaitingConfirmation: Bool {
-        guard let state else { return false }
-        if state.hasPendingCommand { return true }
-        guard let effectiveState else { return false }
-        return ControlSettings(effectiveState) != ControlSettings(state)
+        let device = primaryHeatPump
+        guard !isDemo, !isGrouped, device.service != nil else { return false }
+        return !device.hasCredentials || (device.stateResult?.needsLogin == true && device.state == nil)
     }
 
     var dbPath: String { service?.store.path ?? HistoryStore.defaultPath() }
@@ -302,7 +396,9 @@ final class AppModel {
         // The permission prompt waits for the user; it must not hold up the first refresh.
         Task { [notifier] in await notifier.requestPermissionOnce() }
         pollTask = Task { [weak self] in
-            // First (local only): whether price control is on decides what closing the window does.
+            // The devices first (no network), so two or more show their groups at once.
+            await self?.syncDevices()
+            // Then (local only): whether price control is on decides what closing the window does.
             await self?.priceControl.load()
             // Once per install, before anything reads the keychain: items from older versions get
             // the ACL shared with the helper (a read during the swap could miss an item).
@@ -311,6 +407,7 @@ final class AppModel {
             if let hub = self?.hub, hub.isDemo { try? await hub.seedDemoHistoryIfNeeded() }
             while !Task.isCancelled {
                 guard let self else { return }
+                await self.syncDevices()
                 await self.refresh(force: false)
                 do {
                     try await Task.sleep(for: .seconds(60))
@@ -331,49 +428,41 @@ final class AppModel {
         pollTask = nil
     }
 
-    /// Asks the service for state (cache unless old; it enforces the 60 s / block rules),
-    /// syncs history (hourly-limited by the service) and reloads local data.
+    /// The devices with the stalest state first. An integration allows one state fetch a minute
+    /// for its whole account, so devices sharing one take turns.
+    private var pollOrder: [any DeviceModel] {
+        devices.enumerated()
+            .sorted { ($0.element.lastFetched ?? .distantPast, $0.offset) < ($1.element.lastFetched ?? .distantPast, $1.offset) }
+            .map(\.element)
+    }
+
+    /// Asks each device's service for state (cache unless old; it enforces the 60 s / block
+    /// rules), syncs history, prices, weather and the rest (each limited by the service) and
+    /// reloads local data.
     func refresh(force: Bool) async {
         guard let service, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        hasCredentials = await service.hasCredentials()
-        do {
-            stateResult = try await service.currentState(force: force)
-            debouncer?.updateLive(stateResult?.state)
-            if stateResult?.state != nil { _ = try await service.syncHistory() }
-            lastError = nil
-        } catch {
-            lastError = error.localizedDescription
-        }
+        let devices = pollOrder
+        for device in devices { await device.pollState(force: force) }
         let sync = try? await service.syncPrices()
         priceMessage = sync?.status == .failed ? sync?.message : nil
         // Forecast (hourly at most, only when MET's copy expired), Tibber house use (hourly, only
-        // with a token), away settings (hourly) and the weekly timer (6-hourly).
+        // with a token), then each device's away settings, weekly timer and local adapter.
         let weather = try? await service.syncWeather()
         weatherMessage = weather?.status == .failed || weather?.status == .noLocation ? weather?.message : nil
         if hasTibberToken || isDemo { _ = try? await service.syncHouseConsumption() }
-        if stateResult?.state != nil {
-            _ = try? await service.awaySettings()
-            _ = try? await service.weeklyTimer()
-        }
-        // Local adapter: one read per poll at most (the service enforces 20 s spacing and back-off).
-        if (try? await service.localSettings())?.enabled == true { _ = try? await service.liveStatus(maxAge: 50) }
+        for device in devices { await device.pollDetails() }
         await priceControl.tick()
         await reloadLocal()
-        await debouncer?.refreshBudget()
+        for device in devices { await device.afterPoll() }
         await deliverNotifications()
     }
 
+    /// Rereads the shared data (prices, weather, outlook) and every device's stored data.
     func reloadLocal() async {
         guard let service else { return }
         do {
-            effectiveState = try await service.effectiveState()
-            health = try await service.healthReport()
-            maintenance = try await service.maintenanceStatus()
-            errorLog = try await service.errorLog(days: 90)
-            changes = try await service.changeLog(limit: 500, source: nil)
-            fetchStatus = try await service.fetchStatus()
             priceSettings = try await service.priceSettings()
             let now = Date()
             let calendar = Calendar.current
@@ -381,83 +470,39 @@ final class AppModel {
             if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) {
                 tomorrowPrices = try await service.prices(day: tomorrow)
             }
-            let startOfDay = calendar.startOfDay(for: now)
-            today = try await service.energy(period: .day, from: startOfDay, to: now).last {
-                $0.period == WireDate.day(now, timeZone: .current)
-            }
-            todayHourly = try await service.hourlyConsumption(from: now.addingTimeInterval(-86_400), to: now)
-            estimatedPowerW = try await service.estimatedPowerW()
-            localSettings = try await service.localSettings()
-            // Stored reading only; never reads the adapter.
-            live = try await service.storedLiveStatus()
-            recentLocal = try await service.localSamples(from: now.addingTimeInterval(-3600), to: now)
             let hourStart = calendar.dateInterval(of: .hour, for: now)?.start ?? now
             let weather = try await service.weatherForecast(from: hourStart, to: hourStart.addingTimeInterval(48 * 3600))
             forecast = weather.hours
             weatherLocation = weather.location
             weatherFetchedAt = weather.fetchedAt
             weatherSettings = try await service.weatherSettings()
-            tomorrow = try await service.tomorrowEstimate()
-            away = try await service.storedAwaySettings()
-            if let until = try await service.endpointRefusedUntil(HeatPumpService.awayFetchKey) {
-                away?.refusedUntil = until
-            }
-            weeklyTimer = try await service.storedWeeklyTimer()
-            timerRefusedUntil = try await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
             priceOutlook = try await service.priceOutlook()
-            dailyOutlook = try await service.dailyOutlook()
             longForecast = try await service.weatherForecast(from: hourStart, to: hourStart.addingTimeInterval(10 * 86_400)).hours
         } catch {
             lastError = error.localizedDescription
         }
-        revision += 1
+        for device in devices { await device.reloadLocal() }
+        if isGrouped, let hub { allChanges = (try? await hub.changeLog(limit: 500)) ?? allChanges }
     }
 
+    /// Per heat pump; with two or more the title names the device. The first device keeps the
+    /// memory it had before devices, the others get their own.
     private func deliverNotifications() async {
-        let planned = NotificationPlanner.plan(
-            state: state, errorEvents: errorLog, maintenance: maintenance, memory: notifier.memory, now: Date(), serviceName: serviceName,
-            noErrorCodes: errorCodes.noErrorCodes)
-        notifier.memory = planned.memory
-        for notification in planned.notifications {
-            await notifier.deliver(notification)
+        let named = isGrouped
+        for (index, device) in heatPumps.enumerated() {
+            let memoryKey = index == 0 ? nil : device.key
+            let planned = NotificationPlanner.plan(
+                state: device.state, errorEvents: device.errorLog, maintenance: device.maintenance, memory: notifier.memory(for: memoryKey),
+                now: Date(), serviceName: device.serviceName, noErrorCodes: device.errorCodes.noErrorCodes,
+                device: named ? device.key.map { ($0, device.displayName) } : nil)
+            notifier.setMemory(planned.memory, for: memoryKey)
+            for notification in planned.notifications {
+                await notifier.deliver(notification)
+            }
         }
     }
 
     // MARK: Data for views
-
-    func history(range: HistoryRange, now: Date = Date()) async -> HistoryData {
-        await history(from: range.start(now: now), to: now)
-    }
-
-    func history(from: Date, to end: Date) async -> HistoryData {
-        guard let service else { return HistoryData() }
-        var data = HistoryData()
-        if let history = try? await service.temperatureHistory(from: from, to: end) {
-            data.temperatures = history.points
-            data.fromService = history.fromService
-        }
-        data.power = (try? await service.history(metric: .power, from: from, to: end)) ?? []
-        data.modes = (try? await service.history(metric: .mode, from: from, to: end)) ?? []
-        return data
-    }
-
-    /// Energy for the range (per hour for 24 h, per day for 7/30 d, per month for 1 yr) and the
-    /// same length of time before it.
-    func energy(range: HistoryRange) async -> EnergyData {
-        guard let service else { return EnergyData() }
-        let to = Date()
-        let from = range.start(now: to)
-        let previousFrom = range.shifted(from, by: -1)
-        let period: EnergyPeriod = range == .year ? .month : .day
-        var data = EnergyData()
-        data.buckets = (try? await service.energy(period: period, from: from, to: to)) ?? []
-        data.previous = (try? await service.energy(period: period, from: previousFrom, to: from.addingTimeInterval(-1))) ?? []
-        if range == .day || range == .week {
-            data.hourly = (try? await service.hourlyConsumption(from: from, to: to)) ?? []
-            data.previousHourly = (try? await service.hourlyConsumption(from: previousFrom, to: from)) ?? []
-        }
-        return data
-    }
 
     /// Price level of the current hour (nil for Norgespris or without enough history).
     var currentPriceLevel: PriceLevel? {
@@ -470,33 +515,6 @@ final class AppModel {
         guard let service else { return [] }
         let start = Calendar.current.dateInterval(of: .hour, for: Date())?.start ?? Date()
         return (try? await service.weatherForecast(from: start, to: end).hours) ?? []
-    }
-
-    /// The house and the heat pump per hour and day (Tibber), for Energi og kostnad.
-    func houseShare(range: HistoryRange) async -> HouseShareSummary? {
-        guard let service else { return nil }
-        let to = Date()
-        // Yesterday is always included so the KPI can be shown for every range.
-        let from = min(range.start(now: to), Calendar.current.startOfDay(for: to).addingTimeInterval(-86_400))
-        guard let summary = try? await service.houseShare(from: from, to: to), !summary.hours.isEmpty else { return nil }
-        return summary
-    }
-
-    /// Stretches of running, rest and defrost from local readings (not for 1 yr: too many).
-    /// Longer ranges are downsampled to the dominant kind per bucket (≥ 10 minutes, at most about
-    /// a thousand buckets) so Drift draws a few hundred rectangles, not thousands.
-    func phaseSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
-        guard let service, range != .year else { return [] }
-        let to = Date()
-        let resolution = range == .day ? 0 : max(600, range.seconds / 1000)
-        return (try? await service.localPhaseSpans(from: range.start(now: to), to: to, resolution: resolution)) ?? []
-    }
-
-    /// Exact defrost stretches for the Effekt chart (a few per day).
-    func defrostSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
-        guard let service, range != .year else { return [] }
-        let to = Date()
-        return ((try? await service.localPhaseSpans(from: range.start(now: to), to: to)) ?? []).filter { $0.kind == .defrost }
     }
 
     // MARK: Weather settings
@@ -532,114 +550,6 @@ final class AppModel {
         }
     }
 
-    // MARK: Away
-
-    /// Sends a frost-protection or holiday-mode change after the user confirmed it in a sheet.
-    /// Returns whether it was sent and a message (also for unexpected errors).
-    func applyAway(_ change: AwayChange) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
-        let result: (Bool, String)
-        do {
-            let outcome = try await service.applyAway(change, source: .app, reason: String(localized: "Changed in the app (Away)"))
-            result = (outcome.result == .ok, outcome.message)
-        } catch {
-            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            result = (false, String(localized: "The change could not be processed: \(detail)"))
-        }
-        await reloadLocal()
-        await debouncer?.refreshBudget()
-        return result
-    }
-
-    /// Reads frost protection and holiday mode (MELCloud at most hourly; `manual` = "Try Again").
-    func loadAway(manual: Bool = false) async {
-        guard let service else { return }
-        do {
-            away = try await service.awaySettings(manual: manual)
-        } catch {
-            lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    /// When MELCloud refused to let the account read the weekly timer (reads paused until then).
-    var timerRefusedUntil: Date?
-
-    /// The Ukeplan page: reads the plan when the cached copy is older than 10 minutes (blocks and a
-    /// refusal pause still apply), so editing starts from a fresh plan.
-    func loadWeeklyTimerForEditing() async {
-        guard let service else { return }
-        if let timer = try? await service.weeklyTimer(maxAge: HeatPumpService.timerManualInterval) { weeklyTimer = timer }
-        timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
-    }
-
-    /// "Fetch Now" (weekly schedule): at most every 10 minutes; lifts a refusal pause.
-    func refreshWeeklyTimer() async {
-        guard let service else { return }
-        weeklyTimer = try? await service.weeklyTimer(manual: true)
-        timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
-    }
-
-    /// Saves the edited weekly timer in MELCloud after the user confirmed the differences. `base` is
-    /// the plan the edit started from; nothing is sent if MELCloud's plan differs from it now.
-    func saveWeeklyTimer(_ timer: WeeklyTimer, base: WeeklyTimer) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
-        let result: (Bool, String)
-        do {
-            let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: String(localized: "Changed in the app (Weekly schedule)"))
-            result = (outcome.result == .ok, outcome.message)
-        } catch {
-            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            result = (false, String(localized: "The weekly schedule could not be saved: \(detail)"))
-        }
-        await reloadLocal()
-        await debouncer?.refreshBudget()
-        return result
-    }
-
-    // MARK: Firmware
-
-    /// Wi-Fi adapter firmware and MELCloud's update status (Health → Firmware).
-    var firmware: FirmwareStatus?
-
-    /// Reads the firmware status (MELCloud at most every 60 s, every 15 s while an update runs;
-    /// `force` = "Refresh Status"). Refreshes the device state once a running update has finished.
-    func loadFirmware(force: Bool = false) async {
-        guard let service else { return }
-        let wasRunning = firmware?.isInProgress(now: Date()) == true
-        do {
-            firmware = try await service.firmwareStatus(force: force)
-        } catch {
-            lastError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-        if wasRunning, firmware?.phase == .complete { await refresh(force: false) }
-    }
-
-    /// Starts the waiting firmware update after the user confirmed the warnings in a sheet.
-    func startFirmwareUpdate() async -> (ok: Bool, message: String) {
-        await firmwareAction { try await $0.startFirmwareUpdate(source: .app, reason: String(localized: "Started in the app (Health → Firmware)")) }
-    }
-
-    /// Cancels a running firmware update while MELCloud still allows it.
-    func cancelFirmwareUpdate() async -> (ok: Bool, message: String) {
-        await firmwareAction { try await $0.cancelFirmwareUpdate(source: .app, reason: String(localized: "Canceled in the app (Health → Firmware)")) }
-    }
-
-    private func firmwareAction(_ action: (HeatPumpService) async throws -> ChangeOutcome) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
-        let result: (Bool, String)
-        do {
-            let outcome = try await action(service)
-            result = (outcome.result == .ok, outcome.message)
-        } catch {
-            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            result = (false, String(localized: "Could not be processed: \(detail)"))
-        }
-        await loadFirmware()
-        await reloadLocal()
-        await debouncer?.refreshBudget()
-        return result
-    }
-
     // MARK: Appearance
 
     func setAppearance(_ value: AppAppearance) {
@@ -653,76 +563,6 @@ final class AppModel {
     /// App-wide, so Settings, alerts and menus follow too.
     func applyAppearance() {
         NSApp?.appearance = appearance.nsAppearance
-    }
-
-    // MARK: Local connection
-
-    /// Local reading younger than 3 minutes, or nil.
-    var liveSample: LocalSample? {
-        guard let sample = live?.sample, Date().timeIntervalSince(sample.timestamp) < 180 else { return nil }
-        return sample
-    }
-
-    /// Local reading newer than the cloud snapshot (for temperatures on Oversikt), or nil.
-    var newerLocalSample: LocalSample? {
-        guard let sample = liveSample else { return nil }
-        guard let state else { return sample }
-        return sample.timestamp > state.fetchedAt ? sample : nil
-    }
-
-    func localPower(range: HistoryRange) async -> LocalPowerData {
-        guard let service else { return LocalPowerData() }
-        let to = Date()
-        let from = range.start(now: to)
-        let bucket: TimeInterval =
-            switch range {
-            case .day: 5 * 60
-            case .week: 30 * 60
-            case .month: 2 * 3600
-            case .year: 24 * 3600
-            }
-        var data = LocalPowerData()
-        // The bucket still filling up, and buckets with only a couple of readings (the app was
-        // open for a moment), are left out: a single reading would show as a spike.
-        data.buckets = ((try? await service.localPowerBuckets(from: from, to: to, bucket: bucket)) ?? [])
-            .filter { $0.start.addingTimeInterval(bucket) <= to && $0.count >= min(3, Int(bucket / 60)) }
-        data.startsUnit = range == .year ? .day : .hour
-        data.starts = range == .year
-            ? data.buckets : (try? await service.localPowerBuckets(from: from, to: to, bucket: 3600)) ?? []
-        data.totals = LocalPowerBucket.merged(data.starts)
-        data.startsLast24h = (try? await service.localTotals(from: to.addingTimeInterval(-86_400), to: to))?.starts ?? 0
-        return data
-    }
-
-    /// Saves the local settings. Returns an error message, or nil.
-    func saveLocalSettings(_ settings: LocalSettings) async -> String? {
-        guard let service else { return startupError }
-        do {
-            try await service.saveLocalSettings(settings)
-            localSettings = try await service.localSettings()
-            if localSettings.enabled { _ = try? await service.liveStatus(maxAge: 0) }
-            await reloadLocal()
-            return nil
-        } catch {
-            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    func testLocal(host: String) async -> LocalTestResult {
-        guard let service else { return LocalTestResult(ok: false, message: startupError ?? "", sample: nil) }
-        let result = (try? await service.testLocal(host: host))
-            ?? LocalTestResult(ok: false, message: String(localized: "The test could not be run."), sample: nil)
-        await reloadLocal()
-        return result
-    }
-
-    func discoverLocal() async -> LocalDiscoveryResult {
-        guard let service else { return LocalDiscoveryResult(host: nil, message: startupError ?? "") }
-        let result = (try? await service.discoverLocal())
-            ?? LocalDiscoveryResult(host: nil, message: String(localized: "The search could not be run."))
-        localSettings = (try? await service.localSettings()) ?? localSettings
-        await reloadLocal()
-        return result
     }
 
     // MARK: Prices
@@ -768,59 +608,177 @@ final class AppModel {
         return message
     }
 
-    // MARK: Actions
+    // MARK: Price control
 
-    /// Returns an error message, or nil on success.
-    func recordMaintenance(kind: MaintenanceKind, date: Date, note: String) async -> String? {
-        guard let service else { return startupError }
-        do {
-            _ = try await service.recordMaintenance(kind: kind, date: date, note: note.isEmpty ? nil : note)
-            await reloadLocal()
-            return nil
-        } catch {
-            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
+    /// Heat pumps price control can steer (thermostat); a device picker appears with two or more.
+    var priceControlCandidates: [HeatPumpDeviceModel] {
+        heatPumps.filter { $0.descriptor?.capabilities.contains(.thermostat) == true }
     }
 
-    /// One login + state fetch. Returns (success, message).
-    func signIn(email: String, password: String) async -> (Bool, String) {
-        guard let hub, service != nil else { return (false, startupError ?? "") }
-        let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !email.isEmpty, !password.isEmpty else { return (false, String(localized: "Enter both email and password.")) }
+    /// Moves price control to another device. Its settings are shared, so it is turned off on the
+    /// old device first (which sets that device's temperature back).
+    func setPriceControlDevice(_ key: DeviceKey) async {
+        guard let hub, key != priceControlDevice else { return }
+        if priceControl.enabled { await priceControl.setEnabled(false) }
         do {
-            // The sign-in form's fields (`CredentialField.id`); a form per integration comes later.
-            let result = try await hub.signIn(
-                integration: integration.id, values: CredentialValues(["email": email, "password": password]))
-            stateResult = result
-            hasCredentials = true
-            await reloadLocal()
-            if result.refreshed, let state = result.state {
-                return (true, String(localized: "Signed in. Found “\(state.name)”."))
-            }
-            if let message = result.blockMessage {
-                return (false, message)
-            }
-            if let next = result.nextRefreshAllowed {
-                return (false, String(localized: "The sign-in is saved. Wait a little before testing again (at \(Display.time(next)) at the earliest)."))
-            }
-            return (false, result.error ?? String(localized: "Unknown error when signing in."))
+            try await hub.setPriceControlDevice(key)
+        } catch {
+            priceControl.message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return
+        }
+        await syncDevices()
+    }
+
+    // MARK: Integrations and sign-in
+
+    /// The integrations in use (empty until the hub has answered).
+    private(set) var activeIntegrations: [any Integration] = []
+    private var integrationsLoaded = false
+
+    func loadIntegrations() async {
+        guard let hub else { return }
+        let active = await hub.activeIntegrations
+        if active.map(\.id) != activeIntegrations.map(\.id) { activeIntegrations = active }
+        integrationsLoaded = true
+    }
+
+    /// Integrations that can be added: known to this build, not active, not the simulated one.
+    /// None in demo mode.
+    var addableIntegrations: [any Integration] {
+        guard let hub, !isDemo, integrationsLoaded else { return [] }
+        let active = Set(activeIntegrations.map(\.id))
+        return hub.catalog.filter { !active.contains($0.id) && $0.id != IntegrationCatalog.demo.id }
+    }
+
+    func credentialFields(for integration: any Integration) -> [CredentialField] {
+        hub?.credentialFields(for: integration.id) ?? integration.credentialFields
+    }
+
+    func hasCredentials(integration id: String) async -> Bool {
+        await hub?.hasCredentials(integration: id) ?? false
+    }
+
+    /// One login + state fetch with the integration's sign-in fields. Returns (success, message).
+    func signIn(integration: any Integration, values: [String: String]) async -> (Bool, String) {
+        guard let hub, service != nil else { return (false, startupError ?? "") }
+        let (values, problem) = Self.checked(values, fields: credentialFields(for: integration))
+        if let problem { return (false, problem) }
+        do {
+            let result = try await hub.signIn(integration: integration.id, values: CredentialValues(values))
+            return await signedIn(result, integration: integration.id)
         } catch {
             return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }
     }
 
-    /// E-mail of the stored account (reads the keychain; call from Settings only).
-    func accountEmail() async -> String? {
-        await service?.accountEmail()
+    /// Starts using another integration and signs in to it.
+    func addIntegration(_ integration: any Integration, values: [String: String]) async -> (Bool, String) {
+        guard let hub else { return (false, startupError ?? "") }
+        let (values, problem) = Self.checked(values, fields: credentialFields(for: integration))
+        if let problem { return (false, problem) }
+        do {
+            let result = try await hub.addIntegration(id: integration.id, credentials: CredentialValues(values))
+            await loadIntegrations()
+            guard let result else {
+                await syncDevices()
+                await reloadLocal()
+                return (true, String(localized: "Added."))
+            }
+            return await signedIn(result, integration: integration.id)
+        } catch {
+            return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
     }
 
-    func signOut() async {
-        guard let hub, let service else { return }
+    /// Stops using an integration; its devices keep their data.
+    func removeIntegration(_ integration: any Integration) async -> String? {
+        guard let hub else { return startupError }
+        do {
+            try await hub.removeIntegration(id: integration.id)
+        } catch {
+            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        await loadIntegrations()
+        await syncDevices()
+        await reloadLocal()
+        return nil
+    }
+
+    /// Trims the e-mail and checks that every field is filled in.
+    private static func checked(_ values: [String: String], fields: [CredentialField]) -> ([String: String], String?) {
+        var values = values
+        for field in fields where field.kind == .email {
+            values[field.id] = values[field.id]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard fields.contains(where: { (values[$0.id] ?? "").isEmpty }) else { return (values, nil) }
+        if Set(fields.map(\.kind)) == [.email, .password] { return (values, String(localized: "Enter both email and password.")) }
+        return (values, String(localized: "Fill in every field."))
+    }
+
+    /// Shows a sign-in's test fetch on the device it found and says how it went.
+    private func signedIn(_ result: StateResult, integration id: String) async -> (Bool, String) {
+        await syncDevices()
+        let device =
+            heatPumps.first { $0.key != nil && $0.key == result.state?.key }
+            ?? heatPumps.first { $0.key?.integration == id } ?? primaryHeatPump
+        device.stateResult = result
+        device.hasCredentials = true
+        await reloadLocal()
+        if result.refreshed, let state = result.state {
+            return (true, String(localized: "Signed in. Found “\(state.name)”."))
+        }
+        if let message = result.blockMessage {
+            return (false, message)
+        }
+        if let next = result.nextRefreshAllowed {
+            return (false, String(localized: "The sign-in is saved. Wait a little before testing again (at \(Display.time(next)) at the earliest)."))
+        }
+        return (false, result.error ?? String(localized: "Unknown error when signing in."))
+    }
+
+    func signOut(integration: any Integration) async {
+        guard let hub, service != nil else { return }
         do {
             try await hub.signOut(integration: integration.id)
         } catch {
             lastError = error.localizedDescription
         }
-        hasCredentials = await service.hasCredentials()
+        for device in heatPumps where device.integration.id == integration.id {
+            if let service = device.service { device.hasCredentials = await service.hasCredentials() }
+        }
+    }
+}
+
+extension Screen {
+    /// The device screen this sidebar screen is (nil for Forecast and Claude activity).
+    var deviceScreen: DeviceScreen? {
+        switch self {
+        case .overview: .overview
+        case .control: .control
+        case .schedule: .schedule
+        case .history: .history
+        case .away: .away
+        case .health: .health
+        case .outlook, .activity: nil
+        }
+    }
+
+    /// The single-device route of this screen.
+    var route: AppRoute {
+        switch self {
+        case .outlook: .home(.forecast)
+        case .activity: .home(.activity)
+        default: .device(nil, deviceScreen ?? .overview)
+        }
+    }
+
+    /// The sidebar screen of a route (nil for Home's overview, which has no single-device screen).
+    init?(_ route: AppRoute) {
+        switch route {
+        case .home(.overview): return nil
+        case .home(.forecast): self = .outlook
+        case .home(.activity): self = .activity
+        case .device(_, let screen): self = Screen.allCases.first { $0.deviceScreen == screen } ?? .overview
+        }
     }
 }

@@ -22,7 +22,7 @@ App hooks you can pass after the file name:
 
 | Variable | Values |
 |---|---|
-| `VARMEPUMPE_SCREEN` | overview, control, schedule, history, outlook, away, health, activity |
+| `VARMEPUMPE_SCREEN` | overview, control, schedule, history, outlook, away, health, activity; with two or more devices also home, home/forecast, home/activity and `<device key>/<screen>` (e.g. demo:100002/control) |
 | `VARMEPUMPE_HISTORY_TAB` | temperature, energy, energy-kr, operation, power |
 | `VARMEPUMPE_HISTORY_RANGE` | day, week, month, year |
 | `VARMEPUMPE_SETTINGS_TAB` | generelt, konto, strompris, lokal, vaer, claude, data (opens Settings; use `WINDOW=settings`) |
@@ -63,7 +63,11 @@ scripts/parity.sh compare build/parity/baseline build/parity/after
 ```
 
 `capture` takes every screen, History tab and Settings tab in English and Norwegian (light) plus
-Overview dark (about 40 images, 7 minutes; demo windows open and close on screen). `compare`
+Overview dark (about 40 images, 7 minutes; demo windows open and close on screen). It is always
+one device. `scripts/parity.sh capture-multi <dir>` takes the multi-device screens
+(`VARMEPUMPE_DEMO_DEVICES=heatpump,heatpump`: Home, Forecast, Claude activity, the bedroom's
+screens, Account and Local connection) into their own folder; compare them only with another
+multi-device set. `compare`
 prints the share of differing pixels per image and writes red-marked diff images to
 `<after>/diff/` for anything above 0.5 %.
 

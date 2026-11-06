@@ -16,7 +16,8 @@ enum HistoryTab: String, CaseIterable, Identifiable {
 }
 
 struct HistoryView: View {
-    @Environment(AppModel.self) private var model
+    @Environment(HeatPumpDeviceModel.self) private var model
+    @Environment(AppModel.self) private var app
     @State private var tab: HistoryTab = .temperature
     @State private var range: HistoryRange = .week
     @State private var data = HistoryData()
@@ -70,7 +71,7 @@ struct HistoryView: View {
             data = await model.history(from: start, to: now)
             previous = await model.history(from: range.shifted(start, by: -1), to: start)
             energy = await model.energy(range: range)
-            forecast = forecastHours > 0 ? await model.forecast(until: now.addingTimeInterval(forecastHours * 3600)) : []
+            forecast = forecastHours > 0 ? await app.forecast(until: now.addingTimeInterval(forecastHours * 3600)) : []
             houseShare = await model.houseShare(range: range)
         }
         // Power data only while that tab is shown (aggregated in SQL off the main thread).
@@ -86,10 +87,10 @@ struct HistoryView: View {
         }
         .onChange(of: tab) { selected = nil }
         .onAppear {
-            if model.initialHistoryTab == "energy-kr" {
+            if app.initialHistoryTab == "energy-kr" {
                 tab = .energy
                 showCost = true
-            } else if let initial = model.initialHistoryTab.flatMap(HistoryTab.init(rawValue:)) {
+            } else if let initial = app.initialHistoryTab.flatMap(HistoryTab.init(rawValue:)) {
                 tab = initial
             }
             if let days = ProcessInfo.processInfo.environment["VARMEPUMPE_HISTORY_RANGE"].flatMap(HistoryRange.init(rawValue:)) {
@@ -290,7 +291,7 @@ struct HistoryView: View {
                     tint: Theme.Data.energy)
                 KPITile(
                     label: "Electricity subsidy", value: Format.kroner(abs(support)),
-                    detail: model.priceSettings.agreement == .norgespris ? "Not with Norgespris" : "deducted",
+                    detail: app.priceSettings.agreement == .norgespris ? "Not with Norgespris" : "deducted",
                     systemImage: "gift.fill", tint: Theme.Data.support)
             }
             TrendCard(
@@ -562,8 +563,8 @@ struct HistoryView: View {
     }
 
     private var priceSection: some View {
-        let today = model.todayPrices
-        let tomorrow = model.tomorrowPrices
+        let today = app.todayPrices
+        let tomorrow = app.tomorrowPrices
         let all = today + tomorrow
         let now = Date()
         return TrendCard(
@@ -585,7 +586,7 @@ struct HistoryView: View {
         } chart: {
             if all.isEmpty {
                 EmptyChart(
-                    title: "No prices yet", message: model.priceMessage.map { .verbatim($0) } ?? "Choose an electricity contract under Settings → Electricity price.",
+                    title: "No prices yet", message: app.priceMessage.map { .verbatim($0) } ?? "Choose an electricity contract under Settings → Electricity price.",
                     systemImage: "bolt.horizontal")
             } else {
                 Chart {
@@ -704,7 +705,7 @@ struct HistoryView: View {
                         message: "Turn on the local connection, and the app reads power in watts and the compressor’s activity directly from the Wi-Fi adapter on the home network (read only).",
                         systemImage: "bolt.badge.clock")
                     Button("Open Local Connection") {
-                        model.settingsTab = "lokal"
+                        app.settingsTab = "lokal"
                         openSettings()
                     }
                     .buttonStyle(.borderedProminent)

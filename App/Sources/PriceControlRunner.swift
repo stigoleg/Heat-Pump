@@ -10,7 +10,8 @@ import Observation
 @MainActor
 @Observable
 final class PriceControlRunner {
-    private let service: HeatPumpService?
+    /// The service of the device price control steers (`DeviceHub.priceControlService`).
+    private(set) var service: HeatPumpService?
     private(set) var settings = PriceControlSettings.default
     private(set) var status: PriceControlStatus?
     private(set) var plan: PriceControlPlan?
@@ -53,6 +54,14 @@ final class PriceControlRunner {
         }
         queue = Task { _ = await task.value }
         return await task.value
+    }
+
+    /// Moves to another device's service (after the old one was turned off) and reads its
+    /// status and plan.
+    func use(_ service: HeatPumpService?) async {
+        guard service !== self.service else { return }
+        await serialized { [self] in self.service = service }
+        await load()
     }
 
     /// Reads settings, last status and the plan (no network).
