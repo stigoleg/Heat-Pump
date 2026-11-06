@@ -287,7 +287,7 @@ public actor HeatPumpService {
         if deviceState == nil { deviceState = try await currentState().state }
         guard let state = deviceState else {
             return ReportKind.allCases.map {
-                ReportSync(kind: $0, status: .failed, count: 0, message: "Ingen enhet kjent ennå.", nextAllowed: nil)
+                ReportSync(kind: $0, status: .failed, count: 0, message: L10n.tr("No unit known yet."), nextAllowed: nil)
             }
         }
         var results: [ReportSync] = []
@@ -383,7 +383,7 @@ public actor HeatPumpService {
     /// the outcome says whether it was sent (`ok`), failed, or was rejected.
     public func apply(_ change: DeviceChange, source: ChangeSource, reason: String) async throws -> ChangeOutcome {
         let outcomes = try await apply([change], source: source, reason: reason)
-        return outcomes.first ?? ChangeOutcome(result: .rejected, message: "Ingen endring.", field: change.field)
+        return outcomes.first ?? ChangeOutcome(result: .rejected, message: L10n.tr("No change."), field: change.field)
     }
 
     /// Validates and sends several changes. Everything except a second vane axis goes out as
@@ -436,7 +436,7 @@ public actor HeatPumpService {
         guard let start = base else {
             return .rejected(try rejectAll(
                 changes, source: source, reason: reason, state: nil,
-                error: "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres.", now: t))
+                error: L10n.tr("No status from the heat pump yet, so the change cannot be checked."), now: t))
         }
 
         // Validate in dependency order against the state as it will be.
@@ -503,7 +503,7 @@ public actor HeatPumpService {
                 for remaining in requests.dropFirst(index + 1) {
                     outcomes += try rejectAll(
                         remaining, source: source, reason: reason, state: current,
-                        error: "Ikke sendt fordi forrige del av endringen ikke gikk gjennom.", now: now())
+                        error: L10n.tr("Not sent because the previous part of the change did not go through."), now: now())
                 }
                 break
             }
@@ -564,11 +564,15 @@ public actor HeatPumpService {
                     // Not confirmed by the unit yet: the next refresh fetches again.
                     try store.markLatestSnapshotStale(deviceId: base.deviceId)
                     // With MELCloud's weekly timer on, the unit may change again by itself.
-                    let timerNote = (try? storedWeeklyTimer())??.enabled == true ? " " + Self.weeklyTimerNote : ""
+                    let timerOn = (try? storedWeeklyTimer())??.enabled == true
                     let outcomes = request.map { change in
                         ChangeOutcome(
                             result: .ok,
-                            message: "Sendt: \(change.displaySummary). Det kan ta opptil et par minutter før varmepumpen bekrefter." + timerNote,
+                            message: timerOn
+                                ? L10n.format(
+                                    "Sent: %@. It may take up to a couple of minutes before the heat pump confirms. %@", change.displaySummary,
+                                    Self.weeklyTimerNote)
+                                : L10n.format("Sent: %@. It may take up to a couple of minutes before the heat pump confirms.", change.displaySummary),
                             field: change.field, oldValue: change.currentValue(in: base), newValue: change.valueDescription)
                     }
                     return (outcomes, expected)
@@ -578,7 +582,7 @@ public actor HeatPumpService {
                     let blocked = try (error as? HeatPumpError).flatMap { try handleBlock($0, now: t) }
                     let outcomes = request.map { change in
                         ChangeOutcome(
-                            result: .failed, message: "Endringen feilet: \(message)", field: change.field,
+                            result: .failed, message: L10n.format("The change failed: %@", message), field: change.field,
                             oldValue: change.currentValue(in: base), newValue: change.valueDescription, blockedUntil: blocked)
                     }
                     return (outcomes, base)
@@ -589,7 +593,7 @@ public actor HeatPumpService {
 
     /// MELCloud Classic writes send the whole device object, so it must be recent. When the
     /// backend's copy is missing or older than `writeBaseMaxAge`, one `Device/Get` is made under
-    /// the normal refresh rules. Returns a Norwegian reason when the write must not be sent.
+    /// the normal refresh rules. Returns a user-facing reason when the write must not be sent.
     private func refreshWriteBase(deviceId: Int) async throws -> String? {
         guard backend.requiresFreshStateForWrites else { return nil }
         func isFresh() async -> Bool {
@@ -606,19 +610,21 @@ public actor HeatPumpService {
         case .throttled(let next):
             // Another process may have just fetched and stored the device object.
             if await isFresh() { return nil }
-            return "Endringen ble ikke sendt fordi appen først må hente fersk status fra varmepumpen, "
-                + "og det er hentet nylig. Prøv igjen etter \(Norwegian.time(next))."
+            return L10n.format(
+                "The change was not sent because the app must first fetch a fresh status from the heat pump, and it was fetched recently. Try again after %@.",
+                Display.time(next))
         case .allowed:
             do {
                 let state = try await backend.fetchState(deviceId: deviceId)
                 try store.insertSnapshot(state)
                 try store.recordFetchSuccess(key: Self.stateKey, now: t)
                 if await isFresh() { return nil }
-                return "Endringen ble ikke sendt fordi svaret fra MELCloud manglet fullstendig status for varmepumpen."
+                return L10n.tr("The change was not sent because the answer from MELCloud lacked a complete status for the heat pump.")
             } catch let error as HeatPumpError {
                 try handleBlock(error, now: t)
-                return "Endringen ble ikke sendt fordi status fra varmepumpen ikke kunne hentes først: "
-                    + (error.errorDescription ?? "ukjent feil")
+                return L10n.format(
+                    "The change was not sent because the status from the heat pump could not be fetched first: %@",
+                    error.errorDescription ?? L10n.tr("unknown error"))
             }
         }
     }
@@ -643,7 +649,7 @@ public actor HeatPumpService {
     @discardableResult
     public func logRejection(_ change: DeviceChange, source: ChangeSource, reason: String, error: String) throws -> ChangeOutcome {
         let outcomes = try rejectAll([change], source: source, reason: reason, state: try effectiveState(), error: error, now: now())
-        return outcomes.first ?? ChangeOutcome(result: .rejected, message: "Ikke sendt: \(error)", field: change.field)
+        return outcomes.first ?? ChangeOutcome(result: .rejected, message: L10n.format("Not sent: %@", error), field: change.field)
     }
 
     private func rejectAll(
@@ -656,7 +662,7 @@ public actor HeatPumpService {
                     timestamp: t, source: source, field: change.field, oldValue: oldValue,
                     newValue: change.valueDescription, reason: reason, result: .rejected, error: error))
             return ChangeOutcome(
-                result: .rejected, message: "Ikke sendt: \(error)", field: change.field, oldValue: oldValue,
+                result: .rejected, message: L10n.format("Not sent: %@", error), field: change.field, oldValue: oldValue,
                 newValue: change.valueDescription)
         }
     }
@@ -677,24 +683,24 @@ public actor HeatPumpService {
     public static func validate(_ change: DeviceChange, against state: DeviceState) -> Result<DeviceChange, ValidationFailure> {
         switch change {
         case .temperature(let celsius):
-            guard celsius.isFinite else { return .failure(ValidationFailure("Ugyldig temperatur.")) }
+            guard celsius.isFinite else { return .failure(ValidationFailure(L10n.tr("Invalid temperature."))) }
             let mode = state.mode ?? .heat
             let snapped = state.snappedSetpoint(celsius)
             let range = state.limits.range(for: mode)
             guard range.contains(snapped) else {
                 return .failure(
                     ValidationFailure(
-                        Norwegian.format(
-                            "%.1f °C er utenfor det tillatte området %.0f–%.0f °C for modus %@.",
+                        L10n.format(
+                            "%.1f °C is outside the allowed range %.0f–%.0f °C for the %@ mode.",
                             celsius, range.lowerBound, range.upperBound, mode.displayName)))
             }
             return .success(.temperature(snapped))
         case .fanSpeed(let speed):
             guard (0...max(state.numberOfFanSpeeds, 1)).contains(speed) else {
-                return .failure(ValidationFailure("Viftehastighet må være 0 (auto) eller 1–\(state.numberOfFanSpeeds)."))
+                return .failure(ValidationFailure(L10n.format("Fan speed must be 0 (auto) or 1–%lld.", state.numberOfFanSpeeds)))
             }
             if speed == 0 && !state.hasAutomaticFanSpeed {
-                return .failure(ValidationFailure("Denne enheten støtter ikke automatisk viftehastighet."))
+                return .failure(ValidationFailure(L10n.tr("This unit does not support automatic fan speed.")))
             }
             return .success(change)
         case .power, .mode, .vaneVertical, .vaneHorizontal:
@@ -721,9 +727,9 @@ public actor HeatPumpService {
         let t = now()
         let when = date ?? t
         guard when <= t.addingTimeInterval(Self.maintenanceFutureTolerance) else {
-            throw HeatPumpError.validation("Datoen kan ikke være frem i tid.")
+            throw HeatPumpError.validation(L10n.tr("The date cannot be in the future."))
         }
-        let parts = [note, reason.map { "Begrunnelse: \($0)" }].compactMap { text -> String? in
+        let parts = [note, reason.map { L10n.format("Reason: %@", $0) }].compactMap { text -> String? in
             guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
             return text
         }

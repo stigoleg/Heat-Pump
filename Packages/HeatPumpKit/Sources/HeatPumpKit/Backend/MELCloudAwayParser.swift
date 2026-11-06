@@ -26,13 +26,13 @@ extension MELCloudClassicParser {
         try throwIfAttributeErrors(json)
         guard let enabled = json["FPEnabled"]?.bool, let minimum = json["FPMinTemperature"]?.double,
             let maximum = json["FPMaxTemperature"]?.double
-        else { throw HeatPumpError.decoding("Frostsikring: uventet svar fra MELCloud.") }
+        else { throw HeatPumpError.decoding(L10n.tr("Frost protection: unexpected answer from MELCloud.")) }
         return FrostProtection(enabled: enabled, minimum: minimum, maximum: maximum, defined: json["FPDefined"]?.bool)
     }
 
     static func holidayMode(_ json: JSONValue) throws -> HolidayMode {
         try throwIfAttributeErrors(json)
-        guard let enabled = json["HMEnabled"]?.bool else { throw HeatPumpError.decoding("Feriemodus: uventet svar fra MELCloud.") }
+        guard let enabled = json["HMEnabled"]?.bool else { throw HeatPumpError.decoding(L10n.tr("Holiday mode: unexpected answer from MELCloud.")) }
         let start = HolidayWireTime.date(string: json["HMStartDate"]?.string) ?? HolidayWireTime.date(components: json["StartDate"])
         let end = HolidayWireTime.date(string: json["HMEndDate"]?.string) ?? HolidayWireTime.date(components: json["EndDate"])
         return HolidayMode(enabled: enabled, start: start, end: end, defined: json["HMDefined"]?.bool)
@@ -65,7 +65,7 @@ extension MELCloudClassicParser {
     /// Update answers: `{Success, AttributeErrors}`. An empty body counts as success.
     static func checkMutation(_ json: JSONValue) throws {
         try throwIfAttributeErrors(json)
-        if json["Success"]?.bool == false { throw HeatPumpError.server("MELCloud avviste endringen.") }
+        if json["Success"]?.bool == false { throw HeatPumpError.server(L10n.tr("MELCloud rejected the change.")) }
     }
 
     /// Keys and value types (two levels deep), never values, for stderr diagnostics.
@@ -188,18 +188,21 @@ extension MELCloudClassicParser {
         return .object(object)
     }
 
-    /// MELCloud's Norwegian texts for `Timer/SetAta2` `Data.ErrorCode` (index = code; out of range → 0).
+    /// MELCloud's web-client texts for `Timer/SetAta2` `Data.ErrorCode` (index = code; out of range → 0).
     static let timerErrorMessages = [
-        "En ukjent feil oppstod da ukeplanen skulle lagres.",
-        "Sesongene er ikke gyldige. Sjekk startdatoene.",
-        "Du kan ikke ha mer enn %MAXEVENTS% hendelser i ukeplanen (til sammen for alle sesonger).",
+        L10n.tr("An unknown error occurred while saving the weekly schedule."),
+        L10n.tr("The seasons are not valid. Check the start dates."),
+        L10n.tr("You cannot have more than the allowed number of events in the weekly schedule (in total for all seasons)."),
     ]
 
     /// The error text of a `Timer/SetAta2` answer, or nil for success (`ErrorCode` -1, or no `Data`).
     static func timerSaveError(_ json: JSONValue) -> String? {
         guard let data = json["Data"], !data.isNull, let code = data["ErrorCode"]?.int, code != -1 else { return nil }
-        let text = timerErrorMessages[timerErrorMessages.indices.contains(code) ? code : 0]
-        return text.replacingOccurrences(of: "%MAXEVENTS%", with: data["MaxEvents"]?.string ?? "det tillatte antallet")
+        let index = timerErrorMessages.indices.contains(code) ? code : 0
+        if index == 2, let max = data["MaxEvents"]?.string {
+            return L10n.format("You cannot have more than %@ events in the weekly schedule (in total for all seasons).", max)
+        }
+        return timerErrorMessages[index]
     }
 }
 

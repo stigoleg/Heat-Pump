@@ -27,16 +27,16 @@ extension HeatPumpService {
     public func saveWeatherSettings(_ settings: WeatherSettings) throws {
         var clean = settings
         if (settings.latitude == nil) != (settings.longitude == nil) {
-            throw HeatPumpError.validation("Fyll inn både breddegrad og lengdegrad, eller ingen av dem.")
+            throw HeatPumpError.validation(L10n.tr("Enter both latitude and longitude, or neither."))
         }
         if let lat = settings.latitude, let lon = settings.longitude {
             guard (-90...90).contains(lat), (-180...180).contains(lon) else {
-                throw HeatPumpError.validation("Breddegrad må være mellom −90 og 90, lengdegrad mellom −180 og 180.")
+                throw HeatPumpError.validation(L10n.tr("Latitude must be between −90 and 90, longitude between −180 and 180."))
             }
         }
         let email = settings.contactEmail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !email.isEmpty, !email.contains("@") || email.contains(" ") {
-            throw HeatPumpError.validation("Kontakt-e-posten ser ikke riktig ut.")
+            throw HeatPumpError.validation(L10n.tr("The contact email does not look right."))
         }
         clean.contactEmail = email.isEmpty ? nil : email
         let place = settings.placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -70,7 +70,7 @@ extension HeatPumpService {
     /// Fetches the forecast when the stored one has expired, at most hourly across processes.
     public func syncWeather() async throws -> WeatherSync {
         guard let location = try weatherLocation() else {
-            return WeatherSync(status: .noLocation, message: "Ingen posisjon for værvarselet. Legg inn sted under Innstillinger → Vær.")
+            return WeatherSync(status: .noLocation, message: L10n.tr("No position for the weather forecast. Enter a place under Settings → Weather."))
         }
         let t = now()
         var meta = try weatherMeta()
@@ -86,7 +86,7 @@ extension HeatPumpService {
             return WeatherSync(status: .skipped)
         case .allowed:
             guard let provider = weatherProvider(try weatherSettings()) else {
-                return WeatherSync(status: .failed, message: "Værvarsel er ikke tilgjengelig.")
+                return WeatherSync(status: .failed, message: L10n.tr("The weather forecast is not available."))
             }
             do {
                 let response = try await provider.fetch(

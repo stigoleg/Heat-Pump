@@ -48,28 +48,28 @@ public struct TimerEvent: Codable, Sendable, Equatable {
         minuteOfDay == other.minuteOfDay && sameSettings(as: other)
     }
 
-    /// "Varme 21 °C", "Av", "På".
+    /// "Heat 21 °C", "Off", "On".
     public var summary: String {
-        if power == false { return "Av" }
+        if power == false { return L10n.tr("Off") }
         var parts: [String] = []
         if let mode { parts.append(mode.displayName) }
         if let setTemperature { parts.append(Self.temperatureText(setTemperature)) }
-        return parts.isEmpty ? "På" : parts.joined(separator: " ")
+        return parts.isEmpty ? L10n.tr("On") : parts.joined(separator: " ")
     }
 
-    /// `summary` plus fan and vanes: "Varme 21 °C, vifte auto, spjeld auto/3".
+    /// `summary` plus fan and vanes: "Heat 21 °C, fan auto, airflow auto/3".
     public var detailText: String {
         guard power != false else { return summary }
         var parts = [summary]
-        if let fanSpeed { parts.append("vifte " + (fanSpeed == 0 ? "auto" : "\(fanSpeed)")) }
+        if let fanSpeed { parts.append(fanSpeed == 0 ? L10n.tr("fan auto") : L10n.format("fan %lld", fanSpeed)) }
         if vaneVertical != nil || vaneHorizontal != nil {
-            parts.append("spjeld " + (vaneVertical?.displayName ?? "–") + "/" + (vaneHorizontal?.displayName ?? "–"))
+            parts.append(L10n.format("airflow %@/%@", vaneVertical?.displayName ?? "–", vaneHorizontal?.displayName ?? "–"))
         }
         return parts.joined(separator: ", ")
     }
 
     static func temperatureText(_ value: Double) -> String {
-        value == value.rounded() ? Norwegian.format("%.0f °C", value) : Norwegian.format("%.1f °C", value)
+        value == value.rounded() ? Display.format("%.0f °C", value) : Display.format("%.1f °C", value)
     }
 
     /// "06:30"
@@ -79,19 +79,35 @@ public struct TimerEvent: Codable, Sendable, Equatable {
         String(format: "%02d:%02d", minuteOfDay / 60, minuteOfDay % 60)
     }
 
-    public static let weekdayNames = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"]
-    public static let shortWeekdayNames = ["man", "tir", "ons", "tor", "fre", "lør", "søn"]
+    /// Weekday names in the user's language, Monday first ("Monday" / "mandag").
+    public static let weekdayNames: [String] = mondayFirst(symbolCalendar.weekdaySymbols)
+    /// Short weekday names, Monday first, without the abbreviation dot ("Mon" / "man").
+    public static let shortWeekdayNames: [String] = mondayFirst(symbolCalendar.shortStandaloneWeekdaySymbols).map {
+        $0.hasSuffix(".") ? String($0.dropLast()) : $0
+    }
     public var weekdayName: String { (1...7).contains(weekday) ? Self.weekdayNames[weekday - 1] : "?" }
+
+    /// Gregorian calendar in the user's language, for day and month names.
+    static var symbolCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = L10n.locale
+        return calendar
+    }
+
+    /// Calendar symbols start on Sunday; the app's weeks start on Monday.
+    private static func mondayFirst(_ symbols: [String]) -> [String] {
+        Array(symbols.dropFirst()) + symbols.prefix(1)
+    }
 
     public static let weekdays: Set<Int> = [1, 2, 3, 4, 5]
     public static let weekend: Set<Int> = [6, 7]
     public static let allDays: Set<Int> = Set(1...7)
 
-    /// "alle dager", "hverdager", "helg", "man–ons, fre".
+    /// "every day", "weekdays", "weekends", "Mon–Wed, Fri".
     public static func daysText(_ days: Set<Int>) -> String {
-        if days == allDays { return "alle dager" }
-        if days == weekdays { return "hverdager" }
-        if days == weekend { return "helg" }
+        if days == allDays { return L10n.tr("every day") }
+        if days == weekdays { return L10n.tr("weekdays") }
+        if days == weekend { return L10n.tr("weekends") }
         let sorted = days.filter { (1...7).contains($0) }.sorted()
         var parts: [String] = []
         var index = 0
@@ -135,15 +151,27 @@ public struct TimerSeason: Codable, Sendable, Equatable {
     /// The single season the web client creates for a new plan (new seasons get negative IDs).
     public static let defaultSeason = TimerSeason(id: -1, name: "Default", startDay: 1, startMonth: 1)
 
-    static let monthNames = [
-        "januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember",
-    ]
-
-    /// "Vinter (fra 1. oktober)"
+    /// "Winter (from 1 October)"
     public var displayName: String {
-        let title = (name?.isEmpty == false && name != "Default") ? name! : "Sesong"
+        let title = (name?.isEmpty == false && name != "Default") ? name! : L10n.tr("Season")
+        return L10n.format("%@ (from %@)", title, startText)
+    }
+
+    /// The start as day and month in the user's language ("1 October", "1. oktober").
+    var startText: String {
         let month = (startMonth ?? 1).clamped(to: 1...12)
-        return "\(title) (fra \(startDay ?? 1). \(Self.monthNames[month - 1]))"
+        let day = (startDay ?? 1).clamped(to: 1...31)
+        let calendar = TimerEvent.symbolCalendar
+        // A leap year, so 29 February exists.
+        guard let date = calendar.date(from: DateComponents(year: 2000, month: month, day: day)) else {
+            return "\(day). \(calendar.monthSymbols[month - 1])"
+        }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = calendar.locale
+        formatter.timeZone = calendar.timeZone
+        formatter.setLocalizedDateFormatFromTemplate("dMMMM")
+        return formatter.string(from: date)
     }
 
     /// What identifies a season across reads: name and start date (IDs may be assigned later).
@@ -155,7 +183,7 @@ public struct TimerSeason: Codable, Sendable, Equatable {
     }
 }
 
-/// Ready-made plans for the "Mal" menu (heating mode; temperatures can be edited afterwards).
+/// Ready-made plans for the "Template" menu (heating mode; temperatures can be edited afterwards).
 public enum TimerTemplate: String, CaseIterable, Sendable, Identifiable {
     case nightSetback
     case awayDaytime
@@ -164,15 +192,15 @@ public enum TimerTemplate: String, CaseIterable, Sendable, Identifiable {
 
     public var title: String {
         switch self {
-        case .nightSetback: "Nattsenking"
-        case .awayDaytime: "Borte på dagtid"
+        case .nightSetback: L10n.tr("Night setback")
+        case .awayDaytime: L10n.tr("Away during the day")
         }
     }
 
     public var detail: String {
         switch self {
-        case .nightSetback: "Alle dager 22:30 → 19 °C, hverdager 06:30 og helg 08:00 → 21 °C."
-        case .awayDaytime: "Hverdager 08:00 → 18 °C og 15:30 → 21 °C."
+        case .nightSetback: L10n.tr("Every day 22:30 → 19 °C, weekdays 06:30 and weekends 08:00 → 21 °C.")
+        case .awayDaytime: L10n.tr("Weekdays 08:00 → 18 °C and 15:30 → 21 °C.")
         }
     }
 
@@ -275,10 +303,13 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         }.sorted()
     }
 
-    /// "På, 6 hendelser" (change log and dialogs).
+    /// "On, 6 events" (change log and dialogs).
     public var summary: String {
-        let state = enabled == true ? "På" : enabled == false ? "Av" : "Ukjent"
-        return "\(state), \(totalEvents) \(totalEvents == 1 ? "hendelse" : "hendelser")"
+        switch enabled {
+        case true?: L10n.format("On, %lld events", totalEvents)
+        case false?: L10n.format("Off, %lld events", totalEvents)
+        case nil: L10n.format("Unknown, %lld events", totalEvents)
+        }
     }
 
     /// The season in force on `date`: the one with the latest start on or before that day of the
@@ -412,59 +443,62 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
 
     // MARK: Validation and differences
 
-    /// Norwegian reason the plan cannot be saved, or nil. `limits` are the unit's setpoint limits.
+    /// Reason the plan cannot be saved, or nil. `limits` are the unit's setpoint limits.
     /// New and edited events are checked strictly; events exactly as read from MELCloud pass
     /// through unchanged (MELCloud accepted them, and the app must not make a plan unsavable).
     public func validationProblem(limits: TemperatureLimits?) -> String? {
         guard decoded else {
-            return "Ukeplanen kunne ikke leses helt, så appen endrer den ikke (det kunne ha slettet hendelser appen ikke forstår)."
+            return L10n.tr("The weekly schedule could not be read completely, so the app does not change it (that could delete events the app does not understand).")
         }
         guard enabled != nil else {
-            return "MELCloud oppga ikke om ukeplanen er på. Velg på eller av før du lagrer."
+            return L10n.tr("MELCloud did not say whether the weekly schedule is on. Choose on or off before you save.")
         }
         for season in seasons {
             var seen: [Int: Bool] = [:]
             for event in season.events {
                 let edited = !event.isAsRead
                 guard (1...7).contains(event.weekday), (0..<1440).contains(event.minuteOfDay) else {
-                    return "Ugyldig dag eller klokkeslett i ukeplanen (00:00–23:59)."
+                    return L10n.tr("Invalid day or time in the weekly schedule (00:00–23:59).")
                 }
-                let at = "\(event.weekdayName) kl. \(event.timeText)"
                 let key = event.weekday * 1440 + event.minuteOfDay
-                if let other = seen[key], other || edited { return "To hendelser \(at). Fjern den ene." }
+                if let other = seen[key], other || edited {
+                    return L10n.format("Two events on %@ at %@. Remove one of them.", event.weekdayName, event.timeText)
+                }
                 seen[key] = edited
                 guard edited else { continue }
                 if event.power == nil || event.mode == nil || event.setTemperature == nil {
-                    return "Hendelsen \(at) mangler av/på, modus eller temperatur."
+                    return L10n.format("The event on %@ at %@ is missing on/off, mode or temperature.", event.weekdayName, event.timeText)
                 }
                 // The setpoint does not apply in fan mode (or when the event switches the unit off).
                 if event.power != false, let mode = event.mode, mode != .fan, let value = event.setTemperature {
                     let range = (limits ?? TemperatureLimits()).range(for: mode)
                     guard value.isFinite, range.contains(value), (value * 2).rounded() == value * 2 else {
-                        return "Temperaturen \(at) må være "
-                            + TimerEvent.temperatureText(range.lowerBound) + "–" + TimerEvent.temperatureText(range.upperBound)
-                            + " i trinn på 0,5 °C (\(mode.displayName.lowercased()))."
+                        return L10n.format(
+                            "The temperature on %@ at %@ must be %@–%@ in steps of 0.5 °C (%@).", event.weekdayName, event.timeText,
+                            TimerEvent.temperatureText(range.lowerBound), TimerEvent.temperatureText(range.upperBound), mode.sentenceName)
                     }
                 }
             }
         }
         if let maxEvents, totalEvents > maxEvents {
-            return "Ukeplanen kan ha høyst \(maxEvents) hendelser til sammen, men har \(totalEvents)."
+            return L10n.format("The weekly schedule can have at most %lld events in total, but has %lld.", maxEvents, totalEvents)
         }
         if enabled == true, totalEvents == 0 {
-            return "Ukeplanen kan ikke slås på uten hendelser. Legg til minst én hendelse først."
+            return L10n.tr("The weekly schedule cannot be turned on without events. Add at least one event first.")
         }
         return nil
     }
 
-    /// Norwegian lines describing what changes from `old` to this plan, with identical changes on
-    /// several days grouped: "Ny: hverdager kl. 06:30 – Varme 21 °C". Empty when nothing changes.
+    /// Lines describing what changes from `old` to this plan, with identical changes on
+    /// several days grouped: "New: weekdays at 06:30 – Heat 21 °C". Empty when nothing changes.
     /// Seasons are matched by name and start date, not position.
     public func differences(from old: WeeklyTimer) -> [String] {
         var lines: [String] = []
         if old.enabled != enabled {
             lines.append(
-                enabled == true ? "Ukeplanen slås på" : enabled == false ? "Ukeplanen slås av" : "Ukjent om ukeplanen blir på")
+                enabled == true
+                    ? L10n.tr("The weekly schedule is turned on")
+                    : enabled == false ? L10n.tr("The weekly schedule is turned off") : L10n.tr("Unknown whether the weekly schedule will be on"))
         }
         // Pairs of (label, events before, events after).
         var pairs: [(label: String, before: [TimerEvent], after: [TimerEvent])] = []
@@ -473,9 +507,9 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
             let match = unmatched.firstIndex { old.seasons[$0].identity == season.identity }
             let before = match.map { old.seasons[unmatched[$0]].events } ?? []
             if let match { unmatched.remove(at: match) }
-            pairs.append((season.name ?? "Sesong", before, season.events))
+            pairs.append((season.name ?? L10n.tr("Season"), before, season.events))
         }
-        for index in unmatched { pairs.append((old.seasons[index].name ?? "Sesong", old.seasons[index].events, [])) }
+        for index in unmatched { pairs.append((old.seasons[index].name ?? L10n.tr("Season"), old.seasons[index].events, [])) }
         struct Key: Hashable {
             var pair: Int
             var kind: Int
@@ -504,14 +538,26 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
                 }
             }
         }
-        let labels = ["Ny", "Fjernet", "Endret"]
         let sorted = grouped.sorted { a, b in
             (a.key.pair, a.key.kind, a.value.min() ?? 0, a.key.minute) < (b.key.pair, b.key.kind, b.value.min() ?? 0, b.key.minute)
         }
         for (key, days) in sorted {
-            let prefix = pairs.count > 1 ? pairs[key.pair].label + ": " : ""
-            lines.append(
-                "\(prefix)\(labels[key.kind]): \(TimerEvent.daysText(days)) kl. \(TimerEvent.timeText(key.minute)) – \(key.text)")
+            let when = TimerEvent.daysText(days)
+            let time = TimerEvent.timeText(key.minute)
+            if pairs.count > 1 {
+                let season = pairs[key.pair].label
+                switch key.kind {
+                case 0: lines.append(L10n.format("%@: New: %@ at %@ – %@", season, when, time, key.text))
+                case 1: lines.append(L10n.format("%@: Removed: %@ at %@ – %@", season, when, time, key.text))
+                default: lines.append(L10n.format("%@: Changed: %@ at %@ – %@", season, when, time, key.text))
+                }
+            } else {
+                switch key.kind {
+                case 0: lines.append(L10n.format("New: %@ at %@ – %@", when, time, key.text))
+                case 1: lines.append(L10n.format("Removed: %@ at %@ – %@", when, time, key.text))
+                default: lines.append(L10n.format("Changed: %@ at %@ – %@", when, time, key.text))
+                }
+            }
         }
         return lines
     }

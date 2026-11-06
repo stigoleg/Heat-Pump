@@ -76,25 +76,3 @@ extension Date {
         formatted(Date.ISO8601FormatStyle(timeZone: .current))
     }
 }
-
-/// Norwegian (bokmål) display formatting for user-facing text.
-public enum Norwegian {
-    public static let locale = Locale(identifier: "nb_NO")
-
-    public static func dateTime(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(locale))
-    }
-
-    public static func date(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(locale))
-    }
-
-    public static func time(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
-    }
-
-    /// `String(format:)` with Norwegian decimal comma.
-    public static func format(_ format: String, _ arguments: any CVarArg...) -> String {
-        String(format: format, locale: locale, arguments: arguments)
-    }
-}

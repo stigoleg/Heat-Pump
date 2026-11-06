@@ -51,23 +51,23 @@ public enum FirmwareUpdatePhase: String, Codable, Sendable, CaseIterable {
         return .unknown
     }
 
-    /// Norwegian status text.
+    /// Status text.
     public var displayText: String {
         switch self {
-        case .approvalRequired: "Ny fastvare er klar og venter på at du starter oppdateringen."
-        case .unitOffline: "Ny fastvare er klar, men enheten er frakoblet. Oppdateringen kan startes når den er tilkoblet igjen."
-        case .approved: "Oppdateringen er startet og venter på at enheten henter den."
-        case .cancelling: "Oppdateringen avbrytes."
-        case .resetPending: "Wi-Fi-modulen skal snart starte på nytt."
-        case .resetting: "Wi-Fi-modulen starter på nytt."
-        case .downloading: "Enheten laster ned ny fastvare."
-        case .retrying: "Nedlastingen prøves på nytt."
-        case .complete: "Oppdateringen er fullført."
-        case .blocked: "MELCloud har sperret oppdateringen."
-        case .aborted: "Oppdateringen ble avbrutt. Du kan prøve igjen."
-        case .abortedOffline: "Oppdateringen ble avbrutt fordi enheten var frakoblet."
-        case .forced: "MELCloud gjennomfører en påkrevd oppdatering."
-        case .unknown: "MELCloud rapporterer en ukjent status for oppdateringen."
+        case .approvalRequired: L10n.tr("New firmware is ready and waiting for you to start the update.")
+        case .unitOffline: L10n.tr("New firmware is ready, but the unit is offline. The update can be started when it is connected again.")
+        case .approved: L10n.tr("The update has started and is waiting for the unit to fetch it.")
+        case .cancelling: L10n.tr("The update is being cancelled.")
+        case .resetPending: L10n.tr("The Wi-Fi adapter will restart soon.")
+        case .resetting: L10n.tr("The Wi-Fi adapter is restarting.")
+        case .downloading: L10n.tr("The unit is downloading new firmware.")
+        case .retrying: L10n.tr("The download is being retried.")
+        case .complete: L10n.tr("The update is complete.")
+        case .blocked: L10n.tr("MELCloud has blocked the update.")
+        case .aborted: L10n.tr("The update was aborted. You can try again.")
+        case .abortedOffline: L10n.tr("The update was aborted because the unit was offline.")
+        case .forced: L10n.tr("MELCloud is carrying out a required update.")
+        case .unknown: L10n.tr("MELCloud reports an unknown status for the update.")
         }
     }
 
@@ -126,10 +126,10 @@ public struct FirmwareUpdateStatus: Codable, Sendable, Equatable {
     /// The unit has been offline longer than the web client accepts for starting an update.
     public var unitOffline: Bool { (minutesOffline ?? 0) > 5 }
 
-    /// "x av y filer" while files are known.
+    /// "x of y files" while files are known.
     public var progressText: String? {
         guard let total = filesToDownload, total > 0 else { return nil }
-        return "\(min(filesDownloaded ?? 0, total)) av \(total) filer"
+        return L10n.format("%lld of %lld files", min(filesDownloaded ?? 0, total), total)
     }
 
     /// Download progress 0…1 (nil when unknown).
@@ -143,10 +143,10 @@ public struct FirmwareUpdateStatus: Codable, Sendable, Equatable {
         var text = phase.displayText
         switch phase {
         case .downloading, .retrying:
-            if let progress = progressText { text += " \(progress) lastet ned." }
-            if phase == .retrying, let retries, retries > 0 { text += " Forsøk nr. \(retries)." }
+            if let progress = progressText { text += " " + L10n.format("%@ downloaded.", progress) }
+            if phase == .retrying, let retries, retries > 0 { text += " " + L10n.format("Attempt %lld.", retries) }
         case .unknown:
-            text += " (fase \(currentPhase.map(String.init) ?? "–"), godkjenning \(approvalStatus.map(String.init) ?? "–"))"
+            text += " " + L10n.format("(phase %@, approval %@)", currentPhase.map(String.init) ?? "–", approvalStatus.map(String.init) ?? "–")
         default:
             break
         }
@@ -168,7 +168,7 @@ public struct FirmwareStatus: Codable, Sendable, Equatable {
     public var fetchedAt: Date?
     /// When this app or Claude last started an update.
     public var startedAt: Date?
-    /// Norwegian note (reads paused, failed read …).
+    /// Note (reads paused, failed read …).
     public var message: String?
     /// Set by the service on every read: why an update cannot be started now (nil: it can).
     public var startProblem: String?
@@ -214,8 +214,8 @@ public struct FirmwareStatus: Codable, Sendable, Equatable {
     /// What the user (and Claude's approval dialog) must know before starting. MELCloud's own
     /// warning (FirmwareUpdateMessageOwner) says not to cut power or use the local controller.
     public static let warnings = [
-        "Fastvare kan ikke rulles tilbake når oppdateringen først er startet.",
-        "Varmepumpen må stå på strøm og ha godt Wi-Fi hele tiden. Ikke koble den fra strømmen og ikke bruk fjernkontrollen (den lokale styringen) mens oppdateringen pågår.",
-        "Oppdateringen kan ta en stund. Wi-Fi-modulen starter på nytt underveis, og varmepumpen kan da ikke styres fra appen eller MELCloud.",
+        L10n.tr("Firmware cannot be rolled back once the update has started."),
+        L10n.tr("The heat pump must have power and good Wi-Fi the whole time. Do not disconnect it from power and do not use the remote control (the local controller) while the update runs."),
+        L10n.tr("The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or MELCloud."),
     ]
 }

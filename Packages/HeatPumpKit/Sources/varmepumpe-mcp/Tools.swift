@@ -4,11 +4,13 @@ import MCP
 
 enum ToolCatalog {
     static let writeWarning =
-        "This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Godkjenn (sent) or Avvis (not sent); no answer within 120 s counts as rejected."
+        "This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click \(L10n.tr("Approve")) (sent) or \(L10n.tr("Reject")) (not sent); no answer within 120 s counts as rejected."
 
     static let reasonProperty: Value = [
         "type": "string",
-        "description": "Why this change is made, in the user's words or a short Norwegian sentence. Logged in the change log.",
+        "description": .string(
+            "Why this change is made, in the user's words or a short sentence in \(L10n.language == .norwegian ? "Norwegian bokmål" : "English"). Shown to the user in the approval dialog and logged in the change log."
+        ),
     ]
 
     static var all: [Tool] { readTools + writeTools }
@@ -23,7 +25,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_health_report",
-            description: "Health assessment with prioritized findings (severity ok/info/warning/critical, Norwegian title/detail/recommendation, machine-readable code). Syncs history at most once per hour.",
+            description: "Health assessment with prioritized findings (severity ok/info/warning/critical, title/detail/recommendation in the user's language, machine-readable code). Syncs history at most once per hour.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
@@ -49,7 +51,7 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_energy",
-            description: "Energy use in kWh aggregated per day, ISO week or month, with cost in NOK (costNok, split into electricity/grid tariff/strømstøtte, isEstimate when part of a day is priced at the day's average). MELCloud energy data lags 1.5–3 h and can contain zeros.",
+            description: "Energy use in kWh aggregated per day, ISO week or month, with cost in NOK (costNok, split into electricity/grid tariff/electricity subsidy, isEstimate when part of a day is priced at the day's average). MELCloud energy data lags 1.5–3 h and can contain zeros.",
             inputSchema: [
                 "type": "object",
                 "properties": [
@@ -62,17 +64,17 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_prices",
-            description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy part − strømstøtte. For spot agreements also a clearly labelled ESTIMATE (\"anslag\") for the hours after the published prices up to 7 days ahead (median and 25–75 % band per day and for the next 48 hours; built from the last 4 weeks of prices and the weather forecast; uncertain, not a published price). Also the app's price control (Prisstyring: lowers the setpoint in expensive hours while the app runs): settings, status and plan, read-only — Claude cannot turn it on or off or change it. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
+            description: "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy charge − electricity subsidy. For spot agreements also a clearly labelled ESTIMATE (label \"anslag\") for the hours after the published prices up to 7 days ahead (median and 25–75 % band per day and for the next 48 hours; built from the last 4 weeks of prices and the weather forecast; uncertain, not a published price). Also the app's price control (lowers the setpoint in expensive hours while the app runs): settings, status and plan, read-only — Claude cannot turn it on or off or change it. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
             name: "get_live_status",
-            description: "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, what it is doing now (phase: heating, resting, defrost, preheat …, with a Norwegian explanation), age of the reading, compressor starts and defrosts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
+            description: "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, what it is doing now (phase: heating, resting, defrost, preheat …, with an explanation in the user's language), age of the reading, compressor starts and defrosts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false)),
         Tool(
             name: "get_forecast",
-            description: "Weather forecast from MET Norway (yr.no) for the house for the next 48 hours (temperature, wind, precipitation) combined with hourly electricity prices and price levels, the coldest, cheapest and most expensive hours ahead, and the expected heat-pump use and cost tomorrow (degree-day model fitted on at least 10 days of this unit's own history; includes a range). The forecast is fetched at most hourly and only when MET's copy has expired. Location comes from MELCloud or the app's settings; coordinates are never returned. Attribution: \"Værdata: MET Norway\". Use for planning: a small pre-heating step (max 1 °C, a few hours before a cold and expensive period) is fine; avoid frequent on/off and big swings.",
+            description: "Weather forecast from MET Norway (yr.no) for the house for the next 48 hours (temperature, wind, precipitation) combined with hourly electricity prices and price levels, the coldest, cheapest and most expensive hours ahead, and the expected heat-pump use and cost tomorrow (degree-day model fitted on at least 10 days of this unit's own history; includes a range). The forecast is fetched at most hourly and only when MET's copy has expired. Location comes from MELCloud or the app's settings; coordinates are never returned. Attribution: weather data from MET Norway (see the attribution field). Use for planning: a small pre-heating step (max 1 °C, a few hours before a cold and expensive period) is fine; avoid frequent on/off and big swings.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
@@ -93,12 +95,12 @@ enum ToolCatalog {
             annotations: readOnly),
         Tool(
             name: "get_weekly_timer",
-            description: "MELCloud's weekly timer (Ukeplan): whether it is on, every season (start date, whether it is the one in force) with its events (weekday, time, on/off, mode, temperature, fan, vanes), and the next event. The plan runs in MELCloud, also when the Mac is off; a change made with set_* lasts until the next planned event. Read-only for Claude: the user creates and edits the plan in the app (Ukeplan page). Read from MELCloud at most every 6 h; cached otherwise. decoded=false means only the event count is known.",
+            description: "MELCloud's weekly timer (the weekly schedule): whether it is on, every season (start date, whether it is the one in force) with its events (weekday, time, on/off, mode, temperature, fan, vanes), and the next event. The plan runs in MELCloud, also when the Mac is off; a change made with set_* lasts until the next planned event. Read-only for Claude: the user creates and edits the plan in the app (Weekly schedule page). Read from MELCloud at most every 6 h; cached otherwise. decoded=false means only the event count is known.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(
             name: "get_firmware_status",
-            description: "Firmware of the Wi-Fi adapter: current version, whether MELCloud has an update waiting, whether this account owns the unit (only owners may update), and MELCloud's update status (phase with Norwegian text, files downloaded x/y, minutes offline), plus canStart/startProblem and whether an update is running. MELCloud is asked only when an update waits or runs: at most every 60 s, every 15 s while it runs. Updates go through start_firmware_update.",
+            description: "Firmware of the Wi-Fi adapter: current version, whether MELCloud has an update waiting, whether this account owns the unit (only owners may update), and MELCloud's update status (phase with text in the user's language, files downloaded x/y, minutes offline), plus canStart/startProblem and whether an update is running. MELCloud is asked only when an update waits or runs: at most every 60 s, every 15 s while it runs. Updates go through start_firmware_update.",
             inputSchema: ["type": "object", "properties": [:]],
             annotations: readOnly),
         Tool(

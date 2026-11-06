@@ -34,52 +34,59 @@ public struct ErrorCatalogEntry: Codable, Sendable, Equatable {
 /// entry carries a `confidence` and the caveat is repeated in the user-facing text.
 public enum ErrorCatalog {
     public static let caveat =
-        "Merk: Mitsubishi har ingen offentlig feilkodetabell for MSZ-RW i MELCloud. Forklaringen er hentet fra beslektede modeller og kan være upresis."
+        L10n.tr("Note: Mitsubishi has no public error code table for MSZ-RW in MELCloud. The explanation comes from related models and may be imprecise.")
 
-    static let callDealer = "Ring forhandleren/installatøren og oppgi feilkoden og tidspunktet."
+    static let callDealer = L10n.tr("Call the dealer or installer and give them the error code and the time.")
 
     /// Numeric `ErrorCode` values seen from MELCloud Classic.
     static let numeric: [Int: ErrorCatalogEntry] = [
         8000: ErrorCatalogEntry(
-            code: "8000", title: "Ingen feil",
-            explanation: "MELCloud bruker 8000 for «ingen feil» på luft-til-luft-enheter.",
-            recommendation: "Ingen tiltak.", confidence: .medium, source: "Observert i pymelcloud/Home Assistant"),
+            code: "8000", title: L10n.tr("No error"),
+            explanation: L10n.tr("MELCloud uses 8000 for “no error” on air-to-air units."),
+            recommendation: L10n.tr("No action."), confidence: .medium, source: L10n.tr("Observed in pymelcloud/Home Assistant")),
         0: ErrorCatalogEntry(
-            code: "0", title: "Ingen feil", explanation: "Ingen feil rapportert.", recommendation: "Ingen tiltak.",
+            code: "0", title: L10n.tr("No error"), explanation: L10n.tr("No error reported."), recommendation: L10n.tr("No action."),
             confidence: .medium, source: "MELCloud"),
         5101: ErrorCatalogEntry(
-            code: "5101", title: "Mulig feil på romtemperaturføler",
-            explanation: "I Mitsubishis generelle 4-sifrede koder betyr 5101 feil på inntaks-/romtemperaturføleren. Ikke bekreftet for MSZ-RW.",
-            recommendation: callDealer, confidence: .low, source: "Mitsubishi generelle kontrollkoder (andre serier)"),
+            code: "5101", title: L10n.tr("Possible fault in the room temperature sensor"),
+            explanation: L10n.tr("In Mitsubishi's general 4-digit codes, 5101 means a fault in the intake/room temperature sensor. Not confirmed for MSZ-RW."),
+            recommendation: callDealer, confidence: .low, source: L10n.tr("Mitsubishi general check codes (other series)")),
         5102: ErrorCatalogEntry(
-            code: "5102", title: "Mulig feil på rørføler i innedelen",
-            explanation: "I Mitsubishis generelle 4-sifrede koder betyr 5102 feil på væskerørføleren. Ikke bekreftet for MSZ-RW.",
-            recommendation: callDealer, confidence: .low, source: "Mitsubishi generelle kontrollkoder (andre serier)"),
+            code: "5102", title: L10n.tr("Possible fault in the indoor unit pipe sensor"),
+            explanation: L10n.tr("In Mitsubishi's general 4-digit codes, 5102 means a fault in the liquid pipe sensor. Not confirmed for MSZ-RW."),
+            recommendation: callDealer, confidence: .low, source: L10n.tr("Mitsubishi general check codes (other series)")),
         6840: ErrorCatalogEntry(
-            code: "6840", title: "Mulig kommunikasjonsfeil mellom innedel og utedel",
-            explanation: "I Mitsubishis generelle koder brukes 6840 om kommunikasjonsfeil inne/ute. Ikke bekreftet for MSZ-RW.",
-            recommendation: "Slå av sikringen til varmepumpen i ett minutt og slå den på igjen. Kommer feilen tilbake: " + callDealer,
-            confidence: .low, source: "Mitsubishi generelle kontrollkoder (andre serier)"),
+            code: "6840", title: L10n.tr("Possible communication error between the indoor and outdoor unit"),
+            explanation: L10n.tr("In Mitsubishi's general codes, 6840 is used for indoor/outdoor communication errors. Not confirmed for MSZ-RW."),
+            recommendation: L10n.format("Switch off the circuit breaker for the heat pump for one minute and switch it back on. If the error comes back: %@", callDealer),
+            confidence: .low, source: L10n.tr("Mitsubishi general check codes (other series)")),
     ]
 
     /// Operation-indicator blink codes from the MSZ-LN service manual (OBH766H §10-4),
     /// the closest related document available. MSZ-RW's own manual (OBH902C) was not obtained.
     public static let blinkCodes: [Int: ErrorCatalogEntry] = [
-        1: blink(1, "Feilkobling eller seriesignal", "Innedelen mottar ikke signal fra utedelen."),
-        2: blink(2, "Temperaturføler i innedelen", "Rørføler eller romtemperaturføler er kortsluttet eller brutt."),
-        3: blink(3, "Viftemotor i innedelen", "Viftemotoren gir ikke turtallssignal."),
-        4: blink(4, "Styrekort i innedelen", "Styrekortet klarer ikke å lese minnet sitt."),
-        5: blink(5, "Strømsystem i utedelen", "Kompressoren har stoppet for overstrøm eller oppstartsfeil tre ganger på rad."),
-        6: blink(6, "Temperaturfølere i utedelen", "En føler i utedelen er kortsluttet eller brutt."),
-        7: blink(7, "Styrekort i utedelen", "Styrekortet i utedelen klarer ikke å lese minnet sitt."),
-        14: blink(14, "Annen feil (14 blink eller mer)", "Annen feil oppdaget, blant annet på følere eller ventiler. Ikke start igjen før det er reparert."),
+        1: blink(1, L10n.tr("Miswiring or serial signal"), L10n.tr("The indoor unit receives no signal from the outdoor unit.")),
+        2: blink(2, L10n.tr("Indoor unit temperature sensor"), L10n.tr("The pipe sensor or room temperature sensor is short-circuited or open.")),
+        3: blink(3, L10n.tr("Indoor unit fan motor"), L10n.tr("The fan motor gives no speed signal.")),
+        4: blink(4, L10n.tr("Indoor unit control board"), L10n.tr("The control board cannot read its memory.")),
+        5: blink(5, L10n.tr("Outdoor unit power system"), L10n.tr("The compressor has stopped for overcurrent or a start-up failure three times in a row.")),
+        6: blink(6, L10n.tr("Outdoor unit temperature sensors"), L10n.tr("A sensor in the outdoor unit is short-circuited or open.")),
+        7: blink(7, L10n.tr("Outdoor unit control board"), L10n.tr("The outdoor unit control board cannot read its memory.")),
+        14: blink(14, L10n.tr("Other error (14 blinks or more)"), L10n.tr("Another error was detected, for example in sensors or valves. Do not restart until it has been repaired.")),
     ]
 
     private static func blink(_ count: Int, _ title: String, _ explanation: String) -> ErrorCatalogEntry {
         ErrorCatalogEntry(
-            code: "blink-\(count)", title: (count == 1 ? "Blinker jevnt: " : "\(count) blink: ") + title, explanation: explanation,
-            recommendation: "Slutt å bruke varmepumpen og ring forhandleren (bruksanvisningen sier dette når driftslampen blinker).",
-            confidence: .medium, source: "MSZ-LN servicehåndbok OBH766H §10-4 (beslektet modell)")
+            code: "blink-\(count)",
+            title: count == 1 ? L10n.format("Blinks steadily: %@", title) : L10n.format("%lld blinks: %@", count, title),
+            explanation: explanation,
+            recommendation: L10n.tr("Stop using the heat pump and call the dealer (the manual says so when the operation lamp blinks)."),
+            confidence: .medium, source: L10n.tr("MSZ-LN service manual OBH766H §10-4 (related model)"))
+    }
+
+    /// Whether the catalog has its own explanation for a numeric code.
+    public static func hasExplanation(errorCode: Int?) -> Bool {
+        errorCode.map { numeric[$0] != nil } ?? false
     }
 
     /// Looks up an error. MELCloud's own `message` text wins when present.
@@ -89,15 +96,16 @@ public enum ErrorCatalog {
             return ErrorCatalogEntry(
                 code: errorCode.map(String.init) ?? "melding",
                 title: message,
-                explanation: "Teksten kommer direkte fra MELCloud." + (known.map { " Mulig tolkning: \($0.explanation)" } ?? ""),
+                explanation: known.map { L10n.format("The text comes directly from MELCloud. Possible interpretation: %@", $0.explanation) }
+                    ?? L10n.tr("The text comes directly from MELCloud."),
                 recommendation: known?.recommendation ?? callDealer,
                 confidence: .melcloud, source: "MELCloud")
         }
         if let errorCode, let entry = numeric[errorCode] { return entry }
         return ErrorCatalogEntry(
             code: errorCode.map(String.init) ?? "ukjent",
-            title: "Ukjent feilkode" + (errorCode.map { " \($0)" } ?? ""),
-            explanation: "Vi har ingen sikker forklaring på denne koden for MSZ-RW. " + caveat,
+            title: errorCode.map { L10n.format("Unknown error code %@", String($0)) } ?? L10n.tr("Unknown error code"),
+            explanation: L10n.format("We have no reliable explanation of this code for MSZ-RW. %@", caveat),
             recommendation: callDealer, confidence: .unknown, source: "—")
     }
 }

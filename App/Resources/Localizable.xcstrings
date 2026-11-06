@@ -1,0 +1,6976 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
+    "%@\nAdvice: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nRåd: %@"
+          }
+        }
+      }
+    },
+    "%@ (forecast)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (varsel)"
+          }
+        }
+      }
+    },
+    "%@ (in %@). Showing saved data." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (om %@). Viser lagrede data."
+          }
+        }
+      }
+    },
+    "%@ Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to MELCloud”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Varme. Du kan endre temperaturene etterpå. Ingenting lagres før du trykker «Lagre i MELCloud»."
+          }
+        }
+      }
+    },
+    "%@ NOK" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kr"
+          }
+        }
+      }
+    },
+    "%@ NOK/kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kr/kWh"
+          }
+        }
+      }
+    },
+    "%@ average · known prices" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ i snitt · kjente priser"
+          }
+        }
+      }
+    },
+    "%@ average · price estimate" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ i snitt · prisanslag"
+          }
+        }
+      }
+    },
+    "%@ of the time" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ av tiden"
+          }
+        }
+      }
+    },
+    "%@ per day" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ per døgn"
+          }
+        }
+      }
+    },
+    "%@ vs. previous period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ mot forrige periode"
+          }
+        }
+      }
+    },
+    "%lld changes left this hour" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld change left this hour"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld changes left this hour"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld endring igjen denne timen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld endringer igjen denne timen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld dBm" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dBm"
+          }
+        }
+      }
+    },
+    "%lld h" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld t"
+          }
+        }
+      }
+    },
+    "%lld h %lld min" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld t %lld min"
+          }
+        }
+      }
+    },
+    "%lld hours" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hour"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hours"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld time"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld timer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld min" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
+    "%lld starts · %@" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld start · %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld starts · %@"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld start · %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld starter · %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld things to check" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld thing to check"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld things to check"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ting å se på"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ting å se på"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "+1 °C in up to two of the cheapest of the four hours before." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+1 °C i opptil to av de billigste timene de fire timene før."
+          }
+        }
+      }
+    },
+    "1 yr" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 år"
+          }
+        }
+      }
+    },
+    "24 h" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "24 t"
+          }
+        }
+      }
+    },
+    "30 d" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 d"
+          }
+        }
+      }
+    },
+    "7 d" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7 d"
+          }
+        }
+      }
+    },
+    "90 days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "90 dager"
+          }
+        }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        }
+      }
+    },
+    "Adapter firmware" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare i modulen"
+          }
+        }
+      }
+    },
+    "Add to Schedule" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg til i planen"
+          }
+        }
+      }
+    },
+    "Air filter every 2 weeks, deodorizing filter every 3 months" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfilter hver 2. uke, luktfilter hver 3. måned"
+          }
+        }
+      }
+    },
+    "Airflow direction" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftretning"
+          }
+        }
+      }
+    },
+    "Airflow left/right" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spjeld side"
+          }
+        }
+      }
+    },
+    "Airflow up/down" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spjeld opp/ned"
+          }
+        }
+      }
+    },
+    "All" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
+          }
+        }
+      }
+    },
+    "All Days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle dager"
+          }
+        }
+      }
+    },
+    "All OK" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt OK"
+          }
+        }
+      }
+    },
+    "Allowed in %@ mode: %@. Small adjustments (1–2 degrees) are enough." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tillatt i %@: %@. Små justeringer (1–2 grader) er nok."
+          }
+        }
+      }
+    },
+    "App" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utseende"
+          }
+        }
+      }
+    },
+    "Appearance: %@. Choose System, Light or Dark (⌘⇧L toggles)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utseende: %@. Velg System, Lys eller Mørk (⌘⇧L bytter)."
+          }
+        }
+      }
+    },
+    "Apply" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk"
+          }
+        }
+      }
+    },
+    "At most %lld hours are lowered per day, the most expensive first. The plan only uses published prices, not the estimate. The changes are shown under Claude activity with the source “Price control”." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At most %lld hour is lowered per day, the most expensive first. The plan only uses published prices, not the estimate. The changes are shown under Claude activity with the source “Price control”."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "At most %lld hours are lowered per day, the most expensive first. The plan only uses published prices, not the estimate. The changes are shown under Claude activity with the source “Price control”."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Høyst %lld time senkes per døgn, de dyreste først. Planen bruker bare publiserte priser, ikke anslaget. Endringene vises under Claude-aktivitet med kilden «Prisstyring»."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Høyst %lld timer senkes per døgn, de dyreste først. Planen bruker bare publiserte priser, ikke anslaget. Endringene vises under Claude-aktivitet med kilden «Prisstyring»."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Auto" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
+          }
+        }
+      }
+    },
+    "Auto is the quietest and almost always fits" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto er stillest og passer nesten alltid"
+          }
+        }
+      }
+    },
+    "Auto: chooses between heating and cooling by itself." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto: velger selv mellom varme og kjøling."
+          }
+        }
+      }
+    },
+    "Average" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt"
+          }
+        }
+      }
+    },
+    "Average incl. stops (W)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt inkl. stopp (W)"
+          }
+        }
+      }
+    },
+    "Average indoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt inne"
+          }
+        }
+      }
+    },
+    "Average outdoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt ute"
+          }
+        }
+      }
+    },
+    "Average per day" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt per døgn"
+          }
+        }
+      }
+    },
+    "Average power" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitteffekt"
+          }
+        }
+      }
+    },
+    "Average when running" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snitt når den går"
+          }
+        }
+      }
+    },
+    "Away" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borte hjemmefra"
+          }
+        }
+      }
+    },
+    "Block" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blokkering"
+          }
+        }
+      }
+    },
+    "Blocked until" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blokkert til"
+          }
+        }
+      }
+    },
+    "Breakdown by mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fordeling på modus"
+          }
+        }
+      }
+    },
+    "Builds up while the app is open" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bygges opp mens appen er åpen"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt"
+          }
+        }
+      }
+    },
+    "Cancel Update" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt oppdateringen"
+          }
+        }
+      }
+    },
+    "Cancel the firmware update?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryte fastvareoppdateringen?"
+          }
+        }
+      }
+    },
+    "Canceled in the app (Health → Firmware)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbrutt i appen (Helse → Fastvare)"
+          }
+        }
+      }
+    },
+    "Changed in the app (Away)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endret i appen (Borte hjemmefra)"
+          }
+        }
+      }
+    },
+    "Changed in the app (Weekly schedule)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endret i appen (Ukeplan)"
+          }
+        }
+      }
+    },
+    "Changes" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringer"
+          }
+        }
+      }
+    },
+    "Changes are sent automatically a few seconds after you set them." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringer sendes automatisk et par sekunder etter at du har stilt inn."
+          }
+        }
+      }
+    },
+    "Changes are sent automatically a few seconds after you set them. The weekly schedule in MELCloud is on, so the heat pump can also change by itself." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen i MELCloud er på, så varmepumpen kan også endre seg selv."
+          }
+        }
+      }
+    },
+    "Changes from the app and from Claude are shown here." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringer fra appen og fra Claude vises her."
+          }
+        }
+      }
+    },
+    "Check Now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se etter nå"
+          }
+        }
+      }
+    },
+    "Check for Updates…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se etter oppdateringer …"
+          }
+        }
+      }
+    },
+    "Checking for updates…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ser etter oppdateringer …"
+          }
+        }
+      }
+    },
+    "Choose an electricity contract under Settings → Electricity price." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velg strømavtale under Innstillinger → Strømpris."
+          }
+        }
+      }
+    },
+    "Chosen here" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valgt her"
+          }
+        }
+      }
+    },
+    "Chosen place" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valgt sted"
+          }
+        }
+      }
+    },
+    "Claude" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude"
+          }
+        }
+      }
+    },
+    "Claude activity" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude-aktivitet"
+          }
+        }
+      }
+    },
+    "Claude can read freely, but all changes are logged under Claude activity." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude kan lese fritt, men alle endringer logges under Claude-aktivitet."
+          }
+        }
+      }
+    },
+    "Claude can read status, history and health from the heat pump through the MCP server that comes with the app. When Claude wants to change something, the Mac opens a separate window, “Claude wants to change the heat pump”, with the change and the reason. The change is only sent if you click Approve. Reject, or no answer within 2 minutes, stops it. Everything that is sent or rejected is shown here." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude kan lese status, historikk og helse fra varmepumpen gjennom MCP-serveren som følger med appen. Når Claude vil endre noe, åpner Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og begrunnelsen. Endringen sendes bare hvis du trykker Godkjenn. Avvis, eller ingen svar innen 2 minutter, stopper den. Alt som sendes eller avvises vises her."
+          }
+        }
+      }
+    },
+    "Cleared %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gikk over %@"
+          }
+        }
+      }
+    },
+    "Click in the map to place or move the pin." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klikk i kartet for å sette eller flytte nålen."
+          }
+        }
+      }
+    },
+    "Click to turn it off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trykk for å slå av."
+          }
+        }
+      }
+    },
+    "Click to turn it on." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trykk for å slå på."
+          }
+        }
+      }
+    },
+    "Colder" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaldere"
+          }
+        }
+      }
+    },
+    "Coldest %@ %@ · warmest %@ %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaldest %@ %@ · varmest %@ %@"
+          }
+        }
+      }
+    },
+    "Comes with a local connection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommer med lokal tilkobling"
+          }
+        }
+      }
+    },
+    "Compressor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressor"
+          }
+        }
+      }
+    },
+    "Compressor on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressor på"
+          }
+        }
+      }
+    },
+    "Compressor running" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressor går"
+          }
+        }
+      }
+    },
+    "Compressor running · %lld Hz" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressor går · %lld Hz"
+          }
+        }
+      }
+    },
+    "Compressor stopped" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressor står"
+          }
+        }
+      }
+    },
+    "Confirm change" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekreft endring"
+          }
+        }
+      }
+    },
+    "Connect Claude" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koble til Claude"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilkoblet"
+          }
+        }
+      }
+    },
+    "Connected to the Wi-Fi adapter." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt med Wi-Fi-modulen."
+          }
+        }
+      }
+    },
+    "Connection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilkobling"
+          }
+        }
+      }
+    },
+    "Consumption" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forbruk"
+          }
+        }
+      }
+    },
+    "Consumption per hour is calculated from the pump’s power meter while the app is open." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forbruk per time beregnes fra strømmåleren i pumpen mens appen er åpen."
+          }
+        }
+      }
+    },
+    "Contact email for MET" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt-e-post for MET"
+          }
+        }
+      }
+    },
+    "Contact email for MET (optional)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt-e-post for MET (valgfritt)"
+          }
+        }
+      }
+    },
+    "Continue Update" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortsett oppdateringen"
+          }
+        }
+      }
+    },
+    "Control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroll"
+          }
+        }
+      }
+    },
+    "Cool: cools the room in summer." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjøling: kjøler ned rommet om sommeren."
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiert"
+          }
+        }
+      }
+    },
+    "Copy %@ to" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier %@ til"
+          }
+        }
+      }
+    },
+    "Copy Command" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier kommando"
+          }
+        }
+      }
+    },
+    "Copy day to…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopier dag til …"
+          }
+        }
+      }
+    },
+    "Cost" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostnad"
+          }
+        }
+      }
+    },
+    "Cost in the period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostnad i perioden"
+          }
+        }
+      }
+    },
+    "Cost marked as estimated: for hours without measured consumption, the day’s kWh is priced at the day’s average price. The capacity charge in the grid tariff is not included, because it depends on the whole household’s highest consumption." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostnad merket som anslag: for timer uten målt forbruk er døgnets kWh priset med døgnets snittpris. Kapasitetsleddet i nettleien er ikke med, fordi det avhenger av hele husets høyeste forbruk."
+          }
+        }
+      }
+    },
+    "Could not be processed: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke behandles: %@"
+          }
+        }
+      }
+    },
+    "Could not fetch new status: %@ Showing saved data." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke hente ny status: %@ Viser lagrede data."
+          }
+        }
+      }
+    },
+    "Could not open the database: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke åpne databasen: %@"
+          }
+        }
+      }
+    },
+    "Could not replace the app (error %d)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke bytte ut appen (feil %d)."
+          }
+        }
+      }
+    },
+    "Could not unpack the update." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke pakke ut oppdateringen."
+          }
+        }
+      }
+    },
+    "Current place" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sted nå"
+          }
+        }
+      }
+    },
+    "Dark" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mørk"
+          }
+        }
+      }
+    },
+    "Data" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
+          }
+        }
+      }
+    },
+    "Data fetched" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data hentet"
+          }
+        }
+      }
+    },
+    "Database" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Database"
+          }
+        }
+      }
+    },
+    "Date" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dato"
+          }
+        }
+      }
+    },
+    "Day (weekdays 06–22)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dag (hverdager 06–22)"
+          }
+        }
+      }
+    },
+    "Days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dager"
+          }
+        }
+      }
+    },
+    "Defrosting (%lld in the period)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avriming (%lld i perioden)"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett"
+          }
+        }
+      }
+    },
+    "Deletes the event at %@ on all the days it applies to" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sletter hendelsen kl. %@ på alle dagene den gjelder"
+          }
+        }
+      }
+    },
+    "Demo" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo"
+          }
+        }
+      }
+    },
+    "Demo data" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo-data"
+          }
+        }
+      }
+    },
+    "Demo mode: sign-in is not used." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo-modus: innlogging er ikke i bruk."
+          }
+        }
+      }
+    },
+    "Demo mode: the app shows simulated data, and sign-in is not used." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo-modus: appen viser simulerte data, og innlogging er ikke i bruk."
+          }
+        }
+      }
+    },
+    "Discard Changes" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forkast endringer"
+          }
+        }
+      }
+    },
+    "Discard Changes and Fetch Schedule" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forkast endringene og hent planen"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblet"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ferdig"
+          }
+        }
+      }
+    },
+    "Download" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned"
+          }
+        }
+      }
+    },
+    "Download and install updates automatically" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent og installer oppdateringer automatisk"
+          }
+        }
+      }
+    },
+    "Downloading and verifying…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster ned og kontrollerer …"
+          }
+        }
+      }
+    },
+    "Drag to change the target temperature" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra for å endre ønsket temperatur"
+          }
+        }
+      }
+    },
+    "Dry: takes moisture out of the air, with a little cooling." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avfukting: tar fukt ut av lufta, med litt kjøling."
+          }
+        }
+      }
+    },
+    "During the period the heat pump may be off, and frost protection makes sure the house does not get too cold. Afterwards it goes back to how it was. The times MELCloud stores are shown on the page afterwards; compare them with what you chose." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I perioden kan varmepumpen stå av, og frostsikringen passer på at huset ikke blir for kaldt. Etterpå går den tilbake til slik den var. Tidene MELCloud lagrer vises på siden etterpå; sammenlign dem med det du valgte."
+          }
+        }
+      }
+    },
+    "Edit event" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endre hendelse"
+          }
+        }
+      }
+    },
+    "Edit the event" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endre hendelsen"
+          }
+        }
+      }
+    },
+    "Electricity" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm"
+          }
+        }
+      }
+    },
+    "Electricity after subsidy" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm etter støtte"
+          }
+        }
+      }
+    },
+    "Electricity contract" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømavtale"
+          }
+        }
+      }
+    },
+    "Electricity now: %@ NOK/kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm nå: %@ kr/kWh"
+          }
+        }
+      }
+    },
+    "Electricity now: %@ NOK/kWh · %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm nå: %@ kr/kWh · %@"
+          }
+        }
+      }
+    },
+    "Electricity now: –" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm nå: –"
+          }
+        }
+      }
+    },
+    "Electricity price" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømpris"
+          }
+        }
+      }
+    },
+    "Electricity price per hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømpris per time"
+          }
+        }
+      }
+    },
+    "Electricity price, next 7 days, known prices and estimate" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømpris neste 7 dager, kjente priser og anslag"
+          }
+        }
+      }
+    },
+    "Electricity prices" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømpriser"
+          }
+        }
+      }
+    },
+    "Electricity subsidy" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømstøtte"
+          }
+        }
+      }
+    },
+    "Electricity use" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømforbruk"
+          }
+        }
+      }
+    },
+    "Email" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-post"
+          }
+        }
+      }
+    },
+    "Email, password and session are deleted from the keychain. The history is kept. Claude also loses access to the heat pump until you sign in again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-post, passord og økt slettes fra nøkkelringen. Historikken beholdes. Claude mister også tilgangen til varmepumpen til du logger inn igjen."
+          }
+        }
+      }
+    },
+    "Energy" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Energi"
+          }
+        }
+      }
+    },
+    "Energy and cost" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Energi og kostnad"
+          }
+        }
+      }
+    },
+    "Enter both email and password." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fyll inn både e-post og passord."
+          }
+        }
+      }
+    },
+    "Enter coordinates" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skriv inn koordinater"
+          }
+        }
+      }
+    },
+    "Error log" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feillogg"
+          }
+        }
+      }
+    },
+    "Errors, last 90 days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feil siste 90 dager"
+          }
+        }
+      }
+    },
+    "Estimate" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag"
+          }
+        }
+      }
+    },
+    "Estimate (uncertain)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag (usikkert)"
+          }
+        }
+      }
+    },
+    "Estimate based on the weather forecast and own measurements. %lld hours with a published price, %lld with an estimated price." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag ut fra værvarselet og egne målinger. %lld timer med publisert pris, %lld med anslått pris."
+          }
+        }
+      }
+    },
+    "Estimate from the pump’s power meter" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag fra strømmåleren i pumpen"
+          }
+        }
+      }
+    },
+    "Estimate per day" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag per døgn"
+          }
+        }
+      }
+    },
+    "Even so, do not add the set_* tools to Claude's list of tools allowed without asking." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg likevel ikke set_*-verktøyene til i Claudes liste over verktøy som er tillatt uten å spørre."
+          }
+        }
+      }
+    },
+    "Every change Claude wants to make to the heat pump is shown in a separate approval window on the Mac (“Approve” / “Reject”). This applies however Claude Code is set up. Without an answer within 2 minutes, the change is rejected." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hver endring Claude vil gjøre på varmepumpen vises i et eget godkjenningsvindu på Macen («Godkjenn» / «Avvis»). Det gjelder uansett hvordan Claude Code er satt opp. Uten svar innen 2 minutter blir endringen avvist."
+          }
+        }
+      }
+    },
+    "Expected consumption and cost" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forventet forbruk og kostnad"
+          }
+        }
+      }
+    },
+    "Expensive hours not lowered: %lld (the limit is %lld per day)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyre timer som ikke senkes: %lld (grensen er %lld per døgn)."
+          }
+        }
+      }
+    },
+    "Fan" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vifte"
+          }
+        }
+      }
+    },
+    "Fan %lld" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vifte %lld"
+          }
+        }
+      }
+    },
+    "Fan auto" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vifte auto"
+          }
+        }
+      }
+    },
+    "Fan speed" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftehastighet"
+          }
+        }
+      }
+    },
+    "Fan speed %lld" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftehastighet %lld"
+          }
+        }
+      }
+    },
+    "Fan: circulates the air without heating or cooling." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vifte: sirkulerer lufta uten å varme eller kjøle."
+          }
+        }
+      }
+    },
+    "Fetch Now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent nå"
+          }
+        }
+      }
+    },
+    "Fetch Schedule Again…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent planen på nytt…"
+          }
+        }
+      }
+    },
+    "Fetch the schedule again?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hente planen på nytt?"
+          }
+        }
+      }
+    },
+    "Fetched %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hentet %@"
+          }
+        }
+      }
+    },
+    "Fetched from MELCloud %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hentet fra MELCloud %@."
+          }
+        }
+      }
+    },
+    "Fetches new status from MELCloud. At most once a minute, so the account is not blocked." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henter ny status fra MELCloud. Høyst én gang i minuttet, så kontoen ikke blir sperret."
+          }
+        }
+      }
+    },
+    "Fetches the weekly schedule from MELCloud (at most every 10 minutes; otherwise automatically every 6 hours)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henter ukeplanen fra MELCloud (høyst hvert 10. minutt; ellers automatisk hver 6. time)."
+          }
+        }
+      }
+    },
+    "Fetching from MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henting fra MELCloud"
+          }
+        }
+      }
+    },
+    "Fetching from MELCloud…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hentes fra MELCloud …"
+          }
+        }
+      }
+    },
+    "Fetching status from the heat pump…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Henter status fra varmepumpen …"
+          }
+        }
+      }
+    },
+    "Fetching the weekly schedule from MELCloud…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen hentes fra MELCloud …"
+          }
+        }
+      }
+    },
+    "Find Automatically" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finn automatisk"
+          }
+        }
+      }
+    },
+    "Findings" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funn"
+          }
+        }
+      }
+    },
+    "Firmware" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare"
+          }
+        }
+      }
+    },
+    "Firmware %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare %@"
+          }
+        }
+      }
+    },
+    "Firmware unknown" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare ukjent"
+          }
+        }
+      }
+    },
+    "For now from MELCloud’s device list; fetched directly at most once an hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foreløpig fra MELCloud sin enhetsliste; hentes direkte høyst én gang i timen."
+          }
+        }
+      }
+    },
+    "Forecast" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prognose"
+          }
+        }
+      }
+    },
+    "Forecast last fetched" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsel sist hentet"
+          }
+        }
+      }
+    },
+    "Forecast outdoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsel ute"
+          }
+        }
+      }
+    },
+    "Four or more in the hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fire eller flere i timen"
+          }
+        }
+      }
+    },
+    "Freezing point" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frysepunkt"
+          }
+        }
+      }
+    },
+    "Frequency when running (Hz)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frekvens når den går (Hz)"
+          }
+        }
+      }
+    },
+    "From" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fra"
+          }
+        }
+      }
+    },
+    "From MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fra MELCloud"
+          }
+        }
+      }
+    },
+    "From the building in MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fra bygget i MELCloud"
+          }
+        }
+      }
+    },
+    "Frost protection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring"
+          }
+        }
+      }
+    },
+    "Frost protection and holiday mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring og feriemodus"
+          }
+        }
+      }
+    },
+    "Frost protection keeps the room between a lowest and a highest temperature even when the heat pump is otherwise off. In holiday mode the heat pump can be off for a period you choose, and frost protection is then what keeps the house from getting too cold; that is why frost protection must be on first. Both are stored in MELCloud, so they work even when the Mac is off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring holder rommet mellom en laveste og høyeste temperatur selv om varmepumpen ellers er av. I feriemodus kan varmepumpen stå av i en periode du velger, og da er det frostsikringen som hindrer at huset blir for kaldt; derfor må frostsikring være på først. Begge deler lagres i MELCloud, så de virker selv om Macen er av."
+          }
+        }
+      }
+    },
+    "Frost protection on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring på"
+          }
+        }
+      }
+    },
+    "General" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generelt"
+          }
+        }
+      }
+    },
+    "Get a token at developer.tibber.com" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent nøkkel på developer.tibber.com"
+          }
+        }
+      }
+    },
+    "GitHub rejected the request (too many in a short time). Try again later." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub avviste forespørselen (for mange på kort tid). Prøv igjen senere."
+          }
+        }
+      }
+    },
+    "GitHub responded with error code %lld." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub svarte med feilkode %lld."
+          }
+        }
+      }
+    },
+    "Good to know" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godt å vite"
+          }
+        }
+      }
+    },
+    "Grid tariff" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettleie"
+          }
+        }
+      }
+    },
+    "Grid tariff – energy charge" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettleie – energiledd"
+          }
+        }
+      }
+    },
+    "Health" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helse"
+          }
+        }
+      }
+    },
+    "Heat Pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe"
+          }
+        }
+      }
+    },
+    "Heat Pump %@ is ready" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe %@ er klar"
+          }
+        }
+      }
+    },
+    "Heat Pump – price control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe – prisstyring"
+          }
+        }
+      }
+    },
+    "Heat is the right choice in winter" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varme er riktig valg om vinteren"
+          }
+        }
+      }
+    },
+    "Heat mode only. On/off and mode are never changed. Price control overrides holiday mode and events in the weekly schedule, and pauses until the next change when you change the temperature yourself." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bare i varmemodus. Av/på og modus endres aldri. Prisstyringen står over feriemodus og hendelser i ukeplanen, og tar pause til neste skifte når du endrer temperaturen selv."
+          }
+        }
+      }
+    },
+    "Heat pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe"
+          }
+        }
+      }
+    },
+    "Heat pump (estimated)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen (anslag)"
+          }
+        }
+      }
+    },
+    "Heat: warms the room to the target temperature." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varme: varmer opp rommet til ønsket temperatur."
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høy"
+          }
+        }
+      }
+    },
+    "Highest power" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høyeste effekt"
+          }
+        }
+      }
+    },
+    "Highest: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høyeste: %@"
+          }
+        }
+      }
+    },
+    "History" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
+          }
+        }
+      }
+    },
+    "Holiday mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus"
+          }
+        }
+      }
+    },
+    "Holiday mode on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus på"
+          }
+        }
+      }
+    },
+    "Hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        }
+      }
+    },
+    "Hourly prices are fetched from hvakosterstrommen.no (at most once an hour) and VAT is added. The electricity subsidy is deducted: the state covers 90 percent of the hourly price above 96.25 øre/kWh incl. VAT (2026)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeprisene hentes fra hvakosterstrommen.no (høyst én gang i timen) og tillegges mva. Strømstøtte trekkes fra: staten dekker 90 prosent av timeprisen over 96,25 øre/kWh inkl. mva (2026)."
+          }
+        }
+      }
+    },
+    "Hourly prices are fetched from your Tibber account (at most once an hour). The token is stored in the keychain. The electricity subsidy is deducted: the state covers 90 percent of the hourly price above 96.25 øre/kWh incl. VAT (2026)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeprisene hentes fra Tibber-kontoen din (høyst én gang i timen). Nøkkelen lagres i nøkkelringen. Strømstøtte trekkes fra: staten dekker 90 prosent av timeprisen over 96,25 øre/kWh inkl. mva (2026)."
+          }
+        }
+      }
+    },
+    "House" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Huset"
+          }
+        }
+      }
+    },
+    "How Claude is connected" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slik er Claude koblet til"
+          }
+        }
+      }
+    },
+    "Hz" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hz"
+          }
+        }
+      }
+    },
+    "IP address" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP-adresse"
+          }
+        }
+      }
+    },
+    "If you move the app (for example to the Applications folder), run the command again with the new path." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytter du appen (for eksempel til Programmer-mappen), må kommandoen kjøres på nytt med den nye stien."
+          }
+        }
+      }
+    },
+    "In holiday mode the heat pump may be off; frost protection then keeps the house warm enough (now %@). Times are Norwegian time." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok (nå %@). Tidene er norsk tid."
+          }
+        }
+      }
+    },
+    "In holiday mode the heat pump may be off; frost protection then keeps the house warm enough – it is off now, so turn it on first. Times are Norwegian time." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok – den er av nå, så slå den på først. Tidene er norsk tid."
+          }
+        }
+      }
+    },
+    "In holiday mode the heat pump may be off; frost protection then keeps the house warm enough – the app does not know whether it is on. Times are Norwegian time." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok – appen vet ikke om den er på. Tidene er norsk tid."
+          }
+        }
+      }
+    },
+    "Indoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne"
+          }
+        }
+      }
+    },
+    "Indoor %@ · target %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne %@ · ønsket %@"
+          }
+        }
+      }
+    },
+    "Indoor measured locally %lld min ago" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne målt lokalt for %lld min siden"
+          }
+        }
+      }
+    },
+    "Indoor measured locally %lld s ago" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne målt lokalt for %lld s siden"
+          }
+        }
+      }
+    },
+    "Indoors now %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne nå %@"
+          }
+        }
+      }
+    },
+    "Install Version %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer versjon %@"
+          }
+        }
+      }
+    },
+    "Install and Restart" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer og start på nytt"
+          }
+        }
+      }
+    },
+    "Installed version" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installert versjon"
+          }
+        }
+      }
+    },
+    "Installing…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installerer …"
+          }
+        }
+      }
+    },
+    "It can take a couple of minutes before the heat pump confirms. At most %lld sends per hour, in total for the app and Claude; several changes in a row are combined into one send." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det kan ta et par minutter før varmepumpen bekrefter. Maks %lld sendinger per time, til sammen for appen og Claude; flere endringer rett etter hverandre samles i én sending."
+          }
+        }
+      }
+    },
+    "It is %@ indoors." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne er det %@."
+          }
+        }
+      }
+    },
+    "It will be installed when you quit the app. You can also install it now under Settings → General." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den installeres når du avslutter appen. Du kan også installere den nå under Innstillinger → Generelt."
+          }
+        }
+      }
+    },
+    "Known price" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjent pris"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Språk"
+          }
+        }
+      }
+    },
+    "Last 24 h" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste 24 t"
+          }
+        }
+      }
+    },
+    "Last attempt: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist forsøkt: %@"
+          }
+        }
+      }
+    },
+    "Last checked %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist sjekket %@"
+          }
+        }
+      }
+    },
+    "Last contact" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste kontakt"
+          }
+        }
+      }
+    },
+    "Last read" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist lest"
+          }
+        }
+      }
+    },
+    "Last success: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist vellykket: %@"
+          }
+        }
+      }
+    },
+    "Last: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist: %@"
+          }
+        }
+      }
+    },
+    "Latest: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste: %@"
+          }
+        }
+      }
+    },
+    "Latitude" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Breddegrad"
+          }
+        }
+      }
+    },
+    "Left/right" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venstre/høyre"
+          }
+        }
+      }
+    },
+    "Left/right: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venstre/høyre: %@"
+          }
+        }
+      }
+    },
+    "Level" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivå"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lys"
+          }
+        }
+      }
+    },
+    "Light or dark" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lys eller mørk"
+          }
+        }
+      }
+    },
+    "Likely" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trolig"
+          }
+        }
+      }
+    },
+    "Local" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokalt"
+          }
+        }
+      }
+    },
+    "Local connection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal tilkobling"
+          }
+        }
+      }
+    },
+    "Local reading is paused until the Mac is on the same network as the heat pump. Control through MELCloud works as before." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal avlesning er satt på pause til Macen er på samme nett som varmepumpen. Styring via MELCloud virker som før."
+          }
+        }
+      }
+    },
+    "Log in to MELCloud in Settings." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg inn på MELCloud i Innstillinger."
+          }
+        }
+      }
+    },
+    "Longitude" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lengdegrad"
+          }
+        }
+      }
+    },
+    "Low" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lav"
+          }
+        }
+      }
+    },
+    "Lower at most %lld hours per day" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lower at most %lld hour per day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Lower at most %lld hours per day"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Senk høyst %lld time per døgn"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Senk høyst %lld timer per døgn"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Lower in expensive hours: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senk i dyre timer: %@"
+          }
+        }
+      }
+    },
+    "Lower in very expensive hours: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senk i svært dyre timer: %@"
+          }
+        }
+      }
+    },
+    "Lowers from the temperature in the weekly schedule." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senker fra temperaturen i ukeplanen."
+          }
+        }
+      }
+    },
+    "Lowers from the temperature the heat pump is set to when you turn it on." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senker fra temperaturen varmepumpen står på når du slår den på."
+          }
+        }
+      }
+    },
+    "Lowers from your usual temperature, %@ (the one you last set yourself)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senker fra din vanlige temperatur, %@ (den du sist stilte inn selv)."
+          }
+        }
+      }
+    },
+    "Lowers the temperature when electricity is expensive" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senker temperaturen når strømmen er dyr"
+          }
+        }
+      }
+    },
+    "Lowest / highest indoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lavest / høyest inne"
+          }
+        }
+      }
+    },
+    "Lowest 4–14 °C, highest 6–16 °C, at least 2 degrees apart. 8–12 °C suits an empty house or cabin." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laveste 4–14 °C, høyeste 6–16 °C, minst 2 grader mellom. 8–12 °C passer for et hus eller en hytte som står tom."
+          }
+        }
+      }
+    },
+    "Lowest: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laveste: %@"
+          }
+        }
+      }
+    },
+    "MELCloud account" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud-konto"
+          }
+        }
+      }
+    },
+    "MELCloud block" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud-blokkering"
+          }
+        }
+      }
+    },
+    "MELCloud did not allow reading the weekly schedule for this account. The app will try again %@, or click “Fetch Now”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen %@, eller trykk «Hent nå»."
+          }
+        }
+      }
+    },
+    "MELCloud did not say whether the schedule is on. Choose on or off before you save." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud oppga ikke om planen er på. Velg på eller av før du lagrer."
+          }
+        }
+      }
+    },
+    "MELCloud has newer firmware ready for the Wi-Fi adapter." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har en nyere fastvare klar for Wi-Fi-modulen."
+          }
+        }
+      }
+    },
+    "MELCloud rejected the sign-in. Enter the password again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud avviste innloggingen. Skriv inn passordet på nytt."
+          }
+        }
+      }
+    },
+    "MELCloud shows: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud viser: %@"
+          }
+        }
+      }
+    },
+    "MELCloud stops the update if it is not installed yet. You can start it again later." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud stopper oppdateringen hvis den ikke er installert ennå. Du kan starte den igjen senere."
+          }
+        }
+      }
+    },
+    "MELCloud updates energy figures with a delay of a few hours." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud oppdaterer energitall med noen timers forsinkelse."
+          }
+        }
+      }
+    },
+    "MET Norway asks everyone who fetches weather data to say who they are, so they can get in touch if something goes wrong instead of blocking access. The app always sends its name and version. If you enter an email, it is also sent with every request to MET (at most once an hour). It is not used for anything else." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MET Norway ber alle som henter værdata om å oppgi hvem de er, så de kan ta kontakt hvis noe går galt i stedet for å stenge tilgangen. Appen sender alltid navnet og versjonen sin. Fyller du inn en e-post, sendes den også med i hver forespørsel til MET (høyst én gang i timen). Den brukes ikke til noe annet."
+          }
+        }
+      }
+    },
+    "Maintenance" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vedlikehold"
+          }
+        }
+      }
+    },
+    "Markup from the electricity supplier" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Påslag fra strømselskapet"
+          }
+        }
+      }
+    },
+    "Max" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maks"
+          }
+        }
+      }
+    },
+    "Measured directly from the Wi-Fi adapter on the home network. Starts are only counted when the readings are close together (at least every 5 minutes), that is, while the app is open. One to three starts an hour is normal; four or more over several hours is called short cycling." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Målt direkte fra Wi-Fi-modulen på hjemmenettet. Starter telles bare når målingene ligger tett (minst hvert 5. minutt), altså mens appen er åpen. Én til tre starter i timen er vanlig; fire eller flere over flere timer kalles korte sykluser."
+          }
+        }
+      }
+    },
+    "Measured locally %lld min ago" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Målt lokalt for %lld min siden"
+          }
+        }
+      }
+    },
+    "Measured locally %lld s ago" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Målt lokalt for %lld s siden"
+          }
+        }
+      }
+    },
+    "Minute" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minutt"
+          }
+        }
+      }
+    },
+    "Mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus"
+          }
+        }
+      }
+    },
+    "Mode unknown – choose a mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus ukjent – velg modus"
+          }
+        }
+      }
+    },
+    "Mode unknown – choose a mode." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus ukjent – velg modus."
+          }
+        }
+      }
+    },
+    "Most important first" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viktigst først"
+          }
+        }
+      }
+    },
+    "Most used mode" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mest brukt modus"
+          }
+        }
+      }
+    },
+    "NOK" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kr"
+          }
+        }
+      }
+    },
+    "NOK/hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kr/time"
+          }
+        }
+      }
+    },
+    "NOK/kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kr/kWh"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn"
+          }
+        }
+      }
+    },
+    "Name of the place (optional)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navn på stedet (valgfritt)"
+          }
+        }
+      }
+    },
+    "Never lower than: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aldri lavere enn: %@"
+          }
+        }
+      }
+    },
+    "New event" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny hendelse"
+          }
+        }
+      }
+    },
+    "New event on %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny hendelse %@"
+          }
+        }
+      }
+    },
+    "Next 48 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste 48 timer"
+          }
+        }
+      }
+    },
+    "Next 7 days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste 7 dager"
+          }
+        }
+      }
+    },
+    "Next attempt" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste forsøk"
+          }
+        }
+      }
+    },
+    "Next refresh in %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste oppdatering om %@"
+          }
+        }
+      }
+    },
+    "Next: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste: %@"
+          }
+        }
+      }
+    },
+    "Next: %@ at %@ – %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neste: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "Night, weekends and public holidays" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Natt, helg og helligdager"
+          }
+        }
+      }
+    },
+    "No changes yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen endringer ennå"
+          }
+        }
+      }
+    },
+    "No compressor data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen kompressordata ennå"
+          }
+        }
+      }
+    },
+    "No data fetched yet." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen data hentet ennå."
+          }
+        }
+      }
+    },
+    "No data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen data ennå"
+          }
+        }
+      }
+    },
+    "No energy data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen energidata ennå"
+          }
+        }
+      }
+    },
+    "No errors recorded in the last 90 days." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen feil registrert de siste 90 dagene."
+          }
+        }
+      }
+    },
+    "No events yet. Add an event or choose a template." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen hendelser ennå. Legg til en hendelse eller velg en mal."
+          }
+        }
+      }
+    },
+    "No expensive hours in the published prices, so the temperature stays as it is." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen dyre timer i de publiserte prisene, så temperaturen står som den er."
+          }
+        }
+      }
+    },
+    "No figures for the period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tall for perioden"
+          }
+        }
+      }
+    },
+    "No internet connection." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen internettforbindelse."
+          }
+        }
+      }
+    },
+    "No local readings yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen lokale målinger ennå"
+          }
+        }
+      }
+    },
+    "No matches. Try another name, or click in the map." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen treff. Prøv et annet navn, eller klikk i kartet."
+          }
+        }
+      }
+    },
+    "No new firmware is waiting in MELCloud." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen ny fastvare venter i MELCloud."
+          }
+        }
+      }
+    },
+    "No operation data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen driftsdata ennå"
+          }
+        }
+      }
+    },
+    "No prices yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen priser ennå"
+          }
+        }
+      }
+    },
+    "No starts recorded yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen starter registrert ennå"
+          }
+        }
+      }
+    },
+    "No status yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen status ennå"
+          }
+        }
+      }
+    },
+    "No temperature data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen temperaturdata ennå"
+          }
+        }
+      }
+    },
+    "No weather forecast yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen værvarsel ennå"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen"
+          }
+        }
+      }
+    },
+    "Norgespris (fixed price) is a fixed price per kWh from the state: 50 øre incl. VAT, or 40 øre in Northern Norway (NO4), where there is no VAT. With Norgespris you do not get the electricity subsidy." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norgespris er en fast pris per kWh fra staten: 50 øre inkl. mva, eller 40 øre i Nord-Norge (NO4), der det ikke er mva. Med Norgespris får du ikke strømstøtte."
+          }
+        }
+      }
+    },
+    "Norgespris is %@ øre/kWh around the clock; the bars show it plus the grid tariff, which is lower at night and on weekends. No estimate is needed." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norgespris er %@ øre/kWh hele døgnet; søylene viser den pluss nettleien, som er lavere om natten og i helgene. Ingen anslag trengs."
+          }
+        }
+      }
+    },
+    "Not checked yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke sjekket ennå"
+          }
+        }
+      }
+    },
+    "Not chosen" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke valgt"
+          }
+        }
+      }
+    },
+    "Not enough data yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke nok data ennå"
+          }
+        }
+      }
+    },
+    "Not on the home network" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke på hjemmenettet"
+          }
+        }
+      }
+    },
+    "Not recorded" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke registrert"
+          }
+        }
+      }
+    },
+    "Not recorded as cleared" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke registrert som avsluttet"
+          }
+        }
+      }
+    },
+    "Not responding (%lld attempts in a row)" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not responding (%lld attempt)"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not responding (%lld attempts in a row)"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Svarer ikke (%lld forsøk)"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Svarer ikke (%lld forsøk på rad)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Not saved" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke lagret"
+          }
+        }
+      }
+    },
+    "Not sent" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke sendt"
+          }
+        }
+      }
+    },
+    "Not the same. Check in the MELCloud app which applies." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke det samme. Sjekk i MELCloud-appen hva som gjelder."
+          }
+        }
+      }
+    },
+    "Not with Norgespris" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke med Norgespris"
+          }
+        }
+      }
+    },
+    "Note (optional)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merknad (valgfritt)"
+          }
+        }
+      }
+    },
+    "Now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nå"
+          }
+        }
+      }
+    },
+    "Now %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nå %@"
+          }
+        }
+      }
+    },
+    "Now %@ NOK/kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nå %@ kr/kWh"
+          }
+        }
+      }
+    },
+    "Now %lld Hz" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nå %lld Hz"
+          }
+        }
+      }
+    },
+    "Now: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nå: %@"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av"
+          }
+        }
+      }
+    },
+    "Offline" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblet"
+          }
+        }
+      }
+    },
+    "On" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "På"
+          }
+        }
+      }
+    },
+    "On/off" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av/på"
+          }
+        }
+      }
+    },
+    "Online" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilkoblet"
+          }
+        }
+      }
+    },
+    "Open Control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne Kontroll"
+          }
+        }
+      }
+    },
+    "Open Heat Pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne Varmepumpe"
+          }
+        }
+      }
+    },
+    "Open Local Connection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne Lokal tilkobling"
+          }
+        }
+      }
+    },
+    "Open Weekly Schedule" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne ukeplanen"
+          }
+        }
+      }
+    },
+    "Open the Downloads Page" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne nedlastingssiden"
+          }
+        }
+      }
+    },
+    "Operation" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drift"
+          }
+        }
+      }
+    },
+    "Operation is recorded every time the app or Claude fetches the status." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driften registreres hver gang appen eller Claude henter status."
+          }
+        }
+      }
+    },
+    "Outdoor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ute"
+          }
+        }
+      }
+    },
+    "Outdoor temperature, next 48 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatur ute neste 48 timer"
+          }
+        }
+      }
+    },
+    "Overview" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oversikt"
+          }
+        }
+      }
+    },
+    "Part" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Del"
+          }
+        }
+      }
+    },
+    "Partly estimated" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delvis anslag"
+          }
+        }
+      }
+    },
+    "Password" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passord"
+          }
+        }
+      }
+    },
+    "Paste the token" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lim inn nøkkelen"
+          }
+        }
+      }
+    },
+    "Period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Periode"
+          }
+        }
+      }
+    },
+    "Place for the weather forecast" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sted for værvarselet"
+          }
+        }
+      }
+    },
+    "Plan for the next 36 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan de neste 36 timene"
+          }
+        }
+      }
+    },
+    "Power" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt"
+          }
+        }
+      }
+    },
+    "Power requires a local connection" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt krever lokal tilkobling"
+          }
+        }
+      }
+    },
+    "Power, last hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt siste time"
+          }
+        }
+      }
+    },
+    "Precipitation" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedbør"
+          }
+        }
+      }
+    },
+    "Precipitation (mm)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedbør (mm)"
+          }
+        }
+      }
+    },
+    "Preheat a little before expensive hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forvarm litt før dyre timer"
+          }
+        }
+      }
+    },
+    "Previous" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige"
+          }
+        }
+      }
+    },
+    "Previous period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige periode"
+          }
+        }
+      }
+    },
+    "Previous period: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forrige periode: %@"
+          }
+        }
+      }
+    },
+    "Price area" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisområde"
+          }
+        }
+      }
+    },
+    "Price control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring"
+          }
+        }
+      }
+    },
+    "Price control is off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring er av."
+          }
+        }
+      }
+    },
+    "Price control is off. The temperature has been restored." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring er av. Temperaturen er satt tilbake."
+          }
+        }
+      }
+    },
+    "Price control only works while the app is running and the Mac is on and awake. When you close the window, the app keeps running in the menu bar. When the Mac goes to sleep or the app quits, the temperature is restored first. If that does not happen (power cut, crash), the temperature stays where it is – but never lower than %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyringen virker bare mens appen kjører og Macen er på og våken. Når du lukker vinduet, fortsetter appen i menylinjen. Når Macen skal sove eller appen avsluttes, settes temperaturen tilbake først. Skjer ikke det (strømbrudd, krasj), blir temperaturen stående – men aldri lavere enn %@."
+          }
+        }
+      }
+    },
+    "Price control: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring: %@"
+          }
+        }
+      }
+    },
+    "Price incl. VAT" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pris inkl. mva"
+          }
+        }
+      }
+    },
+    "Price level this hour compared with the last few days" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisnivå denne timen sammenlignet med de siste dagene"
+          }
+        }
+      }
+    },
+    "Price now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strøm nå"
+          }
+        }
+      }
+    },
+    "Quit Heat Pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avslutt Varmepumpe"
+          }
+        }
+      }
+    },
+    "Read more" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les mer"
+          }
+        }
+      }
+    },
+    "Read only. The app only sends a status request and cannot change anything in the heat pump or the adapter." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bare lesing. Appen sender kun en statusforespørsel og kan ikke endre noe i varmepumpen eller modulen."
+          }
+        }
+      }
+    },
+    "Read the heat pump directly on the home network" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les varmepumpen direkte på hjemmenettet"
+          }
+        }
+      }
+    },
+    "Reason: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Begrunnelse: %@"
+          }
+        }
+      }
+    },
+    "Record as Done" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registrer utført"
+          }
+        }
+      }
+    },
+    "Record it when you have done it" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registrer når du har gjort det"
+          }
+        }
+      }
+    },
+    "Record: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registrer: %@"
+          }
+        }
+      }
+    },
+    "Refresh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater"
+          }
+        }
+      }
+    },
+    "Refresh Now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater nå"
+          }
+        }
+      }
+    },
+    "Refresh Status" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater status"
+          }
+        }
+      }
+    },
+    "Replace All Events" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstatt alle hendelser"
+          }
+        }
+      }
+    },
+    "Rest of the house" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resten av huset"
+          }
+        }
+      }
+    },
+    "Restart Now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start på nytt nå"
+          }
+        }
+      }
+    },
+    "Restart the app to change the language." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start appen på nytt for å bytte språk."
+          }
+        }
+      }
+    },
+    "Rough estimate from %lld days of own measurements" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rough estimate from %lld day of own measurements"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rough estimate from %lld days of own measurements"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grovt anslag fra %lld dag med egne målinger"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grovt anslag fra %lld dager med egne målinger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Rough estimate: consumption against how cold it has been over the last %lld days, tomorrow’s forecast and electricity prices." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rough estimate: consumption against how cold it has been over the last %lld day, tomorrow’s forecast and electricity prices."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Rough estimate: consumption against how cold it has been over the last %lld days, tomorrow’s forecast and electricity prices."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grovt anslag: forbruket mot hvor kaldt det har vært den siste %lld dagen, morgendagens varsel og strømpriser."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Grovt anslag: forbruket mot hvor kaldt det har vært de siste %lld dagene, morgendagens varsel og strømpriser."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Rough estimate: consumption against how cold it has been over the last few weeks, the weather forecast and the prices. Days marked “price estimate” use estimated prices for the hours without a published price." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grovt anslag: forbruket mot hvor kaldt det har vært de siste ukene, værvarselet og prisene. Dager merket «prisanslag» bruker anslåtte priser for timene uten publisert pris."
+          }
+        }
+      }
+    },
+    "Row" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rad"
+          }
+        }
+      }
+    },
+    "Run this command once in Terminal to connect Claude Code to the heat pump:" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjør denne kommandoen én gang i Terminal for å koble Claude Code til varmepumpen:"
+          }
+        }
+      }
+    },
+    "Running" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Går"
+          }
+        }
+      }
+    },
+    "Running · %lld Hz" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Går · %lld Hz"
+          }
+        }
+      }
+    },
+    "Runtime" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driftstid"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre"
+          }
+        }
+      }
+    },
+    "Save Frost Protection…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre frostsikring…"
+          }
+        }
+      }
+    },
+    "Save Holiday Mode…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre feriemodus…"
+          }
+        }
+      }
+    },
+    "Save and Test" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre og test"
+          }
+        }
+      }
+    },
+    "Save or discard the changes first." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre eller forkast endringene først."
+          }
+        }
+      }
+    },
+    "Save the weekly schedule to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre ukeplanen i MELCloud"
+          }
+        }
+      }
+    },
+    "Save to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre i MELCloud"
+          }
+        }
+      }
+    },
+    "Save to MELCloud…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagre i MELCloud…"
+          }
+        }
+      }
+    },
+    "Saved to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret i MELCloud"
+          }
+        }
+      }
+    },
+    "Saved, and the forecast is updated." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret, og varselet er oppdatert."
+          }
+        }
+      }
+    },
+    "Saved, but the forecast could not be fetched." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret, men varselet kunne ikke hentes."
+          }
+        }
+      }
+    },
+    "Saved." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret."
+          }
+        }
+      }
+    },
+    "Saved. A new forecast will be fetched at %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret. Nytt varsel hentes kl. %@."
+          }
+        }
+      }
+    },
+    "Saved. A new forecast will be fetched soon." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret. Nytt varsel hentes snart."
+          }
+        }
+      }
+    },
+    "Saved. Local connection is off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret. Lokal tilkobling er av."
+          }
+        }
+      }
+    },
+    "Saved. The app reads the adapter every minute while it is open, and Claude when needed." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret. Appen leser modulen hvert minutt mens den er åpen, og Claude ved behov."
+          }
+        }
+      }
+    },
+    "Saving is new and has not been tried against your account yet. Feel free to check in the MELCloud app that the schedule is correct. Each save counts as one of %lld sends per hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagringen er ny og ikke prøvd mot din konto ennå. Sjekk gjerne i MELCloud-appen at planen er riktig. Hver lagring teller som én av %lld sendinger i timen."
+          }
+        }
+      }
+    },
+    "Saving to MELCloud…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagrer i MELCloud …"
+          }
+        }
+      }
+    },
+    "Search for an address or place" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk etter adresse eller sted"
+          }
+        }
+      }
+    },
+    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in MELCloud is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk etter adressen eller stedet, eller klikk i kartet. Søket går via Apple Kart. Uten valgt sted brukes posisjonen til bygget i MELCloud. Posisjonen rundes av til omtrent én kilometer før den sendes til MET, og Claude ser bare stedsnavnet. Husk å trykke Lagre."
+          }
+        }
+      }
+    },
+    "Season" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesong"
+          }
+        }
+      }
+    },
+    "Security" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sikkerhet"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valgt"
+          }
+        }
+      }
+    },
+    "Send to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send til MELCloud"
+          }
+        }
+      }
+    },
+    "Sent %@: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt %@: %@"
+          }
+        }
+      }
+    },
+    "Sent to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt til MELCloud"
+          }
+        }
+      }
+    },
+    "Series" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innstillinger"
+          }
+        }
+      }
+    },
+    "Share" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andel"
+          }
+        }
+      }
+    },
+    "Share on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andel på"
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis i Finder"
+          }
+        }
+      }
+    },
+    "Shown once the app has read the adapter for a while." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vises når appen har lest modulen en stund."
+          }
+        }
+      }
+    },
+    "Sign In and Test" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg inn og test"
+          }
+        }
+      }
+    },
+    "Sign Out" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg ut"
+          }
+        }
+      }
+    },
+    "Sign in to MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg inn på MELCloud"
+          }
+        }
+      }
+    },
+    "Sign out of MELCloud?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logge ut av MELCloud?"
+          }
+        }
+      }
+    },
+    "Signed in" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innlogget"
+          }
+        }
+      }
+    },
+    "Signed in. Found “%@”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innlogget. Fant «%@»."
+          }
+        }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilde"
+          }
+        }
+      }
+    },
+    "Source: %@, as of %@. The rates include electricity tax, the Enova fee and VAT. The capacity charge (fixed charge) is not included: it depends on the whole household's peak consumption, so it cannot be attributed to the heat pump." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kilde: %@, per %@. Satsene er inkludert forbruksavgift, Enova-påslag og mva. Kapasitetsleddet (fastleddet) er ikke med: det avhenger av hele husets høyeste forbruk, så det kan ikke fordeles på varmepumpen."
+          }
+        }
+      }
+    },
+    "Split" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delt"
+          }
+        }
+      }
+    },
+    "Start Update" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start oppdateringen"
+          }
+        }
+      }
+    },
+    "Started in the app (Health → Firmware)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet i appen (Helse → Fastvare)"
+          }
+        }
+      }
+    },
+    "Starts" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter"
+          }
+        }
+      }
+    },
+    "Starts are counted when the readings are close together." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter telles når målingene ligger tett."
+          }
+        }
+      }
+    },
+    "Starts last 24 h" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter siste 24 t"
+          }
+        }
+      }
+    },
+    "Starts per day" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter per døgn"
+          }
+        }
+      }
+    },
+    "Starts per hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter per time"
+          }
+        }
+      }
+    },
+    "State" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilstand"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        }
+      }
+    },
+    "Status fetched %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status hentet %@"
+          }
+        }
+      }
+    },
+    "Status is fetched at most once a minute and otherwise from the cache (10 minutes). History is fetched at most once an hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status hentes høyst én gang i minuttet og ellers fra lageret (10 minutter). Historikk hentes høyst én gang i timen."
+          }
+        }
+      }
+    },
+    "Stopped" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Står"
+          }
+        }
+      }
+    },
+    "Stopped now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Står nå"
+          }
+        }
+      }
+    },
+    "Stored in" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret i"
+          }
+        }
+      }
+    },
+    "Stored in the keychain" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagret i nøkkelringen"
+          }
+        }
+      }
+    },
+    "Subsidy" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Støtte"
+          }
+        }
+      }
+    },
+    "Subsidy (deducted)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Støtte (trukket fra)"
+          }
+        }
+      }
+    },
+    "Swing" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sving"
+          }
+        }
+      }
+    },
+    "Switch Account…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt konto…"
+          }
+        }
+      }
+    },
+    "Switch MELCloud account" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt MELCloud-konto"
+          }
+        }
+      }
+    },
+    "System" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "System follows the setting in macOS. You can also switch with the button in the toolbar, or with ⌘⇧L (View → Appearance)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System følger innstillingen i macOS. Du kan også bytte med knappen i verktøylinjen, eller med ⌘⇧L (Visning → Utseende)."
+          }
+        }
+      }
+    },
+    "System uses the language set in macOS: Norwegian if it is Norwegian, otherwise English. Claude's change approvals and health texts follow this choice too." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System bruker språket som er valgt i macOS: norsk hvis det er norsk, ellers engelsk. Claudes godkjenninger av endringer og helsetekstene følger også dette valget."
+          }
+        }
+      }
+    },
+    "Target" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ønsket"
+          }
+        }
+      }
+    },
+    "Target %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ønsket %@"
+          }
+        }
+      }
+    },
+    "Target temperature" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ønsket temperatur"
+          }
+        }
+      }
+    },
+    "Temperature" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatur"
+          }
+        }
+      }
+    },
+    "Temperature and precipitation, next 48 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatur og nedbør neste 48 timer"
+          }
+        }
+      }
+    },
+    "Temperature log" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturlogg"
+          }
+        }
+      }
+    },
+    "Temperature: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatur: %@"
+          }
+        }
+      }
+    },
+    "Temperatures are shown once the app has fetched the status a few times, and from MELCloud when the log is available." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturer vises når appen har hentet status noen ganger, og fra MELCloud når loggen er tilgjengelig."
+          }
+        }
+      }
+    },
+    "Template" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mal"
+          }
+        }
+      }
+    },
+    "Test" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test"
+          }
+        }
+      }
+    },
+    "The Mac is going to sleep – back to the normal temperature" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macen skal sove – tilbake til vanlig temperatur"
+          }
+        }
+      }
+    },
+    "The app asks the heat pump's Wi-Fi adapter for its status directly over the home network: every minute while the app is open, and when Claude asks for fresh status (also when the app is closed). Never more often than every 20 seconds, and only when the Mac is on the same network as the heat pump. This gives you power in watts, whether the compressor is running, and accurate electricity consumption per hour. The app only reads: all control still goes through MELCloud, and no settings in the adapter are changed." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen spør Wi-Fi-modulen i varmepumpen om status direkte over hjemmenettet: hvert minutt mens appen er åpen, og når Claude ber om fersk status (også når appen er lukket). Aldri oftere enn hvert 20. sekund, og bare når Macen er på samme nett som varmepumpen. Da får du effekt i watt, om kompressoren går, og et nøyaktig strømforbruk per time. Appen bare leser: all styring går fortsatt via MELCloud, og ingen innstillinger i modulen endres."
+          }
+        }
+      }
+    },
+    "The app checks GitHub for new versions once a day. A download is installed only when the checksum matches and the app is signed and notarized by the same developer. In automatic mode it is installed when you quit the app; “Install and Restart” does it right away. If price control is on, the temperature is restored before the app restarts." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen ser etter nye versjoner på GitHub én gang i døgnet. En nedlasting installeres bare når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Automatisk installeres den når du avslutter appen; «Installer og start på nytt» gjør det med en gang. Er prisstyring på, settes temperaturen tilbake før appen starter på nytt."
+          }
+        }
+      }
+    },
+    "The app could not start." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen kunne ikke starte."
+          }
+        }
+      }
+    },
+    "The app fetches status from the heat pump through MELCloud, the same service the Mitsubishi app uses. Sign in with the email and password for your MELCloud account. The password is stored securely in the keychain on the Mac." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen henter status fra varmepumpen gjennom MELCloud, den samme tjenesten som Mitsubishi-appen bruker. Logg inn med e-post og passord til MELCloud-kontoen din. Passordet lagres trygt i nøkkelringen på Macen."
+          }
+        }
+      }
+    },
+    "The app is in a folder you cannot change (%@). Move it to the Applications folder, or download new versions yourself." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen ligger i en mappe du ikke kan endre (%@). Flytt den til Programmer-mappen, eller last ned nye versjoner selv."
+          }
+        }
+      }
+    },
+    "The app is running with simulated data (VARMEPUMPE_BACKEND=mock)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen kjører med simulerte data (VARMEPUMPE_BACKEND=mock)."
+          }
+        }
+      }
+    },
+    "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the MELCloud app, or click “Fetch Now”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen viser og endrer bare planer den kan lese helt, så den ikke sletter hendelser den ikke forstår. Se og endre planen i MELCloud-appen, eller trykk «Hent nå»."
+          }
+        }
+      }
+    },
+    "The app reads the Wi-Fi adapter every minute while it is open. The chart fills in over time." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen leser Wi-Fi-modulen hvert minutt mens den er åpen. Grafen fylles etter hvert."
+          }
+        }
+      }
+    },
+    "The bars are published prices (electricity, grid tariff and electricity subsidy). %@ Real prices for tomorrow come around 13:00." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søylene er publiserte priser (strøm, nettleie og strømstøtte). %@ Virkelige priser for i morgen kommer rundt kl. 13."
+          }
+        }
+      }
+    },
+    "The bars are published prices (electricity, grid tariff and electricity subsidy). Real prices for tomorrow come around 13:00." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søylene er publiserte priser (strøm, nettleie og strømstøtte). Virkelige priser for i morgen kommer rundt kl. 13."
+          }
+        }
+      }
+    },
+    "The bars are published prices (electricity, grid tariff and electricity subsidy). The dashed line is an estimate with a range of uncertainty, not a price: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søylene er publiserte priser (strøm, nettleie og strømstøtte). Det stiplede er et anslag med usikkerhetsområde, ikke en pris: %@"
+          }
+        }
+      }
+    },
+    "The change could not be processed: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen kunne ikke behandles: %@"
+          }
+        }
+      }
+    },
+    "The change is saved to MELCloud only when you click “Save to MELCloud” on the page." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen lagres i MELCloud først når du trykker «Lagre i MELCloud» på siden."
+          }
+        }
+      }
+    },
+    "The changes are not saved yet." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringene er ikke lagret ennå."
+          }
+        }
+      }
+    },
+    "The changes you have made here will be lost. The schedule is fetched from MELCloud, and you can make the changes again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringene du har gjort her forsvinner. Planen hentes fra MELCloud, og du kan gjøre endringene igjen."
+          }
+        }
+      }
+    },
+    "The controls become available once the status has been fetched." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrollene blir tilgjengelige når status er hentet."
+          }
+        }
+      }
+    },
+    "The coordinates must be numbers, for example 60.39 and 5.32." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koordinatene må være tall, for eksempel 60,39 og 5,32."
+          }
+        }
+      }
+    },
+    "The cost is an estimate" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostnad er et anslag"
+          }
+        }
+      }
+    },
+    "The dashed line after “now” is the outdoor weather forecast. %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stiplet linje etter «nå» er værvarselet for ute. %@."
+          }
+        }
+      }
+    },
+    "The data is %lld minutes old." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The data is %lld minute old."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The data is %lld minutes old."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Dataene er %lld minutt gamle."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Dataene er %lld minutter gamle."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The download is not a valid Heat Pump version: %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedlastingen er ikke en gyldig Varmepumpe-versjon: %@."
+          }
+        }
+      }
+    },
+    "The download was corrupt (the checksum did not match). Try again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedlastingen var ødelagt (sjekksummen stemte ikke). Prøv igjen."
+          }
+        }
+      }
+    },
+    "The error text comes from MELCloud." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilteksten kommer fra MELCloud."
+          }
+        }
+      }
+    },
+    "The estimate needs at least %lld days of consumption and outdoor temperature, and a weather forecast." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The estimate needs at least %lld day of consumption and outdoor temperature, and a weather forecast."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The estimate needs at least %lld days of consumption and outdoor temperature, and a weather forecast."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Anslaget trenger minst %lld dag med forbruk og utetemperatur, og et værvarsel."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Anslaget trenger minst %lld dager med forbruk og utetemperatur, og et værvarsel."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The explanation comes from a related model and is likely, but not certain." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forklaringen er hentet fra en beslektet modell og er sannsynlig, men ikke sikker."
+          }
+        }
+      }
+    },
+    "The forecast is fetched from MET Norway." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varselet hentes fra MET Norway."
+          }
+        }
+      }
+    },
+    "The heat pump goes back to the usual settings." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen går tilbake til de vanlige innstillingene."
+          }
+        }
+      }
+    },
+    "The heat pump is off" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er av"
+          }
+        }
+      }
+    },
+    "The heat pump is on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er på"
+          }
+        }
+      }
+    },
+    "The heat pump no longer keeps the room from freezing when it is off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen passer ikke lenger på at rommet ikke fryser når den står av."
+          }
+        }
+      }
+    },
+    "The heat pump reports no valid mode. Choose Heat under Mode, for example, before you change the temperature." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen rapporterer ingen gyldig modus. Velg for eksempel Varme under Modus før du endrer temperaturen."
+          }
+        }
+      }
+    },
+    "The heat pump used %@ of the electricity yesterday" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen sto for %@ av strømmen i går"
+          }
+        }
+      }
+    },
+    "The heat pump’s share of household electricity" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpens andel av husets strøm"
+          }
+        }
+      }
+    },
+    "The history builds up while the app is open, and older data is fetched from MELCloud (at most once an hour)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikken bygges opp mens appen er åpen, og eldre data hentes fra MELCloud (høyst én gang i timen)."
+          }
+        }
+      }
+    },
+    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra MELCloud (lys)."
+          }
+        }
+      }
+    },
+    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light). The house cost %@ in the period according to Tibber (electricity, without grid tariff)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra MELCloud (lys). Huset kostet %@ i perioden ifølge Tibber (strøm, uten nettleie)."
+          }
+        }
+      }
+    },
+    "The indoor unit's own counter, read locally. Probably the time since installation." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innedelens egen teller, lest lokalt. Trolig tid siden montering."
+          }
+        }
+      }
+    },
+    "The keychain on this Mac" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelringen på denne Macen"
+          }
+        }
+      }
+    },
+    "The latest change has been sent and will be confirmed at the next fetch." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste endring er sendt og bekreftes ved neste henting."
+          }
+        }
+      }
+    },
+    "The release has no checksum, so the download cannot be verified." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utgivelsen mangler sjekksum, så nedlastingen kan ikke kontrolleres."
+          }
+        }
+      }
+    },
+    "The schedule has %lld events in an unknown format" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The schedule has %lld event in an unknown format"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The schedule has %lld events in an unknown format"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Planen har %lld hendelse i et ukjent format"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Planen har %lld hendelser i et ukjent format"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "The schedule has changed in MELCloud" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planen er endret i MELCloud"
+          }
+        }
+      }
+    },
+    "The schedule in MELCloud is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planen i MELCloud er ikke lenger den du begynte å redigere, så appen lagrer ikke over den. Hent planen på nytt og gjør endringene igjen."
+          }
+        }
+      }
+    },
+    "The schedule is stored in MELCloud and also runs when the Mac is off, and the same schedule is shown in the MELCloud app. Changes you make in Control last until the next event in the schedule." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Planen ligger i MELCloud og kjører også når Macen er av, og den samme planen vises i MELCloud-appen. Endringer du gjør i Kontroll varer til neste hendelse i planen."
+          }
+        }
+      }
+    },
+    "The search could not be run." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søket kunne ikke kjøres."
+          }
+        }
+      }
+    },
+    "The sign-in is saved. Wait a little before testing again (at %@ at the earliest)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innloggingen er lagret. Vent litt før du tester igjen (tidligst kl. %@)."
+          }
+        }
+      }
+    },
+    "The temperature log from MELCloud is not available. The chart shows the readings the app has fetched itself, and builds up while the app is open." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturloggen fra MELCloud er ikke tilgjengelig. Grafen viser målingene appen selv har hentet, og bygges opp mens appen er åpen."
+          }
+        }
+      }
+    },
+    "The test could not be run." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testen kunne ikke kjøres."
+          }
+        }
+      }
+    },
+    "The top row shows whether the heat pump was on (green) or off (gray). The next row shows the mode." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Øverste rad viser om varmepumpen var på (grønn) eller av (grå). Neste rad viser modus."
+          }
+        }
+      }
+    },
+    "The top row shows whether the heat pump was on (green) or off (gray). The next row shows the mode. The “Local” row comes from the Wi-Fi adapter: indigo when the compressor is running, gray when it is resting, yellow at start-up and pink when the outdoor unit is defrosting. Defrosting is normal in damp cold." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Øverste rad viser om varmepumpen var på (grønn) eller av (grå). Neste rad viser modus. Raden «Lokalt» kommer fra Wi-Fi-modulen: indigo når kompressoren går, grå når den hviler, gul ved oppstart og rosa når utedelen avriser. Avriming er normalt i fuktig kulde."
+          }
+        }
+      }
+    },
+    "The top row shows whether the heat pump was on (green) or off (gray). The next row shows the mode. The “Local” row comes from the Wi-Fi adapter: indigo when the compressor is running, gray when it is resting, yellow at start-up and pink when the outdoor unit is defrosting. Defrosting is normal in damp cold. For longer periods, what dominated each interval is shown." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Øverste rad viser om varmepumpen var på (grønn) eller av (grå). Neste rad viser modus. Raden «Lokalt» kommer fra Wi-Fi-modulen: indigo når kompressoren går, grå når den hviler, gul ved oppstart og rosa når utedelen avriser. Avriming er normalt i fuktig kulde. For lengre perioder vises det som dominerte hvert tidsrom."
+          }
+        }
+      }
+    },
+    "The update has been sent to MELCloud. Waiting for the unit to accept it." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen er sendt til MELCloud. Venter på at enheten tar den imot."
+          }
+        }
+      }
+    },
+    "The update is not signed and notarized by the same developer (code %d), so it will not be installed." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen er ikke signert og notarisert av samme utvikler (kode %d), så den installeres ikke."
+          }
+        }
+      }
+    },
+    "The weather forecast is fetched from MET Norway at most once an hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værvarselet hentes fra MET Norway høyst én gang i timen."
+          }
+        }
+      }
+    },
+    "The weekly schedule could not be read" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen kunne ikke leses"
+          }
+        }
+      }
+    },
+    "The weekly schedule could not be saved: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen kunne ikke lagres: %@"
+          }
+        }
+      }
+    },
+    "The weekly schedule is on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er på"
+          }
+        }
+      }
+    },
+    "The whole schedule is sent (%@). It applies from the next event and runs in MELCloud even when the Mac is off." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hele planen sendes (%@). Den gjelder fra neste hendelse og kjører i MELCloud også når Macen er av."
+          }
+        }
+      }
+    },
+    "These are new features that have not been tried against your account yet. Feel free to check in the MELCloud app that the change has been registered. Each change counts as one of 12 sends per hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette er nye funksjoner som ikke er prøvd mot din konto ennå. Sjekk gjerne i MELCloud-appen at endringen er registrert. Hver endring teller som én av 12 sendinger i timen."
+          }
+        }
+      }
+    },
+    "This is a development build. It is updated with make install, not from here." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette er en utviklerversjon. Den oppdateres med make install, ikke herfra."
+          }
+        }
+      }
+    },
+    "This is not an official Mitsubishi feature. It may stop working after a firmware update of the adapter (for example version 43.00 or later). The rest of the app then works as before." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette er ikke en offisiell funksjon fra Mitsubishi. Den kan slutte å virke etter en fastvareoppdatering av modulen (for eksempel versjon 43.00 eller nyere). Da virker resten av appen som før."
+          }
+        }
+      }
+    },
+    "Tibber token (personal access token)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tibber-nøkkel (personal access token)"
+          }
+        }
+      }
+    },
+    "Tibber updates the household consumption with a delay of a few hours." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tibber oppdaterer husets forbruk med noen timers forsinkelse."
+          }
+        }
+      }
+    },
+    "Time" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tid"
+          }
+        }
+      }
+    },
+    "To" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Til"
+          }
+        }
+      }
+    },
+    "To pay" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Å betale"
+          }
+        }
+      }
+    },
+    "To pay (estimated)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Å betale (anslag)"
+          }
+        }
+      }
+    },
+    "Today" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I dag"
+          }
+        }
+      }
+    },
+    "Toggle Appearance" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt utseende"
+          }
+        }
+      }
+    },
+    "Tomorrow (from about 13:00)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I morgen (fra ca. kl. 13)"
+          }
+        }
+      }
+    },
+    "Tomorrow (lighter)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I morgen (lysere)"
+          }
+        }
+      }
+    },
+    "Total" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Totalt"
+          }
+        }
+      }
+    },
+    "Total running time (per the indoor unit)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driftstid totalt (ifølge innedelen)"
+          }
+        }
+      }
+    },
+    "Total runtime" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Driftstid totalt"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv igjen"
+          }
+        }
+      }
+    },
+    "Turn Off Price Control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av prisstyring"
+          }
+        }
+      }
+    },
+    "Turn off the heat pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av varmepumpen"
+          }
+        }
+      }
+    },
+    "Turn on the heat pump" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på varmepumpen"
+          }
+        }
+      }
+    },
+    "Turn on the local connection, and the app reads power in watts and the compressor’s activity directly from the Wi-Fi adapter on the home network (read only)." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på lokal tilkobling, så leser appen effekt i watt og kompressorens aktivitet direkte fra Wi-Fi-modulen på hjemmenettet (bare lesing)."
+          }
+        }
+      }
+    },
+    "Uncertain: about %@ kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usikkert: ca. %@ kWh"
+          }
+        }
+      }
+    },
+    "Unit" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enhet"
+          }
+        }
+      }
+    },
+    "Unknown" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent"
+          }
+        }
+      }
+    },
+    "Unknown error when signing in." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent feil ved innlogging."
+          }
+        }
+      }
+    },
+    "Unknown whether the weekly schedule is on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent om ukeplanen er på"
+          }
+        }
+      }
+    },
+    "Up/down" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opp/ned"
+          }
+        }
+      }
+    },
+    "Up/down: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opp/ned: %@"
+          }
+        }
+      }
+    },
+    "Update Firmware…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater fastvare…"
+          }
+        }
+      }
+    },
+    "Update available – start it under Health → Firmware" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdatering tilgjengelig – start den under Helse → Fastvare"
+          }
+        }
+      }
+    },
+    "Update the firmware?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdatere fastvaren?"
+          }
+        }
+      }
+    },
+    "Updates" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringer"
+          }
+        }
+      }
+    },
+    "Use Elvia's Rates" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk Elvias satser"
+          }
+        }
+      }
+    },
+    "Use the Location from MELCloud Instead" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk posisjonen fra MELCloud i stedet"
+          }
+        }
+      }
+    },
+    "Use the same email and password as in the MELCloud app. They are stored in the keychain on the Mac. The first time Claude uses them, macOS asks for access: choose “Always Allow”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk samme e-post og passord som i MELCloud-appen. De lagres i nøkkelringen på Macen. Første gang Claude bruker dem, spør macOS om tilgang: velg «Tillat alltid»."
+          }
+        }
+      }
+    },
+    "Use the template “%@”?" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruke malen «%@»?"
+          }
+        }
+      }
+    },
+    "Varmepumpe.app not found" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fant ikke Varmepumpe.app"
+          }
+        }
+      }
+    },
+    "Version %@ has been downloaded and verified. The app quits and restarts." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versjon %@ er lastet ned og kontrollert. Appen avslutter og starter på nytt."
+          }
+        }
+      }
+    },
+    "Version %@ is available" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versjon %@ er tilgjengelig"
+          }
+        }
+      }
+    },
+    "Version %@ is ready to install" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versjon %@ er klar til å installeres"
+          }
+        }
+      }
+    },
+    "View" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visning"
+          }
+        }
+      }
+    },
+    "View the Release on GitHub" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis utgivelsen på GitHub"
+          }
+        }
+      }
+    },
+    "W" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W"
+          }
+        }
+      }
+    },
+    "Waiting for the first reading" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på første avlesning"
+          }
+        }
+      }
+    },
+    "Warmer" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmere"
+          }
+        }
+      }
+    },
+    "Weather" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vær"
+          }
+        }
+      }
+    },
+    "Weather next 48 h" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vær neste 48 t"
+          }
+        }
+      }
+    },
+    "Weekdays" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hverdager"
+          }
+        }
+      }
+    },
+    "Weekend" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helg"
+          }
+        }
+      }
+    },
+    "Weekly schedule" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplan"
+          }
+        }
+      }
+    },
+    "Weekly schedule off" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplan av"
+          }
+        }
+      }
+    },
+    "Weekly schedule on" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplan på"
+          }
+        }
+      }
+    },
+    "Weekly schedule on · Next: %@ %@ %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplan på · Neste: %@ %@ %@"
+          }
+        }
+      }
+    },
+    "Welcome" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Velkommen"
+          }
+        }
+      }
+    },
+    "What the plan would look like for the next 36 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slik ville planen sett ut de neste 36 timene"
+          }
+        }
+      }
+    },
+    "What's new in %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nytt i %@"
+          }
+        }
+      }
+    },
+    "When heating: the lowest position or Auto, so the heat reaches the floor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ved oppvarming: nederste stilling eller Auto, så varmen når gulvet"
+          }
+        }
+      }
+    },
+    "When the heat pump is otherwise off, it starts by itself if the room gets colder than %@, and stops around %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Når varmepumpen ellers står av, starter den av seg selv hvis rommet blir kaldere enn %@, og stopper rundt %@."
+          }
+        }
+      }
+    },
+    "When the house is empty" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Når huset står tomt"
+          }
+        }
+      }
+    },
+    "Wi-Fi adapter" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modul"
+          }
+        }
+      }
+    },
+    "Wi-Fi adapter %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modul %@"
+          }
+        }
+      }
+    },
+    "Wi-Fi adapter, unknown version" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modul, ukjent versjon"
+          }
+        }
+      }
+    },
+    "Wi-Fi signal" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-signal"
+          }
+        }
+      }
+    },
+    "Wind" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vind"
+          }
+        }
+      }
+    },
+    "You have the latest version" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du har nyeste versjon"
+          }
+        }
+      }
+    },
+    "You will find the setup under Settings → Claude." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppsett finner du under Innstillinger → Claude."
+          }
+        }
+      }
+    },
+    "about %@ kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ca. %@ kWh"
+          }
+        }
+      }
+    },
+    "according to the indoor unit (probably since installation)" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ifølge innedelen (trolig siden montering)"
+          }
+        }
+      }
+    },
+    "cost unknown" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kostnad ukjent"
+          }
+        }
+      }
+    },
+    "deducted" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "trukket fra"
+          }
+        }
+      }
+    },
+    "estimate →" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "anslag →"
+          }
+        }
+      }
+    },
+    "every %lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "every %lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "every %lld days"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "hver %lld. dag"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "hver %lld. dag"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "for example 192.168.1.50" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for eksempel 192.168.1.50"
+          }
+        }
+      }
+    },
+    "for example 5.32" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for eksempel 5,32"
+          }
+        }
+      }
+    },
+    "for example 60.39" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for eksempel 60,39"
+          }
+        }
+      }
+    },
+    "for example Home or Lillehammer" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for eksempel Hjemme eller Lillehammer"
+          }
+        }
+      }
+    },
+    "for example Storgata 1, Lillehammer" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for eksempel Storgata 1, Lillehammer"
+          }
+        }
+      }
+    },
+    "in the period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "i perioden"
+          }
+        }
+      }
+    },
+    "just now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "akkurat nå"
+          }
+        }
+      }
+    },
+    "kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kWh"
+          }
+        }
+      }
+    },
+    "measured locally" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "målt lokalt"
+          }
+        }
+      }
+    },
+    "mm" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mm"
+          }
+        }
+      }
+    },
+    "name@example.com" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "navn@eksempel.no"
+          }
+        }
+      }
+    },
+    "next time" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "neste gang"
+          }
+        }
+      }
+    },
+    "not read yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ikke lest ennå"
+          }
+        }
+      }
+    },
+    "now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nå"
+          }
+        }
+      }
+    },
+    "of the time with data" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "av tiden med data"
+          }
+        }
+      }
+    },
+    "sent from the app and Claude" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sendt fra appen og Claude"
+          }
+        }
+      }
+    },
+    "starting…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "starter …"
+          }
+        }
+      }
+    },
+    "stopped" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "står"
+          }
+        }
+      }
+    },
+    "the app is quitting – back to the normal temperature" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "appen avsluttes – tilbake til vanlig temperatur"
+          }
+        }
+      }
+    },
+    "the version does not match the release" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "versjonen stemmer ikke med utgivelsen"
+          }
+        }
+      }
+    },
+    "times the compressor started" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kompressoren startet"
+          }
+        }
+      }
+    },
+    "today’s prices used" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dagens priser brukt"
+          }
+        }
+      }
+    },
+    "unknown" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukjent"
+          }
+        }
+      }
+    },
+    "wrong identity" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "feil identitet"
+          }
+        }
+      }
+    },
+    "~%@ NOK" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%@ kr"
+          }
+        }
+      }
+    },
+    "°C" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "°C"
+          }
+        }
+      }
+    },
+    "øre/kWh" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "øre/kWh"
+          }
+        }
+      }
+    },
+    "øre/kWh incl. VAT" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "øre/kWh inkl. mva"
+          }
+        }
+      }
+    },
+    "–" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "–"
+          }
+        }
+      }
+    },
+    "“Find Automatically” only searches the local network the Mac is connected to, and recognizes the heat pump by the hardware address from MELCloud. The address is not shown. Consider giving the heat pump a fixed IP address in the router." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Finn automatisk» leter bare på det lokale nettet Macen er koblet til, og kjenner igjen varmepumpen på maskinvareadressen fra MELCloud. Adressen vises ikke. Gi gjerne varmepumpen fast IP-adresse i ruteren."
+          }
+        }
+      }
+    },
+    "•" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "•"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

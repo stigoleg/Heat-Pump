@@ -21,8 +21,8 @@ struct OverviewView: View {
                     insight
                 } else if model.startupError == nil {
                     ContentUnavailableView(
-                        "Ingen status ennå", systemImage: "thermometer.medium",
-                        description: Text("Henter status fra varmepumpen …"))
+                        "No status yet", systemImage: "thermometer.medium",
+                        description: Text("Fetching status from the heat pump…"))
                 }
             }
             .padding(Theme.Space.xl)
@@ -59,7 +59,7 @@ struct OverviewView: View {
                 .overlay(alignment: .bottom) {
                     // The room value in the dial is local only when a newer local reading has one.
                     if let local = model.newerLocalSample, local.roomTemperature != nil {
-                        localAge(local.timestamp, prefix: "Inne målt lokalt").font(.caption).foregroundStyle(.secondary)
+                        localAge(local.timestamp, indoor: true).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 let dialColumn = VStack(spacing: Theme.Space.s) {
@@ -79,20 +79,20 @@ struct OverviewView: View {
                 // Chips wrap to more lines when the window is narrow.
                 FlowLayout(spacing: Theme.Space.s) {
                     SettingChip(
-                        title: mode?.displayName ?? "Modus ukjent – velg modus",
+                        title: mode.map { .verbatim($0.displayName) } ?? "Mode unknown – choose a mode",
                         systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
                     ) {
                         model.selection = .control
                     }
-                    SettingChip(title: shown.power ? "På" : "Av", systemImage: "power", tint: shown.power ? Theme.Status.good : .secondary) {
+                    SettingChip(title: shown.power ? "On" : "Off", systemImage: "power", tint: shown.power ? Theme.Status.good : .secondary) {
                         model.selection = .control
                     }
                     SettingChip(
-                        title: shown.fanSpeed == 0 ? "Vifte auto" : "Vifte \(shown.fanSpeed)", systemImage: "fan",
+                        title: shown.fanSpeed == 0 ? "Fan auto" : "Fan \(shown.fanSpeed)", systemImage: "fan",
                         tint: Theme.Data.blue
                     ) { model.selection = .control }
                     SettingChip(
-                        title: state.offline ? "Frakoblet" : "Tilkoblet",
+                        title: state.offline ? "Disconnected" : "Connected",
                         systemImage: state.offline ? "wifi.slash" : "wifi",
                         tint: state.offline ? Theme.Status.caution : Theme.Status.good
                     ) { model.selection = .control }
@@ -104,15 +104,15 @@ struct OverviewView: View {
 
     @ViewBuilder private var priceChip: some View {
         if let level = model.currentPriceLevel {
-            SettingChip(title: level.nowText, systemImage: "bolt.horizontal.fill", tint: level.color) {
+            SettingChip(title: .verbatim(level.nowText), systemImage: "bolt.horizontal.fill", tint: level.color) {
                 model.initialHistoryTab = "energy"
                 model.selection = .history
             }
-            .help("Prisnivå denne timen sammenlignet med de siste dagene")
+            .help("Price level this hour compared with the last few days")
         }
     }
 
-    /// What the unit is doing now (local reading), in plain words: "Avriser – …", "Hviler …", "Varmer".
+    /// What the unit is doing now (local reading), in plain words: "Defrosting – …", "Resting …", "Heating".
     @ViewBuilder private var phaseLine: some View {
         if let sample = model.liveSample, let phase = sample.phase, phase != .off {
             Label {
@@ -133,12 +133,12 @@ struct OverviewView: View {
             // Per value: the outdoor temperature is local only when the local reading has one
             // (the unit reports none while it is off), otherwise it comes from MELCloud.
             let local = model.newerLocalSample.flatMap { $0.outdoorTemperature == nil ? nil : $0 }
-            fact("Ute", systemImage: "cloud.sun.fill", tint: Theme.Data.outside) {
+            fact("Outdoor", systemImage: "cloud.sun.fill", tint: Theme.Data.outside) {
                 Text(Format.degrees(local?.outdoorTemperature ?? state.outdoorTemperature))
             } detail: {
-                if let local { localAge(local.timestamp, prefix: "Målt lokalt") }
+                if let local { localAge(local.timestamp, indoor: false) }
             }
-            fact("Effekt", systemImage: "bolt.fill", tint: .yellow) {
+            fact("Power", systemImage: "bolt.fill", tint: .yellow) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                     if let watts = model.liveSample?.powerW {
                         Text(Format.watts(Double(watts)))
@@ -147,29 +147,29 @@ struct OverviewView: View {
                         Text("≈ " + Format.watts(watts))
                         sparkline
                     } else {
-                        Text("—")
+                        Text(verbatim: "—")
                     }
                 }
             } detail: {
                 if let sample = model.liveSample {
                     compressorIndicator(sample)
                 } else {
-                    Text(model.estimatedPowerW == nil ? "Kommer med lokal tilkobling" : "Anslag fra strømmåleren i pumpen")
+                    model.estimatedPowerW == nil ? Text("Comes with a local connection") : Text("Estimate from the pump’s power meter")
                 }
             }
-            fact("I dag", systemImage: "chart.bar.fill", tint: Theme.Data.energy) {
+            fact("Today", systemImage: "chart.bar.fill", tint: Theme.Data.energy) {
                 Text(todayText)
             } detail: {
-                if model.today?.isEstimate == true { Text("Kostnad er et anslag") }
+                if model.today?.isEstimate == true { Text("The cost is an estimate") }
             }
-            fact("Strøm nå", systemImage: "bolt.horizontal.fill", tint: Theme.Data.electricity) {
+            fact("Price now", systemImage: "bolt.horizontal.fill", tint: Theme.Data.electricity) {
                 Text(currentPriceText)
             } detail: {
                 Text(model.priceSettings.agreement.displayName)
             }
             if let report = model.health {
-                fact("Helse", systemImage: report.overall.systemImage, tint: report.overall.color) {
-                    Text(report.overall == .ok ? "Alt OK" : report.overall.displayName)
+                fact("Health", systemImage: report.overall.systemImage, tint: report.overall.color) {
+                    Text(report.overall == .ok ? String(localized: "All OK") : report.overall.displayName)
                 }
             }
         }
@@ -177,7 +177,7 @@ struct OverviewView: View {
     }
 
     private func fact<Value: View, Detail: View>(
-        _ label: String, systemImage: String, tint: Color, @ViewBuilder value: () -> Value,
+        _ label: LocalizedStringKey, systemImage: String, tint: Color, @ViewBuilder value: () -> Value,
         @ViewBuilder detail: () -> Detail = { EmptyView() }
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
@@ -202,15 +202,23 @@ struct OverviewView: View {
     private var currentPriceText: String {
         let hour = Calendar.current.dateInterval(of: .hour, for: Date())?.start
         guard let price = model.todayPrices.first(where: { $0.hour == hour }) else { return "—" }
-        return Norwegian.format("%.2f kr/kWh", price.totalOre / 100)
+        return String(localized: "\(Display.format("%.2f", price.totalOre / 100)) NOK/kWh")
     }
 
-    /// "Målt lokalt for 12 s siden", ticking every second.
-    private func localAge(_ date: Date, prefix: String) -> some View {
+    /// "Measured locally 12 s ago", ticking every second.
+    private func localAge(_ date: Date, indoor: Bool) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let seconds = max(0, Int(context.date.timeIntervalSince(date)))
-            Text(seconds < 90 ? "\(prefix) for \(seconds) s siden" : "\(prefix) for \(seconds / 60) min siden")
-                .monospacedDigit()
+            let minutes = seconds / 60
+            Group {
+                switch (indoor, seconds < 90) {
+                case (true, true): Text("Indoor measured locally \(seconds) s ago")
+                case (true, false): Text("Indoor measured locally \(minutes) min ago")
+                case (false, true): Text("Measured locally \(seconds) s ago")
+                case (false, false): Text("Measured locally \(minutes) min ago")
+                }
+            }
+            .monospacedDigit()
         }
     }
 
@@ -219,10 +227,12 @@ struct OverviewView: View {
             Circle()
                 .fill(sample.isRunning ? Theme.Status.good : Color.secondary.opacity(0.5))
                 .frame(width: 6, height: 6)
-            if sample.isRunning {
-                Text("Kompressor går" + (sample.compressorHz.map { " · \($0) Hz" } ?? ""))
+            if sample.isRunning, let hz = sample.compressorHz {
+                Text("Compressor running · \(hz) Hz")
+            } else if sample.isRunning {
+                Text("Compressor running")
             } else {
-                Text("Kompressor står")
+                Text("Compressor stopped")
             }
         }
     }
@@ -232,10 +242,10 @@ struct OverviewView: View {
         let points = model.recentLocal.compactMap { s in s.powerW.map { (date: s.timestamp, watts: Double($0)) } }
         if points.count >= 2 {
             Chart(points, id: \.date) { p in
-                AreaMark(x: .value("Tid", p.date), y: .value("W", p.watts))
+                AreaMark(x: .value("Time", p.date), y: .value("W", p.watts))
                     .foregroundStyle(ChartKit.areaGradient(.yellow))
                     .interpolationMethod(.stepEnd)
-                LineMark(x: .value("Tid", p.date), y: .value("W", p.watts))
+                LineMark(x: .value("Time", p.date), y: .value("W", p.watts))
                     .foregroundStyle(Color.yellow)
                     .lineStyle(StrokeStyle(lineWidth: 1))
                     .interpolationMethod(.stepEnd)
@@ -244,7 +254,7 @@ struct OverviewView: View {
             .chartYAxis(.hidden)
             .chartYScale(domain: 0...max(100, points.map(\.watts).max() ?? 100))
             .frame(width: 70, height: 18)
-            .accessibilityLabel("Effekt siste time")
+            .accessibilityLabel("Power, last hour")
         }
     }
 
@@ -253,7 +263,7 @@ struct OverviewView: View {
         let recent = Array(model.todayHourly.suffix(8))
         if recent.count >= 2 {
             Chart(recent, id: \.hour) { h in
-                BarMark(x: .value("Time", h.hour, unit: .hour), y: .value("kWh", h.kWh))
+                BarMark(x: .value("Hour", h.hour, unit: .hour), y: .value("kWh", h.kWh))
                     .foregroundStyle(Color.yellow.opacity(0.8))
                     .cornerRadius(1.5)
             }
@@ -272,18 +282,18 @@ struct OverviewView: View {
         let temps = history.temperatures.filter { $0.timestamp >= start }
         let bars = costBars(from: start)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Siste 24 t", hint: history.fromMELCloud ? nil : "Bygges opp mens appen er åpen") {
+            SectionHeader(title: "Last 24 h", hint: history.fromMELCloud ? nil : "Builds up while the app is open") {
                 FlowLayout {
-                    LegendDot(label: "Inne", color: Theme.Data.inside)
-                    LegendDot(label: "Ute", color: Theme.Data.outside, dashed: true)
-                    LegendDot(label: bars.isCost ? "kr/time" : "kr/kWh", color: Theme.Data.purple)
+                    LegendDot(label: "Indoor", color: Theme.Data.inside)
+                    LegendDot(label: "Outdoor", color: Theme.Data.outside, dashed: true)
+                    LegendDot(label: bars.isCost ? "NOK/hour" : "NOK/kWh", color: Theme.Data.purple)
                 }
             }
             CardSurface {
                 if temps.isEmpty && bars.values.isEmpty {
                     EmptyChart(
-                        title: "Ingen data ennå",
-                        message: "Temperaturer vises når appen har hentet status noen ganger, og fra MELCloud når loggen er tilgjengelig.")
+                        title: "No data yet",
+                        message: "Temperatures are shown once the app has fetched the status a few times, and from MELCloud when the log is available.")
                 } else {
                     VStack(spacing: Theme.Space.s) {
                         temperatureChart(temps, domain: start...now)
@@ -305,36 +315,36 @@ struct OverviewView: View {
         return Chart {
             ForEach(points, id: \.timestamp) { p in
                 if let room = p.room {
-                    AreaMark(x: .value("Tid", p.timestamp), yStart: .value("°C", areaBase), yEnd: .value("°C", room), series: .value("S", "inne"))
+                    AreaMark(x: .value("Time", p.timestamp), yStart: .value("°C", areaBase), yEnd: .value("°C", room), series: .value("Series", "indoor"))
                         .foregroundStyle(ChartKit.areaGradient(Theme.Data.inside))
                         .interpolationMethod(.monotone)
-                    LineMark(x: .value("Tid", p.timestamp), y: .value("°C", room), series: .value("S", "inne"))
+                    LineMark(x: .value("Time", p.timestamp), y: .value("°C", room), series: .value("Series", "indoor"))
                         .foregroundStyle(Theme.Data.inside)
                         .interpolationMethod(.monotone)
                 }
                 if let outdoor = p.outdoor {
-                    LineMark(x: .value("Tid", p.timestamp), y: .value("°C", outdoor), series: .value("S", "ute"))
+                    LineMark(x: .value("Time", p.timestamp), y: .value("°C", outdoor), series: .value("Series", "outdoor"))
                         .foregroundStyle(Theme.Data.outside)
                         .lineStyle(ChartKit.previousStroke)
                         .interpolationMethod(.monotone)
                 }
             }
             if let p = nearest(points, to: selected, by: \.timestamp) {
-                RuleMark(x: .value("Valgt", p.timestamp))
+                RuleMark(x: .value("Selected", p.timestamp))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
                             title: Format.hour(p.timestamp),
                             rows: [
-                                ("Inne", Format.temperature(p.room), Theme.Data.inside),
-                                ("Ute", Format.temperature(p.outdoor), Theme.Data.outside),
+                                ("Indoor", Format.temperature(p.room), Theme.Data.inside),
+                                ("Outdoor", Format.temperature(p.outdoor), Theme.Data.outside),
                             ])
                     }
             }
         }
         .chartXScale(domain: domain)
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmYAxis { Display.format("%.0f°", $0) }
         .chartXAxis(.hidden)
         .chartXSelection(value: $selected)
     }
@@ -354,15 +364,15 @@ struct OverviewView: View {
     private func barChart(_ bars: Bars, domain: ClosedRange<Date>) -> some View {
         Chart {
             ForEach(bars.values, id: \.hour) { bar in
-                BarMark(x: .value("Time", bar.hour, unit: .hour), y: .value("kr", bar.value))
+                BarMark(x: .value("Hour", bar.hour, unit: .hour), y: .value("NOK", bar.value))
                     .foregroundStyle(Theme.Data.purple.opacity(0.75))
                     .cornerRadius(2)
             }
             if let bar = nearest(bars.values, to: selected, by: \.hour) {
-                RuleMark(x: .value("Valgt", bar.hour))
+                RuleMark(x: .value("Selected", bar.hour))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
-                        Text(Norwegian.format(bars.isCost ? "%.2f kr" : "%.2f kr/kWh", bar.value))
+                        Text(bars.isCost ? Format.kroner(bar.value) : String(localized: "\(Display.format("%.2f", bar.value)) NOK/kWh"))
                             .font(.caption2).monospacedDigit()
                             .padding(4)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
@@ -370,8 +380,8 @@ struct OverviewView: View {
             }
         }
         .chartXScale(domain: domain)
-        .calmYAxis { Norwegian.format("%.1f", $0) }
-        .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
+        .calmYAxis { Display.format("%.1f", $0) }
+        .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)), count: 8)
         .chartXSelection(value: $selected)
     }
 
@@ -380,14 +390,14 @@ struct OverviewView: View {
     @ViewBuilder private var weather: some View {
         let hours = model.forecast
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Vær neste 48 t", hint: model.weatherLocation?.displayName) {
+            SectionHeader(title: "Weather next 48 h", hint: model.weatherLocation.map { .verbatim($0.displayName) }) {
                 Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
             }
             CardSurface {
                 if hours.count < 2 {
                     EmptyChart(
-                        title: "Ingen værvarsel ennå",
-                        message: model.weatherMessage ?? "Værvarselet hentes fra MET Norway høyst én gang i timen.",
+                        title: "No weather forecast yet",
+                        message: model.weatherMessage.map { .verbatim($0) } ?? "The weather forecast is fetched from MET Norway at most once an hour.",
                         systemImage: "cloud.sun")
                 } else {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -416,7 +426,7 @@ struct OverviewView: View {
             let high = hours.max(by: { $0.temperature < $1.temperature })
         {
             Label(
-                Norwegian.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
+                "Coldest \(Display.format("%.0f°", low.temperature)) \(Format.weekdayHour(low.time)) · warmest \(Display.format("%.0f°", high.temperature)) \(Format.weekdayHour(high.time))",
                 systemImage: "thermometer.medium"
             )
             .foregroundStyle(.secondary)
@@ -430,20 +440,22 @@ struct OverviewView: View {
                 Text(tomorrow.shortText).font(.callout.weight(.semibold)).monospacedDigit()
                 Text(tomorrowDetail(tomorrow)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            .help("Grovt anslag: forbruket mot hvor kaldt det har vært de siste \(tomorrow.basisDays) dagene, morgendagens varsel og strømpriser.")
+            .help("Rough estimate: consumption against how cold it has been over the last \(tomorrow.basisDays) days, tomorrow’s forecast and electricity prices.")
         }
     }
 
     private func tomorrowDetail(_ t: TomorrowEstimate) -> String {
-        var text: String
+        var parts: [String] = []
         if t.kWhLow.rounded() == t.kWhHigh.rounded() {
-            text = "Grovt anslag fra \(t.basisDays) dager med egne målinger"
+            parts.append(String(localized: "Rough estimate from \(t.basisDays) days of own measurements"))
         } else {
-            text = Norwegian.format("Usikkert: ca. %.0f–%.0f kWh", t.kWhLow, t.kWhHigh)
-            if let low = t.costLowNok, let high = t.costHighNok { text += Norwegian.format(" · %.0f–%.0f kr", low, high) }
+            parts.append(String(localized: "Uncertain: about \(Display.format("%.0f–%.0f", t.kWhLow, t.kWhHigh)) kWh"))
+            if let low = t.costLowNok, let high = t.costHighNok {
+                parts.append(String(localized: "\(Display.format("%.0f–%.0f", low, high)) NOK"))
+            }
         }
-        if t.pricesFromToday { text += " · dagens priser brukt" }
-        return text
+        if t.pricesFromToday { parts.append(String(localized: "today’s prices used")) }
+        return parts.joined(separator: " · ")
     }
 
     private func forecastStrip(_ hours: [ForecastHour]) -> some View {
@@ -452,33 +464,33 @@ struct OverviewView: View {
         let high = (temps.max() ?? 10).rounded(.up) + 1
         return Chart {
             ForEach(hours, id: \.time) { h in
-                AreaMark(x: .value("Tid", h.time), yStart: .value("°C", low), yEnd: .value("°C", h.temperature))
+                AreaMark(x: .value("Time", h.time), yStart: .value("°C", low), yEnd: .value("°C", h.temperature))
                     .foregroundStyle(ChartKit.areaGradient(Theme.Data.outside))
                     .interpolationMethod(.monotone)
-                LineMark(x: .value("Tid", h.time), y: .value("°C", h.temperature))
+                LineMark(x: .value("Time", h.time), y: .value("°C", h.temperature))
                     .foregroundStyle(Theme.Data.outside)
                     .lineStyle(ChartKit.previousStroke)
                     .interpolationMethod(.monotone)
             }
-            RuleMark(y: .value("0", 0)).foregroundStyle(Color.secondary.opacity(0.25))
+            RuleMark(y: .value("Freezing point", 0)).foregroundStyle(Color.secondary.opacity(0.25))
             if let h = nearest(hours, to: selectedForecast, by: \.time) {
-                RuleMark(x: .value("Valgt", h.time))
+                RuleMark(x: .value("Selected", h.time))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
                             title: Format.weekdayHour(h.time),
                             rows: [
-                                ("Ute", Format.temperature(h.temperature), Theme.Data.outside),
-                                ("Vind", h.windSpeed.map { Norwegian.format("%.0f m/s", $0) } ?? "–", .secondary),
+                                ("Outdoor", Format.temperature(h.temperature), Theme.Data.outside),
+                                ("Wind", h.windSpeed.map { Display.format("%.0f m/s", $0) } ?? "–", .secondary),
                             ])
                     }
             }
         }
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
-        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
+        .calmYAxis { Display.format("%.0f°", $0) }
+        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .abbreviated)), count: 6)
         .chartXSelection(value: $selectedForecast)
-        .accessibilityLabel("Temperatur ute neste 48 timer")
+        .accessibilityLabel("Outdoor temperature, next 48 hours")
     }
 
     // MARK: Insight
@@ -486,11 +498,11 @@ struct OverviewView: View {
     @ViewBuilder private var insight: some View {
         if let finding = model.health?.findings.first(where: { $0.severity != .ok }) {
             InsightCard(
-                title: finding.title, detail: finding.recommendation, systemImage: finding.severity.systemImage,
+                title: .verbatim(finding.title), detail: .verbatim(finding.recommendation), systemImage: finding.severity.systemImage,
                 tint: finding.severity.color
             ) { model.selection = .health }
         } else if let message = model.priceMessage {
-            InsightCard(title: "Strømpris", detail: message, systemImage: "exclamationmark.triangle.fill", tint: Theme.Status.caution)
+            InsightCard(title: "Electricity price", detail: .verbatim(message), systemImage: "exclamationmark.triangle.fill", tint: Theme.Status.caution)
         }
     }
 }

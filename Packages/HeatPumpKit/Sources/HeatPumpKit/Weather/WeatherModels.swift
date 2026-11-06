@@ -37,7 +37,7 @@ public struct WeatherSettings: Codable, Sendable, Equatable {
     /// Typed by the user; used instead of the MELCloud building location when both are set.
     public var latitude: Double?
     public var longitude: Double?
-    /// Name shown instead of coordinates, e.g. "Hjemme" or a town. Optional.
+    /// Name shown instead of coordinates, e.g. "Home" or a town. Optional.
     public var placeName: String?
     /// Optional e-mail sent in the User-Agent so MET can reach the developer if the app misbehaves.
     /// Never filled in automatically.
@@ -76,13 +76,13 @@ public struct WeatherLocation: Codable, Sendable, Equatable {
     /// Key that changes when the (rounded) place changes.
     var key: String { String(format: "%.2f,%.2f", locale: Locale(identifier: "en_US_POSIX"), latitude, longitude) }
 
-    /// Norwegian description without coordinates.
+    /// Description without coordinates.
     public var displayName: String {
         if let placeName, !placeName.trimmingCharacters(in: .whitespaces).isEmpty { return placeName }
         switch source {
-        case .manual: return "Valgt sted"
-        case .melcloud: return "Bygget i MELCloud"
-        case .demo: return "Oslo (demo)"
+        case .manual: return L10n.tr("Chosen place")
+        case .melcloud: return L10n.tr("The building in MELCloud")
+        case .demo: return L10n.tr("Oslo (demo)")
         }
     }
 }
@@ -114,7 +114,7 @@ public struct WeatherForecast: Sendable, Equatable {
     public var hours: [ForecastHour]
     public var fetchedAt: Date?
     /// Required by MET's licence (CC BY 4.0).
-    public static let attribution = "Værdata: MET Norway (yr.no), CC BY 4.0"
+    public static let attribution = L10n.tr("Weather data: MET Norway (yr.no), CC BY 4.0")
 }
 
 /// What MET answered.
@@ -137,11 +137,11 @@ public enum WeatherError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .forbidden: "MET avviste forespørselen (HTTP 403). Appen prøver igjen om en time."
-        case .throttled: "MET ber om færre forespørsler (HTTP 429). Appen venter før den spør igjen."
-        case .http(let status): "Værvarselet: serveren svarte med HTTP-feil \(status)."
-        case .network(let detail): "Værvarselet: nettverksfeil (\(detail))."
-        case .decoding(let detail): "Værvarselet kunne ikke tolkes: \(detail)"
+        case .forbidden: L10n.tr("MET rejected the request (HTTP 403). The app tries again in an hour.")
+        case .throttled: L10n.tr("MET asks for fewer requests (HTTP 429). The app waits before asking again.")
+        case .http(let status): L10n.format("Weather forecast: the server answered with HTTP error %lld.", status)
+        case .network(let detail): L10n.format("Weather forecast: network error (%@).", detail)
+        case .decoding(let detail): L10n.format("The weather forecast could not be interpreted: %@", detail)
         }
     }
 }

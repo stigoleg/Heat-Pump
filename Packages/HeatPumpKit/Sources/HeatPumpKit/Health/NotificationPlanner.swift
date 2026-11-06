@@ -40,10 +40,10 @@ public enum NotificationPlanner {
                     notifications.append(
                         PlannedNotification(
                             id: "error-log-\(Int(newest.start.timeIntervalSince1970))",
-                            title: "Ny feil i feilloggen",
+                            title: L10n.tr("New error in the error log"),
                             body: fresh.count == 1
-                                ? "«\(newest.message)». Se Helse i appen for hva det betyr."
-                                : "\(fresh.count) nye feil, siste: «\(newest.message)». Se Helse i appen."))
+                                ? L10n.format("“%@”. See Health in the app for what it means.", newest.message)
+                                : L10n.format("%lld new errors, latest: “%@”. See Health in the app.", fresh.count, newest.message)))
                 }
             }
             if memory.lastErrorEventStart.map({ newest.start > $0 }) ?? true {
@@ -54,11 +54,14 @@ public enum NotificationPlanner {
         // Active error: once per occurrence.
         if let state, state.hasActiveError {
             if !memory.activeErrorNotified {
-                let code = state.errorCode.flatMap { DeviceState.noErrorCodes.contains($0) ? nil : " (kode \($0))" } ?? ""
+                let body =
+                    state.errorCode.flatMap {
+                        DeviceState.noErrorCodes.contains($0)
+                            ? nil : L10n.format("MELCloud is reporting an error now (code %@). Open Health in the app for advice.", String($0))
+                    }
+                    ?? L10n.tr("MELCloud is reporting an error now. Open Health in the app for advice.")
                 notifications.append(
-                    PlannedNotification(
-                        id: "active-error", title: "Varmepumpen melder feil",
-                        body: "MELCloud melder en feil nå\(code). Åpne Helse i appen for råd."))
+                    PlannedNotification(id: "active-error", title: L10n.tr("The heat pump is reporting an error"), body: body))
                 memory.activeErrorNotified = true
             }
         } else if state != nil {
@@ -71,8 +74,8 @@ public enum NotificationPlanner {
         {
             notifications.append(
                 PlannedNotification(
-                    id: "filter-overdue", title: "Tid for å rengjøre luftfilteret",
-                    body: "Det er over 30 dager siden luftfilteret ble rengjort. Registrer det i appen når det er gjort."))
+                    id: "filter-overdue", title: L10n.tr("Time to clean the air filter"),
+                    body: L10n.tr("It has been over 30 days since the air filter was cleaned. Record it in the app when it is done.")))
             memory.lastFilterReminder = now
         }
         return (notifications, memory)

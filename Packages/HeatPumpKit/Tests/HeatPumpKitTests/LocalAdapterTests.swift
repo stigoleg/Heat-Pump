@@ -84,7 +84,7 @@ struct LocalAdapterTests {
         let moved = FakeAdapterTransport()
         moved.answer(from: "192.168.1.66")
         let client = try LocalSmartClient(host: "192.168.1.20", transport: moved)
-        await #expect(throws: LocalAccessError.badResponse("svar fra en annen adresse")) { try await client.readStatus() }
+        await #expect(throws: LocalAccessError.badResponse("answer from another address")) { try await client.readStatus() }
         // A refused redirect arrives as its 3xx status and fails.
         let redirect = FakeAdapterTransport()
         redirect.status(307)

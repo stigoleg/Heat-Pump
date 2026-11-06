@@ -1,6 +1,16 @@
 import HeatPumpKit
 import SwiftUI
 
+extension LocalizedStringKey {
+    /// Text that is already in the user's language (from HeatPumpKit, MELCloud or the user),
+    /// shown as is. Built without a string literal, so it never becomes a catalog key.
+    static func verbatim(_ text: String) -> LocalizedStringKey {
+        var interpolation = LocalizedStringKey.StringInterpolation(literalCapacity: 0, interpolationCount: 1)
+        interpolation.appendInterpolation(text)
+        return LocalizedStringKey(stringInterpolation: interpolation)
+    }
+}
+
 /// Neutral container for one self-contained item.
 struct CardSurface<Content: View>: View {
     var padding: CGFloat = Theme.Space.l
@@ -18,8 +28,8 @@ struct CardSurface<Content: View>: View {
 /// Section title with an optional secondary hint on the right; the hint and trailing content
 /// move below the title when they don't fit beside it.
 struct SectionHeader<Trailing: View>: View {
-    let title: String
-    var hint: String?
+    let title: LocalizedStringKey
+    var hint: LocalizedStringKey?
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -44,13 +54,13 @@ struct SectionHeader<Trailing: View>: View {
         Text(title).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
     }
 
-    private func hintText(_ hint: String) -> some View {
+    private func hintText(_ hint: LocalizedStringKey) -> some View {
         Text(hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 }
 
 extension SectionHeader where Trailing == EmptyView {
-    init(_ title: String, hint: String? = nil) {
+    init(_ title: LocalizedStringKey, hint: LocalizedStringKey? = nil) {
         self.init(title: title, hint: hint) { EmptyView() }
     }
 }
@@ -80,9 +90,9 @@ struct Delta: Equatable {
 
 /// KPI tile: secondary label, large value, delta vs previous period.
 struct KPITile: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
-    var detail: String?
+    var detail: LocalizedStringKey?
     var delta: Delta?
     var systemImage: String?
     var tint: Color = .secondary
@@ -100,7 +110,7 @@ struct KPITile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             if let delta {
-                Label(Format.percent(delta.percent) + " mot forrige periode", systemImage: delta.arrow)
+                Label("\(Format.percent(delta.percent)) vs. previous period", systemImage: delta.arrow)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(delta.color)
             } else if let detail {
@@ -114,7 +124,7 @@ struct KPITile: View {
 
 /// Small coloured dot + label for chart legends.
 struct LegendDot: View {
-    let label: String
+    let label: LocalizedStringKey
     let color: Color
     var dashed = false
 
@@ -132,8 +142,8 @@ struct LegendDot: View {
 
 /// Status conveyed by a leading glyph in semantic colour, on a neutral surface.
 struct InsightCard: View {
-    let title: String
-    var detail: String?
+    let title: LocalizedStringKey
+    var detail: LocalizedStringKey?
     let systemImage: String
     let tint: Color
     var action: (() -> Void)?
@@ -163,7 +173,7 @@ struct InsightCard: View {
 
 /// Trend card: title, current value, change vs previous period, legend, chart.
 struct TrendCard<Chart: View, Legend: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     var value: String?
     var delta: Delta?
     @ViewBuilder var legend: Legend
@@ -194,14 +204,14 @@ struct TrendCard<Chart: View, Legend: View>: View {
             Text(title).font(.headline)
             if let value { Text(value).font(.headline).foregroundStyle(.secondary).monospacedDigit() }
             if let delta {
-                Text(Format.percent(delta.percent) + " mot forrige periode")
+                Text("\(Format.percent(delta.percent)) vs. previous period")
                     .font(.caption.weight(.medium)).foregroundStyle(delta.color)
             }
         }
     }
 }
 
-/// Auto-send status chip for the Kontroll screen and the dial.
+/// Auto-send status chip for the Control screen and the dial.
 struct StatusChip: View {
     let status: AutoSendStatus
     var remaining: Int?
@@ -223,7 +233,7 @@ struct StatusChip: View {
                 .transition(.opacity)
             }
             if let remaining, remaining < 4 {
-                Text("\(remaining) endringer igjen denne timen")
+                Text("\(remaining) changes left this hour")
                     .font(.caption)
                     .lineLimit(1)
                     .foregroundStyle(remaining == 0 ? Theme.Status.bad : Theme.Status.caution)
@@ -263,7 +273,7 @@ struct IconBadge: View {
 
 /// Tappable chip showing one setting (mode, power, fan, connection).
 struct SettingChip: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     var tint: Color = .secondary
     var action: () -> Void
@@ -282,7 +292,7 @@ struct SettingChip: View {
             .overlay(Capsule().strokeBorder(Theme.hairline))
         }
         .buttonStyle(.plain)
-        .help("Åpne Kontroll")
+        .help("Open Control")
     }
 }
 
@@ -298,12 +308,16 @@ struct SeverityBadge: View {
 
 /// Empty state with a short explanation.
 struct EmptyChart: View {
-    let title: String
-    let message: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
     var systemImage = "chart.line.uptrend.xyaxis"
 
     var body: some View {
-        ContentUnavailableView(title, systemImage: systemImage, description: Text(message))
+        ContentUnavailableView {
+            Label(title, systemImage: systemImage)
+        } description: {
+            Text(message)
+        }
             .frame(maxWidth: .infinity, minHeight: 180)
     }
 }

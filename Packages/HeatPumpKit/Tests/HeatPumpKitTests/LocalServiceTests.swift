@@ -152,7 +152,7 @@ struct LocalServiceTests {
         for _ in 0..<10 {
             let live = try await service.liveStatus(maxAge: 0)
             #expect(live.refreshed == false)
-            #expect(live.message?.contains("Ikke på hjemmenettet") == true)
+            #expect(live.message?.contains("Not on the home network") == true)
             #expect(live.reachability.onHomeNetwork == false)
             clock.advance(3700)
         }

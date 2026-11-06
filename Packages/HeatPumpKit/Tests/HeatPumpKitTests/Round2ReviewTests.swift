@@ -41,8 +41,8 @@ struct Round2ReviewTests {
         #expect(outcomes.map(\.result) == [.ok])
         #expect(await backend.applyCalls == 1)
         let request = try #require(approver.received.first)
-        #expect(request.summaries == ["Endre ønsket temperatur til 21,5 °C"])
-        #expect(request.message.contains("Begrunnelse fra Claude: Litt kaldt"))
+        #expect(request.summaries == ["Change target temperature to 21,5 °C"])
+        #expect(request.message.contains("Reason from Claude: Litt kaldt"))
     }
 
     @Test(arguments: [ApprovalDecision.rejected, .timedOut, .unavailable("ingen grafisk økt på Macen")])
@@ -134,13 +134,13 @@ struct Round2ReviewTests {
         await backend.failNext(with: .loginThrottled(until: clock.now.addingTimeInterval(17 * 60)))
         let throttled = try await svc.currentState()
         #expect(throttled.blockReason == .loginThrottled)
-        #expect(throttled.blockMessage?.contains("For mange innloggingsforsøk") == true)
-        #expect(throttled.blockMessage?.contains("Prøv igjen kl.") == true)
+        #expect(throttled.blockMessage?.contains("Too many login attempts") == true)
+        #expect(throttled.blockMessage?.contains("Try again at") == true)
         let change = try await svc.apply(.fanSpeed(2), source: .app, reason: "x")
-        #expect(change.message.contains("innloggingsforsøk"))
+        #expect(change.message.contains("login attempts"))
 
-        #expect(BlockReason.rateLimited.message(until: clock.now).contains("for mye trafikk"))
-        #expect(BlockReason.unauthorized.message(until: clock.now).contains("avviser tilgangen"))
+        #expect(BlockReason.rateLimited.message(until: clock.now).contains("too much traffic"))
+        #expect(BlockReason.unauthorized.message(until: clock.now).contains("refuses access"))
     }
 
     @Test func invalidCredentialsGetTheirOwnMessage() async throws {
@@ -151,7 +151,7 @@ struct Round2ReviewTests {
         await backend.failNext(with: .invalidCredentials(nil))
         let result = try await svc.currentState()
         #expect(result.blockReason == nil)
-        #expect(result.blockMessage?.contains("godtok ikke e-post eller passord") == true)
+        #expect(result.blockMessage?.contains("did not accept the email or password") == true)
     }
 
     // 6. Polling never reads the keychain secret; existence is checked once and cached.

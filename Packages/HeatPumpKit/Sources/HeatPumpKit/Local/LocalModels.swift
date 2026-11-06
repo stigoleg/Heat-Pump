@@ -30,7 +30,7 @@ public struct LocalReachability: Codable, Sendable, Equatable {
     public var lastSuccess: Date?
     public var consecutiveFailures: Int
     public var failingSince: Date?
-    /// Norwegian text of the last failure.
+    /// Text of the last failure.
     public var lastError: String?
     /// Earliest next read (20 s spacing, longer after failures).
     public var nextAttemptAllowed: Date?
@@ -46,7 +46,7 @@ public struct LiveStatus: Codable, Sendable, Equatable {
     /// True when this call read the adapter.
     public var refreshed: Bool
     public var reachability: LocalReachability
-    /// Norwegian message when the read failed or was not possible.
+    /// Message when the read failed or was not possible.
     public var message: String?
 }
 
@@ -166,7 +166,7 @@ public struct LocalTestResult: Sendable, Equatable {
     }
 }
 
-/// Result of "Finn automatisk".
+/// Result of "Find automatically".
 public struct LocalDiscoveryResult: Sendable, Equatable {
     public var host: String?
     public var message: String

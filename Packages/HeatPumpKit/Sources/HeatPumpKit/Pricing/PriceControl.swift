@@ -1,6 +1,6 @@
 import Foundation
 
-/// Settings for the app's price control (Prognose → Prisstyring), stored in `app_settings`.
+/// Settings for the app's price control (Forecast → Price control), stored in `app_settings`.
 /// Only the app changes them; Claude can read them.
 public struct PriceControlSettings: Codable, Sendable, Equatable {
     public var enabled: Bool
@@ -48,15 +48,15 @@ public struct PriceControlSettings: Codable, Sendable, Equatable {
         maxReducedHoursPerDay = try c.decodeIfPresent(Int.self, forKey: .maxReducedHoursPerDay) ?? d.maxReducedHoursPerDay
     }
 
-    /// Norwegian reason the values are refused, or nil.
+    /// Reason the values are refused, or nil.
     public func validationProblem() -> String? {
         let values = [reduceExpensive, reduceVeryExpensive, minimumTemperature]
-        guard values.allSatisfy({ $0.isFinite && ($0 * 2).rounded() == $0 * 2 }) else { return "Bruk hele eller halve grader." }
+        guard values.allSatisfy({ $0.isFinite && ($0 * 2).rounded() == $0 * 2 }) else { return L10n.tr("Use whole or half degrees.") }
         guard Self.reductionRange.contains(reduceExpensive), Self.reductionRange.contains(reduceVeryExpensive) else {
-            return "Senkingen må være 0–4 °C."
+            return L10n.tr("The reduction must be 0–4 °C.")
         }
-        guard Self.minimumRange.contains(minimumTemperature) else { return "Laveste temperatur må være 16–22 °C." }
-        guard Self.reducedHoursRange.contains(maxReducedHoursPerDay) else { return "Antall timer som senkes per døgn må være 1–24." }
+        guard Self.minimumRange.contains(minimumTemperature) else { return L10n.tr("The lowest temperature must be 16–22 °C.") }
+        guard Self.reducedHoursRange.contains(maxReducedHoursPerDay) else { return L10n.tr("The number of hours lowered per day must be 1–24.") }
         return nil
     }
 
@@ -109,12 +109,12 @@ public struct PlannedStep: Codable, Sendable, Equatable {
     public var level: PriceLevel?
     /// Highest price in the step (reduce), else the lowest, øre/kWh.
     public var priceOre: Double
-    /// "Svært dyrt (2,45 kr/kWh)".
+    /// "Very expensive hour (2.45 NOK/kWh)".
     public var reason: String
 
     public func contains(_ date: Date) -> Bool { start <= date && date < end }
 
-    /// "17–19: senkes til 19 °C – Svært dyrt (2,45 kr/kWh)"; a weekday is added when the step
+    /// "17–19: lowered to 19 °C – Very expensive hour (2.45 NOK/kWh)"; a weekday is added when the step
     /// does not start on the same day as `now`.
     public func summary(now: Date, timeZone: TimeZone) -> String {
         let calendar = WireDate.calendar(timeZone)
@@ -125,9 +125,9 @@ public struct PlannedStep: Codable, Sendable, Equatable {
         }
         let temperature = TimerEvent.temperatureText(target)
         switch kind {
-        case .reduce: return "\(span): senkes til \(temperature) – \(reason)"
-        case .preheat: return "\(span): forvarmes til \(temperature) – \(reason)"
-        case .normal: return "\(span): vanlig temperatur \(temperature)"
+        case .reduce: return L10n.format("%@: lowered to %@ – %@", span, temperature, reason)
+        case .preheat: return L10n.format("%@: pre-heated to %@ – %@", span, temperature, reason)
+        case .normal: return L10n.format("%@: normal temperature %@", span, temperature)
         }
     }
 }
@@ -235,11 +235,11 @@ public enum PriceControlPlanner {
     static func rank(_ level: PriceLevel) -> Int { PriceLevel.allCases.firstIndex(of: level) ?? 0 }
 
     static func reason(kind: PlannedStep.Kind, level: PriceLevel?, priceOre: Double) -> String {
-        let price = Norwegian.format("%.2f kr/kWh", priceOre / 100)
+        let price = L10n.format("%.2f NOK/kWh", priceOre / 100)
         switch kind {
-        case .reduce: return "\(level?.adjective ?? "Dyrt") (\(price))"
-        case .preheat: return "Forvarming før dyre timer (\(price))"
-        case .normal: return "Vanlig temperatur"
+        case .reduce: return "\((level ?? .expensive).adjective) (\(price))"
+        case .preheat: return L10n.format("Pre-heating before expensive hours (%@)", price)
+        case .normal: return L10n.tr("Normal temperature")
         }
     }
 }
@@ -349,7 +349,7 @@ public struct PriceControlContext: Sendable {
     /// Latest snapshot from the unit.
     public var state: DeviceState?
     public var steps: [PlannedStep]
-    /// Credentials rejected or MELCloud block (Norwegian), or nil.
+    /// Credentials rejected or MELCloud block (user-facing text), or nil.
     public var blockedReason: String?
     public var holidayActive: Bool
     public var frostProtection: Bool
@@ -418,11 +418,11 @@ public enum PriceControlEngine {
         var decision = PriceControlDecision(kind: .skipped, text: "", step: step)
         guard c.settings.enabled else {
             decision.kind = .off
-            decision.text = "Prisstyring er av."
+            decision.text = L10n.tr("Price control is off.")
             return decision
         }
         guard let state = c.state else {
-            decision.text = "Ingen status fra varmepumpen ennå."
+            decision.text = L10n.tr("No status from the heat pump yet.")
             return decision
         }
         memory.pruneWrites(now: c.now)
@@ -457,19 +457,19 @@ public enum PriceControlEngine {
             return decision
         }
         if c.holidayActive {
-            decision.text = "Feriemodus er på, så prisstyringen venter."
+            decision.text = L10n.tr("Holiday mode is on, so price control is waiting.")
             return decision
         }
         guard state.power else {
-            decision.text = c.frostProtection ? "Varmepumpen er av (frostsikringen passer på)." : "Varmepumpen er av."
+            decision.text = c.frostProtection ? L10n.tr("The heat pump is off (frost protection is watching).") : L10n.tr("The heat pump is off.")
             return decision
         }
         guard state.mode == .heat else {
-            decision.text = "Prisstyringen virker bare i varmemodus."
+            decision.text = L10n.tr("Price control only works in heat mode.")
             return decision
         }
         guard let step else {
-            decision.text = "Ingen plan for denne timen (mangler pris eller grunntemperatur)."
+            decision.text = L10n.tr("No plan for this hour (price or base temperature missing).")
             return decision
         }
         let target = target(for: step, state: state, settings: c.settings)
@@ -482,7 +482,7 @@ public enum PriceControlEngine {
                     memory.pausedUntil = max(paused, step.end)
                 }
                 decision.kind = .paused
-                decision.text = "Pause – du endret temperaturen. Fortsetter kl. \(Norwegian.time(memory.pausedUntil ?? paused))."
+                decision.text = L10n.format("Paused – you changed the temperature. Resumes at %@.", Display.time(memory.pausedUntil ?? paused))
                 return decision
             }
             memory.pausedUntil = nil
@@ -495,17 +495,17 @@ public enum PriceControlEngine {
         let failedHere = isSameStep(memory.failedStep, step)
         if !failedHere { memory.clearFailure() }
         if failedHere, memory.failures >= maxAttemptsPerStep {
-            decision.text = "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
+            decision.text = L10n.format("Could not change the temperature. Trying again at the next change at %@.", Display.time(step.end))
             decision.problem = memory.problem
             return decision
         }
         if let near = c.timerEventNear {
             decision.kind = .waiting
-            decision.text = "Venter til ukeplanen har endret temperaturen kl. \(Norwegian.time(near))."
+            decision.text = L10n.format("Waiting until the weekly schedule has changed the temperature at %@.", Display.time(near))
             return decision
         }
         guard let setpoint = state.setTemperature else {
-            decision.text = "Varmepumpen har ikke meldt ønsket temperatur."
+            decision.text = L10n.tr("The heat pump has not reported a target temperature.")
             return decision
         }
         if same(setpoint, target) {
@@ -521,22 +521,23 @@ public enum PriceControlEngine {
         if let last = memory.writes.max(), hour(last) == hour(c.now) {
             let next = Date(timeIntervalSince1970: Double(hour(c.now) + 1) * 3600)
             if failedHere {
-                decision.text = "Kunne ikke endre temperaturen. Prøver igjen kl. \(Norwegian.time(next))."
+                decision.text = L10n.format("Could not change the temperature. Trying again at %@.", Display.time(next))
                 decision.problem = memory.problem
             } else {
                 decision.kind = .waiting
-                decision.text = "Venter: høyst én endring i timen. Neste kl. \(Norwegian.time(next))."
+                decision.text = L10n.format("Waiting: at most one change an hour. Next at %@.", Display.time(next))
             }
             return decision
         }
         if memory.writes.count >= maxWritesPerHour {
             decision.kind = .waiting
-            decision.text = "Venter: prisstyringen har gjort \(maxWritesPerHour) endringer den siste timen."
+            decision.text = L10n.format("Waiting: price control has made %lld changes in the last hour.", maxWritesPerHour)
             decision.problem = failedHere ? memory.problem : nil
             return decision
         }
         decision.target = target
-        decision.reason = "Prisstyring: " + (step.kind == .normal ? "tilbake til vanlig temperatur" : step.reason)
+        decision.reason = step.kind == .normal
+            ? L10n.tr("Price control: back to normal temperature") : L10n.format("Price control: %@", step.reason)
         (decision.kind, decision.text) = status(of: step, target: target)
         return decision
     }
@@ -557,9 +558,9 @@ public enum PriceControlEngine {
     public static func status(of step: PlannedStep, target: Double? = nil) -> (PriceControlStatus.Kind, String) {
         let temperature = TimerEvent.temperatureText(target ?? step.target)
         switch step.kind {
-        case .normal: return (.normal, "Vanlig temperatur (\(temperature)).")
-        case .reduce: return (.lowered, "Senket til \(temperature) – \(step.reason).")
-        case .preheat: return (.raised, "Forvarmer til \(temperature) før dyre timer.")
+        case .normal: return (.normal, L10n.format("Normal temperature (%@).", temperature))
+        case .reduce: return (.lowered, L10n.format("Lowered to %@ – %@.", temperature, step.reason))
+        case .preheat: return (.raised, L10n.format("Pre-heating to %@ before expensive hours.", temperature))
         }
     }
 
@@ -579,14 +580,15 @@ public enum PriceControlEngine {
 }
 
 extension PriceLevel {
-    /// "Svært dyrt" (for "timen er …").
+    /// "Very expensive hour" (a step's reason). Its own key, not `displayName`: Norwegian uses the
+    /// neuter form here ("Svært dyrt").
     public var adjective: String {
         switch self {
-        case .veryCheap: "Svært billig"
-        case .cheap: "Billig"
-        case .normal: "Normalt"
-        case .expensive: "Dyrt"
-        case .veryExpensive: "Svært dyrt"
+        case .veryCheap: L10n.tr("Very cheap hour")
+        case .cheap: L10n.tr("Cheap hour")
+        case .normal: L10n.tr("Normal hour")
+        case .expensive: L10n.tr("Expensive hour")
+        case .veryExpensive: L10n.tr("Very expensive hour")
         }
     }
 }

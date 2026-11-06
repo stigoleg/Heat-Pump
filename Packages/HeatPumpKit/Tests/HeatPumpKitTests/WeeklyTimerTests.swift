@@ -31,7 +31,8 @@ struct WeeklyTimerTests {
         #expect(timer.seasons[0].name == "Vinter")
         #expect(timer.seasons[0].startMonth == 10)
         #expect(timer.seasons[1].events.first?.weekday == 3)
-        #expect(timer.seasons[0].displayName == "Vinter (fra 1. oktober)")
+        #expect(timer.seasons[0].displayName.hasPrefix("Vinter (from "))
+        #expect(timer.seasons[0].displayName.contains("1") && timer.seasons[0].displayName.contains("October"))
         #expect(timer.activeSeasonIndex(on: date(2026, 11, 5), timeZone: oslo) == 0)
         #expect(timer.activeSeasonIndex(on: date(2026, 5, 20), timeZone: oslo) == 1)
         #expect(timer.activeSeasonIndex(on: date(2026, 2, 1), timeZone: oslo) == 0)  // continues from last autumn
@@ -159,10 +160,10 @@ struct WeeklyTimerTests {
         #expect(MELCloudClassicParser.timerSaveError(.object([:])) == nil)
         #expect(MELCloudClassicParser.timerSaveError(.object(["Data": .null])) == nil)
         #expect(MELCloudClassicParser.timerSaveError(.null) == nil)
-        #expect(MELCloudClassicParser.timerSaveError(answer(0)) == "En ukjent feil oppstod da ukeplanen skulle lagres.")
-        #expect(MELCloudClassicParser.timerSaveError(answer(1)) == "Sesongene er ikke gyldige. Sjekk startdatoene.")
+        #expect(MELCloudClassicParser.timerSaveError(answer(0)) == "An unknown error occurred while saving the weekly schedule.")
+        #expect(MELCloudClassicParser.timerSaveError(answer(1)) == "The seasons are not valid. Check the start dates.")
         #expect(MELCloudClassicParser.timerSaveError(answer(2, max: 50))
-            == "Du kan ikke ha mer enn 50 hendelser i ukeplanen (til sammen for alle sesonger).")
+            == "You cannot have more than 50 events in the weekly schedule (in total for all seasons).")
         #expect(MELCloudClassicParser.timerSaveError(answer(7)) == MELCloudClassicParser.timerErrorMessages[0])
         #expect(MELCloudClassicParser.timerSaveError(answer(-3)) == MELCloudClassicParser.timerErrorMessages[0])
     }
@@ -211,21 +212,21 @@ struct WeeklyTimerTests {
         timer.enabled = false
         let lines = timer.differences(from: old)
         #expect(lines == [
-            "Ukeplanen slås av",
-            "Vinter: Ny: hverdager kl. 08:00 – Varme 18 °C",
-            "Vinter: Fjernet: fre kl. 23:00 – Varme 19 °C",
-            "Vinter: Endret: man kl. 06:30 – Varme 21 °C → Varme 20 °C",
+            "The weekly schedule is turned off",
+            "Vinter: New: weekdays at 08:00 – Heat 18 °C",
+            "Vinter: Removed: Fri at 23:00 – Heat 19 °C",
+            "Vinter: Changed: Mon at 06:30 – Heat 21 °C → Heat 20 °C",
         ])
         #expect(old.differences(from: old).isEmpty)
         // A fan-only change shows the details.
         var fan = old
         fan.seasons[1].events[0].power = true
         fan.seasons[0].events[2].fanSpeed = 3
-        #expect(fan.differences(from: old).contains("Vinter: Endret: fre kl. 23:00 – Varme 19 °C, vifte auto, spjeld Auto/3 (midten) → Varme 19 °C, vifte 3, spjeld Auto/3 (midten)"))
-        #expect(TimerEvent.daysText([1, 2, 3, 5]) == "man–ons, fre")
-        #expect(TimerEvent.daysText([6, 7]) == "helg")
-        #expect(TimerEvent.daysText([1, 7]) == "man, søn")
-        #expect(timer.summary == "Av, 8 hendelser")
+        #expect(fan.differences(from: old).contains("Vinter: Changed: Fri at 23:00 – Heat 19 °C, fan auto, airflow Auto/3 (center) → Heat 19 °C, fan 3, airflow Auto/3 (center)"))
+        #expect(TimerEvent.daysText([1, 2, 3, 5]) == "Mon–Wed, Fri")
+        #expect(TimerEvent.daysText([6, 7]) == "weekends")
+        #expect(TimerEvent.daysText([1, 7]) == "Mon, Sun")
+        #expect(timer.summary == "Off, 8 events")
     }
 
     @Test func validation() throws {
@@ -242,7 +243,7 @@ struct WeeklyTimerTests {
         var cooling = newEvent(600, 12)
         cooling.mode = .cool
         cool.put(cooling, on: [2])
-        #expect(cool.validationProblem(limits: limits)?.contains("kjøling") == true)
+        #expect(cool.validationProblem(limits: limits)?.contains("(cool)") == true)
         var off = timer
         var offEvent = newEvent(600, 5)
         offEvent.power = false
@@ -253,15 +254,15 @@ struct WeeklyTimerTests {
         #expect(late.validationProblem(limits: limits) != nil)
         var duplicate = timer
         duplicate.seasons[0].events.append(newEvent(390, 22))
-        #expect(duplicate.validationProblem(limits: limits)?.contains("To hendelser mandag kl. 06:30") == true)
+        #expect(duplicate.validationProblem(limits: limits)?.contains("Two events on Monday at 06:30") == true)
         var many = timer
         many.maxEvents = 3
-        #expect(many.validationProblem(limits: limits)?.contains("høyst 3") == true)
+        #expect(many.validationProblem(limits: limits)?.contains("at most 3") == true)
         timer.seasons[0].events = []
         timer.put(newEvent(390, 21), on: [1])
         timer.remove(timer.seasons[0].events[0])
         timer.enabled = true
-        #expect(timer.validationProblem(limits: limits)?.contains("uten hendelser") == true)
+        #expect(timer.validationProblem(limits: limits)?.contains("without events") == true)
         timer.enabled = false
         #expect(timer.validationProblem(limits: limits) == nil)
     }
@@ -280,12 +281,12 @@ struct WeeklyTimerTests {
         let base = try #require(try await service.weeklyTimer())
         var timer = base
         #expect(timer.decoded)
-        #expect(timer.summary == "På, 14 hendelser")
+        #expect(timer.summary == "On, 14 events")
         timer.put(newEvent(12 * 60, 20), on: [3])
         let budget = try await service.writeBudget().remaining
-        let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "Endret i appen (Ukeplan)")
+        let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "Changed in the app (Weekly schedule)")
         #expect(outcome.result == .ok)
-        #expect(outcome.message.contains("MELCloud viser den samme planen"))
+        #expect(outcome.message.contains("MELCloud shows the same schedule"))
         #expect(await backend.timerWrites == 1)
         #expect(await backend.timerReads == 3)  // fresh read before sending, read back once
         let stored = try #require(try await service.storedWeeklyTimer())
@@ -295,21 +296,21 @@ struct WeeklyTimerTests {
         #expect(try await service.writeBudget().remaining == budget - 1)
         let record = try #require(try await service.changeLog(limit: 1, source: nil).first)
         #expect(record.field == "weeklyTimer")
-        #expect(record.oldValue == "På, 14 hendelser")
-        #expect(record.newValue == "På, 15 hendelser")
+        #expect(record.oldValue == "On, 14 events")
+        #expect(record.newValue == "On, 15 events")
         #expect(record.result == .ok)
-        #expect(record.displaySummary == "Ukeplan: På, 15 hendelser")
+        #expect(record.displaySummary == "Weekly schedule: On, 15 events")
         // Within 15 s the fresh read is not repeated, so nothing is sent.
         clock.advance(6)
         timer.enabled = false
         let tooSoon = try await service.saveWeeklyTimer(timer, base: stored, source: .app, reason: "x")
         #expect(tooSoon.result == .rejected)
-        #expect(tooSoon.message.contains("nettopp hentet"))
+        #expect(tooSoon.message.contains("just fetched"))
         // A second save later cannot read back (30 s) and says so.
         clock.advance(10)
         let second = try await service.saveWeeklyTimer(timer, base: stored, source: .app, reason: "x")
         #expect(second.result == .ok)
-        #expect(second.message.contains("bekrefter ved neste henting"))
+        #expect(second.message.contains("confirms at the next fetch"))
         #expect(await backend.timerReads == 4)
         #expect(try await service.storedWeeklyTimer()?.enabled == false)
     }
@@ -326,19 +327,19 @@ struct WeeklyTimerTests {
         let unreadable = WeeklyTimer(enabled: true, seasons: [], eventCount: 3, decoded: false)
         let unread = try await service.saveWeeklyTimer(try timer(), base: unreadable, source: .app, reason: "x")
         #expect(unread.result == .rejected)
-        #expect(unread.message.contains("kunne ikke leses"))
+        #expect(unread.message.contains("could not be read"))
         let base = try #require(try await service.weeklyTimer())
         var timer = base
         var tooCold = timer
         tooCold.put(newEvent(600, 8), on: [2])
         let cold = try await service.saveWeeklyTimer(tooCold, base: base, source: .app, reason: "x")
         #expect(cold.result == .rejected)
-        #expect(cold.message.contains("Temperaturen tirsdag kl. 10:00"))
+        #expect(cold.message.contains("The temperature on Tuesday at 10:00"))
         timer.seasons[0].events = []
         timer.enabled = true
         let empty = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "x")
         #expect(empty.result == .rejected)
-        #expect(empty.message.contains("uten hendelser"))
+        #expect(empty.message.contains("without events"))
         #expect(await backend.timerWrites == 0)
         #expect(await backend.timerReads == 1)  // validation refusals do not even read
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
@@ -357,7 +358,7 @@ struct WeeklyTimerTests {
         for minute in stride(from: 0, to: 6 * 60, by: 30) { timer.put(newEvent(minute, 20), on: TimerEvent.allDays) }
         let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "x")
         #expect(outcome.result == .failed)
-        #expect(outcome.message.contains("mer enn 50 hendelser"))
+        #expect(outcome.message.contains("more than 50 events"))
         #expect(await backend.timerWrites == 0)
     }
 
@@ -377,13 +378,13 @@ struct WeeklyTimerTests {
         ]))
         let refused = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
         #expect(refused.result == .rejected)
-        #expect(refused.message == "Ikke sendt: " + HeatPumpService.timerChangedMessage)
+        #expect(refused.message == "Not sent: " + HeatPumpService.timerChangedMessage)
         #expect(await backend.timerWrites == 0)
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
         let record = try #require(try await service.changeLog(limit: 1, source: nil).first)
         #expect(record.result == .rejected)
         #expect(record.error == HeatPumpService.timerChangedMessage)
-        // The fresh plan is cached, so "Hent planen på nytt" starts from it, and that save goes through.
+        // The fresh plan is cached, so "Fetch the schedule again" starts from it, and that save goes through.
         let fresh = try #require(try await service.storedWeeklyTimer())
         #expect(fresh.seasons[0].events[0].setTemperature == 22)
         var redo = fresh
@@ -463,12 +464,12 @@ struct WeeklyTimerTests {
         let unknown = MELCloudClassicParser.weeklyTimer(json)
         #expect(unknown.enabled == nil)
         #expect(unknown.decoded)
-        #expect(unknown.validationProblem(limits: nil)?.contains("Velg på eller av") == true)
+        #expect(unknown.validationProblem(limits: nil)?.contains("Choose on or off") == true)
         #expect(MELCloudClassicParser.timerSetBody(timer: unknown, deviceId: 1)["TimerEnabled"] == .null)
         var chosen = unknown
         chosen.enabled = false
         #expect(chosen.validationProblem(limits: nil) == nil)
-        #expect(chosen.differences(from: unknown) == ["Ukeplanen slås av"])
+        #expect(chosen.differences(from: unknown) == ["The weekly schedule is turned off"])
         #expect(!chosen.hasSameContent(as: unknown))
         // Through the service: refused and nothing sent until on/off is chosen.
         let store = try HistoryStore(path: temporaryDatabasePath())
@@ -497,7 +498,7 @@ struct WeeklyTimerTests {
         #expect(reordered.hasSameContent(as: old))
         var lost = old
         lost.seasons.removeLast()
-        #expect(lost.differences(from: old) == ["Sommer: Fjernet: ons kl. 12:00 – Av"])
+        #expect(lost.differences(from: old) == ["Sommer: Removed: Wed at 12:00 – Off"])
         #expect(!lost.hasSameContent(as: old))
     }
 
@@ -516,7 +517,7 @@ struct WeeklyTimerTests {
         }
         let lost = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
         #expect(lost.result == .ok)
-        #expect(lost.message.contains("annen plan"))
+        #expect(lost.message.contains("different schedule"))
         // Seasons returned in another order are the same plan.
         clock.advance(31)
         let current = try #require(try await service.storedWeeklyTimer())
@@ -532,7 +533,7 @@ struct WeeklyTimerTests {
         }
         let reordered = try await service.saveWeeklyTimer(edit, base: fresh, source: .app, reason: "x")
         #expect(reordered.result == .ok)
-        #expect(reordered.message.contains("samme planen"))
+        #expect(reordered.message.contains("same schedule"))
     }
 
     @Test func pendingReadBackBacksOffAndGivesUp() async throws {
@@ -608,7 +609,7 @@ struct WeeklyTimerTests {
         var edited = cold
         edited.minuteOfDay = 7 * 60
         timer.put(edited, on: [1], replacing: cold)
-        #expect(timer.validationProblem(limits: limits)?.contains("mandag kl. 07:00") == true)
+        #expect(timer.validationProblem(limits: limits)?.contains("Monday at 07:00") == true)
     }
 
     @Test func failedFreshReadSendsNothing() async throws {
@@ -622,7 +623,7 @@ struct WeeklyTimerTests {
         await backend.failNextTimerRead(with: .http(status: 500))
         let failed = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
         #expect(failed.result == .rejected)
-        #expect(failed.message.contains("Kunne ikke lese ukeplanen fra MELCloud før lagring"))
+        #expect(failed.message.contains("Could not read the weekly schedule from MELCloud before saving"))
         #expect(await backend.timerWrites == 0)
         // A refusal pauses timer reads, and saves are refused without reading during the pause.
         clock.advance(16)
@@ -633,7 +634,7 @@ struct WeeklyTimerTests {
         let reads = await backend.timerReads
         let paused = try await service.saveWeeklyTimer(draft, base: base, source: .app, reason: "x")
         #expect(paused.result == .rejected)
-        #expect(paused.message.contains("tillot ikke å lese ukeplanen"))
+        #expect(paused.message.contains("did not allow reading the weekly schedule"))
         #expect(await backend.timerReads == reads)
         #expect(await backend.timerWrites == 0)
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)

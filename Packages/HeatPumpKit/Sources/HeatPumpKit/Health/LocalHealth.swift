@@ -103,11 +103,11 @@ public enum LocalHealth {
         else { return [] }
         return [
             HealthFinding(
-                code: "active_error_local", severity: .critical, title: "Varmepumpen melder feil nå (lokal)",
-                detail: String(format: "Wi-Fi-modulen på hjemmenettet rapporterer feilkode 0x%04X. ", code)
-                    + "Koden kommer direkte fra innedelen og er ikke oversatt; MELCloud har ikke meldt feilen ennå. "
-                    + ErrorCatalog.caveat,
-                recommendation: "Sjekk om driftslampen på innedelen blinker, og tell antall blink. Blinker den, slå av varmepumpen og ring forhandleren. Forsvinner koden av seg selv ved neste avlesning, følg med på om den kommer igjen.")
+                code: "active_error_local", severity: .critical, title: L10n.tr("The heat pump is reporting an error now (local)"),
+                detail: L10n.format(
+                    "The Wi-Fi adapter on the home network reports error code %@. The code comes directly from the indoor unit and is not translated; MELCloud has not reported the error yet. %@",
+                    String(format: "0x%04X", code), ErrorCatalog.caveat),
+                recommendation: L10n.tr("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If the code goes away by itself at the next reading, watch whether it comes back."))
         ]
     }
 
@@ -115,9 +115,9 @@ public enum LocalHealth {
         guard let latest, latest.cloudConnected == false, now.timeIntervalSince(latest.timestamp) < 3600 else { return [] }
         return [
             HealthFinding(
-                code: "local_cloud_connect_off", severity: .warning, title: "MELCloud-tilkoblingen er slått av i modulen",
-                detail: "Wi-Fi-modulen sier selv at forbindelsen til MELCloud er slått av (CONNECT = OFF). Da kommer verken status eller endringer fra MELCloud fram, og appen kan bare lese lokalt.",
-                recommendation: "Appen endrer aldri denne innstillingen. Start varmepumpen på nytt via sikringen, og sjekk MELCloud-appen. Er tilkoblingen fortsatt av, kontakt forhandleren eller Mitsubishi-support.")
+                code: "local_cloud_connect_off", severity: .warning, title: L10n.tr("The MELCloud connection is turned off in the adapter"),
+                detail: L10n.tr("The Wi-Fi adapter itself says the connection to MELCloud is turned off (CONNECT = OFF). Then neither status nor changes from MELCloud get through, and the app can only read locally."),
+                recommendation: L10n.tr("The app never changes this setting. Restart the heat pump via the circuit breaker, and check the MELCloud app. If the connection is still off, contact the dealer or Mitsubishi support."))
         ]
     }
 
@@ -125,12 +125,18 @@ public enum LocalHealth {
         guard input.enabled, input.onHomeNetwork, let since = input.failingSince, now.timeIntervalSince(since) > Threshold.unreachableAfter,
             let attempt = input.lastAttempt, now.timeIntervalSince(attempt) < Threshold.unreachableAfter
         else { return [] }
-        let last = input.lastSuccess.map { " Sist svar: \(Norwegian.dateTime($0))." } ?? ""
+        let detail =
+            input.lastSuccess.map {
+                L10n.format(
+                    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via MELCloud work as before.",
+                    Display.dateTime(since), Display.dateTime($0))
+            }
+            ?? L10n.format("The app has not reached the adapter locally since %@. Control and status via MELCloud work as before.", Display.dateTime(since))
         return [
             HealthFinding(
-                code: "local_unreachable", severity: .info, title: "Wi-Fi-modulen svarer ikke på hjemmenettet",
-                detail: "Appen har ikke fått kontakt med modulen lokalt siden \(Norwegian.dateTime(since)).\(last) Styring og status via MELCloud virker som før.",
-                recommendation: "Ofte har ruteren gitt varmepumpen en ny IP-adresse. Trykk «Finn automatisk» under Innstillinger → Lokal tilkobling, eller skriv inn adressen fra ruterens enhetsliste. Gi gjerne varmepumpen fast IP i ruteren.")
+                code: "local_unreachable", severity: .info, title: L10n.tr("The Wi-Fi adapter is not responding on the home network"),
+                detail: detail,
+                recommendation: L10n.tr("Often the router has given the heat pump a new IP address. Click “Find Automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router."))
         ]
     }
 
@@ -145,25 +151,23 @@ public enum LocalHealth {
         let busyHours = hours.filter { $0.starts >= Threshold.strongStartsPerHour && $0.observedSeconds >= 50 * 60 }.count
         let strong = busyHours >= Threshold.strongHours
         guard strong || perHour >= Threshold.shortCyclingStartsPerHour else { return [] }
-        let advice =
-            "Vanlige årsaker er tett luftfilter, at varmepumpen er stor for rommet (særlig i mildvær), eller at ønsket temperatur eller viften endres ofte. "
-            + "Rengjør luftfilteret, la ønsket temperatur ligge fast (unngå store hopp), og bruk gjerne vifte auto. "
-            + "Fortsetter det flere dager, også når det er kaldt ute, bør du ringe forhandleren."
+        let advice = L10n.tr(
+            "Common causes are a clogged air filter, a heat pump that is large for the room (especially in mild weather), or a target temperature or fan setting that changes often. Clean the air filter, keep the target temperature steady (avoid big jumps), and consider fan auto. If it continues for several days, also when it is cold outdoors, you should call the dealer.")
         if strong {
             return [
                 HealthFinding(
-                    code: "short_cycling_strong", severity: .warning, title: "Kompressoren starter og stopper svært ofte",
-                    detail: Norwegian.format(
-                        "Kompressoren har startet %d ganger de siste 3 timene, med %d eller flere starter i %d av timene. Så korte runder sliter på kompressoren og gir dårligere virkningsgrad.",
+                    code: "short_cycling_strong", severity: .warning, title: L10n.tr("The compressor starts and stops very often"),
+                    detail: L10n.format(
+                        "The compressor has started %lld times in the last 3 hours, with %lld or more starts in %lld of the hours. Such short runs wear on the compressor and lower the efficiency.",
                         starts, Threshold.strongStartsPerHour, busyHours),
                     recommendation: advice)
             ]
         }
         return [
             HealthFinding(
-                code: "short_cycling", severity: .warning, title: "Kompressoren starter og stopper ofte",
-                detail: Norwegian.format(
-                    "Kompressoren har startet i snitt %.1f ganger i timen de siste 3 timene mens den varmet. Mer enn 3–4 starter i timen over tid regnes som korte runder.",
+                code: "short_cycling", severity: .warning, title: L10n.tr("The compressor starts and stops often"),
+                detail: L10n.format(
+                    "The compressor has started on average %.1f times an hour in the last 3 hours while heating. More than 3–4 starts an hour over time counts as short cycling.",
                     perHour),
                 recommendation: advice)
         ]
@@ -191,9 +195,8 @@ public enum LocalHealth {
             $0.start >= now.addingTimeInterval(-86_400) && $0.phaseCount >= Threshold.defrostMinReadings
                 && $0.observedSeconds >= 50 * 60
         }.sorted { $0.start < $1.start }
-        let advice =
-            "Utedelen kan ha is eller dårlig luftstrøm — sjekk at den er fri for snø/is og løv, og at ingenting står tett inntil den. "
-            + "Ikke hakk løs is med verktøy; la den smelte eller bruk lunkent vann. Fortsetter det etter at utedelen er ryddet, ring forhandleren."
+        let advice = L10n.tr(
+            "The outdoor unit may have ice or poor airflow — check that it is free of snow, ice and leaves, and that nothing stands close to it. Do not chip ice off with tools; let it melt or use lukewarm water. If it continues after the outdoor unit has been cleared, call the dealer.")
         var run = 0
         var longest = 0
         var previous: Date?
@@ -206,9 +209,9 @@ public enum LocalHealth {
         if longest >= Threshold.defrostSustainedHours {
             return [
                 HealthFinding(
-                    code: "frequent_defrost", severity: .warning, title: "Utedelen avriser uvanlig ofte",
-                    detail: Norwegian.format(
-                        "Varmepumpen har avrist mer enn %d ganger i timen i %d timer på rad siste døgn. Normalt avriser den hvert 40.–90. driftsminutt i fuktig kulde. Grensen er en tommelfingerregel.",
+                    code: "frequent_defrost", severity: .warning, title: L10n.tr("The outdoor unit defrosts unusually often"),
+                    detail: L10n.format(
+                        "The heat pump has defrosted more than %lld times an hour for %lld hours in a row in the last day. Normally it defrosts every 40–90 minutes of running in damp cold. The limit is a rule of thumb.",
                         Threshold.defrostsPerHour, longest),
                     recommendation: advice)
             ]
@@ -220,9 +223,9 @@ public enum LocalHealth {
         guard share > Threshold.defrostShare else { return [] }
         return [
             HealthFinding(
-                code: "defrost_share", severity: .info, title: "Utedelen bruker mye tid på avriming",
-                detail: Norwegian.format(
-                    "Siste døgn har varmepumpen avrist %.0f %% av tiden (%d timer med målinger, ute mildere enn −5 °C). Over 20 %% er mye; grensen er en tommelfingerregel.",
+                code: "defrost_share", severity: .info, title: L10n.tr("The outdoor unit spends a lot of time defrosting"),
+                detail: L10n.format(
+                    "In the last day the heat pump has been defrosting %.0f %% of the time (%lld hours with readings, milder than −5 °C outdoors). Over 20 %% is a lot; the limit is a rule of thumb.",
                     share * 100, mild.count),
                 recommendation: advice)
         ]
@@ -250,11 +253,11 @@ public enum LocalHealth {
         return [
             HealthFinding(
                 code: "power_vs_outdoor", severity: factor > Threshold.powerWarningFactor ? .warning : .info,
-                title: "Varmepumpen bruker mer strøm enn vanlig for temperaturen",
-                detail: Norwegian.format(
-                    "Siste døgn har den brukt i snitt %.0f W per grad forskjell mellom inne og ute (%.0f grader, stopp medregnet), %.1f ganger det vanlige ved tilsvarende forskjell (median %.0f W per grad, %d dager).",
+                title: L10n.tr("The heat pump uses more electricity than usual for the temperature"),
+                detail: L10n.format(
+                    "In the last day it has used on average %.0f W per degree of difference between indoors and outdoors (%.0f degrees, idle time included), %.1f times the usual at a similar difference (median %.0f W per degree, %lld days).",
                     ratio, recentDelta, factor, median, baseline.count),
-                recommendation: "Sjekk at luftfilteret er rent og at utedelen ikke er nediset, dekket av snø eller blokkert. Mye avriming i fuktig kuldegrader kan også gi høyere forbruk en periode. Vedvarer det i flere dager, ring forhandleren.")
+                recommendation: L10n.tr("Check that the air filter is clean and that the outdoor unit is not iced up, covered by snow or blocked. A lot of defrosting in damp sub-zero weather can also raise consumption for a while. If it persists for several days, call the dealer."))
         ]
     }
 }

@@ -11,14 +11,14 @@ enum Screen: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .overview: "Oversikt"
-        case .control: "Kontroll"
-        case .schedule: "Ukeplan"
-        case .history: "Historikk"
-        case .outlook: "Prognose"
-        case .away: "Borte hjemmefra"
-        case .health: "Helse"
-        case .activity: "Claude-aktivitet"
+        case .overview: String(localized: "Overview")
+        case .control: String(localized: "Control")
+        case .schedule: String(localized: "Weekly schedule")
+        case .history: String(localized: "History")
+        case .outlook: String(localized: "Forecast")
+        case .away: String(localized: "Away")
+        case .health: String(localized: "Health")
+        case .activity: String(localized: "Claude activity")
         }
     }
 
@@ -55,10 +55,10 @@ enum HistoryRange: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .day: "24 t"
-        case .week: "7 d"
-        case .month: "30 d"
-        case .year: "1 år"
+        case .day: String(localized: "24 h")
+        case .week: String(localized: "7 d")
+        case .month: String(localized: "30 d")
+        case .year: String(localized: "1 yr")
         }
     }
     var seconds: TimeInterval {
@@ -71,7 +71,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
     }
 
     /// Start of the period ending now: the last 24 hours, or whole calendar days (7 d, 30 d)
-    /// and whole months (1 år) so the first column is never a fragment.
+    /// and whole months (1 yr) so the first column is never a fragment.
     func start(now: Date, calendar: Calendar = .current) -> Date {
         let today = calendar.startOfDay(for: now)
         let start: Date? =
@@ -117,7 +117,7 @@ struct HistoryData {
 /// Local power data for the Effekt tab (all aggregated in SQL by the service).
 struct LocalPowerData {
     var buckets: [LocalPowerBucket] = []
-    /// Starts per hour (per day for 1 år).
+    /// Starts per hour (per day for 1 yr).
     var starts: [LocalPowerBucket] = []
     var startsUnit: Calendar.Component = .hour
     /// The whole period in one bucket.
@@ -213,7 +213,7 @@ final class AppModel {
         } catch {
             self.service = nil
             self.isDemo = HeatPumpService.isMock(environment: environment)
-            self.startupError = "Kunne ikke åpne databasen: \(error.localizedDescription)"
+            self.startupError = String(localized: "Could not open the database: \(error.localizedDescription)")
         }
         if let screen = environment["VARMEPUMPE_SCREEN"].flatMap(Screen.init(rawValue:)) {
             selection = screen
@@ -262,7 +262,7 @@ final class AppModel {
 
     var state: DeviceState? { stateResult?.state }
 
-    var deviceName: String { state?.name ?? "Varmepumpe" }
+    var deviceName: String { state?.name ?? String(localized: "Heat pump") }
 
     var needsOnboarding: Bool {
         guard !isDemo, service != nil else { return false }
@@ -425,7 +425,7 @@ final class AppModel {
         return data
     }
 
-    /// Energy for the range (per hour for 24 t, per day for 7/30 d, per month for 1 år) and the
+    /// Energy for the range (per hour for 24 h, per day for 7/30 d, per month for 1 yr) and the
     /// same length of time before it.
     func energy(range: HistoryRange) async -> EnergyData {
         guard let service else { return EnergyData() }
@@ -466,7 +466,7 @@ final class AppModel {
         return summary
     }
 
-    /// Stretches of running, rest and defrost from local readings (not for 1 år: too many).
+    /// Stretches of running, rest and defrost from local readings (not for 1 yr: too many).
     /// Longer ranges are downsampled to the dominant kind per bucket (≥ 10 minutes, at most about
     /// a thousand buckets) so Drift draws a few hundred rectangles, not thousands.
     func phaseSpans(range: HistoryRange) async -> [LocalPhaseSpan] {
@@ -502,12 +502,14 @@ final class AppModel {
             weatherMessage = sync.status == .failed || sync.status == .noLocation ? sync.message : nil
             await reloadLocal()
             switch sync.status {
-            case .failed: return (false, sync.message ?? "Lagret, men varselet kunne ikke hentes.")
+            case .failed: return (false, sync.message ?? String(localized: "Saved, but the forecast could not be fetched."))
             case .skipped:
-                let when = sync.nextAllowed.map { " kl. \(Format.hour($0))" } ?? " snart"
-                return (true, "Lagret. Nytt varsel hentes\(when).")
-            case .fetched, .notModified: return (true, "Lagret, og varselet er oppdatert.")
-            case .upToDate, .noLocation: return (true, "Lagret.")
+                if let next = sync.nextAllowed {
+                    return (true, String(localized: "Saved. A new forecast will be fetched at \(Format.hour(next))."))
+                }
+                return (true, String(localized: "Saved. A new forecast will be fetched soon."))
+            case .fetched, .notModified: return (true, String(localized: "Saved, and the forecast is updated."))
+            case .upToDate, .noLocation: return (true, String(localized: "Saved."))
             }
         } catch {
             return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
@@ -517,22 +519,23 @@ final class AppModel {
     // MARK: Away
 
     /// Sends a frost-protection or holiday-mode change after the user confirmed it in a sheet.
-    /// Returns whether it was sent and a Norwegian message (also for unexpected errors).
+    /// Returns whether it was sent and a message (also for unexpected errors).
     func applyAway(_ change: AwayChange) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
         let result: (Bool, String)
         do {
-            let outcome = try await service.applyAway(change, source: .app, reason: "Endret i appen (Borte hjemmefra)")
+            let outcome = try await service.applyAway(change, source: .app, reason: String(localized: "Changed in the app (Away)"))
             result = (outcome.result == .ok, outcome.message)
         } catch {
-            result = (false, "Endringen kunne ikke behandles: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            result = (false, String(localized: "The change could not be processed: \(detail)"))
         }
         await reloadLocal()
         await debouncer?.refreshBudget()
         return result
     }
 
-    /// Reads frost protection and holiday mode (MELCloud at most hourly; `manual` = "Prøv igjen").
+    /// Reads frost protection and holiday mode (MELCloud at most hourly; `manual` = "Try Again").
     func loadAway(manual: Bool = false) async {
         guard let service else { return }
         do {
@@ -553,7 +556,7 @@ final class AppModel {
         timerRefusedUntil = try? await service.endpointRefusedUntil(HeatPumpService.timerFetchKey)
     }
 
-    /// "Hent ukeplan nå": at most every 10 minutes; lifts a refusal pause.
+    /// "Fetch Now" (weekly schedule): at most every 10 minutes; lifts a refusal pause.
     func refreshWeeklyTimer() async {
         guard let service else { return }
         weeklyTimer = try? await service.weeklyTimer(manual: true)
@@ -563,13 +566,14 @@ final class AppModel {
     /// Saves the edited weekly timer in MELCloud after the user confirmed the differences. `base` is
     /// the plan the edit started from; nothing is sent if MELCloud's plan differs from it now.
     func saveWeeklyTimer(_ timer: WeeklyTimer, base: WeeklyTimer) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
         let result: (Bool, String)
         do {
-            let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: "Endret i appen (Ukeplan)")
+            let outcome = try await service.saveWeeklyTimer(timer, base: base, source: .app, reason: String(localized: "Changed in the app (Weekly schedule)"))
             result = (outcome.result == .ok, outcome.message)
         } catch {
-            result = (false, "Ukeplanen kunne ikke lagres: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            result = (false, String(localized: "The weekly schedule could not be saved: \(detail)"))
         }
         await reloadLocal()
         await debouncer?.refreshBudget()
@@ -578,11 +582,11 @@ final class AppModel {
 
     // MARK: Firmware
 
-    /// Wi-Fi adapter firmware and MELCloud's update status (Helse → Fastvare).
+    /// Wi-Fi adapter firmware and MELCloud's update status (Health → Firmware).
     var firmware: FirmwareStatus?
 
     /// Reads the firmware status (MELCloud at most every 60 s, every 15 s while an update runs;
-    /// `force` = "Oppdater status"). Refreshes the device state once a running update has finished.
+    /// `force` = "Refresh Status"). Refreshes the device state once a running update has finished.
     func loadFirmware(force: Bool = false) async {
         guard let service else { return }
         let wasRunning = firmware?.isInProgress(now: Date()) == true
@@ -596,22 +600,23 @@ final class AppModel {
 
     /// Starts the waiting firmware update after the user confirmed the warnings in a sheet.
     func startFirmwareUpdate() async -> (ok: Bool, message: String) {
-        await firmwareAction { try await $0.startFirmwareUpdate(source: .app, reason: "Startet i appen (Helse → Fastvare)") }
+        await firmwareAction { try await $0.startFirmwareUpdate(source: .app, reason: String(localized: "Started in the app (Health → Firmware)")) }
     }
 
     /// Cancels a running firmware update while MELCloud still allows it.
     func cancelFirmwareUpdate() async -> (ok: Bool, message: String) {
-        await firmwareAction { try await $0.cancelFirmwareUpdate(source: .app, reason: "Avbrutt i appen (Helse → Fastvare)") }
+        await firmwareAction { try await $0.cancelFirmwareUpdate(source: .app, reason: String(localized: "Canceled in the app (Health → Firmware)")) }
     }
 
     private func firmwareAction(_ action: (HeatPumpService) async throws -> ChangeOutcome) async -> (ok: Bool, message: String) {
-        guard let service else { return (false, startupError ?? "Appen kunne ikke starte.") }
+        guard let service else { return (false, startupError ?? String(localized: "The app could not start.")) }
         let result: (Bool, String)
         do {
             let outcome = try await action(service)
             result = (outcome.result == .ok, outcome.message)
         } catch {
-            result = (false, "Kunne ikke behandles: " + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+            let detail = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            result = (false, String(localized: "Could not be processed: \(detail)"))
         }
         await loadFirmware()
         await reloadLocal()
@@ -673,7 +678,7 @@ final class AppModel {
         return data
     }
 
-    /// Saves the local settings. Returns a Norwegian error, or nil.
+    /// Saves the local settings. Returns an error message, or nil.
     func saveLocalSettings(_ settings: LocalSettings) async -> String? {
         guard let service else { return startupError }
         do {
@@ -690,7 +695,7 @@ final class AppModel {
     func testLocal(host: String) async -> LocalTestResult {
         guard let service else { return LocalTestResult(ok: false, message: startupError ?? "", sample: nil) }
         let result = (try? await service.testLocal(host: host))
-            ?? LocalTestResult(ok: false, message: "Testen kunne ikke kjøres.", sample: nil)
+            ?? LocalTestResult(ok: false, message: String(localized: "The test could not be run."), sample: nil)
         await reloadLocal()
         return result
     }
@@ -698,7 +703,7 @@ final class AppModel {
     func discoverLocal() async -> LocalDiscoveryResult {
         guard let service else { return LocalDiscoveryResult(host: nil, message: startupError ?? "") }
         let result = (try? await service.discoverLocal())
-            ?? LocalDiscoveryResult(host: nil, message: "Søket kunne ikke kjøres.")
+            ?? LocalDiscoveryResult(host: nil, message: String(localized: "The search could not be run."))
         localSettings = (try? await service.localSettings()) ?? localSettings
         await reloadLocal()
         return result
@@ -749,7 +754,7 @@ final class AppModel {
 
     // MARK: Actions
 
-    /// Returns a Norwegian error message, or nil on success.
+    /// Returns an error message, or nil on success.
     func recordMaintenance(kind: MaintenanceKind, date: Date, note: String) async -> String? {
         guard let service else { return startupError }
         do {
@@ -761,26 +766,26 @@ final class AppModel {
         }
     }
 
-    /// One login + state fetch. Returns (success, Norwegian message).
+    /// One login + state fetch. Returns (success, message).
     func signIn(email: String, password: String) async -> (Bool, String) {
         guard let service else { return (false, startupError ?? "") }
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !email.isEmpty, !password.isEmpty else { return (false, "Fyll inn både e-post og passord.") }
+        guard !email.isEmpty, !password.isEmpty else { return (false, String(localized: "Enter both email and password.")) }
         do {
             let result = try await service.signIn(MELCloudCredentials(email: email, password: password))
             stateResult = result
             hasCredentials = true
             await reloadLocal()
             if result.refreshed, let state = result.state {
-                return (true, "Innlogget. Fant «\(state.name)».")
+                return (true, String(localized: "Signed in. Found “\(state.name)”."))
             }
             if let message = result.blockMessage {
                 return (false, message)
             }
             if let next = result.nextRefreshAllowed {
-                return (false, "Innloggingen er lagret. Vent litt før du tester igjen (tidligst kl. \(Norwegian.time(next))).")
+                return (false, String(localized: "The sign-in is saved. Wait a little before testing again (at \(Display.time(next)) at the earliest)."))
             }
-            return (false, result.error ?? "Ukjent feil ved innlogging.")
+            return (false, result.error ?? String(localized: "Unknown error when signing in."))
         } catch {
             return (false, (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }

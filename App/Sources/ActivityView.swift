@@ -10,10 +10,10 @@ struct ActivityView: View {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .all: "Alle"
+            case .all: String(localized: "All")
             case .claude: "Claude"
-            case .app: "App"
-            case .automation: "Prisstyring"
+            case .app: String(localized: "App")
+            case .automation: String(localized: "Price control")
             }
         }
     }
@@ -42,20 +42,20 @@ struct ActivityView: View {
             CardSurface {
                 VStack(alignment: .leading, spacing: 6) {
                     Label {
-                        Text("Slik er Claude koblet til")
+                        Text("How Claude is connected")
                     } icon: {
                         IconBadge(systemImage: "sparkles", color: .purple)
                     }
                     .font(.headline)
                     Text(
-                        "Claude kan lese status, historikk og helse fra varmepumpen gjennom MCP-serveren som følger med appen. Når Claude vil endre noe, åpner Macen et eget vindu, «Claude vil endre varmepumpen», med endringen og begrunnelsen. Endringen sendes bare hvis du trykker Godkjenn. Avvis, eller ingen svar innen 2 minutter, stopper den. Alt som sendes eller avvises vises her."
+                        "Claude can read status, history and health from the heat pump through the MCP server that comes with the app. When Claude wants to change something, the Mac opens a separate window, “Claude wants to change the heat pump”, with the change and the reason. The change is only sent if you click Approve. Reject, or no answer within 2 minutes, stops it. Everything that is sent or rejected is shown here."
                     )
-                    Text("Oppsett finner du under Innstillinger → Claude.").font(.callout).foregroundStyle(.secondary)
+                    Text("You will find the setup under Settings → Claude.").font(.callout).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Picker("Kilde", selection: $filter) {
+            Picker("Source", selection: $filter) {
                 ForEach(Filter.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -64,8 +64,8 @@ struct ActivityView: View {
 
             if rows.isEmpty {
                 ContentUnavailableView(
-                    "Ingen endringer ennå", systemImage: "list.bullet.rectangle",
-                    description: Text("Endringer fra appen og fra Claude vises her."))
+                    "No changes yet", systemImage: "list.bullet.rectangle",
+                    description: Text("Changes from the app and from Claude are shown here."))
                     .frame(maxHeight: .infinity, alignment: .top)
             } else {
                 List(rows) { row in
@@ -103,10 +103,10 @@ struct ActivityRow: View {
                         resultLabel(record)
                     }
                 }
-                Text("\(record.source.displayName) · \(Norwegian.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
+                Text(verbatim: "\(record.source.displayName) · \(Display.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
                     .font(.callout).foregroundStyle(.secondary)
                 if let reason = record.reason, !reason.isEmpty {
-                    Text("Begrunnelse: \(reason)").font(.callout)
+                    Text("Reason: \(reason)").font(.callout)
                 }
                 if let error = record.error, record.result != .ok {
                     Text(error).font(.caption).foregroundStyle(.orange)

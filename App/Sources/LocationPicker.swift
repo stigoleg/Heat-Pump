@@ -66,7 +66,7 @@ struct LocationPicker: View {
     @Binding var placeName: String
     /// Where the forecast is for when nothing is chosen (MELCloud building or demo).
     var fallback: CLLocationCoordinate2D?
-    var fallbackTitle = "Fra MELCloud"
+    var fallbackTitle = String(localized: "From MELCloud")
 
     @State private var search = PlaceSearch()
     @State private var camera: MapCameraPosition = .automatic
@@ -79,7 +79,7 @@ struct LocationPicker: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Søk etter adresse eller sted", text: $search.query, prompt: Text("for eksempel Storgata 1, Lillehammer"))
+                TextField("Search for an address or place", text: $search.query, prompt: Text("for example Storgata 1, Lillehammer"))
                     .textFieldStyle(.plain)
                     .onSubmit { if let first = search.results.first { choose(first) } }
                 if looking { ProgressView().controlSize(.small) }
@@ -107,13 +107,13 @@ struct LocationPicker: View {
                     }
                 }
             } else if missed || (search.failed && !search.query.isEmpty) {
-                Text("Fant ingen treff. Prøv et annet navn, eller klikk i kartet.").font(.caption).foregroundStyle(.secondary)
+                Text("No matches. Try another name, or click in the map.").font(.caption).foregroundStyle(.secondary)
             }
 
             MapReader { proxy in
                 Map(position: $camera) {
                     if let shown {
-                        Marker(coordinate == nil ? fallbackTitle : (placeName.isEmpty ? "Valgt sted" : placeName), coordinate: shown)
+                        Marker(coordinate == nil ? fallbackTitle : (placeName.isEmpty ? String(localized: "Chosen place") : placeName), coordinate: shown)
                             .tint(coordinate == nil ? .gray : .accentColor)
                     }
                 }
@@ -128,7 +128,7 @@ struct LocationPicker: View {
             }
             .frame(minHeight: 220, idealHeight: 260)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small))
-            Text("Klikk i kartet for å sette eller flytte nålen.").font(.caption).foregroundStyle(.secondary)
+            Text("Click in the map to place or move the pin.").font(.caption).foregroundStyle(.secondary)
         }
         .onAppear { center(on: shown) }
     }

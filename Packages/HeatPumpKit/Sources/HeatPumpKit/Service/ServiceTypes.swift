@@ -13,19 +13,19 @@ public struct StateResult: Codable, Sendable, Equatable {
     public var blockedUntil: Date?
     /// Set when a refresh was skipped because another refresh happened < 60 s ago.
     public var nextRefreshAllowed: Date?
-    /// Norwegian error text from the last refresh attempt, if it failed.
+    /// Error text from the last refresh attempt, if it failed.
     public var error: String?
     /// True when credentials are missing or MELCloud refused them; show the login screen.
     public var needsLogin: Bool = false
     /// Why requests are blocked (set together with `blockedUntil`).
     public var blockReason: BlockReason?
-    /// Norwegian text for the block or credential stop, chosen from the reason.
+    /// Text for the block or credential stop, chosen from the reason.
     public var blockMessage: String?
 }
 
 public struct ChangeOutcome: Codable, Sendable, Equatable {
     public var result: ChangeResult
-    /// Norwegian summary for display.
+    /// Summary for display.
     public var message: String
     public var field: String
     public var oldValue: String?

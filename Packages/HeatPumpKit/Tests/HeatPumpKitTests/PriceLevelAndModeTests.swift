@@ -17,7 +17,7 @@ struct PriceLevelAndModeTests {
         #expect(PriceLevel.relative(price: 50, average: 0) == nil)
         #expect(PriceLevel(tibber: "VERY_EXPENSIVE") == .veryExpensive)
         #expect(PriceLevel(tibber: "something") == nil)
-        #expect(PriceLevel.cheap.displayName == "Billig")
+        #expect(PriceLevel.cheap.displayName == "Cheap")
     }
 
     @Test func tibberLevelIsParsedAndStored() throws {

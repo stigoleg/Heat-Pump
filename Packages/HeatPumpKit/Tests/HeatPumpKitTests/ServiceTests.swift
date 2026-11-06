@@ -284,7 +284,7 @@ struct KnowledgeTests {
         #expect(ErrorCatalog.lookup(errorCode: 5101).confidence == .low)
         let unknown = ErrorCatalog.lookup(errorCode: 4242)
         #expect(unknown.confidence == .unknown)
-        #expect(unknown.explanation.contains("ingen sikker forklaring"))
+        #expect(unknown.explanation.contains("no reliable explanation"))
         let fromMessage = ErrorCatalog.lookup(errorCode: nil, message: "Feil på føler")
         #expect(fromMessage.confidence == .melcloud)
         #expect(ErrorCatalog.blinkCodes[2]?.source.contains("MSZ-LN") == true)
@@ -293,19 +293,20 @@ struct KnowledgeTests {
 
 @Suite("Compiled knowledge")
 struct CompiledKnowledgeTests {
-    /// Fails when Knowledge/*.md changed without running scripts/generate-knowledge.py.
-    @Test func compiledContentMatchesMarkdownFiles() throws {
+    /// Fails when Knowledge/<lang>/*.md changed without running scripts/generate-knowledge.py.
+    @Test(arguments: L10n.Language.allCases)
+    func compiledContentMatchesMarkdownFiles(language: L10n.Language) throws {
         let directory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Sources/HeatPumpKit/Knowledge")
+            .appending(path: "Sources/HeatPumpKit/Knowledge/\(language.rawValue)")
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "md" }
         #expect(Set(files.map { $0.deletingPathExtension().lastPathComponent }) == Set(Knowledge.names))
         for file in files {
             let name = file.deletingPathExtension().lastPathComponent
             let onDisk = try String(contentsOf: file, encoding: .utf8)
-            let compiled = try #require(Knowledge.document(named: name)).markdown
-            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(name) is out of date")
+            let compiled = try #require(Knowledge.document(named: name, language: language)).markdown
+            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(language.rawValue)/\(name) is out of date")
         }
     }
 }

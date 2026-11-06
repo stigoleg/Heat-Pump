@@ -4,12 +4,14 @@ options:
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
-  developmentLanguage: nb
+  developmentLanguage: en
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     # Team from the certificate OU; 7QJN5599B2 in the certificate name is the personal ID.
     DEVELOPMENT_TEAM: 49P95434EE
@@ -35,6 +37,9 @@ targets:
       - path: App/Sources
       # Rendered from App/Icon/AppIcon.svg by App/Icon/render.sh.
       - path: App/Assets.xcassets
+      # String catalogs: English source, Norwegian bokmål translation. HeatPumpKit.xcstrings
+      # holds the package's strings (scripts/l10n.py), also read by the MCP helper.
+      - path: App/Resources
     # Merged with the generated Info.plist: plain HTTP to the Wi-Fi adapter on the home network.
     info:
       path: App/Info.plist
@@ -47,13 +52,15 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.stigole.varmepumpe
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Varmepumpe
+        INFOPLIST_KEY_CFBundleDisplayName: "Heat Pump"
+        # Localized in App/Resources/InfoPlist.xcstrings ("Heat Pump" in English).
+        INFOPLIST_KEY_LSHasLocalizedDisplayName: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         # Read-only status requests to the heat pump's Wi-Fi adapter on the home network.
-        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Varmepumpe leser status (effekt og temperaturer) direkte fra varmepumpens Wi-Fi-modul på hjemmenettet. Appen endrer ingenting via hjemmenettet."
-        MARKETING_VERSION: "1.1.5"
-        CURRENT_PROJECT_VERSION: "3"
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Heat Pump reads status (power and temperatures) directly from the heat pump's Wi-Fi adapter on your home network. The app changes nothing over the home network."
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "4"
         ENABLE_APP_SANDBOX: NO
         COMBINE_HIDPI_IMAGES: YES
     dependencies:
@@ -77,8 +84,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.stigole.varmepumpe.mcp
         GENERATE_INFOPLIST_FILE: YES
         CREATE_INFOPLIST_SECTION_IN_BINARY: YES
-        MARKETING_VERSION: "1.1.5"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "4"
         SKIP_INSTALL: YES
     dependencies:
       - package: HeatPumpKit

@@ -15,7 +15,7 @@ public struct URLSessionTransport: HTTPTransport {
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         do {
             let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw HeatPumpError.network("Ugyldig svar") }
+            guard let http = response as? HTTPURLResponse else { throw HeatPumpError.network(L10n.tr("Invalid answer")) }
             return (data, http)
         } catch let error as HeatPumpError {
             throw error
@@ -314,7 +314,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     ) async throws -> JSONValue {
         if contextKey == nil { contextKey = credentials.loadContextKey() }
         if contextKey == nil {
-            guard relogin else { throw HeatPumpError.validation("Ingen aktiv MELCloud-økt ennå. Prøver igjen senere.") }
+            guard relogin else { throw HeatPumpError.validation(L10n.tr("No active MELCloud session yet. Trying again later.")) }
             try await login()
         }
         var triedStoredKey = false
@@ -369,9 +369,9 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
         _ method: String, _ path: String, query: [URLQueryItem] = [], body: JSONValue?, authenticated: Bool
     ) throws -> URLRequest {
         guard var components = URLComponents(url: Self.baseURL.appending(path: path), resolvingAgainstBaseURL: false)
-        else { throw HeatPumpError.network("Ugyldig adresse") }
+        else { throw HeatPumpError.network(L10n.tr("Invalid address")) }
         if !query.isEmpty { components.queryItems = query }
-        guard let url = components.url else { throw HeatPumpError.network("Ugyldig adresse") }
+        guard let url = components.url else { throw HeatPumpError.network(L10n.tr("Invalid address")) }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.timeoutInterval = 30

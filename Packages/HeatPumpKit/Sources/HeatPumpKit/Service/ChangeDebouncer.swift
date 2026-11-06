@@ -15,16 +15,16 @@ public enum AutoSendStatus: Sendable, Equatable {
     case confirmed
     case failed(String)
 
-    /// Norwegian chip text.
+    /// Chip text.
     public var text: String {
         switch self {
         case .idle: ""
-        case .edited: "Endret…"
-        case .waiting(let reason, _): "Venter – \(reason)"
-        case .sending: "Sender…"
-        case .sent: "Sendt – venter på pumpen"
-        case .confirmed: "Bekreftet"
-        case .failed(let reason): "Feil: \(reason)"
+        case .edited: L10n.tr("Changed…")
+        case .waiting(let reason, _): L10n.format("Waiting – %@", reason)
+        case .sending: L10n.tr("Sending…")
+        case .sent: L10n.tr("Sent – waiting for the heat pump")
+        case .confirmed: L10n.tr("Confirmed")
+        case .failed(let reason): L10n.format("Error: %@", reason)
         }
     }
 }
@@ -33,11 +33,11 @@ public enum AutoSendStatus: Sendable, Equatable {
 /// last edit (sliders and dials: after release). Fields are coalesced into one
 /// `apply([DeviceChange], source: .app, …)`; an edit back to the current value drops the field.
 /// The 5 s spacing and 12-per-hour budget are respected: when no write is allowed the draft is
-/// kept as "venter" and sent when it is.
+/// kept as "waiting" and sent when it is.
 @MainActor
 @Observable
 public final class ChangeDebouncer {
-    public static let reason = "Endret i appen"
+    public static let reason = L10n.tr("Changed in the app")
 
     public private(set) var edits = ControlEdits()
     /// Changes being sent or sent but not yet seen in live state. Shown and pruned against
@@ -210,8 +210,8 @@ public final class ChangeDebouncer {
             if let next = b.nextAllowed, next > now() {
                 let reason =
                     b.remaining <= 0
-                    ? "maks \(ChangeBudget.maxChangesPerHour) endringer per time er brukt. Sendes kl. \(Norwegian.time(next))."
-                    : "sendes om noen sekunder."
+                    ? L10n.format("max %lld changes per hour are used. Sends at %@.", ChangeBudget.maxChangesPerHour, Display.time(next))
+                    : L10n.tr("sends in a few seconds.")
                 status = .waiting(reason, retryAt: next)
                 schedule(after: next.timeIntervalSince(now()) + 0.2)
                 return
@@ -239,12 +239,12 @@ public final class ChangeDebouncer {
                 // Not allowed yet (budget or spacing): keep the draft; newer edits win.
                 inFlight = ControlEdits()
                 edits = draft.merging(edits)
-                status = .waiting("sendes kl. \(Norwegian.time(retry)).", retryAt: retry)
+                status = .waiting(L10n.format("sends at %@.", Display.time(retry)), retryAt: retry)
                 schedule(after: max(0.2, retry.timeIntervalSince(now()) + 0.2))
             } else {
                 inFlight = ControlEdits()
                 let failure = outcomes.first { $0.result != .ok }
-                status = .failed(failure.map(Self.reasonText) ?? "Ingen endring ble sendt.")
+                status = .failed(failure.map(Self.reasonText) ?? L10n.tr("No change was sent."))
             }
         } catch {
             isSending = false
@@ -260,7 +260,9 @@ public final class ChangeDebouncer {
     }
 
     private static func reasonText(_ outcome: ChangeOutcome) -> String {
-        for prefix in ["Ikke sendt: ", "Endringen feilet: "] where outcome.message.hasPrefix(prefix) {
+        // The prefixes the service puts in front of the reason, in the current language.
+        let prefixes = [L10n.format("Not sent: %@", ""), L10n.format("The change failed: %@", "")]
+        for prefix in prefixes where !prefix.isEmpty && outcome.message.hasPrefix(prefix) {
             return String(outcome.message.dropFirst(prefix.count))
         }
         return outcome.message

@@ -88,7 +88,7 @@ struct SetAtaServiceTests {
 
         let outcome = try await service.apply(.temperature(23), source: .app, reason: "test")
         #expect(outcome.result == .rejected)
-        #expect(outcome.message.contains("fersk status"))
+        #expect(outcome.message.contains("fresh status"))
         #expect(!paths(transport).contains("SetAta"))
         #expect(try store.changes(limit: 1).first?.result == .rejected)
     }
@@ -139,7 +139,7 @@ struct SetAtaServiceTests {
 
         let outcome = try await service.apply(.temperature(23), source: .app, reason: "x")
         #expect(outcome.result == .rejected)
-        #expect(outcome.message.contains("ingen gyldig modus"))
+        #expect(outcome.message.contains("no valid mode"))
         let approver = CountingApprover()
         let viaClaude = try await service.applyWithApproval([.power(true)], source: .claude, reason: "y", approver: approver)
         #expect(viaClaude.allSatisfy { $0.result == .rejected })

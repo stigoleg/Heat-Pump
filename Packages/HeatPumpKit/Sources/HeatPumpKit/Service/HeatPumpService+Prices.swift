@@ -106,13 +106,13 @@ extension HeatPumpService {
     /// Checks a Tibber token with one small request (at most one test per 10 s).
     public func testTibberToken(_ token: String, transport: any HTTPTransport = URLSessionTransport()) async -> String {
         guard !token.trimmingCharacters(in: .whitespaces).isEmpty else { return PriceError.missingToken.errorDescription ?? "" }
-        if isDemo { return "Demo: nøkkelen ble ikke testet mot Tibber." }
+        if isDemo { return L10n.tr("Demo: the token was not tested against Tibber.") }
         guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), melcloud: false)) == .allowed else {
-            return "Vent noen sekunder før du tester igjen."
+            return L10n.tr("Wait a few seconds before you test again.")
         }
         do {
             let hours = try await TibberPriceProvider(token: token, transport: transport, now: now).test(timeZone: timeZone)
-            return "Nøkkelen virker. Fant \(hours) timepriser for i dag."
+            return L10n.format("The token works. Found %lld hourly prices for today.", hours)
         } catch {
             return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -258,7 +258,7 @@ extension HeatPumpService {
         let t = now()
         try seedDemoLocalIfNeeded(now: t)
         // Older outdoor temperatures (MELCloud's log only goes 7 days back per request), so the
-        // degree-day model behind "Anslag i morgen" has enough days.
+        // degree-day model behind "Estimate tomorrow" has enough days.
         let older = DateInterval(start: t.addingTimeInterval(-45 * 86_400), end: t.addingTimeInterval(-7 * 86_400))
         if try store.temperaturePoints(deviceId: MockBackend.deviceId, from: older.start, to: older.end).isEmpty {
             try store.upsertTemperaturePoints(

@@ -77,7 +77,7 @@ extension HeatPumpService {
         return local.currentSubnets().contains(wanted)
     }
 
-    static let awayMessage = "Ikke på hjemmenettet. Lokal avlesning er satt på pause til Macen er tilbake på samme nett som varmepumpen."
+    static let awayMessage = L10n.tr("Not on the home network. Local reading is paused until the Mac is back on the same network as the heat pump.")
 
     // MARK: Reading
 
@@ -181,7 +181,8 @@ extension HeatPumpService {
         case .throttled(let next):
             return LocalTestResult(
                 ok: false,
-                message: "Modulen ble nettopp spurt. Prøv igjen" + (next.map { " etter \(Norwegian.time($0))" } ?? " om litt") + ".",
+                message: next.map { L10n.format("The adapter was just asked. Try again after %@.", Display.time($0)) }
+                    ?? L10n.tr("The adapter was just asked. Try again in a little while."),
                 sample: nil)
         case .failed(let text):
             return LocalTestResult(ok: false, message: text, sample: nil)
@@ -189,22 +190,22 @@ extension HeatPumpService {
     }
 
     static func describe(_ s: LocalSample) -> String {
-        var parts = ["Kontakt med Wi-Fi-modulen."]
-        if let version = s.adapterVersion { parts.append("Fastvare \(version).") }
-        if let rssi = s.rssi { parts.append("Signal \(rssi) dBm.") }
-        if let watts = s.powerW { parts.append("Effekt \(watts) W.") }
-        if let room = s.roomTemperature { parts.append(Norwegian.format("Inne %.1f °C.", room)) }
-        if let outdoor = s.outdoorTemperature { parts.append(Norwegian.format("Ute %.1f °C.", outdoor)) }
+        var parts = [L10n.tr("Connected to the Wi-Fi adapter.")]
+        if let version = s.adapterVersion { parts.append(L10n.format("Firmware %@.", version)) }
+        if let rssi = s.rssi { parts.append(L10n.format("Signal %lld dBm.", rssi)) }
+        if let watts = s.powerW { parts.append(L10n.format("Power %lld W.", watts)) }
+        if let room = s.roomTemperature { parts.append(L10n.format("Indoors %.1f °C.", room)) }
+        if let outdoor = s.outdoorTemperature { parts.append(L10n.format("Outdoors %.1f °C.", outdoor)) }
         return parts.joined(separator: " ")
     }
 
     // MARK: Discovery
 
-    /// "Finn automatisk": tries the saved address, then looks for the unit's hardware address
+    /// "Find automatically": tries the saved address, then looks for the unit's hardware address
     /// (from the MELCloud listing; never shown) on the Mac's own /24. At most once per minute.
     public func discoverLocal() async throws -> LocalDiscoveryResult {
         guard try store.reserveFetch(key: Self.localDiscoveryKey, minInterval: 60, now: now(), melcloud: false) == .allowed else {
-            return LocalDiscoveryResult(host: nil, message: "Søket ble nettopp kjørt. Vent et minutt før du prøver igjen.")
+            return LocalDiscoveryResult(host: nil, message: L10n.tr("The search was just run. Wait a minute before you try again."))
         }
         return try await discover()
     }
@@ -226,25 +227,25 @@ extension HeatPumpService {
         if trySaved, let saved = settings.host,
             case .sample = try await readLocal(host: saved, minInterval: Self.localMinInterval)
         {
-            return LocalDiscoveryResult(host: saved, message: "Modulen svarer på \(saved).")
+            return LocalDiscoveryResult(host: saved, message: L10n.format("The adapter answers at %@.", saved))
         }
         guard let mac = try cloudMAC() else {
             return LocalDiscoveryResult(
                 host: nil,
-                message: "Fant ikke maskinvareadressen til varmepumpen i MELCloud ennå. Hent status først, eller skriv inn IP-adressen selv (står i ruterens liste over enheter).")
+                message: L10n.tr("Did not find the heat pump's hardware address in MELCloud yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)."))
         }
         let hosts = try await local.scanner.hosts(matchingMAC: mac)
         guard let host = hosts.first(where: { LocalSmartClient.validatedHost($0) != nil }) else {
             return LocalDiscoveryResult(
                 host: nil,
-                message: "Fant ikke varmepumpen på hjemmenettet. Sjekk at Macen er på samme nett, eller skriv inn IP-adressen fra ruteren.")
+                message: L10n.tr("Did not find the heat pump on the home network. Check that the Mac is on the same network, or enter the IP address from the router."))
         }
         settings.host = host
         try saveLocalSettings(settings)
         if case .sample = try await readLocal(host: host, minInterval: Self.localMinInterval) {
-            return LocalDiscoveryResult(host: host, message: "Fant varmepumpen på \(host), og den svarer.")
+            return LocalDiscoveryResult(host: host, message: L10n.format("Found the heat pump at %@, and it answers.", host))
         }
-        return LocalDiscoveryResult(host: host, message: "Fant varmepumpen på \(host). Den leses ved neste oppdatering.")
+        return LocalDiscoveryResult(host: host, message: L10n.format("Found the heat pump at %@. It is read at the next refresh.", host))
     }
 
     /// The unit's MAC from the latest MELCloud data (snapshot, else the stored listing). Internal only.
@@ -290,7 +291,7 @@ extension HeatPumpService {
             return try localPowerBuckets(from: from, to: to, bucket: 3600).compactMap { b in
                 guard b.phaseCount > 0 else { return nil }
                 return HistoryPoint(
-                    timestamp: b.start, value: (b.defrostSeconds / 6).rounded() / 10, text: "\(b.defrosts) avriminger",
+                    timestamp: b.start, value: (b.defrostSeconds / 6).rounded() / 10, text: L10n.format("%lld defrosts", b.defrosts),
                     source: "local")
             }
         }

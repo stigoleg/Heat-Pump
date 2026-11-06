@@ -106,7 +106,7 @@ extension HeatPumpService {
         if try priceSettings().agreement == .norgespris {
             return PriceControlPlan(
                 steps: [], baseSource: source,
-                note: "Med Norgespris er prisen den samme hele døgnet, så prisstyringen har ingenting å styre etter.")
+                note: L10n.tr("With Norgespris the price is the same all day, so price control has nothing to steer by."))
         }
         let hours = try priceBreakdowns(from: from, to: hourStart.addingTimeInterval(Double(Self.priceControlPlanHours) * 3600))
             .map { PriceControlHour(start: $0.hour, totalOre: $0.totalOre, level: $0.level) }
@@ -114,9 +114,9 @@ extension HeatPumpService {
         let over = PriceControlPlanner.hoursOverDailyLimit(hours: hours, base: base, settings: settings, now: t, timeZone: timeZone)
         var note: String?
         if !hours.contains(where: { $0.start >= hourStart }) {
-            note = "Ingen kjente strømpriser for de neste timene ennå."
+            note = L10n.tr("No known electricity prices for the next hours yet.")
         } else if source == .unknown {
-            note = "Ingen grunntemperatur ennå: slå på prisstyringen mens varmepumpen står på varme, eller bruk ukeplanen."
+            note = L10n.tr("No base temperature yet: turn on price control while the heat pump is in heat mode, or use the weekly schedule.")
         }
         return PriceControlPlan(steps: steps, baseSource: source, note: note, overDailyLimit: over)
     }
@@ -131,7 +131,7 @@ extension HeatPumpService {
         var runtime = try priceControlRuntime()
         let t = now()
         guard settings.enabled else {
-            let status = PriceControlStatus(kind: .off, text: "Prisstyring er av.", updatedAt: t)
+            let status = PriceControlStatus(kind: .off, text: L10n.tr("Price control is off."), updatedAt: t)
             runtime.status = status
             try savePriceControlRuntime(runtime)
             return status
@@ -150,7 +150,7 @@ extension HeatPumpService {
             nextStep: plan.changes.first { $0.start > t }, baseSource: plan.baseSource, problem: decision.problem)
         if let target = decision.target, let step = decision.step {
             memory.writes.append(t)
-            let outcome = try await apply(.temperature(target), source: .automation, reason: decision.reason ?? "Prisstyring")
+            let outcome = try await apply(.temperature(target), source: .automation, reason: decision.reason ?? L10n.tr("Price control"))
             if outcome.result == .ok {
                 // `target` is already snapped to the unit's step, so it is what went out.
                 memory.appliedStep = step
@@ -166,8 +166,8 @@ extension HeatPumpService {
                 memory.problem = outcome.message
                 status.kind = .skipped
                 status.text = memory.failures < PriceControlEngine.maxAttemptsPerStep
-                    ? "Kunne ikke endre temperaturen. Prøver igjen senere i denne perioden."
-                    : "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
+                    ? L10n.tr("Could not change the temperature. Trying again later in this period.")
+                    : L10n.format("Could not change the temperature. Trying again at the next change at %@.", Display.time(step.end))
                 status.problem = outcome.message
             }
         }
@@ -233,18 +233,18 @@ extension HeatPumpService {
     /// last send lowered or raised it). Returns the restore's outcome, or nil when none was needed.
     @discardableResult
     public func disablePriceControl() async throws -> ChangeOutcome? {
-        let outcome = try await restorePriceControl(reason: "slått av – tilbake til vanlig temperatur", always: true)
+        let outcome = try await restorePriceControl(reason: L10n.tr("turned off – back to normal temperature"), always: true)
         var settings = try priceControlSettings()
         settings.enabled = false
         try store.saveSetting(settings, key: Self.priceControlKey)
         var runtime = try priceControlRuntime()
-        runtime.status = PriceControlStatus(kind: .off, text: "Prisstyring er av.", updatedAt: now(), problem: outcome?.result == .ok ? nil : outcome?.message)
+        runtime.status = PriceControlStatus(kind: .off, text: L10n.tr("Price control is off."), updatedAt: now(), problem: outcome?.result == .ok ? nil : outcome?.message)
         try savePriceControlRuntime(runtime)
         return outcome
     }
 
     /// Sets the base temperature back (before sleep, on quit, when turned off; `reason` follows
-    /// "Prisstyring: " in the change log). Counts as one of the controller's writes; unless
+    /// "Price control: " in the change log). Counts as one of the controller's writes; unless
     /// `always` (off, quit), it is not sent when the hourly cap is used up. After it the step is
     /// applied again, but not within the same clock hour. When the restore does not go through,
     /// the memory is kept: the lowered setpoint must not be taken for the user's own. Nil when
@@ -265,7 +265,7 @@ extension HeatPumpService {
             always || memory.writes.count < PriceControlEngine.maxWritesPerHour
         else { return nil }
         memory.writes.append(t)
-        let outcome = try await apply(.temperature(target), source: .automation, reason: "Prisstyring: " + reason)
+        let outcome = try await apply(.temperature(target), source: .automation, reason: L10n.format("Price control: %@", reason))
         if outcome.result == .ok {
             memory.lastSent = nil
             memory.lastSentAt = t

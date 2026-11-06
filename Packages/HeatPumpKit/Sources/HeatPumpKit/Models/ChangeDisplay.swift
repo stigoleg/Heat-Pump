@@ -26,35 +26,35 @@ extension DeviceChange {
         }
     }
 
-    /// Norwegian value text, e.g. "Varme", "21,5 °C", "På".
+    /// Value text, e.g. "Heat", "21.5 °C", "On".
     public var displayValue: String {
         switch self {
-        case .power(let on): on ? "På" : "Av"
+        case .power(let on): on ? L10n.tr("On") : L10n.tr("Off")
         case .mode(let mode): mode.displayName
-        case .temperature(let celsius): Norwegian.format("%.1f °C", celsius)
-        case .fanSpeed(let speed): speed == 0 ? "Auto" : String(speed)
+        case .temperature(let celsius): Display.format("%.1f °C", celsius)
+        case .fanSpeed(let speed): speed == 0 ? L10n.tr("Auto") : String(speed)
         case .vaneVertical(let vane): vane.displayName
         case .vaneHorizontal(let vane): vane.displayName
         }
     }
 
-    /// Norwegian field label.
+    /// Field label.
     public static func fieldName(_ field: String) -> String {
         switch field {
-        case "power": "Av/på"
-        case "mode": "Modus"
-        case "setTemperature": "Ønsket temperatur"
-        case "fanSpeed": "Viftehastighet"
-        case "vaneVertical": "Vertikalt spjeld"
-        case "vaneHorizontal": "Horisontalt spjeld"
-        case "weeklyTimer": "Ukeplan"
+        case "power": L10n.tr("On/off")
+        case "mode": L10n.tr("Mode")
+        case "setTemperature": L10n.tr("Target temperature")
+        case "fanSpeed": L10n.tr("Fan speed")
+        case "vaneVertical": L10n.tr("Vertical airflow")
+        case "vaneHorizontal": L10n.tr("Horizontal airflow")
+        case "weeklyTimer": L10n.tr("Weekly schedule")
         default: field
         }
     }
 }
 
 extension ChangeRecord {
-    /// Norwegian one-line summary, e.g. "Endre ønsket temperatur til 21,5 °C".
+    /// One-line summary, e.g. "Change target temperature to 21.5 °C".
     public var displaySummary: String {
         DeviceChange(field: field, value: newValue)?.displaySummary ?? "\(DeviceChange.fieldName(field)): \(newValue ?? "–")"
     }
@@ -71,10 +71,10 @@ extension ChangeRecord {
 extension ChangeResult {
     public var displayName: String {
         switch self {
-        case .pending: "Sendes"
-        case .ok: "Sendt"
-        case .failed: "Feilet"
-        case .rejected: "Avvist"
+        case .pending: L10n.tr("Sending")
+        case .ok: L10n.tr("Sent")
+        case .failed: L10n.tr("Failed")
+        case .rejected: L10n.tr("Rejected")
         }
     }
 }
@@ -82,9 +82,9 @@ extension ChangeResult {
 extension ChangeSource {
     public var displayName: String {
         switch self {
-        case .app: "App"
+        case .app: L10n.tr("App")
         case .claude: "Claude"
-        case .automation: "Prisstyring"
+        case .automation: L10n.tr("Price control")
         }
     }
 }

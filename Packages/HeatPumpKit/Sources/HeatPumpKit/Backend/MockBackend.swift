@@ -38,7 +38,7 @@ public actor MockBackend: HeatPumpBackend {
     public func login() async throws {}
 
     public func listDevices() async throws -> [DeviceSummary] {
-        [DeviceSummary(deviceId: Self.deviceId, buildingId: Self.buildingId, name: "Stue (simulert)")]
+        [DeviceSummary(deviceId: Self.deviceId, buildingId: Self.buildingId, name: L10n.tr("Living room (simulated)"))]
     }
 
     public func fetchState(deviceId: Int) async throws -> DeviceState {
@@ -50,7 +50,7 @@ public actor MockBackend: HeatPumpBackend {
     public func state(at t: Date) -> DeviceState {
         let outdoor = Self.outdoorTemperature(at: t)
         return DeviceState(
-            deviceId: Self.deviceId, buildingId: Self.buildingId, name: "Stue (simulert)",
+            deviceId: Self.deviceId, buildingId: Self.buildingId, name: L10n.tr("Living room (simulated)"),
             serialNumber: "MOCK0000000", macAddress: "00:00:5e:00:53:01",
             power: power, mode: mode, setTemperature: setTemperature,
             roomTemperature: roomTemperature(at: t, outdoor: outdoor),
@@ -96,7 +96,7 @@ public actor MockBackend: HeatPumpBackend {
                 entries.append(
                     ErrorLogEntry(
                         deviceId: Self.deviceId, start: start, end: start.addingTimeInterval(240),
-                        message: "Kommunikasjonsfeil mellom innedel og utedel (simulert)", code: nil, source: "melcloud"))
+                        message: L10n.tr("Communication error between the indoor and outdoor unit (simulated)"), code: nil, source: "melcloud"))
             }
             k += 1
         }
@@ -264,15 +264,15 @@ public actor MockBackend: HeatPumpBackend {
     }
 
     public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server("Ukjent oppdatering") }
+        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
         let current = firmwareProgress(at: now())
-        guard FirmwareUpdatePhase.from(phase: current.phase, approval: current.approval, minutesOffline: 0).canApprove else { throw HeatPumpError.server("Oppdateringen kan ikke godkjennes nå") }
+        guard FirmwareUpdatePhase.from(phase: current.phase, approval: current.approval, minutesOffline: 0).canApprove else { throw HeatPumpError.server(L10n.tr("The update cannot be approved now")) }
         firmwareApprovals += 1
         firmwareApprovedAt = now()
     }
 
     public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server("Ukjent oppdatering") }
+        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
         firmwareCancels += 1
         firmwareApprovedAt = nil
     }

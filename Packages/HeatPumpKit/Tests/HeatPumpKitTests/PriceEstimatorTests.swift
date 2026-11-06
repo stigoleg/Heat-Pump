@@ -149,7 +149,7 @@ struct PriceEstimatorTests {
         try store.upsertPrices(history(days: 5) { _ in 100 })
         let outlook = try await service.priceOutlook()
         #expect(outlook.estimate.isEmpty)
-        #expect(outlook.estimateMissing?.contains("14 dager") == true)
+        #expect(outlook.estimateMissing?.contains("14 days") == true)
     }
 
     @Test func dailyOutlookUsesTheDegreeDayModelForEachForecastDay() async throws {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Errors surfaced by backends and the service. `errorDescription` is Norwegian display text.
+/// Errors surfaced by backends and the service. `errorDescription` is display text (via `L10n`).
 public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
     case missingCredentials
     case invalidCredentials(String?)
@@ -27,40 +27,42 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .missingCredentials:
-            "Mangler innlogging til MELCloud. Legg inn e-post og passord i appen."
+            L10n.tr("No MELCloud login. Enter your email and password in the app.")
         case .invalidCredentials(let detail):
-            "MELCloud godtok ikke innloggingen" + (detail.map { " (\($0))" } ?? "") + "."
+            detail.map { L10n.format("MELCloud did not accept the login (%@).", $0) } ?? L10n.tr("MELCloud did not accept the login.")
         case .loginThrottled(let until):
-            "MELCloud blokkerer innlogging midlertidig (for mange forsøk)"
-                + (until.map { " til \(Norwegian.time($0))" } ?? "") + "."
+            until.map { L10n.format("MELCloud is temporarily blocking login (too many attempts) until %@.", Display.time($0)) }
+                ?? L10n.tr("MELCloud is temporarily blocking login (too many attempts).")
         case .rateLimited(let until):
-            "MELCloud har midlertidig stengt for flere forespørsler (for mye trafikk) til \(Norwegian.dateTime(until))."
+            L10n.format("MELCloud has temporarily stopped accepting requests (too much traffic) until %@.", Display.dateTime(until))
         case .http(let status):
-            "MELCloud svarte med HTTP-feil \(status)."
+            L10n.format("MELCloud answered with HTTP error %lld.", status)
         case .network(let detail):
-            "Nettverksfeil: \(detail)"
+            L10n.format("Network error: %@", detail)
         case .decoding(let detail):
-            "Kunne ikke tolke svaret fra MELCloud: \(detail)"
+            L10n.format("Could not interpret the answer from MELCloud: %@", detail)
         case .deviceNotFound:
-            "Fant ingen varmepumpe på kontoen."
+            L10n.tr("No heat pump found on the account.")
         case .server(let detail):
-            "MELCloud avviste forespørselen: \(detail)"
+            L10n.format("MELCloud rejected the request: %@", detail)
         case .validation(let detail):
             detail
         case .changeBudgetExceeded(let next):
-            "For mange endringer siste time (maks \(ChangeBudget.maxChangesPerHour)). Neste endring tillatt etter \(Norwegian.time(next))."
+            L10n.format(
+                "Too many changes in the last hour (max %lld). The next change is allowed after %@.", ChangeBudget.maxChangesPerHour,
+                Display.time(next))
         case .blocked(let until):
-            "Nettverkskall er stoppet til \(Norwegian.dateTime(until)) fordi MELCloud har begrenset trafikken."
+            L10n.format("Network calls are stopped until %@ because MELCloud has limited the traffic.", Display.dateTime(until))
         case .rejectedByUser:
-            "Endringen ble avvist av brukeren."
+            L10n.tr("The change was rejected by the user.")
         case .unauthorized:
-            "MELCloud avviser tilgangen selv etter ny innlogging. Henting er satt på pause i en time."
+            L10n.tr("MELCloud refuses access even after a new login. Fetching is paused for an hour.")
         case .credentialsRejected:
-            "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
+            L10n.tr("MELCloud did not accept the email or password. Update the login in Settings. The app does not try again until you have done so, so the account is not locked.")
         case .writeTooSoon(let next):
-            "En annen endring ble nettopp sendt. Prøv igjen etter \(Norwegian.time(next))."
+            L10n.format("Another change was just sent. Try again after %@.", Display.time(next))
         case .endpointRefused(let status):
-            "MELCloud tillot ikke denne forespørselen for kontoen (HTTP \(status))."
+            L10n.format("MELCloud did not allow this request for the account (HTTP %lld).", status)
         }
     }
 }
@@ -98,7 +100,7 @@ public protocol HeatPumpBackend: Sendable {
     var requiresFreshStateForWrites: Bool { get }
     /// When the device object a write would be based on was fetched (nil when unknown).
     func writeBaseFetchedAt(deviceId: Int) async -> Date?
-    /// Norwegian reason the backend would refuse `changes` without contacting the unit, or nil.
+    /// Reason the backend would refuse `changes` without contacting the unit, or nil.
     /// With `requireBase` a missing device object counts as a reason.
     func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String?
     /// Frost protection and holiday mode for the device (two reads).
@@ -129,5 +131,5 @@ extension HeatPumpBackend {
     public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] { throw HeatPumpError.validation(unsupported) }
     public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
     public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws { throw HeatPumpError.validation(unsupported) }
-    private var unsupported: String { "Støttes ikke av denne tilkoblingen." }
+    private var unsupported: String { L10n.tr("Not supported by this connection.") }
 }

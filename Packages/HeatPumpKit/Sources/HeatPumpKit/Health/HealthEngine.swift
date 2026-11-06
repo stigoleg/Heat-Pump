@@ -35,7 +35,7 @@ public struct HealthInput: Sendable {
     }
 }
 
-/// Pure health rules. All display text is Norwegian bokmål.
+/// Pure health rules. All display text goes through `L10n`.
 public enum HealthEngine {
     public enum Threshold {
         public static let offlineAfter: TimeInterval = 3600
@@ -67,9 +67,9 @@ public enum HealthEngine {
         } else {
             findings.append(
                 HealthFinding(
-                    code: "no_data", severity: .info, title: "Ikke nok data ennå",
-                    detail: "Det er ikke hentet noen status fra varmepumpen ennå, så helsesjekken er begrenset.",
-                    recommendation: "Hent status (oppdater) og kjør helsesjekken igjen om litt."))
+                    code: "no_data", severity: .info, title: L10n.tr("Not enough data yet"),
+                    detail: L10n.tr("No status has been fetched from the heat pump yet, so the health check is limited."),
+                    recommendation: L10n.tr("Fetch the status (refresh) and run the health check again in a little while.")))
         }
         if let local = input.local {
             findings += LocalHealth.evaluate(local, cloudErrorShown: findings.contains { ["active_error", "error_flag"].contains($0.code) },
@@ -81,9 +81,9 @@ public enum HealthEngine {
         if !findings.contains(where: { $0.severity >= .warning }) && input.latestState != nil {
             findings.append(
                 HealthFinding(
-                    code: "all_ok", severity: .ok, title: "Varmepumpen ser ut til å fungere normalt",
-                    detail: "Ingen feil, advarsler eller avvik er funnet i dataene vi har.",
-                    recommendation: "Ingen tiltak nødvendig utover vanlig vedlikehold."))
+                    code: "all_ok", severity: .ok, title: L10n.tr("The heat pump appears to be working normally"),
+                    detail: L10n.tr("No errors, warnings or anomalies were found in the data we have."),
+                    recommendation: L10n.tr("No action needed beyond regular maintenance.")))
         }
         return HealthReport(generatedAt: input.now, findings: findings)
     }
@@ -96,18 +96,20 @@ public enum HealthEngine {
             // HasError without a real code: real but unspecific, so not critical.
             return [
                 HealthFinding(
-                    code: "error_flag", severity: .warning, title: "MELCloud melder en feil uten feilkode",
-                    detail: "Varmepumpen har satt et feilflagg, men MELCloud oppgir ingen feilkode. Vi vet derfor ikke hva feilen gjelder.",
-                    recommendation: "Se etter om driftslampen på innedelen blinker, og tell antall blink. Blinker den, slå av varmepumpen og ring forhandleren. Blinker den ikke og varmen virker, følg med på om feilen forsvinner ved neste oppdatering.")
+                    code: "error_flag", severity: .warning, title: L10n.tr("MELCloud reports an error without an error code"),
+                    detail: L10n.tr("The heat pump has set an error flag, but MELCloud gives no error code. So we do not know what the error is about."),
+                    recommendation: L10n.tr("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If it does not blink and the heating works, watch whether the error goes away at the next refresh."))
             ]
         }
         let entry = ErrorCatalog.lookup(errorCode: code)
+        let uncertain = entry.confidence == .low || entry.confidence == .unknown
         return [
             HealthFinding(
-                code: "active_error", severity: .critical, title: "Varmepumpen melder feil nå",
-                detail: "Feilkode \(code). \(entry.title): \(entry.explanation)"
-                    + (entry.confidence == .low || entry.confidence == .unknown ? " \(ErrorCatalog.caveat)" : ""),
-                recommendation: "Sjekk om driftslampen på innedelen blinker, og tell antall blink. " + entry.recommendation)
+                code: "active_error", severity: .critical, title: L10n.tr("The heat pump is reporting an error now"),
+                detail: uncertain
+                    ? L10n.format("Error code %@. %@: %@ %@", String(code), entry.title, entry.explanation, ErrorCatalog.caveat)
+                    : L10n.format("Error code %@. %@: %@", String(code), entry.title, entry.explanation),
+                recommendation: L10n.format("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. %@", entry.recommendation))
         ]
     }
 
@@ -117,23 +119,29 @@ public enum HealthEngine {
         let dataAge = now.timeIntervalSince(state.fetchedAt)
         if dataAge > Threshold.staleDataAfter {
             let why =
-                blockedUntil.map { "MELCloud har midlertidig stengt for oppdateringer til \(Norwegian.dateTime($0))." }
-                ?? "Det har ikke lyktes å hente ny status (for eksempel uten internett)."
+                blockedUntil.map { L10n.format("MELCloud has temporarily blocked updates until %@.", Display.dateTime($0)) }
+                ?? L10n.tr("Fetching a new status has not succeeded (for example without internet).")
             return [
                 HealthFinding(
-                    code: "stale_data", severity: .info, title: "Dataene er gamle",
-                    detail: "Siste status er fra \(Norwegian.dateTime(state.fetchedAt)). \(why) Vurderingene under gjelder det tidspunktet.",
-                    recommendation: "Ingen tiltak på varmepumpen. Appen henter ny status automatisk når det er mulig.")
+                    code: "stale_data", severity: .info, title: L10n.tr("The data is old"),
+                    detail: L10n.format("The latest status is from %@. %@ The assessments below apply to that time.", Display.dateTime(state.fetchedAt), why),
+                    recommendation: L10n.tr("No action needed on the heat pump. The app fetches a new status automatically when it can."))
             ]
         }
         let silentFor = state.lastCommunication.map { state.fetchedAt.timeIntervalSince($0) }
         guard state.offline || (silentFor ?? 0) > Threshold.offlineAfter else { return [] }
-        let since = state.lastCommunication.map { "Siste kontakt: \(Norwegian.dateTime($0))." } ?? ""
+        let detail =
+            state.lastCommunication.map {
+                L10n.format(
+                    "The Wi-Fi adapter had not reported in for over an hour when the status was fetched. Last contact: %@. The heat pump can still heat as normal, but we cannot see what it is doing.",
+                    Display.dateTime($0))
+            }
+            ?? L10n.tr("The Wi-Fi adapter had not reported in for over an hour when the status was fetched. The heat pump can still heat as normal, but we cannot see what it is doing.")
         return [
             HealthFinding(
-                code: "offline", severity: .warning, title: "Varmepumpen har ikke kontakt med MELCloud",
-                detail: "Wi-Fi-modulen hadde ikke rapportert inn på over en time da status ble hentet. \(since) Varmepumpen kan fortsatt varme som normalt, men vi ser ikke hva den gjør.",
-                recommendation: "Sjekk at ruteren og internett virker, og at varmepumpen har strøm. Hjelper ikke det, slå av sikringen til varmepumpen i ett minutt og slå den på igjen.")
+                code: "offline", severity: .warning, title: L10n.tr("The heat pump has no contact with MELCloud"),
+                detail: detail,
+                recommendation: L10n.tr("Check that the router and the internet work, and that the heat pump has power. If that does not help, switch off the circuit breaker for the heat pump for one minute and switch it back on."))
         ]
     }
 
@@ -143,17 +151,17 @@ public enum HealthEngine {
         if rssi < Threshold.wifiWarning {
             return [
                 HealthFinding(
-                    code: "wifi_weak", severity: .warning, title: "Svakt Wi-Fi-signal",
-                    detail: "Signalstyrken er \(rssi) dBm, som er svakt. Det kan gi brudd i kontakten med MELCloud.",
-                    recommendation: "Flytt ruteren nærmere, eller sett opp en Wi-Fi-forsterker/mesh-node nær innedelen.")
+                    code: "wifi_weak", severity: .warning, title: L10n.tr("Weak Wi-Fi signal"),
+                    detail: L10n.format("The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to MELCloud.", rssi),
+                    recommendation: L10n.tr("Move the router closer, or set up a Wi-Fi extender or mesh node near the indoor unit."))
             ]
         }
         if rssi < Threshold.wifiInfo {
             return [
                 HealthFinding(
-                    code: "wifi_fair", severity: .info, title: "Middels Wi-Fi-signal",
-                    detail: "Signalstyrken er \(rssi) dBm. Det fungerer som regel, men er ikke sterkt.",
-                    recommendation: "Ingen tiltak nødvendig nå. Hvis kontakten faller ut, vurder bedre Wi-Fi-dekning ved innedelen.")
+                    code: "wifi_fair", severity: .info, title: L10n.tr("Fair Wi-Fi signal"),
+                    detail: L10n.format("The signal strength is %lld dBm. It usually works, but it is not strong.", rssi),
+                    recommendation: L10n.tr("No action needed now. If the connection drops, consider better Wi-Fi coverage near the indoor unit."))
             ]
         }
         return []
@@ -175,14 +183,24 @@ public enum HealthEngine {
             input.now.timeIntervalSince(last.fetchedAt) < 3 * 3600
         else { return [] }
         let hours = Int(last.fetchedAt.timeIntervalSince(first.fetchedAt) / 3600)
-        let outdoor = last.outdoorTemperature.map { Norwegian.format(" Ute er det %.0f °C.", $0) } ?? ""
+        // One numeric argument per key (the hour count drives the plural); temperatures go in as text.
+        let gap = Display.format("%.1f °C", Threshold.setpointGap)
+        let room = Display.format("%.1f °C", last.roomTemperature ?? 0)
+        let target = Display.format("%.1f °C", last.setTemperature ?? 0)
+        let detail =
+            last.outdoorTemperature.map {
+                L10n.format(
+                    "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@). It is %@ outdoors.",
+                    hours, gap, room, target, Display.format("%.0f °C", $0))
+            }
+            ?? L10n.format(
+                "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@).",
+                hours, gap, room, target)
         return [
             HealthFinding(
-                code: "setpoint_not_reached", severity: .warning, title: "Rommet når ikke ønsket temperatur",
-                detail: Norwegian.format(
-                    "I minst %d timer har romtemperaturen ligget %.1f °C eller mer under ønsket temperatur (nå %.1f °C mot %.1f °C).",
-                    hours, Threshold.setpointGap, last.roomTemperature ?? 0, last.setTemperature ?? 0) + outdoor,
-                recommendation: "Det kan være helt normalt når det er veldig kaldt ute, eller rett etter at temperaturen er skrudd opp. Sjekk at luftfilteret er rent, at ingenting blokkerer luftstrømmen, og at utedelen ikke er dekket av snø eller is. Vedvarer det i milde perioder, ring forhandleren.")
+                code: "setpoint_not_reached", severity: .warning, title: L10n.tr("The room is not reaching the target temperature"),
+                detail: detail,
+                recommendation: L10n.tr("This can be perfectly normal when it is very cold outdoors, or right after the temperature has been turned up. Check that the air filter is clean, that nothing blocks the airflow, and that the outdoor unit is not covered by snow or ice. If it persists in mild weather, call the dealer."))
         ]
     }
 
@@ -191,21 +209,21 @@ public enum HealthEngine {
         // The deployment id is MELCloud-internal and never shown; the version is.
         if state.firmware.updateAvailable {
             let detail =
-                state.firmware.version.map { "Modulen har fastvare \($0). MELCloud har en nyere versjon klar." }
-                ?? "MELCloud har en nyere fastvareversjon klar for modulen."
+                state.firmware.version.map { L10n.format("The adapter has firmware %@. MELCloud has a newer version ready.", $0) }
+                ?? L10n.tr("MELCloud has a newer firmware version ready for the adapter.")
             findings.append(
                 HealthFinding(
-                    code: "firmware_pending", severity: .info, title: "Oppdatering tilgjengelig for Wi-Fi-modulen",
+                    code: "firmware_pending", severity: .info, title: L10n.tr("Update available for the Wi-Fi adapter"),
                     detail: detail,
                     recommendation:
-                        "Start oppdateringen under Helse → Fastvare i denne appen (eller i MELCloud-appen) mens varmepumpen står på strøm og har godt Wi-Fi. Ikke slå av strømmen og ikke bruk fjernkontrollen mens den pågår. Fastvare kan ikke rulles tilbake."))
+                        L10n.tr("Start the update under Health → Firmware in this app (or in the MELCloud app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back.")))
         }
         if state.firmware.updateAborted {
             findings.append(
                 HealthFinding(
-                    code: "firmware_aborted", severity: .info, title: "Programvareoppdatering ble avbrutt",
-                    detail: "Siste oppdatering av Wi-Fi-modulen ble ikke fullført.",
-                    recommendation: "Sørg for stabilt Wi-Fi og prøv igjen under Helse → Fastvare. Prøv eventuelt å starte varmepumpen på nytt via sikringen først. Vedvarer det, kontakt forhandleren."))
+                    code: "firmware_aborted", severity: .info, title: L10n.tr("Firmware update was aborted"),
+                    detail: L10n.tr("The last update of the Wi-Fi adapter did not complete."),
+                    recommendation: L10n.tr("Make sure Wi-Fi is stable and try again under Health → Firmware. If needed, restart the heat pump via the circuit breaker first. If it persists, contact the dealer.")))
         }
         return findings
     }
@@ -219,18 +237,19 @@ public enum HealthEngine {
             return [
                 HealthFinding(
                     code: "recent_error_log", severity: .warning,
-                    title: "Feil registrert siste \(Threshold.recentErrorDays) dager",
-                    detail: "\(recent.count) feil i feilloggen. Siste: «\(latest.message)» \(Norwegian.dateTime(latest.start)).",
-                    recommendation: "Gjentar feilen seg, eller blinker driftslampen, bør du ringe forhandleren. "
-                        + "Én enkelt kort feil som har gått over av seg selv er ofte ufarlig. " + (entry.confidence == .melcloud ? "" : ErrorCatalog.caveat))
+                    title: L10n.format("Errors recorded in the last %lld days", Threshold.recentErrorDays),
+                    detail: L10n.format("%lld errors in the error log. Latest: “%@” %@.", recent.count, latest.message, Display.dateTime(latest.start)),
+                    recommendation: entry.confidence == .melcloud
+                        ? L10n.tr("If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless.")
+                        : L10n.format("If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless. %@", ErrorCatalog.caveat))
             ]
         }
         guard let latest = input.errorEvents.max(by: { $0.start < $1.start }) else { return [] }
         return [
             HealthFinding(
-                code: "old_error_log", severity: .info, title: "Eldre feil i feilloggen",
-                detail: "\(input.errorEvents.count) eldre feil. Siste: «\(latest.message)» \(Norwegian.date(latest.start)).",
-                recommendation: "Ingen tiltak nå. Nevn dem for forhandleren ved neste service.")
+                code: "old_error_log", severity: .info, title: L10n.tr("Older errors in the error log"),
+                detail: L10n.format("%lld older errors. Latest: “%@” %@.", input.errorEvents.count, latest.message, Display.date(latest.start)),
+                recommendation: L10n.tr("No action now. Mention them to the dealer at the next service."))
         ]
     }
 
@@ -268,11 +287,11 @@ public enum HealthEngine {
         let severity: HealthSeverity = factor > Threshold.energyWarningFactor ? .warning : .info
         return [
             HealthFinding(
-                code: "energy_anomaly", severity: severity, title: "Uvanlig høyt strømforbruk",
-                detail: Norwegian.format(
-                    "%@ brukte varmepumpen %.2f kWh per graddag, %.1f ganger mer enn vanlig (median %.2f siste dager). Graddager er justert for utetemperatur.",
+                code: "energy_anomaly", severity: severity, title: L10n.tr("Unusually high electricity use"),
+                detail: L10n.format(
+                    "On %@ the heat pump used %.2f kWh per degree day, %.1f times more than usual (median %.2f over recent days). Degree days are adjusted for the outdoor temperature.",
                     latest.day, latest.ratio, factor, median),
-                recommendation: "Sjekk at luftfilteret er rent, at utedelen ikke er nediset eller dekket av snø, og at dører/vinduer er lukket. Fortsetter det flere dager, ring forhandleren. Merk at MELCloud av og til rapporterer energitall forsinket eller feil.")
+                recommendation: L10n.tr("Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that MELCloud sometimes reports energy figures late or wrong."))
         ]
     }
 
@@ -288,22 +307,22 @@ public enum HealthEngine {
             if age > Threshold.airFilterWarningDays {
                 findings.append(
                     HealthFinding(
-                        code: "air_filter_overdue", severity: .warning, title: "Luftfilteret bør rengjøres nå",
-                        detail: "Det er \(age) dager siden luftfilteret sist ble rengjort. Anbefalt er hver 2. uke.",
-                        recommendation: "Slå av varmepumpen, ta ut luftfilteret, støvsug eller skyll det, og la det tørke i skyggen før det settes inn igjen. Registrer rengjøringen etterpå."))
+                        code: "air_filter_overdue", severity: .warning, title: L10n.tr("The air filter should be cleaned now"),
+                        detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
+                        recommendation: L10n.tr("Turn off the heat pump, take out the air filter, vacuum or rinse it, and let it dry in the shade before putting it back. Record the cleaning afterwards.")))
             } else if age > Threshold.airFilterInfoDays {
                 findings.append(
                     HealthFinding(
-                        code: "air_filter_due", severity: .info, title: "Snart tid for å rengjøre luftfilteret",
-                        detail: "Det er \(age) dager siden luftfilteret sist ble rengjort. Anbefalt er hver 2. uke.",
-                        recommendation: "Rengjør luftfilteret i løpet av de neste dagene og registrer det."))
+                        code: "air_filter_due", severity: .info, title: L10n.tr("Time to clean the air filter soon"),
+                        detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
+                        recommendation: L10n.tr("Clean the air filter within the next few days and record it.")))
             }
         } else {
             findings.append(
                 HealthFinding(
-                    code: "air_filter_unknown", severity: .info, title: "Ingen registrert filterrengjøring",
-                    detail: "Vi vet ikke når luftfilteret sist ble rengjort. Bruksanvisningen anbefaler hver 2. uke.",
-                    recommendation: "Rengjør luftfilteret og registrer det, så kan appen minne deg på neste gang."))
+                    code: "air_filter_unknown", severity: .info, title: L10n.tr("No filter cleaning recorded"),
+                    detail: L10n.tr("We do not know when the air filter was last cleaned. The manual recommends every 2 weeks."),
+                    recommendation: L10n.tr("Clean the air filter and record it, so the app can remind you next time.")))
         }
 
         if let record = latest(.deodorizingFilter) {
@@ -311,24 +330,24 @@ public enum HealthEngine {
             if age > Threshold.deodorizingFilterDays {
                 findings.append(
                     HealthFinding(
-                        code: "deodorizing_filter_due", severity: .info, title: "Luftrenser og luktfilter bør rengjøres",
-                        detail: "Det er \(age) dager siden luftrenseren og det svarte luktfilteret ble rengjort. Anbefalt er hver 3. måned.",
-                        recommendation: "Støvsug filtrene (luktfilteret kan bløtlegges i lunkent vann 30–40 °C i ca. 15 minutter), tørk i skyggen. Reservedel ved behov: MAC-3010FT-E."))
+                        code: "deodorizing_filter_due", severity: .info, title: L10n.tr("The air purifying and deodorizing filters should be cleaned"),
+                        detail: L10n.format("It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months.", age),
+                        recommendation: L10n.tr("Vacuum the filters (the deodorizing filter can be soaked in lukewarm water at 30–40 °C for about 15 minutes) and dry them in the shade. Spare part if needed: MAC-3010FT-E.")))
             }
         } else {
             findings.append(
                 HealthFinding(
-                    code: "deodorizing_filter_unknown", severity: .info, title: "Ukjent når luktfilteret sist ble rengjort",
-                    detail: "Luftrenseren og det svarte luktfilteret skal rengjøres hver 3. måned.",
-                    recommendation: "Rengjør dem ved neste filterrengjøring og registrer det."))
+                    code: "deodorizing_filter_unknown", severity: .info, title: L10n.tr("Unknown when the deodorizing filter was last cleaned"),
+                    detail: L10n.tr("The air purifying filter and the black deodorizing filter should be cleaned every 3 months."),
+                    recommendation: L10n.tr("Clean them at the next filter cleaning and record it.")))
         }
 
         if let record = latest(.vBlockingFilter), days(since: record.timestamp) > Threshold.deodorizingFilterDays {
             findings.append(
                 HealthFinding(
-                    code: "v_blocking_filter_due", severity: .info, title: "Det grønne V-blokkerende filteret bør rengjøres",
-                    detail: "Det er \(days(since: record.timestamp)) dager siden det ble rengjort. Anbefalt er hver 3. måned, og nytt filter hvert år.",
-                    recommendation: "Støvsug filteret, eller skyll det i lunkent vann og tørk i skyggen. Reservedel: MAC-2490FT-E."))
+                    code: "v_blocking_filter_due", severity: .info, title: L10n.tr("The green V-blocking filter should be cleaned"),
+                    detail: L10n.format("It has been %lld days since it was cleaned. The recommendation is every 3 months, with a new filter every year.", days(since: record.timestamp)),
+                    recommendation: L10n.tr("Vacuum the filter, or rinse it in lukewarm water and dry it in the shade. Spare part: MAC-2490FT-E.")))
         }
         return findings
     }
