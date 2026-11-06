@@ -296,16 +296,6 @@ struct SettingChip: View {
     }
 }
 
-struct SeverityBadge: View {
-    let severity: HealthSeverity
-
-    var body: some View {
-        Label(severity.displayName, systemImage: severity.systemImage)
-            .font(.callout.weight(.medium))
-            .foregroundStyle(severity.color)
-    }
-}
-
 /// Empty state with a short explanation.
 struct EmptyChart: View {
     let title: LocalizedStringKey

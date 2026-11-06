@@ -242,6 +242,8 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 
 **The app icon** is rendered from `App/Icon/AppIcon.svg` with `App/Icon/render.sh` (requires `brew install librsvg`).
 
+**Screenshots and agents.** `scripts/screenshot.sh` takes a demo screenshot at a fixed window size, and `scripts/parity.sh` compares every screen before and after a change. [CLAUDE.md](CLAUDE.md) and [docs/architecture.md](docs/architecture.md) describe the architecture and its rules; project skills for [Claude Code](https://claude.com/claude-code) in `.claude/skills/` cover the design system, localization, screenshots and releases.
+
 <details>
 <summary>Environment variables</summary>
 

@@ -241,6 +241,8 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 
 **Appikonet** lages fra `App/Icon/AppIcon.svg` med `App/Icon/render.sh` (krever `brew install librsvg`).
 
+**Skjermbilder og agenter.** `scripts/screenshot.sh` tar et skjermbilde i demomodus med fast vindusstørrelse, og `scripts/parity.sh` sammenligner alle skjermer før og etter en endring. [CLAUDE.md](CLAUDE.md) og [docs/architecture.md](docs/architecture.md) beskriver arkitekturen og reglene (på engelsk); skills for [Claude Code](https://claude.com/claude-code) i `.claude/skills/` dekker designsystemet, oversettelse, skjermbilder og release.
+
 <details>
 <summary>Miljøvariabler</summary>
 
