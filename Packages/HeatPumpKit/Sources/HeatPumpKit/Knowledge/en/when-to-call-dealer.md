@@ -1,34 +1,34 @@
-# Når bør du ringe forhandleren?
+# When should you call the dealer?
 
-## Ring med en gang (slutt å bruke varmepumpen)
+## Call right away (stop using the heat pump)
 
-Bruksanvisningen sier at du skal slutte å bruke varmepumpen og kontakte forhandleren når:
+The owner's manual says to stop using the heat pump and contact the dealer when:
 
-- driftslampen på innedelen blinker,
-- det lekker eller drypper vann fra innedelen,
-- sikringen (kretsbryteren) slår seg ut ofte,
-- det kommer unormale lyder,
-- du mistenker lekkasje av kjølemiddel (R32 er brennbart: luft ut, ikke bruk åpen flamme, slå av).
+- the operation lamp on the indoor unit blinks,
+- water leaks or drips from the indoor unit,
+- the fuse (circuit breaker) trips often,
+- there are abnormal noises,
+- you suspect a refrigerant leak (R32 is flammable: ventilate, no open flame, turn it off).
 
-## Ring snart
+## Call soon
 
-- Samme feil dukker opp flere ganger i feilloggen.
-- Rommet blir ikke varmt selv i mildt vær (rundt 0 °C eller varmere), og filteret er rent.
-- Strømforbruket er klart høyere enn vanlig i flere dager uten at det er kaldere ute.
-- Utedelen ises helt ned og tiner ikke selv etter avriming.
-- Det er gått noen år siden siste profesjonelle service.
+- The same error appears several times in the error log.
+- The room does not get warm even in mild weather (around 0 °C or warmer), and the filter is clean.
+- Electricity consumption is clearly higher than usual for several days without it being colder outside.
+- The outdoor unit ices over completely and does not thaw even after defrosting.
+- It has been a few years since the last professional service.
 
-## Ikke nødvendig å ringe
+## No need to call
 
-- Én enkelt kort feil i feilloggen som har gått over av seg selv.
-- Utedelen damper, drypper eller stopper i opptil 10 minutter om vinteren. Det er avriming og helt normalt.
-- Det tar noen minutter før det kommer varm luft etter oppstart.
-- Knepping, risling eller susing (temperaturendringer og kjølemiddel som strømmer).
-- Kontakten med MELCloud faller ut en kort stund.
+- A single short error in the error log that cleared by itself.
+- The outdoor unit steams, drips or stops for up to 10 minutes in winter. That is defrosting and completely normal.
+- It takes a few minutes before warm air comes after start-up.
+- Clicking, trickling or hissing (temperature changes and refrigerant flowing).
+- The connection to MELCloud drops out for a short while.
 
-## Dette bør du ha klart når du ringer
+## Have this ready when you call
 
-- Modell: MSZ-RW25VG (servicereferanse MSZ-RW25VG-SC1), produsert 2022-04.
-- Serienummeret står på typeskiltet på innedelen.
-- Antall blink fra driftslampen, og feiltekst og tidspunkt fra feilloggen.
-- Hva som skjedde (modus, ønsket temperatur, utetemperatur).
+- Model: MSZ-RW25VG (service reference MSZ-RW25VG-SC1), manufactured 2022-04.
+- The serial number is on the rating plate on the indoor unit.
+- The number of blinks from the operation lamp, and the error text and time from the error log.
+- What happened (mode, target temperature, outdoor temperature).

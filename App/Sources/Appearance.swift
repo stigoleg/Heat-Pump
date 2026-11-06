@@ -12,9 +12,9 @@ enum AppAppearance: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .system: "System"
-        case .light: "Lys"
-        case .dark: "Mørk"
+        case .system: String(localized: "System")
+        case .light: String(localized: "Light")
+        case .dark: String(localized: "Dark")
         }
     }
 
@@ -35,7 +35,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
         }
     }
 
-    /// System → Lys → Mørk → System (⌘⇧L).
+    /// System → Light → Dark → System (⌘⇧L).
     var next: AppAppearance {
         switch self {
         case .system: .light
@@ -53,9 +53,9 @@ struct AppearanceMenu: View {
         Menu {
             AppearancePicker()
         } label: {
-            Label("Utseende", systemImage: model.appearance.systemImage)
+            Label("Appearance", systemImage: model.appearance.systemImage)
         }
-        .help("Utseende: \(model.appearance.title). Velg System, Lys eller Mørk (⌘⇧L bytter).")
+        .help("Appearance: \(model.appearance.title). Choose System, Light or Dark (⌘⇧L toggles).")
     }
 }
 
@@ -67,12 +67,12 @@ struct AppearancePicker: View {
     var body: some View {
         let selection = Binding(get: { model.appearance }, set: { model.setAppearance($0) })
         if segmented {
-            Picker("Lys eller mørk", selection: selection) {
+            Picker("Light or dark", selection: selection) {
                 ForEach(AppAppearance.allCases) { Label($0.title, systemImage: $0.systemImage).tag($0) }
             }
             .pickerStyle(.segmented)
         } else {
-            Picker("Utseende", selection: selection) {
+            Picker("Appearance", selection: selection) {
                 ForEach(AppAppearance.allCases) { Label($0.title, systemImage: $0.systemImage).tag($0) }
             }
             .pickerStyle(.inline)
@@ -81,7 +81,7 @@ struct AppearancePicker: View {
     }
 }
 
-/// Settings → Generelt.
+/// Settings → General.
 struct GeneralSettings: View {
     var body: some View {
         Form {
@@ -89,9 +89,9 @@ struct GeneralSettings: View {
             Section {
                 AppearancePicker(segmented: true)
             } header: {
-                Text("Utseende")
+                Text("Appearance")
             } footer: {
-                Text("System følger innstillingen i macOS. Du kan også bytte med knappen i verktøylinjen, eller med ⌘⇧L (Visning → Utseende).")
+                Text("System follows the setting in macOS. You can also switch with the button in the toolbar, or with ⌘⇧L (View → Appearance).")
             }
             UpdateSection()
         }

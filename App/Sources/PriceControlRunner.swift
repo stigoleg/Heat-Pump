@@ -14,7 +14,7 @@ final class PriceControlRunner {
     private(set) var settings = PriceControlSettings.default
     private(set) var status: PriceControlStatus?
     private(set) var plan: PriceControlPlan?
-    /// Outcome of the last switch on/off or settings save (Norwegian), or nil.
+    /// Outcome of the last switch on/off or settings save, or nil.
     var message: String?
     private(set) var isBusy = false
     /// True once the stored settings have been read (the quit-on-close choice depends on them).
@@ -38,7 +38,7 @@ final class PriceControlRunner {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.enabled else { return }
-                Task { await self.restore(reason: "Macen skal sove – tilbake til vanlig temperatur") }
+                Task { await self.restore(reason: String(localized: "The Mac is going to sleep – back to the normal temperature")) }
             }
         }
     }
@@ -99,8 +99,8 @@ final class PriceControlRunner {
                 } else {
                     let outcome = try await service.disablePriceControl()
                     status = try await service.priceControlStatus()
-                    message = outcome.map { $0.result == .ok ? "Prisstyring er av. Temperaturen er satt tilbake." : $0.message }
-                        ?? "Prisstyring er av."
+                    message = outcome.map { $0.result == .ok ? String(localized: "Price control is off. The temperature has been restored.") : $0.message }
+                        ?? String(localized: "Price control is off.")
                 }
             } catch {
                 message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -112,7 +112,7 @@ final class PriceControlRunner {
         }
     }
 
-    /// Saves reductions, minimum and pre-heating. Returns a Norwegian error, or nil.
+    /// Saves reductions, minimum and pre-heating. Returns an error message, or nil.
     func save(_ new: PriceControlSettings) async -> String? {
         guard let service else { return nil }
         return await serialized { [self] () -> String? in
@@ -155,7 +155,7 @@ final class PriceControlRunner {
         guard enabled else { return }
         let work = Task { @MainActor in
             await self.serialized {
-                _ = try? await service.restorePriceControl(reason: "appen avsluttes – tilbake til vanlig temperatur", always: true)
+                _ = try? await service.restorePriceControl(reason: String(localized: "the app is quitting – back to the normal temperature"), always: true)
             }
         }
         await withTaskGroup(of: Void.self) { group in
@@ -170,7 +170,7 @@ final class PriceControlRunner {
     private func updateActivity() {
         if enabled, activity == nil {
             activity = ProcessInfo.processInfo.beginActivity(
-                options: .userInitiatedAllowingIdleSystemSleep, reason: "Prisstyring følger strømprisen")
+                options: .userInitiatedAllowingIdleSystemSleep, reason: "Price control follows the electricity price")
         } else if !enabled, let activity {
             ProcessInfo.processInfo.endActivity(activity)
             self.activity = nil

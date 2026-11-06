@@ -1,27 +1,29 @@
 import HeatPumpKit
 import SwiftUI
 
-/// Settings → Generelt → Oppdateringer.
+/// Settings → General → Updates.
 struct UpdateSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         @Bindable var updater = model.updater
         Section {
-            LabeledContent("Installert versjon", value: updater.current?.description ?? "ukjent")
-            Toggle("Hent og installer oppdateringer automatisk", isOn: $updater.automatic)
+            LabeledContent("Installed version") {
+                if let current = updater.current { Text(current.description) } else { Text("unknown") }
+            }
+            Toggle("Download and install updates automatically", isOn: $updater.automatic)
             HStack(alignment: .firstTextBaseline) {
                 status(updater)
                 Spacer()
                 actions(updater)
             }
             if let release = updater.release {
-                DisclosureGroup("Nytt i \(release.version.description)") {
+                DisclosureGroup("What's new in \(release.version.description)") {
                     Text(notes(release))
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if let page = release.pageURL { Link("Vis utgivelsen på GitHub", destination: page) }
+                    if let page = release.pageURL { Link("View the Release on GitHub", destination: page) }
                 }
             }
             if let blocker = updater.installBlocker {
@@ -29,13 +31,13 @@ struct UpdateSection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Link("Åpne nedlastingssiden", destination: AppUpdate.releasesPageURL).font(.caption)
+                Link("Open the Downloads Page", destination: AppUpdate.releasesPageURL).font(.caption)
             }
         } header: {
-            Text("Oppdateringer")
+            Text("Updates")
         } footer: {
             Text(
-                "Appen ser etter nye versjoner på GitHub én gang i døgnet. En nedlasting installeres bare når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Automatisk installeres den når du avslutter appen; «Installer og start på nytt» gjør det med en gang. Er prisstyring på, settes temperaturen tilbake før appen starter på nytt."
+                "The app checks GitHub for new versions once a day. A download is installed only when the checksum matches and the app is signed and notarized by the same developer. In automatic mode it is installed when you quit the app; “Install and Restart” does it right away. If price control is on, the temperature is restored before the app restarts."
             )
         }
     }
@@ -43,21 +45,27 @@ struct UpdateSection: View {
     @ViewBuilder private func status(_ updater: Updater) -> some View {
         switch updater.phase {
         case .idle:
-            Text(updater.lastCheck.map { "Sist sjekket \(Format.relative($0))" } ?? "Ikke sjekket ennå")
-                .foregroundStyle(.secondary)
+            Group {
+                if let lastCheck = updater.lastCheck {
+                    Text("Last checked \(Format.relative(lastCheck))")
+                } else {
+                    Text("Not checked yet")
+                }
+            }
+            .foregroundStyle(.secondary)
         case .checking:
-            Label { Text("Ser etter oppdateringer …") } icon: { ProgressView().controlSize(.small) }
+            Label { Text("Checking for updates…") } icon: { ProgressView().controlSize(.small) }
         case .upToDate:
-            Label("Du har nyeste versjon", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.Status.good)
+            Label("You have the latest version", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.Status.good)
         case .available:
-            Label("Versjon \(updater.release?.version.description ?? "") er tilgjengelig", systemImage: "arrow.down.circle")
+            Label("Version \(updater.release?.version.description ?? "") is available", systemImage: "arrow.down.circle")
         case .downloading:
-            Label { Text("Laster ned og kontrollerer …") } icon: { ProgressView().controlSize(.small) }
+            Label { Text("Downloading and verifying…") } icon: { ProgressView().controlSize(.small) }
         case .ready:
-            Label("Versjon \(updater.release?.version.description ?? "") er klar til å installeres", systemImage: "checkmark.seal.fill")
+            Label("Version \(updater.release?.version.description ?? "") is ready to install", systemImage: "checkmark.seal.fill")
                 .foregroundStyle(Theme.Status.good)
         case .installing:
-            Label { Text("Installerer …") } icon: { ProgressView().controlSize(.small) }
+            Label { Text("Installing…") } icon: { ProgressView().controlSize(.small) }
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(Theme.Status.caution)
@@ -68,17 +76,17 @@ struct UpdateSection: View {
     @ViewBuilder private func actions(_ updater: Updater) -> some View {
         switch updater.phase {
         case .ready:
-            Button("Installer og start på nytt") { updater.installAndRelaunch() }
+            Button("Install and Restart") { updater.installAndRelaunch() }
                 .buttonStyle(.borderedProminent)
         case .available where updater.canInstall:
-            Button("Last ned") { Task { await updater.download() } }
+            Button("Download") { Task { await updater.download() } }
                 .buttonStyle(.borderedProminent)
         case .failed where updater.release != nil && updater.canInstall:
-            Button("Prøv igjen") { Task { await updater.download() } }
+            Button("Try Again") { Task { await updater.download() } }
         case .checking, .downloading, .installing:
             EmptyView()
         default:
-            Button("Se etter nå") { Task { await updater.check(userInitiated: true) } }
+            Button("Check Now") { Task { await updater.check(userInitiated: true) } }
         }
     }
 
@@ -89,13 +97,13 @@ struct UpdateSection: View {
     }
 }
 
-/// App menu → "Se etter oppdateringer …": opens Settings → Generelt and checks.
+/// App menu → "Check for Updates…": opens Settings → General and checks.
 struct CheckForUpdatesCommand: View {
     @Environment(\.openSettings) private var openSettings
     let model: AppModel
 
     var body: some View {
-        Button("Se etter oppdateringer …") {
+        Button("Check for Updates…") {
             model.settingsTab = "generelt"
             openSettings()
             Task { await model.updater.check(userInitiated: true) }
@@ -113,10 +121,10 @@ struct UpdateReadyBadge: View {
             Button {
                 model.updater.installAndRelaunch()
             } label: {
-                Label("Installer versjon \(version.description)", systemImage: "arrow.down.app")
+                Label("Install Version \(version.description)", systemImage: "arrow.down.app")
             }
             .buttonStyle(.borderless)
-            .help("Versjon \(version.description) er lastet ned og kontrollert. Appen avslutter og starter på nytt.")
+            .help("Version \(version.description) has been downloaded and verified. The app quits and restarts.")
         }
     }
 }

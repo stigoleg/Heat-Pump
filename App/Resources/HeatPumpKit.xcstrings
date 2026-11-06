@@ -1,5 +1,641 @@
 {
   "sourceLanguage" : "en",
-  "strings" : {},
+  "strings" : {
+    "Approve" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkjenn"
+          }
+        }
+      }
+    },
+    "Could not build the response: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lage svar: %@"
+          }
+        }
+      }
+    },
+    "Do a health check of the heat pump. Steps:\n1. Call get_status.\n2. Call get_health_report.\n3. Call get_error_log with days=90.\n4. Call get_history for room_temperature and outdoor_temperature for the last 7 days.\n5. Call get_maintenance_status.\n6. Call get_live_status (only returns data if the local connection is turned on; otherwise skip it).\n\nThen write a short, prioritized summary in English for someone who knows nothing about heat pumps:\n- **This is fine**\n- **This should be done now** (with concrete steps, and “call the dealer” when needed)\n- **Keep an eye on this**\nMention how old the data is if it is older than an hour, and whether MELCloud has blocked refreshing.\nDo not change anything on the heat pump. You may suggest changes, but they should only be carried out if the user says yes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjør en helsesjekk av varmepumpen. Steg:\n1. Kall get_status.\n2. Kall get_health_report.\n3. Kall get_error_log med days=90.\n4. Kall get_history for room_temperature og outdoor_temperature for de siste 7 dagene.\n5. Kall get_maintenance_status.\n6. Kall get_live_status (gir bare data hvis lokal tilkobling er slått på; ellers hopp over).\n\nSkriv deretter en kort, prioritert oppsummering på norsk bokmål for en som ikke kan noe om varmepumper:\n- **Dette er i orden**\n- **Dette bør gjøres nå** (med konkrete steg, og «ring forhandleren» når det trengs)\n- **Dette bør du følge med på**\nNevn hvor gamle dataene er hvis de er eldre enn en time, og om MELCloud har blokkert oppdatering.\nIkke endre noe på varmepumpen. Du kan foreslå endringer, men de skal bare utføres hvis brukeren sier ja."
+          }
+        }
+      }
+    },
+    "Frost protection keeps the room between minimum and maximum when the heat pump is otherwise off. Holiday mode makes the heat pump follow frost protection during the period. The endpoints have not been verified against this account yet; the user should make the first change in the app. The full weekly schedule is in get_weekly_timer; it is only changed in the app (decoded=false means only the count is known)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring holder rommet mellom minimum og maksimum når varmepumpen ellers er av. Feriemodus gjør at varmepumpen følger frostsikringen i perioden. Endepunktene er ikke verifisert mot denne kontoen ennå; den første endringen bør brukeren gjøre selv i appen. Hele ukeplanen står i get_weekly_timer; den endres bare i appen (decoded=false betyr at bare antallet er kjent)."
+          }
+        }
+      }
+    },
+    "Full health check of the heat pump with a prioritized summary." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full helsesjekk av varmepumpen med en prioritert oppsummering."
+          }
+        }
+      }
+    },
+    "Give vertical and/or horizontal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppgi vertical og/eller horizontal"
+          }
+        }
+      }
+    },
+    "Health check" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helsesjekk"
+          }
+        }
+      }
+    },
+    "Health check of the heat pump" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helsesjekk av varmepumpen"
+          }
+        }
+      }
+    },
+    "Heat Pump" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe"
+          }
+        }
+      }
+    },
+    "If you do not answer within %lld minutes, the change is rejected." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "If you do not answer within %lld minute, the change is rejected."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "If you do not answer within %lld minutes, the change is rejected."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Svarer du ikke innen %lld minutt, blir endringen avvist."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Svarer du ikke innen %lld minutter, blir endringen avvist."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Indoor: %.1f °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne: %.1f °C."
+          }
+        }
+      }
+    },
+    "Invalid date in %1$@: %2$@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig dato i %1$@: %2$@"
+          }
+        }
+      }
+    },
+    "Invalid date: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig dato: %@"
+          }
+        }
+      }
+    },
+    "Invalid horizontal: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig horizontal: %@"
+          }
+        }
+      }
+    },
+    "Invalid vertical: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig vertical: %@"
+          }
+        }
+      }
+    },
+    "Knowledge document" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunnskapsdokument"
+          }
+        }
+      }
+    },
+    "MELCloud updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is MELCloud's split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. byMode er MELCloud sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med døgnets snittpris fordi forbruk per time mangler."
+          }
+        }
+      }
+    },
+    "No estimate: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen anslag: %@"
+          }
+        }
+      }
+    },
+    "No status available yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen status tilgjengelig ennå."
+          }
+        }
+      }
+    },
+    "Not connected to MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frakoblet MELCloud."
+          }
+        }
+      }
+    },
+    "Note: the data may be out of date." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merk: dataene kan være utdaterte."
+          }
+        }
+      }
+    },
+    "Outdoor: %.1f °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ute: %.1f °C."
+          }
+        }
+      }
+    },
+    "Price control runs only in the app while the Mac is on and awake, and only in heat mode. It lowers the target temperature in expensive hours (never below minimumC, at most maxReducedHoursPerDay hours per day, the most expensive ones; never changes on/off or mode) and sets it back afterwards. The plan is based only on published prices, not on the estimate. Claude can read it, but cannot turn it on or off or change the settings; the user does that under Forecast in the app. The changes appear in the change log with source automation. appRunning false means the app has not reported in the last few minutes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyringen kjører bare i appen mens Macen er på og våken, og bare i varmemodus. Den senker ønsket temperatur i dyre timer (aldri under minimumC, høyst maxReducedHoursPerDay timer per døgn, de dyreste; endrer aldri av/på eller modus) og setter den tilbake etterpå. Planen bygger bare på publiserte priser, ikke på anslaget. Claude kan lese den, men ikke slå den av eller på eller endre innstillingene; det gjør brukeren under Prognose i appen. Endringene vises i endringsloggen med source automation. appRunning false betyr at appen ikke har rapportert de siste minuttene."
+          }
+        }
+      }
+    },
+    "Prices in øre/kWh incl. VAT: electricity + grid tariff (energy charge) − electricity subsidy. Tomorrow's prices arrive around 13:00. The capacity charge is not included. level (VERY_CHEAP … VERY_EXPENSIVE) is Tibber's level, or for other sources the same thresholds measured against the average of the last 72 hours (spot price). No level with Norgespris. estimate is an ESTIMATE (label \"anslag\", uncertain), not published prices: median and the band between the 25th and 75th percentile on the same basis as totalOre; always say that it is an estimate." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med. level (VERY_CHEAP … VERY_EXPENSIVE) er Tibbers nivå, eller for andre kilder samme grenser regnet mot snittet siste 72 timer (spotpris). Ingen nivå med Norgespris. estimate er et ANSLAG (usikkert), ikke publiserte priser: median og området mellom 25- og 75-persentilen i samme grunnlag som totalOre; si alltid at det er et anslag."
+          }
+        }
+      }
+    },
+    "Read locally from the Wi-Fi adapter (read-only). The power applies to the whole heat pump. Compressor starts and defrosts are only counted when the app or Claude has read at least every 5 minutes; observedHoursLast24 says how much of the day is covered. Error code 0x8000 means no error. phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. Defrosting is normal in damp cold, typically 3–10 minutes every 40–90 minutes of running. stage and autoSubMode are raw values with uncertain meaning. runtimeHoursIndoorUnit is the indoor unit's own counter (probably total running time), not verified against the manufacturer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lest lokalt fra Wi-Fi-modulen (kun lesing). Effekten gjelder hele varmepumpen. Kompressorstarter og avriminger telles bare når appen eller Claude har lest minst hvert 5. minutt; observedHoursLast24 sier hvor mye av døgnet som er dekket. Feilkode 0x8000 betyr ingen feil. phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. Avriming (defrost) er normalt i fuktig kulde, typisk 3–10 minutter hvert 40.–90. driftsminutt. stage og autoSubMode er rå verdier med usikker betydning. runtimeHoursIndoorUnit er innedelens egen teller (trolig total driftstid), ikke verifisert mot produsenten."
+          }
+        }
+      }
+    },
+    "Reject" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvis"
+          }
+        }
+      }
+    },
+    "Reports an error (code %@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melder feil (kode %@)."
+          }
+        }
+      }
+    },
+    "Requires a Tibber token (Settings → Electricity price in the app)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krever en Tibber-nøkkel (Innstillinger → Strømpris i appen)."
+          }
+        }
+      }
+    },
+    "Status and starting the update: get_firmware_status and start_firmware_update (requires approval; firmware cannot be rolled back)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status og start av oppdateringen: get_firmware_status og start_firmware_update (krever godkjenning; fastvare kan ikke rulles tilbake)."
+          }
+        }
+      }
+    },
+    "Target: %.1f °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ønsket: %.1f °C."
+          }
+        }
+      }
+    },
+    "The current frost protection is unknown (it could not be read from MELCloud). Give both minimum and maximum, so it is clear which range is sent." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nåværende frostsikring er ukjent (kunne ikke leses fra MELCloud). Oppgi både minimum og maximum, så det er tydelig hvilket område som sendes."
+          }
+        }
+      }
+    },
+    "The estimate for tomorrow is a simple model (consumption against degree days, base 17 °C) from this heat pump's own data, with an uncertainty range (kWhLow–kWhHigh). pricesFromToday means tomorrow's prices have not arrived yet and today's hourly prices are used. Pre-heating: at most 1 °C up a couple of hours before a cold and expensive period, and back afterwards; avoid frequent on/off and big jumps." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslaget for i morgen er en enkel modell (forbruk mot graddager, basis 17 °C) fra denne varmepumpens egne data, med et usikkerhetsområde (kWhLow–kWhHigh). pricesFromToday betyr at morgendagens priser ikke er kommet ennå og dagens timepriser er brukt. Forvarming: høyst 1 °C opp et par timer før en kald og dyr periode, og tilbake etterpå; unngå hyppige av/på og store hopp."
+          }
+        }
+      }
+    },
+    "The heat pump is OFF." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er AV."
+          }
+        }
+      }
+    },
+    "The heat pump is ON in mode %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er PÅ i modus %@."
+          }
+        }
+      }
+    },
+    "The heat pump used %.0f %% of the electricity yesterday." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen sto for %.0f %% av strømmen i går."
+          }
+        }
+      }
+    },
+    "The share is calculated only over hours where both the house and the heat pump have figures (at least 20 hours for a day). houseCostNokFromTibber is Tibber's own cost for the whole house (a control figure); the app's own cost calculation for the heat pump (get_energy) is unchanged." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andelen regnes bare over timer der både huset og varmepumpen har tall (minst 20 timer for et døgn). houseCostNokFromTibber er Tibbers egen kostnad for hele huset (kontrolltall); appens egen kostnadsberegning for varmepumpen (get_energy) er uendret."
+          }
+        }
+      }
+    },
+    "The weekly schedule has not been fetched from MELCloud yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er ikke hentet fra MELCloud ennå."
+          }
+        }
+      }
+    },
+    "The weekly schedule in MELCloud is on; the heat pump may change by itself according to the schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen i MELCloud er på; varmepumpen kan endre seg selv etter planen."
+          }
+        }
+      }
+    },
+    "The weekly schedule lives in MELCloud and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen ligger i MELCloud og kjører selv om Macen er av. En endring med set_* varer til neste hendelse i planen. Claude kan bare lese planen; brukeren lager og endrer den i appen (siden Ukeplan)."
+          }
+        }
+      }
+    },
+    "Try again later." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prøv igjen senere."
+          }
+        }
+      }
+    },
+    "Unknown prompt: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent prompt: %@"
+          }
+        }
+      }
+    },
+    "Unknown resource: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent ressurs: %@"
+          }
+        }
+      }
+    },
+    "Unknown tool: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent verktøy: %@"
+          }
+        }
+      }
+    },
+    "celsius is missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "celsius mangler"
+          }
+        }
+      }
+    },
+    "enabled (true/false) is missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "enabled (true/false) mangler"
+          }
+        }
+      }
+    },
+    "kind must be one of: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kind må være en av: %@"
+          }
+        }
+      }
+    },
+    "metric must be one of: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "metric må være en av: %@"
+          }
+        }
+      }
+    },
+    "mode must be heat, dry, cool, fan or auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mode må være heat, dry, cool, fan eller auto"
+          }
+        }
+      }
+    },
+    "no graphical session on the Mac" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ingen grafisk økt på Macen"
+          }
+        }
+      }
+    },
+    "on (true/false) is missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "on (true/false) mangler"
+          }
+        }
+      }
+    },
+    "period must be day, week or month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "period må være day, week eller month"
+          }
+        }
+      }
+    },
+    "reason is required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reason er påkrevd"
+          }
+        }
+      }
+    },
+    "reason is required for all changes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reason er påkrevd for alle endringer"
+          }
+        }
+      }
+    },
+    "speed is missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "speed mangler"
+          }
+        }
+      }
+    },
+    "unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukjent"
+          }
+        }
+      }
+    }
+  },
   "version" : "1.0"
 }

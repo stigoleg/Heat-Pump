@@ -6,11 +6,12 @@ import MCP
 let instructions = """
     Tools for the user's Mitsubishi MSZ-RW25VG wall heat pump (MELCloud Classic).
     Read tools are safe to call freely. Write tools (set_*) change the physical heat pump: \
-    propose the change, explain why in plain Norwegian, and only call the tool after the user \
+    propose the change, explain why in plain words, and only call the tool after the user \
     agrees in the conversation. Each set_* call then opens a confirmation dialog on the user's Mac \
-    ("Godkjenn"/"Avvis", rejected after 120 s without an answer); the change is only sent if the \
-    user clicks Godkjenn. Never chain several changes without asking. The user is not a heat-pump \
-    expert; answer in Norwegian bokmål. Data may be cached: check meta.dataAgeSeconds and \
+    ("\(L10n.tr("Approve"))"/"\(L10n.tr("Reject"))", rejected after 120 s without an answer); the change is only sent if the \
+    user clicks \(L10n.tr("Approve")). Never chain several changes without asking. The user is not a heat-pump \
+    expert; answer in the user's language (the app and its texts are set to \(L10n.language == .norwegian ? "Norwegian bokmål" : "English")). \
+    Data may be cached: check meta.dataAgeSeconds and \
     meta.blockedUntil. MELCloud blocks accounts that poll too often, so do not call refresh repeatedly. \
     When local access is on, get_live_status gives live power (W), compressor activity and starts per \
     hour straight from the adapter on the home network (read-only); use it for "what is it doing now" \
@@ -20,22 +21,9 @@ let instructions = """
     bigger changes: explain what happens and get a clear yes first. Weather data: MET Norway (CC BY 4.0).
     """
 
-let healthCheckPrompt = """
-    Gjør en helsesjekk av varmepumpen. Steg:
-    1. Kall get_status.
-    2. Kall get_health_report.
-    3. Kall get_error_log med days=90.
-    4. Kall get_history for room_temperature og outdoor_temperature for de siste 7 dagene.
-    5. Kall get_maintenance_status.
-    6. Kall get_live_status (gir bare data hvis lokal tilkobling er slått på; ellers hopp over).
-
-    Skriv deretter en kort, prioritert oppsummering på norsk bokmål for en som ikke kan noe om varmepumper:
-    - **Dette er i orden**
-    - **Dette bør gjøres nå** (med konkrete steg, og «ring forhandleren» når det trengs)
-    - **Dette bør du følge med på**
-    Nevn hvor gamle dataene er hvis de er eldre enn en time, og om MELCloud har blokkert oppdatering.
-    Ikke endre noe på varmepumpen. Du kan foreslå endringer, men de skal bare utføres hvis brukeren sier ja.
-    """
+let healthCheckPrompt = L10n.tr(
+    "Do a health check of the heat pump. Steps:\n1. Call get_status.\n2. Call get_health_report.\n3. Call get_error_log with days=90.\n4. Call get_history for room_temperature and outdoor_temperature for the last 7 days.\n5. Call get_maintenance_status.\n6. Call get_live_status (only returns data if the local connection is turned on; otherwise skip it).\n\nThen write a short, prioritized summary in English for someone who knows nothing about heat pumps:\n- **This is fine**\n- **This should be done now** (with concrete steps, and “call the dealer” when needed)\n- **Keep an eye on this**\nMention how old the data is if it is older than an hour, and whether MELCloud has blocked refreshing.\nDo not change anything on the heat pump. You may suggest changes, but they should only be carried out if the user says yes."
+)
 
 // The helper is an accessory AppKit app (no Dock icon) so it can show its own approval
 // dialog. AppKit runs the main thread; the MCP server runs in a task.
@@ -70,7 +58,7 @@ func runServer(service: HeatPumpService, approver: any ChangeApprover) async thr
     let server = Server(
         name: "varmepumpe",
         version: "0.2.0",
-        title: "Varmepumpe",
+        title: L10n.tr("Heat Pump"),
         instructions: instructions,
         capabilities: .init(
             prompts: .init(listChanged: false),
@@ -87,7 +75,7 @@ func runServer(service: HeatPumpService, approver: any ChangeApprover) async thr
     await server.withMethodHandler(ListResources.self) { _ in
         ListResources.Result(
             resources: Knowledge.all().map {
-                Resource(name: $0.name, uri: $0.uri, title: $0.title, description: "Kunnskapsdokument (norsk)", mimeType: "text/markdown")
+                Resource(name: $0.name, uri: $0.uri, title: $0.title, description: L10n.tr("Knowledge document"), mimeType: "text/markdown")
             })
     }
     await server.withMethodHandler(ReadResource.self) { params in
@@ -95,19 +83,21 @@ func runServer(service: HeatPumpService, approver: any ChangeApprover) async thr
             params.uri.hasPrefix("varmepumpe://knowledge/"),
             let document = Knowledge.document(named: name)
         else {
-            throw MCPError.invalidParams("Ukjent ressurs: \(params.uri)")
+            throw MCPError.invalidParams(L10n.format("Unknown resource: %@", params.uri))
         }
         return ReadResource.Result(contents: [.text(document.markdown, uri: document.uri, mimeType: "text/markdown")])
     }
     await server.withMethodHandler(ListPrompts.self) { _ in
         ListPrompts.Result(prompts: [
-            Prompt(name: "helsesjekk", title: "Helsesjekk", description: "Full health check of the heat pump with a prioritized Norwegian summary.")
+            Prompt(
+                name: "helsesjekk", title: L10n.tr("Health check"),
+                description: L10n.tr("Full health check of the heat pump with a prioritized summary."))
         ])
     }
     await server.withMethodHandler(GetPrompt.self) { params in
-        guard params.name == "helsesjekk" else { throw MCPError.invalidParams("Ukjent prompt: \(params.name)") }
+        guard params.name == "helsesjekk" else { throw MCPError.invalidParams(L10n.format("Unknown prompt: %@", params.name)) }
         return GetPrompt.Result(
-            description: "Helsesjekk av varmepumpen",
+            description: L10n.tr("Health check of the heat pump"),
             messages: [.user(.text(text: healthCheckPrompt))])
     }
 

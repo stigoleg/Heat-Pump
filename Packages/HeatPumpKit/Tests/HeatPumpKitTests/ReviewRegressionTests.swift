@@ -283,12 +283,18 @@ struct ReviewRegressionTests {
     }
 
     @Test func knowledgeCorrections() throws {
-        let codes = try #require(Knowledge.document(named: "error-codes")).markdown
-        #expect(!codes.contains("Tabellen for utedelen (§10-2.5)"))
+        let codes = try #require(Knowledge.document(named: "error-codes", language: .english)).markdown
+        #expect(!codes.contains("table for the outdoor unit (§10-2.5)"))
         #expect(codes.contains("§10-2.5"))
-        #expect(codes.contains("luftrens"))
-        let profile = try #require(Knowledge.document(named: "unit-profile")).markdown
-        #expect(!profile.contains("merkeområdet"))
-        #expect(profile.contains("garantert"))
+        #expect(codes.contains("air purifier"))
+        let profile = try #require(Knowledge.document(named: "unit-profile", language: .english)).markdown
+        #expect(!profile.contains("rated range"))
+        #expect(profile.contains("guaranteed"))
+        let kodes = try #require(Knowledge.document(named: "error-codes", language: .norwegian)).markdown
+        #expect(!kodes.contains("Tabellen for utedelen (§10-2.5)"))
+        #expect(kodes.contains("luftrens"))
+        let profil = try #require(Knowledge.document(named: "unit-profile", language: .norwegian)).markdown
+        #expect(!profil.contains("merkeområdet"))
+        #expect(profil.contains("garantert"))
     }
 }

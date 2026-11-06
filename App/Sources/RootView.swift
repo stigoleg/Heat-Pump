@@ -22,7 +22,7 @@ struct RootView: View {
                     if model.isDemo { DemoBadge() }
                     UpdateReadyBadge()
                     SettingsLink {
-                        Label("Innstillinger", systemImage: "gearshape")
+                        Label("Settings", systemImage: "gearshape")
                     }
                     .buttonStyle(.borderless)
                 }
@@ -32,7 +32,7 @@ struct RootView: View {
         } detail: {
             NavigationStack {
                 detail
-                    .navigationTitle(model.selection?.title ?? "Varmepumpe")
+                    .navigationTitle(model.selection?.title ?? String(localized: "Heat Pump"))
                     .navigationSubtitle(model.deviceName)
             }
         }
@@ -75,16 +75,16 @@ struct RefreshButton: View {
                 Task { await model.refresh(force: true) }
             } label: {
                 if let wait {
-                    Label("Neste oppdatering om \(Format.countdown(to: wait, now: context.date))", systemImage: "clock")
+                    Label("Next refresh in \(Format.countdown(to: wait, now: context.date))", systemImage: "clock")
                         .labelStyle(.titleAndIcon)
                 } else if model.isRefreshing {
                     ProgressView().controlSize(.small)
                 } else {
-                    Label("Oppdater", systemImage: "arrow.clockwise")
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
             }
             .disabled(wait != nil || model.isRefreshing || model.service == nil)
-            .help("Henter ny status fra MELCloud. Høyst én gang i minuttet, så kontoen ikke blir sperret.")
+            .help("Fetches new status from MELCloud. At most once a minute, so the account is not blocked.")
         }
     }
 
@@ -107,10 +107,10 @@ struct OnboardingView: View {
                 Image(systemName: "thermometer.sun")
                     .font(.system(size: 44))
                     .foregroundStyle(.tint)
-                Text("Velkommen")
+                Text("Welcome")
                     .font(.largeTitle.bold())
                 Text(
-                    "Appen henter status fra varmepumpen gjennom MELCloud, den samme tjenesten som Mitsubishi-appen bruker. Logg inn med e-post og passord til MELCloud-kontoen din. Passordet lagres trygt i nøkkelringen på Macen."
+                    "The app fetches status from the heat pump through MELCloud, the same service the Mitsubishi app uses. Sign in with the email and password for your MELCloud account. The password is stored securely in the keychain on the Mac."
                 )
                 .fixedSize(horizontal: false, vertical: true)
                 LoginForm()

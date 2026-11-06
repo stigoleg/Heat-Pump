@@ -1,7 +1,7 @@
 import HeatPumpKit
 import SwiftUI
 
-/// Settings → Lokal tilkobling: read-only access to the Wi-Fi adapter on the home network.
+/// Settings → Local connection: read-only access to the Wi-Fi adapter on the home network.
 struct LocalSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var enabled = false
@@ -15,25 +15,25 @@ struct LocalSettingsView: View {
         Form {
             Section {
                 Toggle(isOn: $enabled) {
-                    Label { Text("Les varmepumpen direkte på hjemmenettet") } icon: {
+                    Label { Text("Read the heat pump directly on the home network") } icon: {
                         IconBadge(systemImage: "wifi.router", color: .teal)
                     }
                 }
-                LabeledContent("IP-adresse") {
+                LabeledContent("IP address") {
                     HStack {
-                        TextField("IP-adresse", text: $host, prompt: Text("for eksempel 192.168.1.50"))
+                        TextField("IP address", text: $host, prompt: Text("for example 192.168.1.50"))
                             .labelsHidden().frame(width: 170).multilineTextAlignment(.trailing)
                             .font(.body.monospacedDigit())
                     }
                 }
                 HStack {
-                    Button("Finn automatisk") { Task { await discover() } }
+                    Button("Find Automatically") { Task { await discover() } }
                         .disabled(working)
                     Button("Test") { Task { await runTest() } }
                         .disabled(working || host.trimmingCharacters(in: .whitespaces).isEmpty)
                     if working { ProgressView().controlSize(.small) }
                     Spacer()
-                    Button("Lagre") { Task { await save() } }
+                    Button("Save") { Task { await save() } }
                         .buttonStyle(.borderedProminent)
                         .disabled(working || !changed)
                 }
@@ -44,10 +44,10 @@ struct LocalSettingsView: View {
                 }
                 if let sample = test?.sample { testDetails(sample) }
             } header: {
-                Text("Lokal tilkobling")
+                Text("Local connection")
             } footer: {
                 Text(
-                    "Appen spør Wi-Fi-modulen i varmepumpen om status direkte over hjemmenettet: hvert minutt mens appen er åpen, og når Claude ber om fersk status (også når appen er lukket). Aldri oftere enn hvert 20. sekund, og bare når Macen er på samme nett som varmepumpen. Da får du effekt i watt, om kompressoren går, og et nøyaktig strømforbruk per time. Appen bare leser: all styring går fortsatt via MELCloud, og ingen innstillinger i modulen endres."
+                    "The app asks the heat pump's Wi-Fi adapter for its status directly over the home network: every minute while the app is open, and when Claude asks for fresh status (also when the app is closed). Never more often than every 20 seconds, and only when the Mac is on the same network as the heat pump. This gives you power in watts, whether the compressor is running, and accurate electricity consumption per hour. The app only reads: all control still goes through MELCloud, and no settings in the adapter are changed."
                 )
             }
 
@@ -56,11 +56,11 @@ struct LocalSettingsView: View {
             }
 
             Section {
-                Label("Bare lesing. Appen sender kun en statusforespørsel og kan ikke endre noe i varmepumpen eller modulen.", systemImage: "lock.shield")
-                Label("Dette er ikke en offisiell funksjon fra Mitsubishi. Den kan slutte å virke etter en fastvareoppdatering av modulen (for eksempel versjon 43.00 eller nyere). Da virker resten av appen som før.", systemImage: "exclamationmark.triangle")
-                Label("«Finn automatisk» leter bare på det lokale nettet Macen er koblet til, og kjenner igjen varmepumpen på maskinvareadressen fra MELCloud. Adressen vises ikke. Gi gjerne varmepumpen fast IP-adresse i ruteren.", systemImage: "magnifyingglass")
+                Label("Read only. The app only sends a status request and cannot change anything in the heat pump or the adapter.", systemImage: "lock.shield")
+                Label("This is not an official Mitsubishi feature. It may stop working after a firmware update of the adapter (for example version 43.00 or later). The rest of the app then works as before.", systemImage: "exclamationmark.triangle")
+                Label("“Find Automatically” only searches the local network the Mac is connected to, and recognizes the heat pump by the hardware address from MELCloud. The address is not shown. Consider giving the heat pump a fixed IP address in the router.", systemImage: "magnifyingglass")
             } header: {
-                Text("Godt å vite")
+                Text("Good to know")
             }
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -85,49 +85,55 @@ struct LocalSettingsView: View {
     @ViewBuilder private var status: some View {
         let reach = model.live?.reachability
         if reach?.enabled != true {
-            LabeledContent("Tilstand", value: "Av")
+            LabeledContent("State") { Text("Off") }
         } else if reach?.onHomeNetwork == false {
-            LabeledContent("Tilstand") {
-                Label("Ikke på hjemmenettet", systemImage: "house.slash").foregroundStyle(.secondary)
+            LabeledContent("State") {
+                Label("Not on the home network", systemImage: "house.slash").foregroundStyle(.secondary)
             }
-            Text("Lokal avlesning er satt på pause til Macen er på samme nett som varmepumpen. Styring via MELCloud virker som før.")
+            Text("Local reading is paused until the Mac is on the same network as the heat pump. Control through MELCloud works as before.")
                 .font(.caption).foregroundStyle(.secondary)
         } else {
-            LabeledContent("Tilstand") {
+            LabeledContent("State") {
                 if let failures = reach?.consecutiveFailures, failures > 0 {
-                    Label("Svarer ikke (\(failures) forsøk på rad)", systemImage: "wifi.exclamationmark")
+                    Label("Not responding (\(failures) attempts in a row)", systemImage: "wifi.exclamationmark")
                         .foregroundStyle(Theme.Status.caution)
                 } else if reach?.lastSuccess != nil {
-                    Label("Tilkoblet", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.Status.good)
+                    Label("Online", systemImage: "checkmark.circle.fill").foregroundStyle(Theme.Status.good)
                 } else {
-                    Text("Venter på første avlesning")
+                    Text("Waiting for the first reading")
                 }
             }
-            LabeledContent("Sist lest", value: Format.relative(reach?.lastSuccess))
+            LabeledContent("Last read", value: Format.relative(reach?.lastSuccess))
             if let error = reach?.lastError, (reach?.consecutiveFailures ?? 0) > 0 {
                 Text(error).font(.caption).foregroundStyle(.secondary)
             }
             if let next = reach?.nextAttemptAllowed, (reach?.consecutiveFailures ?? 0) > 0 {
-                LabeledContent("Neste forsøk", value: Display.time(next))
+                LabeledContent("Next attempt", value: Display.time(next))
             }
         }
         if let sample = model.live?.sample {
-            LabeledContent("Fastvare i modulen", value: sample.adapterVersion ?? "–")
-            if let rssi = sample.rssi { LabeledContent("Wi-Fi-signal", value: "\(rssi) dBm") }
+            LabeledContent("Adapter firmware", value: sample.adapterVersion ?? "–")
+            if let rssi = sample.rssi { LabeledContent("Wi-Fi signal", value: "\(rssi) dBm") }
         }
     }
 
     private func testDetails(_ sample: LocalSample) -> some View {
         Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: Theme.Space.xs) {
-            GridRow { Text("Fastvare").foregroundStyle(.secondary); Text(sample.adapterVersion ?? "–") }
-            GridRow { Text("Wi-Fi-signal").foregroundStyle(.secondary); Text(sample.rssi.map { "\($0) dBm" } ?? "–") }
-            GridRow { Text("Effekt").foregroundStyle(.secondary); Text(Format.watts(sample.powerW.map(Double.init))) }
+            GridRow { Text("Firmware").foregroundStyle(.secondary); Text(sample.adapterVersion ?? "–") }
+            GridRow { Text("Wi-Fi signal").foregroundStyle(.secondary); Text(sample.rssi.map { "\($0) dBm" } ?? "–") }
+            GridRow { Text("Power").foregroundStyle(.secondary); Text(Format.watts(sample.powerW.map(Double.init))) }
             GridRow {
-                Text("Kompressor").foregroundStyle(.secondary)
-                Text(sample.isRunning ? "Går" + (sample.compressorHz.map { " · \($0) Hz" } ?? "") : "Står")
+                Text("Compressor").foregroundStyle(.secondary)
+                if !sample.isRunning {
+                    Text("Stopped")
+                } else if let hz = sample.compressorHz {
+                    Text("Running · \(hz) Hz")
+                } else {
+                    Text("Running")
+                }
             }
-            GridRow { Text("Inne").foregroundStyle(.secondary); Text(Format.temperature(sample.roomTemperature)) }
-            GridRow { Text("Ute").foregroundStyle(.secondary); Text(Format.temperature(sample.outdoorTemperature)) }
+            GridRow { Text("Indoor").foregroundStyle(.secondary); Text(Format.temperature(sample.roomTemperature)) }
+            GridRow { Text("Outdoor").foregroundStyle(.secondary); Text(Format.temperature(sample.outdoorTemperature)) }
         }
         .font(.callout.monospacedDigit())
     }
@@ -138,7 +144,9 @@ struct LocalSettingsView: View {
         if let error = await model.saveLocalSettings(draft) {
             message = (false, error)
         } else {
-            message = (true, enabled ? "Lagret. Appen leser modulen hvert minutt mens den er åpen, og Claude ved behov." : "Lagret. Lokal tilkobling er av.")
+            message = (true, enabled
+                ? String(localized: "Saved. The app reads the adapter every minute while it is open, and Claude when needed.")
+                : String(localized: "Saved. Local connection is off."))
             host = model.localSettings.host ?? ""
         }
     }
@@ -148,7 +156,7 @@ struct LocalSettingsView: View {
         defer { working = false }
         let result = await model.testLocal(host: host)
         test = result
-        message = (result.ok, result.ok ? "Kontakt med Wi-Fi-modulen." : result.message)
+        message = (result.ok, result.ok ? String(localized: "Connected to the Wi-Fi adapter.") : result.message)
     }
 
     private func discover() async {

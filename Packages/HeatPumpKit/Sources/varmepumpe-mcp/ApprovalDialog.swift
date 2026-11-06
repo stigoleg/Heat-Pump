@@ -13,7 +13,7 @@ actor DialogApprover: ChangeApprover {
         defer { release() }
         guard CGSessionCopyCurrentDictionary() != nil else {
             Log.error("no GUI session; change rejected")
-            return .unavailable("ingen grafisk økt på Macen")
+            return .unavailable(L10n.tr("no graphical session on the Mac"))
         }
         return await MainActor.run { ApprovalAlert.present(request, timeout: ApprovalPolicy.timeout) }
     }
@@ -35,8 +35,8 @@ actor DialogApprover: ChangeApprover {
     }
 }
 
-/// Target for the "Godkjenn" button. Approval is recorded only through this action, so any
-/// other way the dialog ends (Avvis, Escape, Return, timeout, closed) counts as rejected.
+/// Target for the "Approve" button. Approval is recorded only through this action, so any
+/// other way the dialog ends (Reject, Escape, Return, timeout, closed) counts as rejected.
 @MainActor
 private final class ApproveTarget: NSObject {
     static let approvedCode = NSApplication.ModalResponse(rawValue: 4242)
@@ -54,20 +54,20 @@ enum ApprovalAlert {
     private static let escape: UInt16 = 53
 
     /// Shows the dialog and blocks (in a modal run loop) until answered or timed out.
-    /// "Avvis" is the default (Return) and Escape button; approving needs a click on "Godkjenn".
+    /// "Reject" is the default (Return) and Escape button; approving needs a click on "Approve".
     static func present(_ request: ApprovalRequest, timeout: TimeInterval) -> ApprovalDecision {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        if let icon = NSImage(systemSymbolName: "thermometer.and.liquid.waves", accessibilityDescription: "Varmepumpe")
-            ?? NSImage(systemSymbolName: "thermometer.medium", accessibilityDescription: "Varmepumpe")
+        if let icon = NSImage(systemSymbolName: "thermometer.and.liquid.waves", accessibilityDescription: L10n.tr("Heat Pump"))
+            ?? NSImage(systemSymbolName: "thermometer.medium", accessibilityDescription: L10n.tr("Heat Pump"))
         {
             alert.icon = icon.withSymbolConfiguration(.init(pointSize: 48, weight: .regular))
         }
         alert.messageText = ApprovalRequest.title
         alert.informativeText = request.message
-            + "\n\nSvarer du ikke innen \(Int(timeout / 60)) minutter, blir endringen avvist."
-        let reject = alert.addButton(withTitle: "Avvis")
-        let approve = alert.addButton(withTitle: "Godkjenn")
+            + "\n\n" + L10n.format("If you do not answer within %lld minutes, the change is rejected.", Int(timeout / 60))
+        let reject = alert.addButton(withTitle: L10n.tr("Reject"))
+        let approve = alert.addButton(withTitle: L10n.tr("Approve"))
         reject.keyEquivalent = "\r"
         approve.keyEquivalent = ""
         let target = ApproveTarget()

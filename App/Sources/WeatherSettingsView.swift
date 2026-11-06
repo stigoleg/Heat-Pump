@@ -2,7 +2,7 @@ import HeatPumpKit
 import MapKit
 import SwiftUI
 
-/// Settings → Vær: where the MET forecast is for, and an optional contact e-mail for MET.
+/// Settings → Weather: where the MET forecast is for, and an optional contact e-mail for MET.
 struct WeatherSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var latitude = ""
@@ -17,54 +17,54 @@ struct WeatherSettingsView: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Sted nå") {
+                LabeledContent("Current place") {
                     if let location = model.weatherLocation {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(location.displayName)
                             Text(sourceText(location.source)).font(.caption).foregroundStyle(.secondary)
                         }
                     } else {
-                        Text("Ikke valgt").foregroundStyle(.secondary)
+                        Text("Not chosen").foregroundStyle(.secondary)
                     }
                 }
                 if loaded {
                     LocationPicker(
                         coordinate: chosen, placeName: $placeName, fallback: fallback,
-                        fallbackTitle: model.weatherLocation?.source == .demo ? "Demo" : "Fra MELCloud")
+                        fallbackTitle: model.weatherLocation?.source == .demo ? String(localized: "Demo") : String(localized: "From MELCloud"))
                 }
-                TextField("Navn på stedet (valgfritt)", text: $placeName, prompt: Text("for eksempel Hjemme eller Lillehammer"))
+                TextField("Name of the place (optional)", text: $placeName, prompt: Text("for example Home or Lillehammer"))
                 if chosen.wrappedValue != nil {
-                    Button("Bruk posisjonen fra MELCloud i stedet") {
+                    Button("Use the Location from MELCloud Instead") {
                         latitude = ""
                         longitude = ""
                     }
                 }
-                DisclosureGroup("Skriv inn koordinater", isExpanded: $showCoordinates) {
-                    LabeledContent("Breddegrad") {
-                        TextField("Breddegrad", text: $latitude, prompt: Text("for eksempel 60,39"))
+                DisclosureGroup("Enter coordinates", isExpanded: $showCoordinates) {
+                    LabeledContent("Latitude") {
+                        TextField("Latitude", text: $latitude, prompt: Text("for example 60.39"))
                             .labelsHidden().frame(maxWidth: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
                     }
-                    LabeledContent("Lengdegrad") {
-                        TextField("Lengdegrad", text: $longitude, prompt: Text("for eksempel 5,32"))
+                    LabeledContent("Longitude") {
+                        TextField("Longitude", text: $longitude, prompt: Text("for example 5.32"))
                             .labelsHidden().frame(maxWidth: 160).multilineTextAlignment(.trailing).font(.body.monospacedDigit())
                     }
                 }
             } header: {
-                Text("Sted for værvarselet")
+                Text("Place for the weather forecast")
             } footer: {
                 Text(
-                    "Søk etter adressen eller stedet, eller klikk i kartet. Søket går via Apple Kart. Uten valgt sted brukes posisjonen til bygget i MELCloud. Posisjonen rundes av til omtrent én kilometer før den sendes til MET, og Claude ser bare stedsnavnet. Husk å trykke Lagre."
+                    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in MELCloud is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save."
                 )
             }
 
             Section {
-                TextField("Kontakt-e-post for MET (valgfritt)", text: $email, prompt: Text("navn@eksempel.no"))
+                TextField("Contact email for MET (optional)", text: $email, prompt: Text("name@example.com"))
                     .textContentType(.emailAddress)
             } header: {
-                Text("Kontakt-e-post for MET")
+                Text("Contact email for MET")
             } footer: {
                 Text(
-                    "MET Norway ber alle som henter værdata om å oppgi hvem de er, så de kan ta kontakt hvis noe går galt i stedet for å stenge tilgangen. Appen sender alltid navnet og versjonen sin. Fyller du inn en e-post, sendes den også med i hver forespørsel til MET (høyst én gang i timen). Den brukes ikke til noe annet."
+                    "MET Norway asks everyone who fetches weather data to say who they are, so they can get in touch if something goes wrong instead of blocking access. The app always sends its name and version. If you enter an email, it is also sent with every request to MET (at most once an hour). It is not used for anything else."
                 )
             }
 
@@ -77,12 +77,12 @@ struct WeatherSettingsView: View {
                     }
                     Spacer()
                     if working { ProgressView().controlSize(.small) }
-                    Button("Lagre") { Task { await save() } }
+                    Button("Save") { Task { await save() } }
                         .buttonStyle(.borderedProminent)
                         .disabled(working)
                 }
                 if let fetched = model.weatherFetchedAt {
-                    LabeledContent("Varsel sist hentet", value: Format.relative(fetched))
+                    LabeledContent("Forecast last fetched", value: Format.relative(fetched))
                 }
                 Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
             }
@@ -120,9 +120,9 @@ struct WeatherSettingsView: View {
 
     private func sourceText(_ source: WeatherLocation.Source) -> String {
         switch source {
-        case .manual: "Valgt her"
-        case .melcloud: "Fra bygget i MELCloud"
-        case .demo: "Demo"
+        case .manual: String(localized: "Chosen here")
+        case .melcloud: String(localized: "From the building in MELCloud")
+        case .demo: String(localized: "Demo")
         }
     }
 
@@ -138,7 +138,7 @@ struct WeatherSettingsView: View {
         if (!latitude.trimmingCharacters(in: .whitespaces).isEmpty && lat == nil)
             || (!longitude.trimmingCharacters(in: .whitespaces).isEmpty && lon == nil)
         {
-            message = (false, "Koordinatene må være tall, for eksempel 60,39 og 5,32.")
+            message = (false, String(localized: "The coordinates must be numbers, for example 60.39 and 5.32."))
             return
         }
         working = true
