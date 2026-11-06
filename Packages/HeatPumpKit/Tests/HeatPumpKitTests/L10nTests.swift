@@ -31,6 +31,7 @@ struct L10nTests {
     @Test func withoutAppBundleReturnsEnglishSource() {
         #expect(L10n.hostApp() == nil)
         #expect(L10n.language == .english)
+        #expect(L10n.locale.identifier == "en_NO")
         #expect(L10n.tr("Heat") == "Heat")
         #expect(L10n.format("%lld new errors", 3) == "3 new errors")
         #expect(L10n.lookup("Heat", in: nil) == "Heat")

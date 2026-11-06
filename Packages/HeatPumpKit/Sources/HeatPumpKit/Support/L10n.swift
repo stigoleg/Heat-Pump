@@ -31,7 +31,9 @@ public enum L10n {
     )
 
     /// Formatting locale: the chosen language with the Mac's region (e.g. `en_NO`, `nb_NO`).
-    public static let locale: Locale = makeLocale(language: language, region: Locale.current.region?.identifier)
+    /// Without an app bundle the region is Norway, so `swift test` formats the same everywhere.
+    public static let locale: Locale = makeLocale(
+        language: language, region: hostApp() == nil ? "NO" : Locale.current.region?.identifier)
 
     /// The `<lang>.lproj` folder of the enclosing app, or nil outside an app bundle.
     static let strings: Bundle? = localizedBundle(for: language, in: hostApp())
