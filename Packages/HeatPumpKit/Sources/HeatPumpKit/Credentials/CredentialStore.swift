@@ -143,9 +143,10 @@ public struct KeychainCredentialStore: CredentialProviding {
         }
     }
 
-    static let credentialsLabel = "Varmepumpe – MELCloud-innlogging"
-    static let contextKeyLabel = "Varmepumpe – MELCloud-økt"
-    static let tibberLabel = "Varmepumpe – Tibber-nøkkel"
+    // Labels shown in Keychain Access (the service and account names stay fixed).
+    static let credentialsLabel = L10n.tr("Heat Pump – MELCloud login")
+    static let contextKeyLabel = L10n.tr("Heat Pump – MELCloud session")
+    static let tibberLabel = L10n.tr("Heat Pump – Tibber token")
 
     /// Moves items created by older versions (ACL trusting only their creator) to the shared
     /// ACL: each is read once (at most one prompt per item, once) and written back. Items
@@ -276,8 +277,8 @@ public struct KeychainError: Error, Sendable, LocalizedError {
     public var status: OSStatus
 
     public var errorDescription: String? {
-        let message = SecCopyErrorMessageString(status, nil) as String? ?? "ukjent"
-        return "Nøkkelring-feil \(status): \(message)"
+        let message = SecCopyErrorMessageString(status, nil) as String? ?? L10n.tr("unknown")
+        return L10n.format("Keychain error %@: %@", String(status), message)
     }
 }
 

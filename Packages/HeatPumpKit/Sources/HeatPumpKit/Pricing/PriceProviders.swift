@@ -1,6 +1,6 @@
 import Foundation
 
-/// Errors from electricity price sources. `errorDescription` is Norwegian display text.
+/// Errors from electricity price sources. `errorDescription` is display text (via `L10n`).
 public enum PriceError: Error, Sendable, Equatable, LocalizedError {
     case missingToken
     case unauthorized
@@ -11,12 +11,12 @@ public enum PriceError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .missingToken: "Mangler Tibber-nøkkel. Legg den inn under Innstillinger → Strømpris."
-        case .unauthorized: "Tibber godtok ikke nøkkelen. Sjekk at den er kopiert riktig."
-        case .http(let status): "Prisdata: serveren svarte med HTTP-feil \(status)."
-        case .network(let detail): "Prisdata: nettverksfeil (\(detail))."
-        case .decoding(let detail): "Prisdata kunne ikke tolkes: \(detail)"
-        case .server(let detail): "Prisdata: \(detail)"
+        case .missingToken: L10n.tr("No Tibber token. Enter it under Settings → Electricity price.")
+        case .unauthorized: L10n.tr("Tibber did not accept the token. Check that it was copied correctly.")
+        case .http(let status): L10n.format("Price data: the server answered with HTTP error %lld.", status)
+        case .network(let detail): L10n.format("Price data: network error (%@).", detail)
+        case .decoding(let detail): L10n.format("Price data could not be interpreted: %@", detail)
+        case .server(let detail): L10n.format("Price data: %@", detail)
         }
     }
 }
@@ -106,8 +106,8 @@ public struct HvaKosterStrommenProvider: PriceProvider {
 
     static func parse(_ data: Data, area: PriceArea, timeZone: TimeZone) throws -> [HourPrice] {
         let json: JSONValue
-        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding("ugyldig JSON") }
-        guard let array = json.array else { throw PriceError.decoding("forventet en liste") }
+        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding(L10n.tr("invalid JSON")) }
+        guard let array = json.array else { throw PriceError.decoding(L10n.tr("expected a list")) }
         let entries = array.compactMap { entry -> (Date, Double, Double)? in
             guard let start = PriceAggregation.iso(entry["time_start"]?.string), let nok = entry["NOK_per_kWh"]?.double
             else { return nil }
@@ -193,7 +193,7 @@ public struct TibberPriceProvider: PriceProvider {
 
     static func parse(_ data: Data, timeZone: TimeZone) throws -> [HourPrice] {
         let json: JSONValue
-        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding("ugyldig JSON") }
+        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding(L10n.tr("invalid JSON")) }
         if let errors = json["errors"]?.array, !errors.isEmpty {
             let message = errors.compactMap { $0["message"]?.string }.joined(separator: "; ")
             if message.lowercased().contains("unauthor") || message.lowercased().contains("token") { throw PriceError.unauthorized }
@@ -201,7 +201,7 @@ public struct TibberPriceProvider: PriceProvider {
         }
         let homes = json["data"]?["viewer"]?["homes"]?.array ?? []
         guard let subscription = homes.compactMap({ $0["currentSubscription"] }).first(where: { !$0.isNull }) else {
-            throw PriceError.server("Fant ikke noe aktivt strømabonnement på Tibber-kontoen.")
+            throw PriceError.server(L10n.tr("Found no active electricity subscription on the Tibber account."))
         }
         let info = subscription["priceInfo"]
         let lists = [info?["today"], info?["tomorrow"], subscription["priceInfoRange"]?["nodes"]]

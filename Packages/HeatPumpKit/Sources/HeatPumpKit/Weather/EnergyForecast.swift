@@ -5,7 +5,7 @@ import Foundation
 public struct DegreeDayModel: Codable, Sendable, Equatable {
     public var intercept: Double
     public var slope: Double
-    /// Standard deviation of the residuals (kWh); used for the "ca. a–b" range.
+    /// Standard deviation of the residuals (kWh); used for the "about a–b" range.
     public var residualStd: Double
     public var days: Int
 
@@ -52,9 +52,10 @@ public struct TomorrowEstimate: Codable, Sendable, Equatable {
     /// True when tomorrow's spot prices are not out yet and today's hourly prices were used instead.
     public var pricesFromToday: Bool
 
-    /// "Anslag i morgen: ~12 kWh · ~14 kr"
+    /// "Estimate tomorrow: ~12 kWh · ~14 NOK"
     public var shortText: String {
-        "Anslag i morgen: ~" + Display.format("%.0f kWh", kWh) + (costNok.map { Display.format(" · ~%.0f kr", $0) } ?? "")
+        costNok.map { L10n.format("Estimate tomorrow: ~%.0f kWh · ~%.0f NOK", kWh, $0) }
+            ?? L10n.format("Estimate tomorrow: ~%.0f kWh", kWh)
     }
 }
 

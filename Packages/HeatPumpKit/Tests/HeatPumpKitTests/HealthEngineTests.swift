@@ -51,8 +51,8 @@ struct HealthEngineTests {
         let f = finding("active_error", in: byCode)
         #expect(f?.severity == .critical)
         #expect(f?.detail.contains("5101") == true)
-        #expect(f?.detail.contains("Merk:") == true)  // low-confidence caveat
-        #expect(f?.recommendation.contains("forhandler") == true)
+        #expect(f?.detail.contains("Note:") == true)  // low-confidence caveat
+        #expect(f?.recommendation.contains("dealer") == true)
         #expect(finding("active_error", in: evaluate(state: makeState(at: now, errorCode: 0))) == nil)
     }
 
@@ -89,7 +89,7 @@ struct HealthEngineTests {
         let report = evaluate(state: cold.last, snapshots: cold)
         let f = finding("setpoint_not_reached", in: report)
         #expect(f?.severity == .warning)
-        #expect(f?.recommendation.contains("kaldt ute") == true)
+        #expect(f?.recommendation.contains("cold outdoors") == true)
 
         let short = cold.suffix(3)  // 1 hour only
         #expect(finding("setpoint_not_reached", in: evaluate(state: short.last, snapshots: Array(short))) == nil)
@@ -166,10 +166,10 @@ struct HealthEngineTests {
         let pending = makeState(at: now, firmware: FirmwareInfo(deployment: "987654", updateAborted: false, appVersion: 34000))
         let f = finding("firmware_pending", in: evaluate(state: pending))
         #expect(f?.severity == .info)
-        #expect(f?.title == "Oppdatering tilgjengelig for Wi-Fi-modulen")
-        #expect(f?.detail == "Modulen har fastvare 34.00. MELCloud har en nyere versjon klar.")
-        #expect(f?.recommendation.contains("Helse → Fastvare") == true)
-        #expect(f?.recommendation.contains("kan ikke rulles tilbake") == true)
+        #expect(f?.title == "Update available for the Wi-Fi adapter")
+        #expect(f?.detail == "The adapter has firmware 34.00. MELCloud has a newer version ready.")
+        #expect(f?.recommendation.contains("Health → Firmware") == true)
+        #expect(f?.recommendation.contains("cannot be rolled back") == true)
         // The deployment id is internal and never shown.
         #expect(f.map { !"\($0.title)\($0.detail)\($0.recommendation)".contains("987654") } == true)
         let noVersion = makeState(at: now, firmware: FirmwareInfo(deployment: "987654"))

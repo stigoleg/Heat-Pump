@@ -140,7 +140,7 @@ struct ControlView: View {
                 .labelsHidden()
                 .tint(tint)
                 Text(
-                    "Allowed in \((mode?.displayName ?? String(localized: "heat")).lowercased()) mode: \(Display.format("%.0f–%.0f °C", range.lowerBound, range.upperBound)). Small adjustments (1–2 degrees) are enough."
+                    "Allowed in \((mode ?? .heat).sentenceName) mode: \(Display.format("%.0f–%.0f °C", range.lowerBound, range.upperBound)). Small adjustments (1–2 degrees) are enough."
                 )
                 .font(.caption).foregroundStyle(.secondary)
             }

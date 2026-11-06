@@ -121,11 +121,11 @@ public enum MaintenanceKind: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .airFilter: "Luftfilter"
-        case .deodorizingFilter: "Luktfilter/luftrenser"
-        case .vBlockingFilter: "V-blokkerende filter (grønt)"
-        case .professionalService: "Service hos forhandler"
-        case .other: "Annet"
+        case .airFilter: L10n.tr("Air filter")
+        case .deodorizingFilter: L10n.tr("Deodorizing/air purifying filter")
+        case .vBlockingFilter: L10n.tr("V-blocking filter (green)")
+        case .professionalService: L10n.tr("Service by the dealer")
+        case .other: L10n.tr("Other")
         }
     }
 
@@ -215,15 +215,15 @@ public enum HealthSeverity: String, Codable, Sendable, Comparable, CaseIterable 
 
     public var displayName: String {
         switch self {
-        case .ok: "OK"
-        case .info: "Til info"
-        case .warning: "Advarsel"
-        case .critical: "Kritisk"
+        case .ok: L10n.tr("OK")
+        case .info: L10n.tr("For information")
+        case .warning: L10n.tr("Warning")
+        case .critical: L10n.tr("Critical")
         }
     }
 }
 
-/// One health observation. `title`, `detail` and `recommendation` are Norwegian display text;
+/// One health observation. `title`, `detail` and `recommendation` are display text;
 /// `code` is stable and machine-readable.
 public struct HealthFinding: Codable, Sendable, Equatable, Identifiable {
     public var id: String { code }

@@ -55,7 +55,7 @@ struct LocalHealthTests {
         let finding = try #require(findings.first { $0.code == "short_cycling" })
         #expect(finding.severity == .warning)
         #expect(finding.detail.contains("4,0"))
-        #expect(finding.recommendation.contains("luftfilteret"))
+        #expect(finding.recommendation.contains("air filter"))
     }
 
     @Test func sixStartsInTwoHoursIsStronger() throws {
@@ -97,7 +97,7 @@ struct LocalHealthTests {
         #expect(try powerFinding(powerHistory(baseW: 300, recentW: 400)) == nil)  // 1.33×
         let info = try #require(try powerFinding(powerHistory(baseW: 300, recentW: 500)))
         #expect(info.severity == .info)  // 1.67×
-        #expect(info.detail.contains("25 W per grad"))
+        #expect(info.detail.contains("25 W per degree"))
         let warning = try #require(try powerFinding(powerHistory(baseW: 300, recentW: 700)))
         #expect(warning.severity == .warning)  // 2.33×
         // Too few baseline days: no judgement.
@@ -143,7 +143,7 @@ struct LocalHealthTests {
             failingSince: now.addingTimeInterval(-3900))
         let finding = evaluate(failing).first { $0.code == "local_unreachable" }
         #expect(finding?.severity == .info)
-        #expect(finding?.detail.contains("MELCloud virker som før") == true)
+        #expect(finding?.detail.contains("MELCloud work as before") == true)
         // Failing for 30 min: not yet.
         var short = failing
         short.failingSince = now.addingTimeInterval(-1800)
@@ -166,7 +166,7 @@ struct LocalHealthTests {
         latest?.cloudConnected = false
         let finding = evaluate(LocalHealthInput(enabled: true, latest: latest)).first { $0.code == "local_cloud_connect_off" }
         #expect(finding?.severity == .warning)
-        #expect(finding?.title == "MELCloud-tilkoblingen er slått av i modulen")
+        #expect(finding?.title == "The MELCloud connection is turned off in the adapter")
     }
 
     @Test func localErrorCodeFeedsActiveError() {
@@ -175,7 +175,7 @@ struct LocalHealthTests {
         let finding = evaluate(LocalHealthInput(enabled: true, latest: latest)).first { $0.code == "active_error_local" }
         #expect(finding?.severity == .critical)
         #expect(finding?.detail.contains("0x6840") == true)
-        #expect(finding?.title.contains("lokal") == true)
+        #expect(finding?.title.contains("local") == true)
         // Already reported by MELCloud: not twice.
         #expect(evaluate(LocalHealthInput(enabled: true, latest: latest), cloudErrorShown: true).isEmpty)
         // Old reading: not trusted.

@@ -28,16 +28,16 @@ public enum BlockReason: String, Codable, Sendable {
     /// HTTP 401 even after a fresh login.
     case unauthorized
 
-    /// Norwegian explanation including when it ends.
+    /// Explanation including when it ends.
     public func message(until: Date) -> String {
         let time = Display.time(until)
         switch self {
         case .rateLimited:
-            return "MELCloud har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. \(time)."
+            return L10n.format("MELCloud has temporarily stopped updates because there has been too much traffic. Try again at %@.", time)
         case .loginThrottled:
-            return "For mange innloggingsforsøk mot MELCloud. Prøv igjen kl. \(time)."
+            return L10n.format("Too many login attempts to MELCloud. Try again at %@.", time)
         case .unauthorized:
-            return "MELCloud avviser tilgangen selv etter ny innlogging. Appen prøver igjen kl. \(time)."
+            return L10n.format("MELCloud refuses access even after a new login. The app tries again at %@.", time)
         }
     }
 }

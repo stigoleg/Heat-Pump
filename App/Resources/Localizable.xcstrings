@@ -6711,16 +6711,6 @@
         }
       }
     },
-    "heat" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "varme"
-          }
-        }
-      }
-    },
     "in the period" : {
       "localizations" : {
         "nb" : {

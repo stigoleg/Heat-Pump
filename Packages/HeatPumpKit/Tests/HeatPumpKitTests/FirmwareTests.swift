@@ -42,9 +42,9 @@ struct FirmwareTests {
         for phase in FirmwareUpdatePhase.allCases { #expect(!phase.displayText.isEmpty) }
         let unknown = FirmwareUpdateStatus(currentPhase: 9, approvalStatus: 3)
         #expect(unknown.phase == .unknown)
-        #expect(unknown.displayText.contains("fase 9, godkjenning 3"))
+        #expect(unknown.displayText.contains("phase 9, approval 3"))
         let downloading = FirmwareUpdateStatus(currentPhase: 2, approvalStatus: 3, filesDownloaded: 2, filesToDownload: 4)
-        #expect(downloading.displayText.contains("2 av 4 filer"))
+        #expect(downloading.displayText.contains("2 of 4 files"))
         #expect(downloading.progress == 0.5)
     }
 
@@ -60,7 +60,7 @@ struct FirmwareTests {
         #expect(updates[0].id == 77)
         #expect(updates[0].deviceId == 1)
         #expect(updates[0].phase == .downloading)
-        #expect(updates[0].progressText == "1 av 3 filer")
+        #expect(updates[0].progressText == "1 of 3 files")
         #expect(updates[0].dateApproved == Date(timeIntervalSince1970: 1_793_876_400))
         #expect(updates[0].lastCommunication == nil)
         #expect(updates[1] == FirmwareUpdateStatus(id: 78))
@@ -143,10 +143,10 @@ struct FirmwareTests {
     }
 
     @Test(arguments: [
-        (4 as Int?, true, "4711" as String?, "frakoblet"),
-        (2, false, "4711", "Bare eieren"),
-        (nil, false, "4711", "ikke oppgitt om kontoen eier"),
-        (4, false, nil, "Ingen fastvareoppdatering venter"),
+        (4 as Int?, true, "4711" as String?, "disconnected"),
+        (2, false, "4711", "Only the owner"),
+        (nil, false, "4711", "not said whether the account owns"),
+        (4, false, nil, "No firmware update is waiting"),
     ])
     func refusalsAreLoggedAndSendNothing(_ owner: Int?, _ offline: Bool, _ deployment: String?, _ text: String) async throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
@@ -169,9 +169,9 @@ struct FirmwareTests {
 
     @Test func listSayingOfflineOrNotApprovableSendsNothing() async throws {
         for (entry, text) in [
-            (#"[{"ID": 77, "Device": 1, "CurrentPhase": 0, "CurrentApprovalStatus": 0, "MinutesOffline": 12}]"#, "frakoblet"),
-            (#"[{"ID": 77, "Device": 1, "CurrentPhase": 2, "CurrentApprovalStatus": 3, "MinutesOffline": 0}]"#, "kan ikke startes nå"),
-            ("[]", "oppdateringslisten"),
+            (#"[{"ID": 77, "Device": 1, "CurrentPhase": 0, "CurrentApprovalStatus": 0, "MinutesOffline": 12}]"#, "disconnected"),
+            (#"[{"ID": 77, "Device": 1, "CurrentPhase": 2, "CurrentApprovalStatus": 3, "MinutesOffline": 0}]"#, "cannot be started now"),
+            ("[]", "update list"),
         ] {
             let transport = StubTransport()
             transport.enqueue("/FirmwareUpdate/List2", body: Data(entry.utf8))
@@ -199,11 +199,11 @@ struct FirmwareTests {
         #expect(await backend.firmwareApprovals == 0)
         let request = try #require(approver.received.first)
         let text = request.summaries.joined(separator: " ")
-        #expect(request.summaries.first == "Start fastvareoppdatering av Wi-Fi-modulen (nå versjon 34.00)")
-        #expect(text.contains("kan ikke rulles tilbake"))
-        #expect(text.contains("strøm") && text.contains("godt Wi-Fi"))
-        #expect(text.contains("fjernkontrollen"))
-        #expect(text.contains("starter på nytt") && text.contains("ta en stund"))
+        #expect(request.summaries.first == "Start a firmware update of the Wi-Fi adapter (now version 34.00)")
+        #expect(text.contains("cannot be rolled back"))
+        #expect(text.contains("power") && text.contains("good Wi-Fi"))
+        #expect(text.contains("remote control"))
+        #expect(text.contains("restarts") && text.contains("take a while"))
         #expect(request.reason == "Sikkerhetsoppdatering")
         let row = try #require(try store.changes(limit: 1).first)
         #expect(row.result == .rejected)
@@ -286,7 +286,7 @@ struct FirmwareTests {
         let row = try #require(try store.changes(limit: 1).first)
         #expect(row.field == "firmware")
         #expect(row.oldValue == "34.00")
-        #expect(row.newValue == "oppdatering startet")
+        #expect(row.newValue == "update started")
         #expect(row.result == .ok)
         #expect(try await svc.writeBudget().remaining == ChangeBudget.maxChangesPerHour - 1)
 
@@ -318,7 +318,7 @@ struct FirmwareTests {
         #expect(state.state?.firmware.updateAvailable == false)
         let after = try await svc.firmwareStatus()
         #expect(after.currentVersion == "35.00")
-        #expect(after.startProblem?.contains("Ingen fastvareoppdatering venter") == true)
+        #expect(after.startProblem?.contains("No firmware update is waiting") == true)
         // Nothing waits any more: no more List2 reads.
         let finalReads = await backend.firmwareReads
         clock.advance(120)
@@ -343,7 +343,7 @@ struct FirmwareTests {
         let cancelled = try await svc.cancelFirmwareUpdate(source: .app, reason: "Avbrutt i appen")
         #expect(cancelled.result == .ok)
         #expect(await backend.firmwareCancels == 1)
-        #expect(try store.changes(limit: 1).first?.newValue == "oppdatering avbrutt")
+        #expect(try store.changes(limit: 1).first?.newValue == "update cancelled")
         clock.advance(20)
         let status = try await svc.firmwareStatus()
         #expect(status.phase == .approvalRequired)

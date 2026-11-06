@@ -139,7 +139,7 @@ enum MELCloudClassicParser {
             return nil
         }
         guard let deviceId = value("DeviceID")?.int else {
-            throw HeatPumpError.decoding("DeviceID mangler")
+            throw HeatPumpError.decoding(L10n.tr("DeviceID missing"))
         }
         let utc = TimeZone.gmt
         let hasOutdoor = value("HasOutdoorTemperature")?.bool ?? true
@@ -224,9 +224,9 @@ enum MELCloudClassicParser {
     /// Fields MELCloud resets to defaults (power off, mode 0) when they are missing from a
     /// `Device/SetAta` body. A body without all of them is never sent.
     static let invalidModeMessage =
-        "Varmepumpen rapporterer ingen gyldig modus. Velg modus (for eksempel Varme) samtidig med endringen."
+        L10n.tr("The heat pump reports no valid mode. Choose a mode (for example Heat) together with the change.")
     static let missingObjectMessage =
-        "Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt. Oppdater og prøv igjen."
+        L10n.tr("A complete status from the heat pump is missing, so the change was not sent. Refresh and try again.")
 
     static let requiredSetAtaKeys = ["Power", "OperationMode", "SetTemperature", "SetFanSpeed", "VaneHorizontal", "VaneVertical"]
 
@@ -267,7 +267,7 @@ enum MELCloudClassicParser {
         let missing = requiredSetAtaKeys.filter { body[$0] == nil || body[$0]?.isNull == true }
         guard missing.isEmpty else {
             throw HeatPumpError.validation(
-                "Status fra varmepumpen mangler \(missing.joined(separator: ", ")), så endringen ble ikke sendt.")
+                L10n.format("The status from the heat pump lacks %@, so the change was not sent.", missing.joined(separator: ", ")))
         }
         // An unknown mode would be sent back as-is and could leave the unit in a bad state. The
         // i-See values 9/10/11 are valid and go back unchanged when the mode is not changed.

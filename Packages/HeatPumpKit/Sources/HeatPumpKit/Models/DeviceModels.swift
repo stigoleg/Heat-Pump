@@ -8,14 +8,26 @@ public enum OperationMode: Int, Codable, Sendable, CaseIterable {
     case fan = 7
     case auto = 8
 
-    /// Norwegian display name.
+    /// Display name ("Heat").
     public var displayName: String {
         switch self {
-        case .heat: "Varme"
-        case .dry: "Avfukting"
-        case .cool: "Kjøling"
-        case .fan: "Vifte"
-        case .auto: "Auto"
+        case .heat: L10n.tr("Heat")
+        case .dry: L10n.tr("Dry")
+        case .cool: L10n.tr("Cool")
+        case .fan: L10n.tr("Fan")
+        case .auto: L10n.tr("Auto")
+        }
+    }
+
+    /// The name inside a sentence ("heat"); its own key, since lowercasing `displayName` is not
+    /// right in every language.
+    public var sentenceName: String {
+        switch self {
+        case .heat: L10n.tr("heat")
+        case .dry: L10n.tr("dry")
+        case .cool: L10n.tr("cool")
+        case .fan: L10n.tr("fan")
+        case .auto: L10n.tr("auto")
         }
     }
 
@@ -60,13 +72,13 @@ public enum VaneVertical: Int, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .auto: "Auto"
-        case .position1: "1 (øverst)"
+        case .auto: L10n.tr("Auto")
+        case .position1: L10n.tr("1 (top)")
         case .position2: "2"
         case .position3: "3"
         case .position4: "4"
-        case .position5: "5 (nederst)"
-        case .swing: "Sving"
+        case .position5: L10n.tr("5 (bottom)")
+        case .swing: L10n.tr("Swing")
         }
     }
 
@@ -102,14 +114,14 @@ public enum VaneHorizontal: Int, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .auto: "Auto"
-        case .position1: "1 (venstre)"
+        case .auto: L10n.tr("Auto")
+        case .position1: L10n.tr("1 (left)")
         case .position2: "2"
-        case .position3: "3 (midten)"
+        case .position3: L10n.tr("3 (center)")
         case .position4: "4"
-        case .position5: "5 (høyre)"
-        case .split: "Delt"
-        case .swing: "Sving"
+        case .position5: L10n.tr("5 (right)")
+        case .split: L10n.tr("Split")
+        case .swing: L10n.tr("Swing")
         }
     }
 
@@ -404,15 +416,15 @@ public enum DeviceChange: Sendable, Equatable {
         }
     }
 
-    /// Norwegian one-line summary for confirmations.
+    /// One-line summary for confirmations.
     public var displaySummary: String {
         switch self {
-        case .power(let on): on ? "Slå varmepumpen PÅ" : "Slå varmepumpen AV"
-        case .mode(let mode): "Endre modus til \(mode.displayName)"
-        case .temperature(let celsius): Display.format("Endre ønsket temperatur til %.1f °C", celsius)
-        case .fanSpeed(let speed): speed == 0 ? "Sett viftehastighet til auto" : "Sett viftehastighet til \(speed)"
-        case .vaneVertical(let vane): "Sett vertikalt spjeld til \(vane.displayName)"
-        case .vaneHorizontal(let vane): "Sett horisontalt spjeld til \(vane.displayName)"
+        case .power(let on): on ? L10n.tr("Turn the heat pump ON") : L10n.tr("Turn the heat pump OFF")
+        case .mode(let mode): L10n.format("Change mode to %@", mode.displayName)
+        case .temperature(let celsius): L10n.format("Change target temperature to %.1f °C", celsius)
+        case .fanSpeed(let speed): speed == 0 ? L10n.tr("Set fan speed to auto") : L10n.format("Set fan speed to %lld", speed)
+        case .vaneVertical(let vane): L10n.format("Set vertical airflow to %@", vane.displayName)
+        case .vaneHorizontal(let vane): L10n.format("Set horizontal airflow to %@", vane.displayName)
         }
     }
 

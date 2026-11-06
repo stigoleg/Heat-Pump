@@ -284,7 +284,7 @@ struct KnowledgeTests {
         #expect(ErrorCatalog.lookup(errorCode: 5101).confidence == .low)
         let unknown = ErrorCatalog.lookup(errorCode: 4242)
         #expect(unknown.confidence == .unknown)
-        #expect(unknown.explanation.contains("ingen sikker forklaring"))
+        #expect(unknown.explanation.contains("no reliable explanation"))
         let fromMessage = ErrorCatalog.lookup(errorCode: nil, message: "Feil på føler")
         #expect(fromMessage.confidence == .melcloud)
         #expect(ErrorCatalog.blinkCodes[2]?.source.contains("MSZ-LN") == true)

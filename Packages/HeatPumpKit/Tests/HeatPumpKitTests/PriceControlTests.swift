@@ -25,9 +25,9 @@ struct PriceControlTests {
         #expect(steps[2].start == clock.now.addingTimeInterval(2 * 3600))
         #expect(steps[2].end == clock.now.addingTimeInterval(4 * 3600))
         #expect(steps[2].priceOre == 245)
-        #expect(steps[2].reason == "Svært dyrt (" + Display.format("%.2f", 2.45) + " kr/kWh)")
+        #expect(steps[2].reason == "Very expensive hour (" + Display.format("%.2f", 2.45) + " NOK/kWh)")
         #expect(steps[3].end == clock.now.addingTimeInterval(6 * 3600))
-        #expect(steps[1].summary(now: clock.now, timeZone: .gmt).hasPrefix("11–12: senkes til 20 °C"))
+        #expect(steps[1].summary(now: clock.now, timeZone: .gmt).hasPrefix("11–12: lowered to 20 °C"))
     }
 
     @Test func neverBelowTheMinimum() {
@@ -96,7 +96,7 @@ struct PriceControlTests {
         let start = from ?? clock.now
         return PlannedStep(
             start: start, end: start.addingTimeInterval(hours * 3600), target: target, base: base, kind: kind, level: .veryExpensive,
-            priceOre: 245, reason: "Svært dyrt (2,45 kr/kWh)")
+            priceOre: 245, reason: "Very expensive hour (2.45 NOK/kWh)")
     }
 
     func context(
@@ -114,7 +114,7 @@ struct PriceControlTests {
         var memory = PriceControlMemory()
         let first = PriceControlEngine.evaluate(context(), memory: &memory)
         #expect(first.target == 19)
-        #expect(first.reason == "Prisstyring: Svært dyrt (2,45 kr/kWh)")
+        #expect(first.reason == "Price control: Very expensive hour (2.45 NOK/kWh)")
         #expect(first.kind == .lowered)
         // What the runner records after a successful send.
         memory.lastSent = 19
@@ -186,12 +186,12 @@ struct PriceControlTests {
         var holiday = context()
         holiday.holidayActive = true
         #expect(kindAndText(holiday).2 == nil)
-        #expect(kindAndText(holiday).1.contains("Feriemodus"))
-        #expect(kindAndText(context(power: false)).1.contains("av"))
+        #expect(kindAndText(holiday).1.contains("Holiday mode"))
+        #expect(kindAndText(context(power: false)).1.contains("off"))
         var frost = context(power: false)
         frost.frostProtection = true
-        #expect(kindAndText(frost).1.contains("frostsikringen"))
-        #expect(kindAndText(context(mode: .cool)).1.contains("varmemodus"))
+        #expect(kindAndText(frost).1.contains("frost protection"))
+        #expect(kindAndText(context(mode: .cool)).1.contains("heat mode"))
         var blocked = context()
         blocked.blockedReason = "MELCloud er sperret"
         #expect(kindAndText(blocked).1 == "MELCloud er sperret")
@@ -263,9 +263,9 @@ struct PriceControlTests {
         #expect(status.currentStep?.target == 19)
         let first = try #require(try store.changes(limit: 1).first)
         #expect(first.source == .automation)
-        #expect(first.source.displayName == "Prisstyring")
+        #expect(first.source.displayName == "Price control")
         #expect(first.result == .ok)
-        #expect(first.reason?.hasPrefix("Prisstyring: Svært dyrt") == true)
+        #expect(first.reason?.hasPrefix("Price control: Very expensive hour") == true)
         #expect(try store.changes(limit: 10, source: .automation).count == 1)
 
         // Next tick in the same step: nothing new is sent.
@@ -281,7 +281,7 @@ struct PriceControlTests {
         #expect(changes.map(\.setTemperature) == [19, 21])
         // Only the setpoint is ever sent: never power or mode.
         #expect(changes.allSatisfy { $0.power == nil && $0.mode == nil && $0.fanSpeed == nil })
-        #expect(try store.changes(limit: 1).first?.reason == "Prisstyring: slått av – tilbake til vanlig temperatur")
+        #expect(try store.changes(limit: 1).first?.reason == "Price control: turned off – back to normal temperature")
         #expect(try await service.priceControlSettings().enabled == false)
         #expect(try await service.priceControlStatus()?.kind == .off)
     }
@@ -290,7 +290,7 @@ struct PriceControlTests {
         let (service, backend, _) = try await makeService()
         try await service.enablePriceControl()
         clock.advance(300)
-        _ = try await service.apply(.temperature(22.5), source: .app, reason: "Endret i appen")
+        _ = try await service.apply(.temperature(22.5), source: .app, reason: "Changed in the app")
         try await service.notePriceControlManualSetpoint(22.5)
         #expect(try await service.priceControlSettings().comfortTemperature == 22.5)
         clock.advance(300)

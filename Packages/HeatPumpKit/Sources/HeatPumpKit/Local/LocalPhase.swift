@@ -14,37 +14,37 @@ public enum LocalPhase: String, Codable, Sendable, CaseIterable {
     case fan
     case running
 
-    /// Short Norwegian status line for Oversikt.
+    /// Short status line for Overview.
     public var statusLine: String {
         switch self {
-        case .off: "Av"
-        case .defrost: "Avriser – det kan blåse lite eller kaldt i noen minutter"
-        case .preheat: "Forvarmer"
-        case .warmup: "Starter opp"
-        case .standby, .resting: "Hviler – kompressoren står"
-        case .heating: "Varmer"
-        case .cooling: "Kjøler"
-        case .drying: "Avfukter"
-        case .fan: "Bare vifte"
-        case .running: "Går (auto)"
+        case .off: L10n.tr("Off")
+        case .defrost: L10n.tr("Defrosting – it may blow little or cold air for a few minutes")
+        case .preheat: L10n.tr("Pre-heating")
+        case .warmup: L10n.tr("Starting up")
+        case .standby, .resting: L10n.tr("Resting – the compressor is idle")
+        case .heating: L10n.tr("Heating")
+        case .cooling: L10n.tr("Cooling")
+        case .drying: L10n.tr("Drying")
+        case .fan: L10n.tr("Fan only")
+        case .running: L10n.tr("Running (auto)")
         }
     }
 
     /// Plain explanation for a non-expert.
     public var explanation: String {
         switch self {
-        case .off: "Varmepumpen er slått av."
+        case .off: L10n.tr("The heat pump is turned off.")
         case .defrost:
-            "Utedelen smelter bort is som har samlet seg. Imens kommer det lite eller kald luft fra innedelen. Det er helt normalt i kaldt og fuktig vær og tar vanligvis 3–10 minutter."
-        case .preheat: "Innedelen varmes opp før viften starter for fullt, så den ikke blåser kald luft."
-        case .warmup: "Varmepumpen har nettopp startet og kommer i gang."
+            L10n.tr("The outdoor unit is melting away ice that has built up. Meanwhile little or cold air comes from the indoor unit. This is perfectly normal in cold, damp weather and usually takes 3–10 minutes.")
+        case .preheat: L10n.tr("The indoor unit warms up before the fan starts in earnest, so it does not blow cold air.")
+        case .warmup: L10n.tr("The heat pump has just started and is getting going.")
         case .standby, .resting:
-            "Kompressoren står. Det skjer når rommet er varmt nok, og ellers en kort stund mellom to runder. Den starter igjen av seg selv."
-        case .heating: "Kompressoren går og varmer rommet."
-        case .cooling: "Kompressoren går og kjøler rommet."
-        case .drying: "Varmepumpen tar fukt ut av lufta."
-        case .fan: "Bare viften går; varmepumpen varmer eller kjøler ikke."
-        case .running: "Kompressoren går i automatisk modus."
+            L10n.tr("The compressor is idle. This happens when the room is warm enough, and otherwise for a short while between two runs. It starts again by itself.")
+        case .heating: L10n.tr("The compressor is running and heating the room.")
+        case .cooling: L10n.tr("The compressor is running and cooling the room.")
+        case .drying: L10n.tr("The heat pump is taking moisture out of the air.")
+        case .fan: L10n.tr("Only the fan is running; the heat pump is not heating or cooling.")
+        case .running: L10n.tr("The compressor is running in automatic mode.")
         }
     }
 
@@ -81,12 +81,12 @@ public struct LocalPhaseSpan: Codable, Sendable, Equatable {
 
         public var displayName: String {
             switch self {
-            case .off: "Av"
-            case .defrost: "Avriser"
-            case .startup: "Starter/forvarmer"
-            case .rest: "Hviler"
-            case .running: "Går"
-            case .unknown: "Ukjent"
+            case .off: L10n.tr("Off")
+            case .defrost: L10n.tr("Defrosting")
+            case .startup: L10n.tr("Starting/pre-heating")
+            case .rest: L10n.tr("Resting")
+            case .running: L10n.tr("Running")
+            case .unknown: L10n.tr("Unknown")
             }
         }
     }

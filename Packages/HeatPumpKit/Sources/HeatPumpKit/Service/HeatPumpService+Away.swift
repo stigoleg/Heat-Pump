@@ -14,10 +14,10 @@ extension HeatPumpService {
     public static let timerFetchKey = "timer"
     public static let awayInterval: TimeInterval = 3600
     public static let timerInterval: TimeInterval = 6 * 3600
-    /// "Hent nå" for the timer, at most this often.
+    /// "Fetch now" for the timer, at most this often.
     public static let timerManualInterval: TimeInterval = 10 * 60
-    static let weeklyTimerNote = "Merk: ukeplanen i MELCloud er på, så varmepumpen kan endre seg selv etter planen."
-    /// After a refusal (HTTP 4xx) these reads pause this long, unless the user presses "Prøv igjen".
+    static let weeklyTimerNote = L10n.tr("Note: the weekly schedule in MELCloud is on, so the heat pump may change by itself according to the schedule.")
+    /// After a refusal (HTTP 4xx) these reads pause this long, unless the user presses "Try again".
     public static let refusalBackoff: TimeInterval = 24 * 3600
     /// A 401 only counts as a refusal of the endpoint when the session read status this recently
     /// (otherwise the session itself may have expired, and the next status read logs in again).
@@ -32,12 +32,13 @@ extension HeatPumpService {
     static let timerPresaveKey = "timer.presave"
     /// The read right before a save, at most this often.
     public static let timerPresaveInterval: TimeInterval = 15
+    /// The app checks for this text in a "Not sent: …" message, so it must stay one value.
     public static let timerChangedMessage =
-        "Ukeplanen er endret i MELCloud siden du begynte å redigere. Hent planen på nytt og gjør endringene igjen."
+        L10n.tr("The weekly schedule has been changed in MELCloud since you started editing. Fetch the schedule again and redo your changes.")
     static let awayRefusedMessage =
-        "MELCloud tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
+        L10n.tr("MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try again”.")
     static let timerRefusedMessage =
-        "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Hent nå»."
+        L10n.tr("MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch now”.")
 
     /// When automatic reads of `key` (`away` or `timer`) are paused after a refusal, or nil.
     public func endpointRefusedUntil(_ key: String) throws -> Date? {
@@ -80,7 +81,7 @@ extension HeatPumpService {
     }
 
     /// Frost protection and holiday mode, read from MELCloud when the cached copy is older than
-    /// `maxAge` and the hourly limit allows it. `manual` ("Prøv igjen") lifts a refusal pause and
+    /// `maxAge` and the hourly limit allows it. `manual` ("Try again") lifts a refusal pause and
     /// allows a read every 10 minutes.
     public func awaySettings(maxAge: TimeInterval = awayInterval, manual: Bool = false) async throws -> AwaySettings {
         let t = now()
@@ -96,11 +97,11 @@ extension HeatPumpService {
             return paused
         }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
-            return cached ?? AwaySettings(message: "Ingen status fra varmepumpen ennå.")
+            return cached ?? AwaySettings(message: L10n.tr("No status from the heat pump yet."))
         }
         switch try store.reserveFetch(key: Self.awayFetchKey, minInterval: manual ? Self.timerManualInterval : Self.awayInterval, now: t) {
         case .throttled, .blocked, .credentialsRejected:
-            return cached ?? AwaySettings(message: "Hentes fra MELCloud senere (høyst én gang i timen).")
+            return cached ?? AwaySettings(message: L10n.tr("Fetched from MELCloud later (at most once an hour)."))
         case .allowed:
             do {
                 let fresh = try await readAway(deviceId: deviceId, keeping: cached, at: t)
@@ -117,8 +118,9 @@ extension HeatPumpService {
                     return cached ?? AwaySettings()
                 }
                 var fallback = cached ?? AwaySettings()
-                fallback.message = "Kunne ikke lese frostsikring og feriemodus fra MELCloud: "
-                    + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                fallback.message = L10n.format(
+                    "Could not read frost protection and holiday mode from MELCloud: %@",
+                    (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
                 return fallback
             }
         }
@@ -139,9 +141,9 @@ extension HeatPumpService {
         try store.setting(WeeklyTimer.self, key: Self.weeklyTimerKey)
     }
 
-    /// The weekly timer, read at most every 6 hours (`manual`: "Hent nå", at most every 10 minutes,
+    /// The weekly timer, read at most every 6 hours (`manual`: "Fetch now", at most every 10 minutes,
     /// and it lifts a refusal pause). `maxAge` reads it when the cached copy is older than that (the
-    /// Ukeplan page uses 10 minutes, so editing starts from a fresh plan), still at most that often.
+    /// Weekly schedule page uses 10 minutes, so editing starts from a fresh plan), still at most that often.
     public func weeklyTimer(manual: Bool = false, maxAge: TimeInterval? = nil) async throws -> WeeklyTimer? {
         let t = now()
         if manual { try store.clearKeyRefusal(key: Self.timerFetchKey) }
@@ -204,13 +206,13 @@ extension HeatPumpService {
                     timestamp: now(), source: source, field: change.field, oldValue: change.currentValue(in: current),
                     newValue: change.valueDescription, reason: reason, result: .rejected, error: message))
             return ChangeOutcome(
-                result: .rejected, message: "Ikke sendt: \(message)", field: change.field, oldValue: change.currentValue(in: current),
+                result: .rejected, message: L10n.format("Not sent: %@", message), field: change.field, oldValue: change.currentValue(in: current),
                 newValue: change.valueDescription, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         // Dry run first: nothing is counted or asked for a change that would be refused anyway.
         if let problem = change.validationProblem(now: t) { return try reject(problem) }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
-            return try reject("Ingen status fra varmepumpen ennå.")
+            return try reject(L10n.tr("No status from the heat pump yet."))
         }
         // Holiday mode may leave the unit off: it needs frost protection known to be on (read at
         // most hourly), and frost protection is not switched off during a holiday.
@@ -256,15 +258,19 @@ extension HeatPumpService {
                     }
                     return ChangeOutcome(
                         result: .ok,
-                        message: "Sendt: \(change.displaySummary(frost: current?.frost))."
-                            + (readBack ? " Sjekk at MELCloud viser det samme (vises på siden)." : " MELCloud bekrefter ved neste henting (høyst én gang i timen)."),
+                        message: readBack
+                            ? L10n.format(
+                                "Sent: %@. Check that MELCloud shows the same (shown on the page).", change.displaySummary(frost: current?.frost))
+                            : L10n.format(
+                                "Sent: %@. MELCloud confirms at the next fetch (at most once an hour).",
+                                change.displaySummary(frost: current?.frost)),
                         field: change.field, oldValue: change.currentValue(in: current), newValue: change.valueDescription)
                 } catch {
                     let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                     try store.finishChange(ids: ids, result: .failed, error: message)
                     let blocked = try handleAwayError(error, now: at)
                     return ChangeOutcome(
-                        result: .failed, message: "Endringen feilet: \(message)", field: change.field,
+                        result: .failed, message: L10n.format("The change failed: %@", message), field: change.field,
                         oldValue: change.currentValue(in: current), newValue: change.valueDescription, blockedUntil: blocked)
                 }
             }
@@ -277,7 +283,7 @@ extension HeatPumpService {
     /// when invalid). `base` is the plan the edit started from: right before sending, the plan is
     /// read fresh from MELCloud, and nothing is sent when it differs from `base` or cannot be read
     /// (a save replaces the whole plan, so it must not overwrite changes made elsewhere). One change
-    /// in the shared budget, logged as field `weeklyTimer` with short summaries ("På, 6 hendelser").
+    /// in the shared budget, logged as field `weeklyTimer` with short summaries ("On, 6 events").
     /// Reads the plan back when the read-back limit allows it. App only: Claude can read the plan but
     /// not write it.
     public func saveWeeklyTimer(_ timer: WeeklyTimer, base: WeeklyTimer, source: ChangeSource, reason: String) async throws
@@ -292,13 +298,14 @@ extension HeatPumpService {
                     timestamp: now(), source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason,
                     result: .rejected, error: message))
             return ChangeOutcome(
-                result: .rejected, message: "Ikke sendt: \(message)", field: field, oldValue: oldValue, newValue: newValue,
+                result: .rejected, message: L10n.format("Not sent: %@", message), field: field, oldValue: oldValue, newValue: newValue,
                 nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         let t = now()
-        guard let snapshot = try store.latestSnapshot() else { return try reject("Ingen status fra varmepumpen ennå.") }
+        guard let snapshot = try store.latestSnapshot() else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if !base.decoded {
-            return try reject("Ukeplanen fra MELCloud kunne ikke leses helt, så appen endrer den ikke. Hent planen på nytt først.")
+            return try reject(
+                L10n.tr("The weekly schedule from MELCloud could not be read completely, so the app does not change it. Fetch the schedule again first."))
         }
         if let problem = timer.validationProblem(limits: snapshot.state.limits) { return try reject(problem) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
@@ -337,7 +344,7 @@ extension HeatPumpService {
                     try store.finishChange(ids: ids, result: .failed, error: message)
                     let blocked = try handleAwayError(error, now: at)
                     return ChangeOutcome(
-                        result: .failed, message: "Ukeplanen ble ikke lagret: \(message)", field: field, oldValue: oldValue,
+                        result: .failed, message: L10n.format("The weekly schedule was not saved: %@", message), field: field, oldValue: oldValue,
                         newValue: newValue, blockedUntil: blocked)
                 }
                 // Until it is read back, the cache holds what was sent (as MELCloud would return it).
@@ -361,15 +368,17 @@ extension HeatPumpService {
                     readBack = fresh
                 }
                 let confirmed = readBack.map { $0.hasSameContent(as: sent) }
-                let tail: String =
+                let summary = sent.summary.lowercased(with: L10n.locale)
+                let message: String =
                     switch confirmed {
-                    case true?: " MELCloud viser den samme planen."
-                    case false?: " MELCloud viser en annen plan enn den som ble sendt. Sjekk i MELCloud-appen."
-                    case nil: " MELCloud bekrefter ved neste henting."
+                    case true?: L10n.format("The weekly schedule is saved in MELCloud (%@). MELCloud shows the same schedule.", summary)
+                    case false?:
+                        L10n.format(
+                            "The weekly schedule is saved in MELCloud (%@). MELCloud shows a different schedule than the one that was sent. Check in the MELCloud app.",
+                            summary)
+                    case nil: L10n.format("The weekly schedule is saved in MELCloud (%@). MELCloud confirms at the next fetch.", summary)
                     }
-                return ChangeOutcome(
-                    result: .ok, message: "Ukeplanen er lagret i MELCloud (\(sent.summary.lowercased())).\(tail)", field: field,
-                    oldValue: oldValue, newValue: newValue)
+                return ChangeOutcome(result: .ok, message: message, field: field, oldValue: oldValue, newValue: newValue)
             }
         }
     }
@@ -380,11 +389,13 @@ extension HeatPumpService {
         let t = now()
         if let until = try endpointRefusedUntil(Self.timerFetchKey) {
             throw HeatPumpError.validation(
-                "MELCloud tillot ikke å lese ukeplanen (ny prøve \(Display.time(until))), og den lagres ikke uten å sjekke at den er uendret.")
+                L10n.format(
+                    "MELCloud did not allow reading the weekly schedule (next try %@), and it is not saved without checking that it is unchanged.",
+                    Display.time(until)))
         }
         switch try store.reserveFetch(key: Self.timerPresaveKey, minInterval: Self.timerPresaveInterval, now: t) {
         case .throttled(let next):
-            throw HeatPumpError.validation("Ukeplanen ble nettopp hentet. Prøv igjen etter \(Display.time(next)).")
+            throw HeatPumpError.validation(L10n.format("The weekly schedule was just fetched. Try again after %@.", Display.time(next)))
         case .blocked(let until): throw HeatPumpError.blocked(until: until)
         case .credentialsRejected: throw HeatPumpError.credentialsRejected
         case .allowed: break
@@ -401,8 +412,9 @@ extension HeatPumpService {
                 try store.recordKeyRefusal(key: Self.timerFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
             }
             throw HeatPumpError.validation(
-                "Kunne ikke lese ukeplanen fra MELCloud før lagring, så den ble ikke sendt (den kan være endret der): "
-                    + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
+                L10n.format(
+                    "Could not read the weekly schedule from MELCloud before saving, so it was not sent (it may have been changed there): %@",
+                    (error as? LocalizedError)?.errorDescription ?? error.localizedDescription))
         }
     }
 }

@@ -11,13 +11,13 @@ extension HeatPumpService {
     static let firmwareStatusKey = "firmwareStatus"
     public static let firmwareFetchKey = "firmware"
     public static let firmwareInterval: TimeInterval = 60
-    /// While an update runs (and for "Oppdater status") MELCloud is asked at most this often.
+    /// While an update runs (and for "Refresh status") MELCloud is asked at most this often.
     public static let firmwareActiveInterval: TimeInterval = 15
     /// A start or cancel is based on a list at most this old.
     static let firmwareActionMaxAge: TimeInterval = 60
     static let firmwareField = "firmware"
     static let firmwareRefusedMessage =
-        "MELCloud tillot ikke å lese fastvarestatus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Oppdater status»."
+        L10n.tr("MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh status”.")
 
     public func storedFirmwareStatus() throws -> FirmwareStatus? {
         try store.setting(FirmwareStatus.self, key: Self.firmwareStatusKey)
@@ -37,7 +37,7 @@ extension HeatPumpService {
         var status = Self.firmwareBase(state, cached: cached)
         func done(_ status: FirmwareStatus) -> FirmwareStatus { Self.decorated(status, state: state) }
         guard let state else {
-            status.message = "Ingen status fra varmepumpen ennå."
+            status.message = L10n.tr("No status from the heat pump yet.")
             return done(status)
         }
         let active = status.isInProgress(now: t)
@@ -73,8 +73,9 @@ extension HeatPumpService {
                     try store.recordKeyRefusal(key: Self.firmwareFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
                     status.message = Self.firmwareRefusedMessage
                 } else {
-                    status.message = "Kunne ikke lese fastvarestatus fra MELCloud: "
-                        + ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                    status.message = L10n.format(
+                        "Could not read the firmware status from MELCloud: %@",
+                        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
                 }
             }
         }
@@ -102,36 +103,37 @@ extension HeatPumpService {
 
     /// Why the unit itself rules out starting an update (no list needed), or nil.
     static func firmwareUnitProblem(_ state: DeviceState?) -> String? {
-        guard let state else { return "Ingen status fra varmepumpen ennå." }
+        guard let state else { return L10n.tr("No status from the heat pump yet.") }
         switch state.firmware.isOwner {
         case nil:
-            return "MELCloud har ikke oppgitt om kontoen eier enheten. Oppdater status og prøv igjen."
+            return L10n.tr("MELCloud has not said whether the account owns the unit. Refresh the status and try again.")
         case false:
-            return "Bare eieren av enheten i MELCloud kan starte en fastvareoppdatering."
+            return L10n.tr("Only the owner of the unit in MELCloud can start a firmware update.")
         case true:
             break
         }
-        if !state.firmware.updateAvailable { return "Ingen fastvareoppdatering venter for enheten." }
+        if !state.firmware.updateAvailable { return L10n.tr("No firmware update is waiting for the unit.") }
         if state.offline { return offlineMessage }
         return nil
     }
 
-    static let offlineMessage = "Enheten er frakoblet fra MELCloud. Oppdateringen kan startes når den er tilkoblet igjen."
+    static let offlineMessage = L10n.tr("The unit is disconnected from MELCloud. The update can be started when it is connected again.")
 
     /// Why MELCloud's update list rules out starting, or nil.
     static func firmwareListProblem(_ status: FirmwareStatus) -> String? {
         guard let current = status.current else {
-            return "Har ikke fått oppdateringslisten fra MELCloud ennå. Oppdater status og prøv igjen."
+            return L10n.tr("Has not received the update list from MELCloud yet. Refresh the status and try again.")
         }
         if current.unitOffline { return offlineMessage }
-        guard current.phase.canApprove else { return "Oppdateringen kan ikke startes nå: \(current.displayText)" }
-        guard current.id != nil else { return "MELCloud oppga ingen id for oppdateringen." }
+        guard current.phase.canApprove else { return L10n.format("The update cannot be started now: %@", current.displayText) }
+        guard current.id != nil else { return L10n.tr("MELCloud gave no id for the update.") }
         return nil
     }
 
     /// Lines for the approval dialog (and the app's confirmation sheet).
     public static func firmwareApprovalSummaries(version: String?) -> [String] {
-        ["Start fastvareoppdatering av Wi-Fi-modulen" + (version.map { " (nå versjon \($0))" } ?? "")]
+        [version.map { L10n.format("Start a firmware update of the Wi-Fi adapter (now version %@)", $0) }
+            ?? L10n.tr("Start a firmware update of the Wi-Fi adapter")]
             + FirmwareStatus.warnings
     }
 
@@ -145,14 +147,14 @@ extension HeatPumpService {
     ) async throws -> ChangeOutcome {
         let t = now()
         let state = try store.latestSnapshot()?.state
-        let oldValue = state?.firmware.version ?? "ukjent versjon"
-        let newValue = "oppdatering startet"
+        let oldValue = state?.firmware.version ?? L10n.tr("unknown version")
+        let newValue = L10n.tr("update started")
         func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
             try firmwareReject(message, source: source, reason: reason, old: oldValue, new: newValue, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         // Nothing is read, counted or asked for a start that would be refused anyway.
         if let problem = Self.firmwareUnitProblem(state) { return try reject(problem) }
-        guard let deviceId = state?.deviceId else { return try reject("Ingen status fra varmepumpen ennå.") }
+        guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
@@ -160,10 +162,10 @@ extension HeatPumpService {
         // A fresh list: the start must be based on what MELCloud offers right now.
         var status = try await firmwareStatus(force: true, liftRefusal: source == .app)
         guard let at = status.fetchedAt, now().timeIntervalSince(at) < Self.firmwareActionMaxAge else {
-            return try reject(status.message ?? "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt.")
+            return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
         }
         if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
-        guard var updateId = status.current?.id else { return try reject("MELCloud oppga ingen id for oppdateringen.") }
+        guard var updateId = status.current?.id else { return try reject(L10n.tr("MELCloud gave no id for the update.")) }
         if let approver {
             let decision = await approver.requestApproval(
                 ApprovalRequest(summaries: Self.firmwareApprovalSummaries(version: state?.firmware.version), reason: reason))
@@ -178,10 +180,10 @@ extension HeatPumpService {
             }
             status = try await firmwareStatus(force: true, liftRefusal: false)
             guard let again = status.fetchedAt, now().timeIntervalSince(again) < Self.firmwareActionMaxAge else {
-                return try reject(status.message ?? "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt.")
+                return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
             }
             if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
-            guard let id = status.current?.id else { return try reject("MELCloud oppga ingen id for oppdateringen.") }
+            guard let id = status.current?.id else { return try reject(L10n.tr("MELCloud gave no id for the update.")) }
             updateId = id
         }
         return try await sendFirmwareAction(
@@ -191,7 +193,7 @@ extension HeatPumpService {
                 status.startedAt = at
                 status.fetchedAt = nil  // read again on the next poll
                 try? self.store.saveSetting(status, key: Self.firmwareStatusKey)
-                return "Fastvareoppdateringen er startet. Følg med under Helse → Fastvare. Den kan ta en stund, og Wi-Fi-modulen starter på nytt underveis."
+                return L10n.tr("The firmware update has started. Follow it under Health → Firmware. It can take a while, and the Wi-Fi adapter restarts along the way.")
             })
     }
 
@@ -199,22 +201,24 @@ extension HeatPumpService {
     public func cancelFirmwareUpdate(source: ChangeSource, reason: String) async throws -> ChangeOutcome {
         let t = now()
         let state = try store.latestSnapshot()?.state
-        let oldValue = state?.firmware.version ?? "ukjent versjon"
-        let newValue = "oppdatering avbrutt"
+        let oldValue = state?.firmware.version ?? L10n.tr("unknown version")
+        let newValue = L10n.tr("update cancelled")
         func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
             try firmwareReject(message, source: source, reason: reason, old: oldValue, new: newValue, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
-        guard let deviceId = state?.deviceId else { return try reject("Ingen status fra varmepumpen ennå.") }
+        guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
         }
         var status = try await firmwareStatus(force: true)
         guard let at = status.fetchedAt, now().timeIntervalSince(at) < Self.firmwareActionMaxAge else {
-            return try reject(status.message ?? "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt.")
+            return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
         }
         guard let current = status.current, current.phase.canCancel, let updateId = current.id else {
-            return try reject("Det er ingen oppdatering som kan avbrytes nå" + (status.current.map { ": \($0.displayText)" } ?? "."))
+            return try reject(
+                status.current.map { L10n.format("There is no update that can be cancelled now: %@", $0.displayText) }
+                    ?? L10n.tr("There is no update that can be cancelled now."))
         }
         return try await sendFirmwareAction(
             source: source, reason: reason, old: oldValue, new: newValue,
@@ -223,7 +227,7 @@ extension HeatPumpService {
                 status.startedAt = nil
                 status.fetchedAt = nil
                 try? self.store.saveSetting(status, key: Self.firmwareStatusKey)
-                return "Avbryting er sendt til MELCloud. Statusen oppdateres om litt."
+                return L10n.tr("The cancellation has been sent to MELCloud. The status is updated in a little while.")
             })
     }
 
@@ -235,7 +239,7 @@ extension HeatPumpService {
                 timestamp: now(), source: source, field: Self.firmwareField, oldValue: old, newValue: new, reason: reason,
                 result: .rejected, error: message))
         return ChangeOutcome(
-            result: .rejected, message: "Ikke sendt: \(message)", field: Self.firmwareField, oldValue: old, newValue: new,
+            result: .rejected, message: L10n.format("Not sent: %@", message), field: Self.firmwareField, oldValue: old, newValue: new,
             nextAllowed: nextAllowed, blockedUntil: blockedUntil)
     }
 
@@ -271,7 +275,7 @@ extension HeatPumpService {
                     try store.finishChange(ids: ids, result: .failed, error: message)
                     let blocked = try handleAwayError(error, now: at)
                     return ChangeOutcome(
-                        result: .failed, message: "Endringen feilet: \(message)", field: Self.firmwareField, oldValue: old,
+                        result: .failed, message: L10n.format("The change failed: %@", message), field: Self.firmwareField, oldValue: old,
                         newValue: new, blockedUntil: blocked)
                 }
                 try store.finishChange(ids: ids, result: .ok)

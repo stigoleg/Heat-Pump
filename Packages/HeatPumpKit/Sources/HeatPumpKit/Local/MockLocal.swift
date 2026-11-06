@@ -124,12 +124,12 @@ public struct MockLocalTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        guard let url = request.url else { throw LocalAccessError.network("ingen adresse") }
+        guard let url = request.url else { throw LocalAccessError.network(L10n.tr("no address")) }
         let plaintext = request.httpBody.flatMap(LocalSmartClient.decryptRequestBody)
         guard request.httpMethod == "POST", url.path == LocalSmartClient.path, plaintext == LocalSmartClient.statusPayload,
             url.host == MockLocalSimulation.host
         else {
-            if url.host != MockLocalSimulation.host { throw LocalAccessError.network("Tidsavbrudd (simulert)") }
+            if url.host != MockLocalSimulation.host { throw LocalAccessError.network(L10n.tr("Timeout (simulated)")) }
             return (Data(), HTTPURLResponse(url: url, statusCode: 400, httpVersion: nil, headerFields: nil)!)  // literal status
         }
         let sample = MockLocalSimulation.sample(at: now(), shortCycling: shortCycling)

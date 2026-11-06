@@ -21,15 +21,15 @@ public struct FrostProtection: Codable, Sendable, Equatable {
         self.defined = defined
     }
 
-    /// Norwegian reason the values are refused, or nil.
+    /// Reason the values are refused, or nil.
     public func validationProblem() -> String? {
         guard minimum.isFinite, maximum.isFinite, minimum == minimum.rounded(), maximum == maximum.rounded() else {
-            return "Frostsikringen tar hele grader."
+            return L10n.tr("Frost protection takes whole degrees.")
         }
-        guard Self.minimumRange.contains(minimum) else { return "Laveste temperatur for frostsikring må være 4–14 °C." }
-        guard Self.maximumRange.contains(maximum) else { return "Høyeste temperatur for frostsikring må være 6–16 °C." }
+        guard Self.minimumRange.contains(minimum) else { return L10n.tr("The lowest frost protection temperature must be 4–14 °C.") }
+        guard Self.maximumRange.contains(maximum) else { return L10n.tr("The highest frost protection temperature must be 6–16 °C.") }
         guard maximum >= minimum + Self.minimumGap else {
-            return "Høyeste temperatur må være minst 2 °C over laveste (for eksempel 8 og 10 °C)."
+            return L10n.tr("The highest temperature must be at least 2 °C above the lowest (for example 8 and 10 °C).")
         }
         return nil
     }
@@ -42,9 +42,9 @@ public struct FrostProtection: Codable, Sendable, Equatable {
         return FrostProtection(enabled: enabled, minimum: low, maximum: high)
     }
 
-    /// "på, 8–12 °C" or "av" (change log and dialogs).
+    /// "on, 8–12 °C" or "off" (change log and dialogs).
     public var summary: String {
-        enabled ? Display.format("på, %.0f–%.0f °C", minimum, maximum) : "av"
+        enabled ? L10n.format("on, %.0f–%.0f °C", minimum, maximum) : L10n.tr("off")
     }
 }
 
@@ -69,17 +69,17 @@ public struct HolidayMode: Codable, Sendable, Equatable {
 
     public func validationProblem(now: Date) -> String? {
         guard enabled else { return nil }
-        guard let start, let end else { return "Feriemodus trenger både start og slutt." }
-        guard end > start else { return "Slutten på feriemodus må være etter starten." }
-        guard end > now else { return "Slutten på feriemodus kan ikke være passert." }
-        guard end.timeIntervalSince(start) <= Self.maxLength else { return "Feriemodus kan vare høyst ett år." }
+        guard let start, let end else { return L10n.tr("Holiday mode needs both a start and an end.") }
+        guard end > start else { return L10n.tr("The end of holiday mode must be after the start.") }
+        guard end > now else { return L10n.tr("The end of holiday mode cannot be in the past.") }
+        guard end.timeIntervalSince(start) <= Self.maxLength else { return L10n.tr("Holiday mode can last at most one year.") }
         return nil
     }
 
-    /// "på, 20. des. 2026, 10:00 → 27. des. 2026, 18:30" or "av".
+    /// "on, 20 Dec 2026, 10:00 → 27 Dec 2026, 18:30" or "off".
     public var summary: String {
-        guard enabled else { return "av" }
-        return "på, " + (start.map(Display.dateTime) ?? "?") + " → " + (end.map(Display.dateTime) ?? "?")
+        guard enabled else { return L10n.tr("off") }
+        return L10n.format("on, %@ → %@", start.map(Display.dateTime) ?? "?", end.map(Display.dateTime) ?? "?")
     }
 }
 
@@ -91,7 +91,7 @@ public struct AwaySettings: Codable, Sendable, Equatable {
     public var fetchedAt: Date?
     /// `melcloud` (GetSettings) or `listing` (building fields from the device list).
     public var source: String
-    /// Norwegian text when reading failed.
+    /// User-facing text when reading failed.
     public var message: String?
     /// Set after a write until a read confirms it.
     public var pendingSince: Date?
@@ -100,7 +100,7 @@ public struct AwaySettings: Codable, Sendable, Equatable {
     public var sentHoliday: HolidayMode?
     public var sentAt: Date?
     /// MELCloud refused to let this account read the settings (HTTP 4xx); no new read until then,
-    /// unless the user presses "Prøv igjen".
+    /// unless the user presses "Try again".
     public var refusedUntil: Date?
 
     public init(
@@ -141,17 +141,17 @@ public enum AwayChange: Sendable, Equatable {
         }
     }
 
-    /// Norwegian one-line summary for confirmations, with the values that will be sent.
+    /// One-line summary for confirmations, with the values that will be sent.
     public var displaySummary: String {
         switch self {
         case .frostProtection(let fp):
             fp.enabled
-                ? Display.format("Slå på frostsikring: holder %.0f–%.0f °C når varmepumpen ellers er av", fp.minimum, fp.maximum)
-                : Display.format("Slå av frostsikring (området %.0f–%.0f °C lagres uendret)", fp.minimum, fp.maximum)
+                ? L10n.format("Turn on frost protection: keeps %.0f–%.0f °C when the heat pump is otherwise off", fp.minimum, fp.maximum)
+                : L10n.format("Turn off frost protection (the range %.0f–%.0f °C is kept unchanged)", fp.minimum, fp.maximum)
         case .holidayMode(let hm):
             hm.enabled
-                ? "Slå på feriemodus fra " + (hm.start.map(Display.dateTime) ?? "?") + " til " + (hm.end.map(Display.dateTime) ?? "?")
-                : "Slå av feriemodus"
+                ? L10n.format("Turn on holiday mode from %@ to %@", hm.start.map(Display.dateTime) ?? "?", hm.end.map(Display.dateTime) ?? "?")
+                : L10n.tr("Turn off holiday mode")
         }
     }
 
@@ -162,31 +162,37 @@ public enum AwayChange: Sendable, Equatable {
     /// during a holiday (from the current settings).
     public func displaySummary(frost: FrostProtection?) -> String {
         guard case .holidayMode(let hm) = self, hm.enabled else { return displaySummary }
-        guard let frost, frost.enabled else { return displaySummary + " – frostsikring er IKKE på" }
-        var text = displaySummary + Display.format(
-            " – i perioden holder varmepumpen frostsikringens område %.0f–%.0f °C", frost.minimum, frost.maximum)
-        if frost.minimum < Self.recommendedFrostMinimum {
-            text += Display.format(" (laveste %.0f °C er lavt; 8 °C eller mer anbefales)", frost.minimum)
+        let start = hm.start.map(Display.dateTime) ?? "?"
+        let end = hm.end.map(Display.dateTime) ?? "?"
+        guard let frost, frost.enabled else {
+            return L10n.format("Turn on holiday mode from %@ to %@ – frost protection is NOT on", start, end)
         }
-        return text
+        if frost.minimum < Self.recommendedFrostMinimum {
+            return L10n.format(
+                "Turn on holiday mode from %@ to %@ – during the period the heat pump keeps the frost protection range %.0f–%.0f °C (the lowest, %.0f °C, is low; 8 °C or more is recommended)",
+                start, end, frost.minimum, frost.maximum, frost.minimum)
+        }
+        return L10n.format(
+            "Turn on holiday mode from %@ to %@ – during the period the heat pump keeps the frost protection range %.0f–%.0f °C",
+            start, end, frost.minimum, frost.maximum)
     }
 
-    /// Norwegian reason this change is unsafe with the current settings, or nil. Holiday mode may
+    /// Reason this change is unsafe with the current settings, or nil. Holiday mode may
     /// leave the unit off, so it is only switched on while frost protection is known to be on, and
     /// frost protection is not switched off during a holiday.
     public func safetyProblem(current: AwaySettings?, now: Date) -> String? {
         switch self {
         case .holidayMode(let hm) where hm.enabled:
             guard let frost = current?.frost else {
-                return "Feriemodus ble ikke slått på fordi appen ikke vet om frostsikring er på (innstillingene kunne ikke leses fra MELCloud). I feriemodus kan varmepumpen stå av. Slå på frostsikring først (for eksempel 8–12 °C), og prøv igjen."
+                return L10n.tr("Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from MELCloud). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again.")
             }
             guard frost.enabled else {
-                return "Feriemodus ble ikke slått på fordi frostsikring er av. I feriemodus kan varmepumpen stå av, og da er det frostsikringen som hindrer at huset blir for kaldt. Slå på frostsikring først (for eksempel 8–12 °C)."
+                return L10n.tr("Holiday mode was not turned on because frost protection is off. In holiday mode the heat pump may stand off, and then frost protection is what keeps the house from getting too cold. Turn on frost protection first (for example 8–12 °C).")
             }
             return nil
         case .frostProtection(let fp) where !fp.enabled:
             guard current?.holidayActive(now: now) == true else { return nil }
-            return "Frostsikring ble ikke slått av fordi feriemodus er på. Uten frostsikring kan huset bli kaldt mens varmepumpen står av. Slå av feriemodus først."
+            return L10n.tr("Frost protection was not turned off because holiday mode is on. Without frost protection the house can get cold while the heat pump stands off. Turn off holiday mode first.")
         default:
             return nil
         }
