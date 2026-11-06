@@ -30,6 +30,7 @@ struct L10nTests {
     /// `swift test` has no app bundle: every key comes back as the English source.
     @Test func withoutAppBundleReturnsEnglishSource() {
         #expect(L10n.hostApp() == nil)
+        #expect(L10n.language == .english)
         #expect(L10n.tr("Heat") == "Heat")
         #expect(L10n.format("%lld new errors", 3) == "3 new errors")
         #expect(L10n.lookup("Heat", in: nil) == "Heat")

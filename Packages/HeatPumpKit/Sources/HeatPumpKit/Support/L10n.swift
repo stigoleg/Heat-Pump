@@ -23,16 +23,18 @@ public enum L10n {
     /// Dev/test override: `VARMEPUMPE_LANGUAGE=en|nb`.
     public static let environmentKey = "VARMEPUMPE_LANGUAGE"
 
-    /// The language for this process.
+    /// The language for this process. Without an app bundle there are no translations, so it is
+    /// English unless overridden; that keeps `swift test` the same on every Mac.
     public static let language: Language = resolveLanguage(
         override: ProcessInfo.processInfo.environment[environmentKey],
-        preferences: languagePreferences()
+        preferences: hostApp() == nil ? [] : languagePreferences()
     )
 
     /// Formatting locale: the chosen language with the Mac's region (e.g. `en_NO`, `nb_NO`).
     public static let locale: Locale = makeLocale(language: language, region: Locale.current.region?.identifier)
 
     /// The `<lang>.lproj` folder of the enclosing app, or nil outside an app bundle.
+    // Immutable after initialization; Bundle lookups are thread-safe.
     nonisolated(unsafe) static let strings: Bundle? = localizedBundle(for: language, in: hostApp())
 
     /// Translates `key` (English source text).
