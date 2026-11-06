@@ -98,6 +98,8 @@ public actor DeviceHub {
     private var meters: [DeviceKey: EnergyMeterService] = [:]
     /// Per active meter integration without an enabled meter: a service that signs in and lists.
     private var meterAccounts: [String: EnergyMeterService] = [:]
+    /// The device price control steered when the services were last matched to the registry.
+    private var priceControlled: DeviceKey?
 
     /// - Parameters:
     ///   - fixedIntegrations: the active integrations when they are not the user's choice (demo).
@@ -197,6 +199,8 @@ public actor DeviceHub {
         let primary = Self.primary(
             records: records, active: runtimes.map(\.integration.id), services: services, unresolved: unresolved)
         primaryAtLaunch = primary
+        priceControlled = Self.priceControlDevice(
+            records: records, active: runtimes.map(\.integration.id), chosen: try store.setting(DeviceKey.self, key: Self.priceControlDeviceKey))
         HeatPumpError.serviceName = primary?.serviceName ?? runtimes.first?.integration.displayName ?? ""
     }
 
@@ -384,10 +388,24 @@ public actor DeviceHub {
                 }
             }
         }
+        // The device price control steers lost its service (turned off in the other process, no
+        // longer listed by its account, another account signed in): price control goes off
+        // first, which sets that device's temperature back. Its old service may already serve
+        // another device (a listing moves it), so the restore goes through one fixed to it.
+        if let controlled = priceControlled, next[controlled] == nil,
+            let runtime = runtimes.first(where: { $0.integration.id == controlled.integration }),
+            let thermostat = runtime.connection as? any DeviceConnection & ThermostatDriver
+        {
+            var service = services[controlled] ?? makeService(runtime, thermostat, device: controlled)
+            if (try? await service.currentDevice()) != controlled { service = makeService(runtime, thermostat, device: controlled) }
+            if (try? await service.priceControlSettings().enabled) == true { _ = try? await service.disablePriceControl() }
+        }
         services = next
         unresolved = nextUnresolved
         meters = nextMeters
         meterAccounts = nextAccounts
+        priceControlled = Self.priceControlDevice(
+            records: records, active: runtimes.map(\.integration.id), chosen: try store.setting(DeviceKey.self, key: Self.priceControlDeviceKey))
         let primary = Self.primary(records: records, active: runtimes.map(\.integration.id), services: next, unresolved: nextUnresolved)
         if let name = primary?.serviceName { HeatPumpError.serviceName = name }
         return records
@@ -536,15 +554,20 @@ public actor DeviceHub {
     /// The device price control steers: the chosen one while it is enabled, else the first
     /// enabled air-to-air heat pump (with one heat pump, that one).
     public func priceControlDevice() async throws -> DeviceKey? {
-        let devices = try await devices()
-        if let chosen = try store.setting(DeviceKey.self, key: Self.priceControlDeviceKey), devices.contains(where: { $0.key == chosen }) {
-            return chosen
-        }
-        return devices.first { $0.kind == .airToAirHeatPump }?.key
+        let records = try await reconcile()
+        return Self.priceControlDevice(
+            records: records, active: runtimes.map(\.integration.id), chosen: try store.setting(DeviceKey.self, key: Self.priceControlDeviceKey))
     }
 
-    /// Chooses the device price control steers (nil: the first air-to-air heat pump). Price
-    /// control's settings and memory are not per device; turn it off before choosing another.
+    private static func priceControlDevice(records: [DeviceRecord], active: [String], chosen: DeviceKey?) -> DeviceKey? {
+        let enabled = records.filter { $0.enabled && active.contains($0.key.integration) }
+        if let chosen, enabled.contains(where: { $0.key == chosen }) { return chosen }
+        return enabled.first { $0.kind == .airToAirHeatPump }?.key
+    }
+
+    /// Chooses the device price control steers (nil: the first air-to-air heat pump). Its
+    /// settings are shared, but each device keeps its own memory and comfort temperature; turn
+    /// price control off before choosing another, so the old device is set back.
     public func setPriceControlDevice(_ key: DeviceKey?) throws {
         if let key {
             try store.saveSetting(key, key: Self.priceControlDeviceKey)

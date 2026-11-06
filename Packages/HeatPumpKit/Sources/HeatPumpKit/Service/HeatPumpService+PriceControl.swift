@@ -24,9 +24,14 @@ public struct PriceControlOverview: Codable, Sendable, Equatable {
 }
 
 /// What the runner remembers and last reported (`app_settings`, so a restart can reconcile).
+/// Kept per device (`priceControlRuntime@<device key>`): what was sent to one unit, and its
+/// comfort temperature, are never applied to another.
 struct PriceControlRuntime: Codable, Sendable, Equatable {
     var memory = PriceControlMemory()
     var status: PriceControlStatus?
+    /// The device's comfort temperature (`PriceControlSettings.comfortTemperature` as the service
+    /// reports it; the settings themselves are shared).
+    var comfortTemperature: Double?
 }
 
 /// Price control: lowers the setpoint in expensive hours (and pre-heats a little before them, when
@@ -45,8 +50,11 @@ extension HeatPumpService {
 
     // MARK: Settings
 
+    /// The shared settings with this device's comfort temperature.
     public func priceControlSettings() throws -> PriceControlSettings {
-        try store.setting(PriceControlSettings.self, key: Self.priceControlKey) ?? .default
+        var settings = try store.setting(PriceControlSettings.self, key: Self.priceControlKey) ?? .default
+        settings.comfortTemperature = try priceControlRuntime().comfortTemperature
+        return settings
     }
 
     /// Saves reductions, minimum and pre-heating (the app's settings; `enabled` and the comfort
@@ -62,12 +70,13 @@ extension HeatPumpService {
         try store.saveSetting(stored, key: Self.priceControlKey)
     }
 
+    /// The served device's memory and comfort temperature.
     func priceControlRuntime() throws -> PriceControlRuntime {
-        try store.setting(PriceControlRuntime.self, key: Self.priceControlRuntimeKey) ?? PriceControlRuntime()
+        try deviceSetting(PriceControlRuntime.self, Self.priceControlRuntimeKey) ?? PriceControlRuntime()
     }
 
     func savePriceControlRuntime(_ runtime: PriceControlRuntime) throws {
-        try store.saveSetting(runtime, key: Self.priceControlRuntimeKey)
+        try saveDeviceSetting(runtime, Self.priceControlRuntimeKey)
     }
 
     /// Last status the app reported.
@@ -142,7 +151,8 @@ extension HeatPumpService {
         let decision = PriceControlEngine.evaluate(context, memory: &memory)
         if let comfort = decision.comfortTemperature, comfort != settings.comfortTemperature {
             settings.comfortTemperature = comfort
-            try store.saveSetting(settings, key: Self.priceControlKey)
+            runtime.comfortTemperature = comfort
+            try savePriceControlRuntime(runtime)
             plan = try priceControlPlan(settings: settings)
         }
         var status = PriceControlStatus(
@@ -225,7 +235,7 @@ extension HeatPumpService {
         memory.appliedStep = nil
         memory.pausedUntil = nil
         memory.clearFailure()
-        try savePriceControlRuntime(PriceControlRuntime(memory: memory))
+        try savePriceControlRuntime(PriceControlRuntime(memory: memory, comfortTemperature: settings.comfortTemperature))
         return try await runPriceControl()
     }
 
@@ -282,13 +292,12 @@ extension HeatPumpService {
     /// The user changed the setpoint in the app: it becomes the comfort temperature, and the
     /// controller pauses until the step in force is over.
     public func notePriceControlManualSetpoint(_ value: Double) throws {
-        var settings = try priceControlSettings()
+        let settings = try priceControlSettings()
         guard settings.enabled else { return }
         let t = now()
         let step = try priceControlPlan(settings: settings).steps.first { $0.contains(t) }
-        settings.comfortTemperature = value
-        try store.saveSetting(settings, key: Self.priceControlKey)
         var runtime = try priceControlRuntime()
+        runtime.comfortTemperature = value
         runtime.memory.lastSent = nil
         runtime.memory.expect(value, at: t)
         runtime.memory.appliedStep = step

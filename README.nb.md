@@ -249,7 +249,7 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 
 | Variabel | Betydning |
 |---|---|
-| `VARMEPUMPE_BACKEND=mock` | Simulert varmepumpe |
+| `VARMEPUMPE_BACKEND=mock` | Simulert varmepumpe. Uten `VARMEPUMPE_DB_PATH` bruker den en egen database, `demo.sqlite` ved siden av den ekte, aldri den ekte |
 | `VARMEPUMPE_DB_PATH` | Sti til SQLite-databasen |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Kun utvikling: innlogging uten nøkkelring |
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Kun tester: svarer i stedet for godkjenningsvinduet. Virker bare med `VARMEPUMPE_BACKEND=mock`. |

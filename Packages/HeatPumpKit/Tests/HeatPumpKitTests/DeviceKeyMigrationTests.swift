@@ -87,8 +87,9 @@ struct DeviceKeyMigrationTests {
         let store = try HistoryStore(path: path, legacyIntegration: melcloud)
         let now = base.addingTimeInterval(60)
 
-        // The integration's rows moved to its namespace; third-party keys did not.
-        #expect(try store.fetchState(key: "global") == nil)
+        // The integration's rows were copied to its namespace (the plain ones stay for a 1.x
+        // helper, `LegacyFetchKeyTests`); third-party keys were not.
+        #expect(try store.fetchState(key: "global")?.blockedUntil == base.addingTimeInterval(7200))
         #expect(try store.blockStatus(now: now, integration: melcloud) == BlockStatus(until: base.addingTimeInterval(7200), reason: .loginThrottled))
         #expect(try store.fetchState(key: "\(melcloud)/state")?.lastSuccess == base.addingTimeInterval(-30))
         #expect(try store.fetchState(key: "\(melcloud)/report.energy")?.lastSuccess == base.addingTimeInterval(-600))

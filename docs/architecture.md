@@ -55,7 +55,23 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   numbers never change) and added `meter_live` (live power per minute, 48 hours), after copying
   the file to `<name>-pre-v14.sqlite`. Migration v12 converted older files (rows keyed by the
   integration that opened the store, `IntegrationCatalog.makeService`) after copying the file to
-  `<name>-pre-v12.sqlite` with SQLite's backup API.
+  `<name>-pre-v12.sqlite` with SQLite's backup API. When the app and the helper open an
+  unmigrated file at the same moment, the one that loses the race runs the migrator again once
+  the other has applied its migrations (`HistoryStore.migrate(with:)`).
+- **Spacing per device and per integration.** Reports, away, timer and firmware are spaced per
+  device, so N units on one MELCloud account make N times those calls per hour. The state fetch
+  spacing, blocks (429, login throttle), the "credentials rejected" stop and the change budget
+  are per integration: they are the account's, however many units it has.
+- **A 1.x helper across the update** (transition, remove after 2.1). Claude Desktop can keep an
+  old `varmepumpe-mcp` running after the app is updated; it reads and writes the plain
+  `fetch_state` keys (`global`, `credentials`, `state`, `write`, `report.*`). For MELCloud
+  (`HistoryStore.legacyKeyMirror`, set by `IntegrationCatalog.makeHub` outside demo mode) the
+  store writes blocks, refused credentials and the reservations of `state`, `write` and the
+  first device's reports to both keys, and every check honours the more restrictive row. v12
+  copies these rows instead of moving them; migration v15 restores them in files an earlier
+  build migrated (`Storage/HistoryStore+Legacy.swift`).
+- **Demo mode** (`VARMEPUMPE_BACKEND=mock`) without `VARMEPUMPE_DB_PATH` uses `demo.sqlite` next
+  to the real database, never the real one (v12 would take its rows for the demo's).
 - **Credentials** (`CredentialStore`) are `CredentialValues` addressed through each integration's
   `CredentialMapping`. MELCloud keeps its original keychain items (`melcloud-credentials`,
   `melcloud-context-key`) so the access shared by app and helper survives; new integrations get
@@ -163,7 +179,11 @@ kind and capability). The compiler points at each switch over `DeviceService`, `
 
 Device models have air-to-air fields; the generic error text fallback (`errorDescription`) still
 names the primary device's service; prices, weather and price control's settings are shared, and
-price control steers one heat pump at a time.
+price control steers one heat pump at a time. Price control's settings are shared, but its
+memory (what it last sent) and the comfort temperature are kept per device
+(`priceControlRuntime@<device key>`, moved there by v15), so they never reach another unit; when
+the device it steers loses its service (turned off, no longer listed, another account), the hub
+turns price control off first and sets that device back.
 
 ## Direction: an integration platform
 

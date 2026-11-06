@@ -317,11 +317,16 @@ extension HistoryStore {
             if let currentKey { try db.execute(sql: "UPDATE \(table) SET deviceKey = ?", arguments: [currentKey]) }
         }
 
-        // The integration's fetch_state rows (last fetches, active blocks) move to its namespace,
-        // so a block that was active before the upgrade still blocks after it.
+        // The integration's fetch_state rows (last fetches, active blocks) are copied to its
+        // namespace, so a block that was active before the upgrade still blocks after it. The
+        // plain rows stay for a 1.x helper still running across the upgrade (`legacyKeyMirror`).
         if legacyFetchRows > 0 {
             try db.execute(
-                sql: "UPDATE fetch_state SET key = ? || '/' || key WHERE \(fetchFilter)",
+                sql: """
+                    INSERT INTO fetch_state (key, lastAttempt, lastSuccess, blockedUntil, reason)
+                    SELECT ? || '/' || key, lastAttempt, lastSuccess, blockedUntil, reason FROM fetch_state
+                    WHERE \(fetchFilter)
+                    """,
                 arguments: StatementArguments([integration] + legacyIntegrationFetchKeys))
         }
     }

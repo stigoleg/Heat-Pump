@@ -112,15 +112,21 @@ public final class HistoryStore: Sendable {
 
     public let path: String
     let pool: DatabasePool
+    /// The integration whose `fetch_state` rows are also kept under the plain keys a helper from
+    /// before device keys (1.x) reads and writes (`legacyKey(_:db:)`); nil for none. Transition
+    /// only: remove after 2.1.
+    public let legacyKeyMirror: String?
 
     /// `legacyIntegration` is the integration that opened the store (`Integration.id`). Rows from
     /// before device keys (v12) carry only the integration's own numeric device id; the
     /// migration builds their keys and namespaces their `fetch_state` keys with it. Opening a file
     /// that has such rows without it fails rather than guess. Before that migration runs on an
     /// existing file, a copy is kept next to it (`backupPath(for:)`), and likewise before house
-    /// consumption became per meter (v14, `backupPath(for:before:)`).
-    public init(path: String, legacyIntegration: String? = nil) throws {
+    /// consumption became per meter (v14, `backupPath(for:before:)`). `legacyKeyMirror`: see the
+    /// property.
+    public init(path: String, legacyIntegration: String? = nil, legacyKeyMirror: String? = nil) throws {
         self.path = path
+        self.legacyKeyMirror = legacyKeyMirror
         let directory = URL(fileURLWithPath: path).deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var config = Configuration()
@@ -130,15 +136,37 @@ public final class HistoryStore: Sendable {
         let migrator = Self.migrator(legacyIntegration: legacyIntegration)
         try backUpBeforeDeviceKeysIfNeeded(migrator)
         try backUpBeforeMetersIfNeeded(migrator)
-        try migrator.migrate(pool)
+        try migrate(with: migrator)
+    }
+
+    /// Runs the migrations. When the app and the helper open an unmigrated file at the same
+    /// moment, the slower one read the applied migrations before the other committed and fails on
+    /// the first one again (GRDB reads them before it takes the write lock). It then waits a
+    /// little and runs the migrator again, which skips what the other process applied. A failure
+    /// while no other process makes progress is thrown at once.
+    private func migrate(with migrator: DatabaseMigrator, attempts: Int = 5, wait: TimeInterval = 0.5) throws {
+        for attempt in 1... {
+            let before = try pool.read { db in try migrator.appliedIdentifiers(db) }
+            do {
+                try migrator.migrate(pool)
+                return
+            } catch {
+                let after = try pool.read { db in try migrator.appliedIdentifiers(db) }
+                guard attempt < attempts, after != before else { throw error }
+                Thread.sleep(forTimeInterval: wait)
+            }
+        }
     }
 
     /// `VARMEPUMPE_DB_PATH`, or `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite`.
+    /// Demo mode (`VARMEPUMPE_BACKEND=mock`) without `VARMEPUMPE_DB_PATH` uses `demo.sqlite` in
+    /// the same folder: it must never open the real database, whose rows it would take for its own.
     public static func defaultPath(environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
         if let override = environment["VARMEPUMPE_DB_PATH"], !override.isEmpty { return override }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appending(path: "Library/Application Support")
-        return base.appending(path: "Varmepumpe/varmepumpe.sqlite").path
+        let name = IntegrationContext.demoRequested(environment: environment) ? "demo.sqlite" : "varmepumpe.sqlite"
+        return base.appending(path: "Varmepumpe/\(name)").path
     }
 
     // MARK: Migrations
@@ -362,6 +390,12 @@ public final class HistoryStore: Sendable {
         migrator.registerMigration(Self.meterMigration) { db in
             // House consumption per energy meter, and live power per minute.
             try Self.migrateToMeters(db)
+        }
+        migrator.registerMigration(Self.legacyKeysMigration) { db in
+            // The plain fetch keys of 1.x helpers (v12 used to move them), and price control's
+            // memory per device.
+            try Self.restoreLegacyFetchKeys(db, integration: legacyIntegration)
+            try Self.movePriceControlRuntimeToDevice(db)
         }
         return migrator
     }
@@ -758,12 +792,9 @@ public final class HistoryStore: Sendable {
     ) throws -> ChangeReservation {
         guard let first = records.first else { return .reserved(ids: []) }
         let now = first.timestamp
-        let writeKey = Self.fetchKey(Self.writeKey, integration: device.integration)
+        let writeKeys = integrationKeys(Self.writeKey, integration: device.integration)
         return try immediate { db in
-            if let last = try Date.fetchOne(
-                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [writeKey]),
-                now.timeIntervalSince(last) < minSpacing
-            {
+            if let last = try Self.latest("lastAttempt", keys: writeKeys, db: db), now.timeIntervalSince(last) < minSpacing {
                 return .tooSoon(nextAllowed: last.addingTimeInterval(minSpacing))
             }
             let used = try Self.usedWrites(integration: device.integration, since: now.addingTimeInterval(-window), db: db)
@@ -783,12 +814,7 @@ public final class HistoryStore: Sendable {
                 }
                 ids.append(id)
             }
-            try db.execute(
-                sql: """
-                    INSERT INTO fetch_state (key, lastAttempt) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt
-                    """,
-                arguments: [writeKey, now])
+            for key in writeKeys { try Self.recordAttempt(key: key, at: now, db: db) }
             return .reserved(ids: ids)
         }
     }
@@ -800,9 +826,7 @@ public final class HistoryStore: Sendable {
     ) throws -> (used: [Date], lastWrite: Date?) {
         try pool.read { db in
             let used = try Self.usedWrites(integration: integration, since: now.addingTimeInterval(-window), db: db)
-            let last = try Date.fetchOne(
-                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.writeKey, integration: integration)])
+            let last = try Self.latest("lastAttempt", keys: integrationKeys(Self.writeKey, integration: integration), db: db)
             return (used, last)
         }
     }
@@ -846,37 +870,46 @@ public final class HistoryStore: Sendable {
     /// Honours `blockingIntegration`'s stops first (credentials refused, global block), then the
     /// per-key minimum interval; on `.allowed` the attempt is recorded so other processes see it
     /// immediately. `blockingIntegration` is nil for third-party sources (prices, weather), which
-    /// no integration's blocks stop.
+    /// no integration's blocks stop. Rows of a 1.x helper count as well (`legacyKeyMirror`).
     public func reserveFetch(
         key: String, minInterval: TimeInterval, now: Date, blockingIntegration: String?
     ) throws -> FetchDecision {
-        try immediate { db in
-            if let integration = blockingIntegration, try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)]) != nil
+        try immediate { [self] db in
+            if let integration = blockingIntegration,
+                try Self.latest("blockedUntil", keys: integrationKeys(Self.credentialsKey, integration: integration), db: db) != nil
             {
                 return .credentialsRejected
             }
-            if let integration = blockingIntegration, let blocked = try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.globalKey, integration: integration)]),
+            if let integration = blockingIntegration,
+                let blocked = try Self.latest("blockedUntil", keys: integrationKeys(Self.globalKey, integration: integration), db: db),
                 blocked > now
             {
                 return .blocked(until: blocked)
             }
-            if let last = try Date.fetchOne(db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [key]),
-                now.timeIntervalSince(last) < minInterval
-            {
+            let keys = [key] + (try legacyKey(key, db: db).map { [$0] } ?? [])
+            if let last = try Self.latest("lastAttempt", keys: keys, db: db), now.timeIntervalSince(last) < minInterval {
                 return .throttled(nextAllowed: last.addingTimeInterval(minInterval))
             }
-            try db.execute(
-                sql: """
-                    INSERT INTO fetch_state (key, lastAttempt) VALUES (?, ?)
-                    ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt
-                    """,
-                arguments: [key, now])
+            for key in keys { try Self.recordAttempt(key: key, at: now, db: db) }
             return .allowed
         }
+    }
+
+    static func recordAttempt(key: String, at date: Date, db: Database) throws {
+        try db.execute(
+            sql: """
+                INSERT INTO fetch_state (key, lastAttempt) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt
+                """,
+            arguments: [key, date])
+    }
+
+    /// The latest value of the date `column` among the rows of `keys` (nil when none has one).
+    static func latest(_ column: String, keys: [String], db: Database) throws -> Date? {
+        try Date.fetchAll(
+            db, sql: "SELECT \(column) FROM fetch_state WHERE key IN (\(keys.map { _ in "?" }.joined(separator: ", "))) AND \(column) IS NOT NULL",
+            arguments: StatementArguments(keys)
+        ).max()
     }
 
     public func recordFetchSuccess(key: String, now: Date) throws {
@@ -893,8 +926,10 @@ public final class HistoryStore: Sendable {
     /// Blocks every network call to `integration` from every process until `until` (keeps the
     /// later of two blocks, together with its reason).
     public func recordBlock(until: Date, reason: BlockReason, integration: String) throws {
+        let keys = integrationKeys(Self.globalKey, integration: integration)
         try immediate { db in
-            try db.execute(
+            for key in keys {
+                try db.execute(
                 sql: """
                     INSERT INTO fetch_state (key, blockedUntil, reason) VALUES (?, ?, ?)
                     ON CONFLICT(key) DO UPDATE SET
@@ -903,16 +938,20 @@ public final class HistoryStore: Sendable {
                         blockedUntil = CASE WHEN blockedUntil IS NULL OR blockedUntil < excluded.blockedUntil
                              THEN excluded.blockedUntil ELSE blockedUntil END
                     """,
-                arguments: [Self.fetchKey(Self.globalKey, integration: integration), until, reason.rawValue])
+                arguments: [key, until, reason.rawValue])
+            }
         }
     }
 
-    /// The integration's active block with its reason (rows from before v3 count as rate limiting).
+    /// The integration's active block with its reason (rows from before v3 count as rate limiting);
+    /// the later one when a 1.x helper recorded its own (`legacyKeyMirror`).
     public func blockStatus(now: Date, integration: String) throws -> BlockStatus? {
-        try pool.read { db in
-            guard let row = try Row.fetchOne(
-                db, sql: "SELECT blockedUntil, reason FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.globalKey, integration: integration)]),
+        let keys = integrationKeys(Self.globalKey, integration: integration)
+        return try pool.read { db in
+            guard let row = try Row.fetchAll(
+                db, sql: "SELECT blockedUntil, reason FROM fetch_state WHERE key IN (\(keys.map { _ in "?" }.joined(separator: ", ")))",
+                arguments: StatementArguments(keys)
+            ).max(by: { ($0["blockedUntil"] as Date? ?? .distantPast) < ($1["blockedUntil"] as Date? ?? .distantPast) }),
                 let until: Date = row["blockedUntil"], until > now
             else { return nil }
             let reason = (row["reason"] as String?).flatMap(BlockReason.init(rawValue:)) ?? .rateLimited
@@ -923,13 +962,16 @@ public final class HistoryStore: Sendable {
     /// Stops all network calls to `integration` until `clearCredentialsRejected(integration:)`
     /// (new credentials saved).
     public func recordCredentialsRejected(now: Date, integration: String) throws {
+        let keys = integrationKeys(Self.credentialsKey, integration: integration)
         try pool.write { db in
-            try db.execute(
-                sql: """
-                    INSERT INTO fetch_state (key, lastAttempt, blockedUntil) VALUES (?, ?, ?)
-                    ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt, blockedUntil = excluded.blockedUntil
-                    """,
-                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration), now, Self.indefinite])
+            for key in keys {
+                try db.execute(
+                    sql: """
+                        INSERT INTO fetch_state (key, lastAttempt, blockedUntil) VALUES (?, ?, ?)
+                        ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt, blockedUntil = excluded.blockedUntil
+                        """,
+                    arguments: [key, now, Self.indefinite])
+            }
         }
     }
 
@@ -953,26 +995,21 @@ public final class HistoryStore: Sendable {
     }
 
     public func clearCredentialsRejected(integration: String) throws {
+        let keys = integrationKeys(Self.credentialsKey, integration: integration)
         try pool.write { db in
-            try db.execute(
-                sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)])
+            for key in keys { try db.execute(sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [key]) }
         }
     }
 
     public func credentialsRejected(integration: String) throws -> Bool {
-        try pool.read { db in
-            try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)]) != nil
-        }
+        let keys = integrationKeys(Self.credentialsKey, integration: integration)
+        return try pool.read { db in try Self.latest("blockedUntil", keys: keys, db: db) != nil }
     }
 
     public func blockedUntil(now: Date, integration: String) throws -> Date? {
-        try pool.read { db in
-            guard let until = try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
-                arguments: [Self.fetchKey(Self.globalKey, integration: integration)])
-            else { return nil }
+        let keys = integrationKeys(Self.globalKey, integration: integration)
+        return try pool.read { db in
+            guard let until = try Self.latest("blockedUntil", keys: keys, db: db) else { return nil }
             return until > now ? until : nil
         }
     }

@@ -250,7 +250,7 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 
 | Variable | Meaning |
 |---|---|
-| `VARMEPUMPE_BACKEND=mock` | Simulated heat pump |
+| `VARMEPUMPE_BACKEND=mock` | Simulated heat pump. Without `VARMEPUMPE_DB_PATH` it uses its own database, `demo.sqlite` next to the real one, never the real one |
 | `VARMEPUMPE_DB_PATH` | Path to the SQLite database |
 | `MELCLOUD_EMAIL`, `MELCLOUD_PASSWORD` | Development only: sign in without the keychain |
 | `VARMEPUMPE_APPROVAL=auto-approve` / `auto-reject` | Tests only: answers instead of the approval window. Works only with `VARMEPUMPE_BACKEND=mock`. |

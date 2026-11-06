@@ -31,11 +31,14 @@ public enum IntegrationCatalog {
     /// providers and the units `VARMEPUMPE_DEMO_DEVICES` asks for (registered at once, no network). Otherwise the active integrations the user chose (`integrations` in
     /// `app_settings`; MELCloud until then) with keychain credentials, real price, weather and house
     /// providers and the local adapter on the network. The database comes from
-    /// `VARMEPUMPE_DB_PATH` or Application Support; it is opened with this process's integration,
-    /// which owns the rows from before device keys.
+    /// `VARMEPUMPE_DB_PATH` or Application Support (demo mode: its own file there); it is opened
+    /// with this process's integration, which owns the rows from before device keys. Outside demo
+    /// mode MELCloud's blocks and spacing are also kept under the plain keys a 1.x helper still
+    /// running across the update uses (`HistoryStore.legacyKeyMirror`; remove after 2.1).
     public static func makeHub(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> DeviceHub {
         let store = try HistoryStore(
-            path: HistoryStore.defaultPath(environment: environment), legacyIntegration: current(environment: environment).id)
+            path: HistoryStore.defaultPath(environment: environment), legacyIntegration: current(environment: environment).id,
+            legacyKeyMirror: isDemo(environment: environment) ? nil : melcloud.id)
         if isDemo(environment: environment) {
             let units = DemoUnit.units(environment: environment)
             try store.syncDevices(MockBackend.listing(units), integration: demo.id)
