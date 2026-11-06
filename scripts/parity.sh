@@ -21,21 +21,23 @@ cd "$(dirname "$0")/.."
 capture() {
     local dir=$1
     mkdir -p $dir
-    local shot=scripts/screenshot.sh
+    # Existing images are kept, so an interrupted capture can be resumed.
+    shot() { [[ -f $2 ]] || "$@"; }
+    local screenshot=scripts/screenshot.sh
     for lang in en nb; do
         for screen in overview control schedule outlook away health activity; do
-            LANG_CODE=$lang $shot $dir/$lang-$screen.png VARMEPUMPE_SCREEN=$screen VARMEPUMPE_APPEARANCE=light
+            LANG_CODE=$lang shot $screenshot $dir/$lang-$screen.png VARMEPUMPE_SCREEN=$screen VARMEPUMPE_APPEARANCE=light
         done
         for tab in temperature energy energy-kr operation power; do
-            LANG_CODE=$lang $shot $dir/$lang-history-$tab.png VARMEPUMPE_SCREEN=history \
+            LANG_CODE=$lang shot $screenshot $dir/$lang-history-$tab.png VARMEPUMPE_SCREEN=history \
                 VARMEPUMPE_HISTORY_TAB=$tab VARMEPUMPE_APPEARANCE=light
         done
         for tab in generelt konto strompris lokal vaer claude data; do
-            LANG_CODE=$lang WINDOW=settings MAXPX=1400 $shot $dir/$lang-settings-$tab.png \
+            LANG_CODE=$lang WINDOW=settings MAXPX=1400 shot $screenshot $dir/$lang-settings-$tab.png \
                 VARMEPUMPE_SETTINGS_TAB=$tab VARMEPUMPE_APPEARANCE=light
         done
     done
-    LANG_CODE=en $shot $dir/en-overview-dark.png VARMEPUMPE_SCREEN=overview VARMEPUMPE_APPEARANCE=dark
+    LANG_CODE=en shot $screenshot $dir/en-overview-dark.png VARMEPUMPE_SCREEN=overview VARMEPUMPE_APPEARANCE=dark
 }
 
 # Two simulated heat pumps (VARMEPUMPE_DEMO_DEVICES); the default capture stays single-device.

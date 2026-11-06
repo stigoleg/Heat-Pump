@@ -43,7 +43,13 @@ pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
 sleep ${WAIT:-9}
 
-id=$($tool $pid ${WINDOW:+smallest})
+# The window can take a moment to appear on a busy machine.
+id=""
+for attempt in 1 2 3 4 5; do
+    id=$($tool $pid ${WINDOW:+smallest}) && break
+    sleep 2
+done
+[[ -n $id ]] || { echo "No window found for $out" >&2; exit 1; }
 screencapture -o -x -l $id "$out"
 kill $pid 2>/dev/null || true
 wait $pid 2>/dev/null || true
