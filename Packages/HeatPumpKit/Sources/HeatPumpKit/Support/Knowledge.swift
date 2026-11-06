@@ -34,6 +34,11 @@ public struct Knowledge: Sendable {
         sources = [integration.knowledge]
     }
 
+    /// Several integrations' documents in order (a document name is served by the first that has it).
+    public init(integrations: [any Integration]) {
+        sources = integrations.map(\.knowledge)
+    }
+
     /// Document names in display order.
     public var names: [String] { sources.flatMap(\.names) }
 

@@ -4,7 +4,9 @@ import Foundation
 /// house's consumption. One per hub (`DeviceHub.energy`), used by every device's service, so each
 /// source is fetched once whatever the number of devices; the fetches are spaced across processes
 /// by the store as before (`prices.*`, `weather`, `house.tibber`, never blocked by an
-/// integration).
+/// integration). The house's consumption comes from an enabled energy meter when there is one
+/// (`houseMeter`), else from the price token's source (`houseProvider`); both store the same hours
+/// under the house meter (`HistoryStore.houseMeterKey`).
 ///
 /// Where nothing is configured, the reference device stands in: its location for the weather
 /// and its measured outdoor temperatures for the price estimate. That is the primary device
@@ -21,6 +23,8 @@ public final class EnergyContextService: Sendable {
     let weatherProvider: @Sendable (WeatherSettings) -> (any WeatherProviding)?
     /// The house's consumption source (Tibber; nil without a token). Called at most hourly.
     let houseProvider: @Sendable () -> (any HouseConsumptionProviding)?
+    /// The enabled energy meter the house's consumption comes from instead, or nil.
+    let houseMeter: @Sendable () throws -> HouseMeterSource?
     /// The device whose readings stand in for the house (nil until a device is known).
     let referenceDevice: @Sendable () throws -> DeviceKey?
     /// The reference device's location as its integration stores it, or nil.
@@ -32,6 +36,7 @@ public final class EnergyContextService: Sendable {
         priceProvider: @escaping @Sendable (PriceSettings) -> (any PriceProvider)? = { _ in nil },
         weatherProvider: @escaping @Sendable (WeatherSettings) -> (any WeatherProviding)? = { _ in nil },
         houseProvider: @escaping @Sendable () -> (any HouseConsumptionProviding)? = { nil },
+        houseMeter: @escaping @Sendable () throws -> HouseMeterSource? = { nil },
         referenceDevice: @escaping @Sendable () throws -> DeviceKey? = { nil },
         referenceLocation: @escaping @Sendable () throws -> (latitude: Double, longitude: Double)? = { nil }
     ) {
@@ -42,6 +47,7 @@ public final class EnergyContextService: Sendable {
         self.priceProvider = priceProvider
         self.weatherProvider = weatherProvider
         self.houseProvider = houseProvider
+        self.houseMeter = houseMeter
         self.referenceDevice = referenceDevice
         self.referenceLocation = referenceLocation
     }
@@ -263,31 +269,79 @@ public final class EnergyContextService: Sendable {
     // MARK: House consumption
 
     /// Backfills up to 744 hours the first time, then fetches only the hours since the newest
-    /// stored one (plus two, which Tibber may complete late). At most once an hour.
+    /// stored one (plus two, which Tibber may complete late). At most once an hour. With an enabled
+    /// energy meter, its hours (`syncMeterHours`, spaced per meter); otherwise the token's source.
     public func syncHouseConsumption() async throws -> HouseSync {
+        if let meter = try houseMeter() {
+            return try await syncMeterHours(device: meter.device, driver: meter.driver, serviceName: meter.serviceName)
+        }
+        let device = try store.houseMeterKey()
+        return try await syncHours(
+            fetchKey: HeatPumpService.houseFetchKey, blockingIntegration: nil, latest: try store.latestMeterHour(device: device),
+            describe: { ($0 as? LocalizedError)?.errorDescription ?? $0.localizedDescription }
+        ) { last in
+            guard let provider = houseProvider() else { return nil }
+            let hours = try await provider.fetchConsumption(lastHours: last)
+            try store.upsertMeterHours(hours, device: device)
+            return hours.count
+        }
+    }
+
+    /// The `fetch_state` name of a meter's hourly fetch (per meter, in its integration's namespace).
+    public static let meterHoursFetchName = "meter.hours"
+
+    /// Fetches a meter's missing hours, like `syncHouseConsumption`: at most hourly per meter
+    /// across processes, and not while its integration is blocked. A refused token stops the
+    /// integration's requests until new values are saved, and too much traffic blocks it until
+    /// the time the service gave. Errors name `serviceName`.
+    public func syncMeterHours(device: DeviceKey, driver: any EnergyMeterDriver, serviceName: String) async throws -> HouseSync {
+        let store = store
+        let now = now
+        return try await syncHours(
+            fetchKey: HistoryStore.fetchKey(Self.meterHoursFetchName, device: device), blockingIntegration: device.integration,
+            latest: try store.latestMeterHour(device: device),
+            describe: { error in
+                (error as? HeatPumpError)?.description(serviceName: serviceName)
+                    ?? (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+        ) { last in
+            do {
+                let hours = try await driver.fetchHours(device: device, lastHours: last)
+                try store.upsertMeterHours(hours, device: device)
+                return hours.count
+            } catch let error as HeatPumpError {
+                if error.isCredentialProblem { try store.recordCredentialsRejected(now: now(), integration: device.integration) }
+                if case .rateLimited(let until) = error {
+                    try store.recordBlock(until: until, reason: .rateLimited, integration: device.integration)
+                }
+                throw error
+            }
+        }
+    }
+
+    /// One hourly sync: reserves the fetch, asks for the hours since `latest` (744 the first
+    /// time) and records the success. `fetch` returns the number of hours stored, or nil when
+    /// nothing is configured.
+    private func syncHours(
+        fetchKey: String, blockingIntegration: String?, latest: Date?, describe: (any Error) -> String,
+        fetch: (Int) async throws -> Int?
+    ) async throws -> HouseSync {
         let t = now()
         switch try store.reserveFetch(
-            key: HeatPumpService.houseFetchKey, minInterval: HeatPumpService.houseInterval, now: t, blockingIntegration: nil)
+            key: fetchKey, minInterval: HeatPumpService.houseInterval, now: t, blockingIntegration: blockingIntegration)
         {
         case .throttled(let next):
             return HouseSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:
             return HouseSync(status: .skipped)
         case .allowed:
-            guard let provider = houseProvider() else { return HouseSync(status: .notConfigured) }
-            let last: Int
-            if let latest = try store.latestHouseHour() {
-                last = min(744, max(3, Int((t.timeIntervalSince(latest) / 3600).rounded(.up)) + 2))
-            } else {
-                last = 744
-            }
+            let last = latest.map { min(744, max(3, Int((t.timeIntervalSince($0) / 3600).rounded(.up)) + 2)) } ?? 744
             do {
-                let hours = try await provider.fetchConsumption(lastHours: last)
-                try store.upsertHouseHours(hours)
-                try store.recordFetchSuccess(key: HeatPumpService.houseFetchKey, now: t)
-                return HouseSync(status: .fetched, count: hours.count)
+                guard let count = try await fetch(last) else { return HouseSync(status: .notConfigured) }
+                try store.recordFetchSuccess(key: fetchKey, now: t)
+                return HouseSync(status: .fetched, count: count)
             } catch {
-                return HouseSync(status: .failed, message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                return HouseSync(status: .failed, message: describe(error))
             }
         }
     }
@@ -295,6 +349,23 @@ public final class EnergyContextService: Sendable {
     public func houseHours(from: Date, to: Date) throws -> [HouseHour] {
         try store.houseHours(from: from, to: to)
     }
+}
+
+/// An enabled energy meter the house's consumption is read from.
+public struct HouseMeterSource: Sendable {
+    public var device: DeviceKey
+    public var driver: any EnergyMeterDriver
+    /// The meter's service as texts name it.
+    public var serviceName: String
+
+    public init(device: DeviceKey, driver: any EnergyMeterDriver, serviceName: String) {
+        self.device = device
+        self.driver = driver
+        self.serviceName = serviceName
+    }
+}
+
+extension EnergyContextService {
 
     // MARK: Weather
 

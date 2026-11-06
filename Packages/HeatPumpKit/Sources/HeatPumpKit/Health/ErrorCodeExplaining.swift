@@ -48,3 +48,15 @@ extension ErrorCodeExplaining {
 
     public func lookup(errorCode: Int?) -> ErrorCatalogEntry { lookup(errorCode: errorCode, message: nil) }
 }
+
+/// For devices without error codes (an energy meter).
+public struct NoErrorCodes: ErrorCodeExplaining {
+    public init() {}
+    public var caveat: String { "" }
+    public func hasExplanation(errorCode: Int?) -> Bool { false }
+    public func lookup(errorCode: Int?, message: String?) -> ErrorCatalogEntry {
+        ErrorCatalogEntry(
+            code: errorCode.map(String.init) ?? "", title: message ?? "", explanation: message ?? "", recommendation: "",
+            confidence: message == nil ? .unknown : .serviceText, source: "")
+    }
+}

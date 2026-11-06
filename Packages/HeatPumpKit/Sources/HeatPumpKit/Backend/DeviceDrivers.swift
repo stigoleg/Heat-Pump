@@ -20,11 +20,19 @@ public protocol DeviceConnection: Sendable {
     func resetSession() async
     /// What the connection can do; by default derived from its conformances.
     var capabilities: Set<Capability> { get }
+    /// What one of its devices can do (e.g. live power only where the meter has a real-time
+    /// reader); `capabilities` by default.
+    func capabilities(of device: DeviceSummary) -> Set<Capability>
+    /// The account's devices from a listing the connection fetched for its own needs in the last
+    /// hour, without a request (the hub's daily discovery uses it); nil when it has none.
+    func recentListing() async -> [DeviceSummary]?
 }
 
 extension DeviceConnection {
     public func resetSession() async {}
     public var capabilities: Set<Capability> { Capability.derived(from: self) }
+    public func capabilities(of device: DeviceSummary) -> Set<Capability> { capabilities }
+    public func recentListing() async -> [DeviceSummary]? { nil }
 }
 
 /// Reading and changing power, mode, setpoint, fan and vanes.
@@ -122,6 +130,22 @@ public protocol FirmwareDriver: Sendable {
     func approveFirmwareUpdate(id: Int, device: DeviceKey) async throws
     /// Cancels the firmware update `id` while it has not been installed.
     func cancelFirmwareUpdate(id: Int, device: DeviceKey) async throws
+}
+
+/// An energy meter: the hours of use its service reports. Not real time: the newest hours arrive
+/// late, so the service asks at most hourly.
+public protocol EnergyMeterDriver: DeviceConnection {
+    /// The last `lastHours` finished hours of `device`; hours the service has not finished yet are
+    /// left out.
+    func fetchHours(device: DeviceKey, lastHours: Int) async throws -> [HouseHour]
+}
+
+/// Power right now from a meter's live stream. The driver owns the connection: it reconnects by
+/// itself within its integration's limits and reports why when it stops for good.
+public protocol LivePowerDriver: Sendable {
+    /// Readings and state changes for `device` until the stream is cancelled (which closes the
+    /// connection when no other stream needs it).
+    func liveReadings(device: DeviceKey) -> AsyncStream<LivePowerEvent>
 }
 
 /// Where the unit is, from the stored device listing.

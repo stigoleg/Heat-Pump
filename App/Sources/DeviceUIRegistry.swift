@@ -16,6 +16,16 @@ enum DeviceUIRegistry {
     @ViewBuilder static func screen(_ screen: DeviceScreen, of device: any DeviceModel) -> some View {
         if let heatPump = device as? HeatPumpDeviceModel {
             heatPumpScreen(screen).environment(heatPump)
+        } else if let meter = device as? EnergyMeterDeviceModel {
+            meterScreen(screen).environment(meter)
+        }
+    }
+
+    /// A meter has Overview and History (`DeviceNavigation`); any other screen shows its overview.
+    @ViewBuilder private static func meterScreen(_ screen: DeviceScreen) -> some View {
+        switch screen {
+        case .history: MeterHistoryView()
+        default: MeterOverviewView()
         }
     }
 
@@ -34,6 +44,8 @@ enum DeviceUIRegistry {
     @ViewBuilder static func homeCard(for device: any DeviceModel) -> some View {
         if let heatPump = device as? HeatPumpDeviceModel {
             HeatPumpHomeCard(device: heatPump)
+        } else if let meter = device as? EnergyMeterDeviceModel {
+            MeterHomeCard(device: meter)
         }
     }
 

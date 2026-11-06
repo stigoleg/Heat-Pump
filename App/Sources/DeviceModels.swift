@@ -472,3 +472,121 @@ final class HeatPumpDeviceModel: DeviceModel {
         await service?.accountEmail()
     }
 }
+
+/// One energy meter (the house's): today's use and cost, the hours and days, and live power
+/// while the app runs. All rules (spacing, pricing, the live connection) live in HeatPumpKit.
+@MainActor
+@Observable
+final class EnergyMeterDeviceModel: DeviceModel {
+    let service: EnergyMeterService
+    var descriptor: DeviceDescriptor?
+    var kind: DeviceKind { .energyMeter }
+    /// The meter's service as texts name it, e.g. "Tibber".
+    var serviceName: String { service.serviceName }
+    var displayName: String { descriptor?.name ?? serviceName }
+    var hasLivePower: Bool { descriptor?.capabilities.contains(.livePower) == true }
+
+    var status: MeterStatus?
+    /// Live minutes of the last hour (the trend).
+    var recentMinutes: [LiveMinute] = []
+    /// The newest reading of this run's live stream.
+    var liveReading: LivePowerReading?
+    var liveState: LivePowerState?
+    var hasCredentials = true
+    /// Why the hours could not be fetched (named after the service), or nil.
+    var syncProblem: String?
+    var lastSync: Date?
+    /// Bumped after every reload so views can refetch derived data (charts).
+    var revision = 0
+
+    @ObservationIgnored private var liveTask: Task<Void, Never>?
+
+    init(service: EnergyMeterService, descriptor: DeviceDescriptor?) {
+        self.service = service
+        self.descriptor = descriptor
+    }
+
+    var lastFetched: Date? { lastSync }
+
+    // MARK: Polling
+
+    /// The hours (at most hourly; the service enforces it).
+    func pollState(force: Bool) async {
+        hasCredentials = await service.hasCredentials()
+        guard hasCredentials else { return }
+        do {
+            let sync = try await service.syncHours()
+            syncProblem = sync.status == .failed ? sync.message : nil
+        } catch {
+            syncProblem = service.describe(error)
+        }
+    }
+
+    func pollDetails() async {}
+
+    func afterPoll() async {}
+
+    func reloadLocal() async {
+        let now = Date()
+        status = (try? await service.status()) ?? status
+        recentMinutes = (try? await service.liveMinutes(from: now.addingTimeInterval(-3600), to: now)) ?? recentMinutes
+        lastSync = (try? await service.lastHourSync()) ?? lastSync
+        if (try? await service.credentialsRejected()) == true {
+            syncProblem = service.describe(HeatPumpError.credentialsRejected)
+        }
+        revision += 1
+    }
+
+    // MARK: Live power
+
+    /// Starts the live stream when the meter has one (the app runs and the meter is on); a
+    /// second call does nothing.
+    func startLive() {
+        guard hasLivePower, liveTask == nil else { return }
+        let service = service
+        liveTask = Task { [weak self] in
+            for await event in await service.live() {
+                guard let self else { return }
+                switch event {
+                case .reading(let reading): self.liveReading = reading
+                case .state(let state): self.liveState = state
+                }
+            }
+        }
+    }
+
+    /// Stops the stream (the Mac sleeps, polling stops, the meter is turned off).
+    func stopLive() {
+        liveTask?.cancel()
+        liveTask = nil
+    }
+
+    /// The live reading when it is recent (younger than 2 minutes), else nil.
+    var currentReading: LivePowerReading? {
+        guard let reading = liveReading, Date().timeIntervalSince(reading.at) < 120 else { return nil }
+        return reading
+    }
+
+    /// Power now: this run's newest reading, else the newest stored minute when recent.
+    var powerNowW: Double? {
+        if let reading = currentReading { return reading.powerW }
+        guard let minute = status?.live, Date().timeIntervalSince(minute.lastReading) < 120 else { return nil }
+        return minute.powerW
+    }
+
+    /// Why live power is off, when it stopped for good.
+    var liveProblem: String? {
+        guard case .stopped(let reason) = liveState else { return nil }
+        return reason.message(serviceName: serviceName)
+    }
+
+    // MARK: Data for views
+
+    func hourly(from: Date, to: Date) async -> [HourCost] {
+        (try? await service.hourly(from: from, to: to)) ?? []
+    }
+
+    func daily(from: Date, to: Date) async -> [MeterPeriod] {
+        (try? await service.daily(from: from, to: to)) ?? []
+    }
+}

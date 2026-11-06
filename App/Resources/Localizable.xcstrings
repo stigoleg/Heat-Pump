@@ -171,6 +171,16 @@
         }
       }
     },
+    "%@ reports each hour a little after it ends." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oppgir hver time litt etter at den er over."
+          }
+        }
+      }
+    },
     "%@ shows: %@" : {
       "localizations" : {
         "nb" : {
@@ -537,6 +547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Legg til og logg inn"
+          }
+        }
+      }
+    },
+    "Add the %@ token under Settings → Account." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legg inn %@-nøkkelen under Innstillinger → Konto."
           }
         }
       }
@@ -1261,6 +1281,16 @@
         }
       }
     },
+    "Connecting…" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobler til …"
+          }
+        }
+      }
+    },
     "Connection" : {
       "localizations" : {
         "nb" : {
@@ -1397,6 +1427,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kostnad i perioden"
+          }
+        }
+      }
+    },
+    "Cost is your electricity contract, the grid tariff's energy charge and the electricity subsidy for each hour, as elsewhere in the app. %@'s own cost does not include the grid tariff." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostnaden er strømavtalen din, nettleiens energiledd og strømstøtten for hver time, som ellers i appen. %@ sin egen kostnad har ikke med nettleie."
           }
         }
       }
@@ -1867,6 +1907,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Strømforbruk"
+          }
+        }
+      }
+    },
+    "Electricity use of the house per period" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husets strømforbruk per periode"
+          }
+        }
+      }
+    },
+    "Electricity use per hour today" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømforbruk per time i dag"
           }
         }
       }
@@ -2441,6 +2501,16 @@
         }
       }
     },
+    "Get it at %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent det på %@"
+          }
+        }
+      }
+    },
     "GitHub rejected the request (too many in a short time). Try again later." : {
       "localizations" : {
         "nb" : {
@@ -2571,6 +2641,16 @@
         }
       }
     },
+    "Heat pump share" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpens andel"
+          }
+        }
+      }
+    },
     "Heat: warms the room to the target temperature." : {
       "localizations" : {
         "nb" : {
@@ -2657,6 +2737,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time"
+          }
+        }
+      }
+    },
+    "Hourly figures from %@ arrive 2–3 hours late; until then today's use comes from the live meter reader." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timetall fra %@ kommer 2–3 timer forsinket; til da kommer dagens forbruk fra sanntidsmåleren."
           }
         }
       }
@@ -2767,6 +2857,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "I bruk"
+          }
+        }
+      }
+    },
+    "Includes live readings" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Med sanntidsmålinger"
           }
         }
       }
@@ -3057,6 +3157,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trolig"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sanntid"
+          }
+        }
+      }
+    },
+    "Live from %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sanntid fra %@"
+          }
+        }
+      }
+    },
+    "Live power is off" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt nå er av"
+          }
+        }
+      }
+    },
+    "Live power needs a real-time meter reader paired with the home in the %@ app." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt nå krever en sanntidsmåler koblet til hjemmet i %@-appen."
           }
         }
       }
@@ -3641,12 +3781,42 @@
         }
       }
     },
+    "No hours yet today" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen timer ennå i dag"
+          }
+        }
+      }
+    },
     "No internet connection." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen internettforbindelse."
+          }
+        }
+      }
+    },
+    "No live meter reader" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen sanntidsmåler"
+          }
+        }
+      }
+    },
+    "No live power yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen effekt nå ennå"
           }
         }
       }
@@ -3971,6 +4141,16 @@
         }
       }
     },
+    "Of the house's use today" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av husets forbruk i dag"
+          }
+        }
+      }
+    },
     "Off" : {
       "localizations" : {
         "nb" : {
@@ -4211,6 +4391,26 @@
         }
       }
     },
+    "Power now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt nå"
+          }
+        }
+      }
+    },
+    "Power over the last hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt den siste timen"
+          }
+        }
+      }
+    },
     "Power requires a local connection" : {
       "localizations" : {
         "nb" : {
@@ -4437,6 +4637,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Begrunnelse: %@"
+          }
+        }
+      }
+    },
+    "Reconnecting at %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kobler til igjen kl. %@"
           }
         }
       }
@@ -5101,12 +5311,62 @@
         }
       }
     },
+    "Signed in. Found %lld devices." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Signed in. Found %lld device."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Signed in. Found %lld devices."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Logget inn. Fant %lld enhet."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Logget inn. Fant %lld enheter."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Signed in. Found “%@”." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Innlogget. Fant «%@»."
+          }
+        }
+      }
+    },
+    "Some data could not be fetched" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noe kunne ikke hentes"
           }
         }
       }
@@ -5557,6 +5817,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appen leser Wi-Fi-modulen hvert minutt mens den er åpen. Grafen fylles etter hvert."
+          }
+        }
+      }
+    },
+    "The app stops fetching from %@. The token stays in the keychain, because the electricity price uses it too. The devices' history is kept and comes back if you add it again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen slutter å hente fra %@. Nøkkelen blir liggende i nøkkelringen, fordi strømprisen også bruker den. Historikken til enhetene beholdes og kommer tilbake hvis du legger den til igjen."
           }
         }
       }
@@ -6061,6 +6331,16 @@
         }
       }
     },
+    "The token you saved for the electricity price is filled in." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen du har lagret for strømprisen, er fylt inn."
+          }
+        }
+      }
+    },
     "The top row shows whether the heat pump was on (green) or off (gray). The next row shows the mode." : {
       "localizations" : {
         "nb" : {
@@ -6087,6 +6367,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Øverste rad viser om varmepumpen var på (grønn) eller av (grå). Neste rad viser modus. Raden «Lokalt» kommer fra Wi-Fi-modulen: indigo når kompressoren går, grå når den hviler, gul ved oppstart og rosa når utedelen avriser. Avriming er normalt i fuktig kulde. For lengre perioder vises det som dominerte hvert tidsrom."
+          }
+        }
+      }
+    },
+    "The trend fills in while the app is open." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurven fylles ut mens appen er åpen."
           }
         }
       }
@@ -6257,6 +6547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "I dag"
+          }
+        }
+      }
+    },
+    "Today per hour" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I dag per time"
           }
         }
       }
@@ -6531,6 +6831,16 @@
         }
       }
     },
+    "Value" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verdi"
+          }
+        }
+      }
+    },
     "Varmepumpe.app not found" : {
       "localizations" : {
         "nb" : {
@@ -6597,6 +6907,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "W"
+          }
+        }
+      }
+    },
+    "Waiting for a reading" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter på en måling"
           }
         }
       }

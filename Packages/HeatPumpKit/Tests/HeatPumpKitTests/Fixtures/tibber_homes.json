@@ -1,0 +1,6 @@
+{"data":{"viewer":{
+ "websocketSubscriptionUrl":"wss://websocket-api.tibber.com/v1-beta/gql/subscriptions",
+ "homes":[
+  {"id":"96a14971-525a-4420-aae9-e5aedaa129ff","appNickname":"Hjemme","address":{"address1":"Kungsgatan 8","postalCode":"0150","city":"Oslo"},"features":{"realTimeConsumptionEnabled":true}},
+  {"id":"68e6938b-91a6-4199-a0d4-f24c22be87bb","appNickname":null,"address":{"address1":"Storgata 1","postalCode":"0155","city":"Oslo"},"features":{"realTimeConsumptionEnabled":false}}
+ ]}}}

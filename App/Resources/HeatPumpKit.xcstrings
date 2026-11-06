@@ -122,6 +122,17 @@
         }
       }
     },
+    "%@ did not accept the token, so live power is off. Check the token in Settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ godtok ikke nøkkelen, så effekt nå er slått av. Sjekk nøkkelen i Innstillinger."
+          }
+        }
+      }
+    },
     "%@ did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try Again”." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -232,6 +243,17 @@
         }
       }
     },
+    "%@ has no live power for this home. It needs a real-time meter reader." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ har ikke effekt nå for dette hjemmet. Det krever en sanntidsmåler."
+          }
+        }
+      }
+    },
     "%@ has not said whether the account owns the unit. Refresh the status and try again." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -327,6 +349,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ blokkerer innlogging midlertidig (for mange forsøk)."
+          }
+        }
+      }
+    },
+    "%@ no longer knows this home, so live power is off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kjenner ikke lenger dette hjemmet, så effekt nå er slått av."
           }
         }
       }
@@ -2122,6 +2155,17 @@
         }
       }
     },
+    "Home (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hjemme (simulert)"
+          }
+        }
+      }
+    },
     "Horizontal airflow" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2557,6 +2601,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Breddegrad må være mellom −90 og 90, lengdegrad mellom −180 og 180."
+          }
+        }
+      }
+    },
+    "Live power is read by the app while it runs; a reading older than a few minutes means the app is closed or not connected. %@ reports hourly use 2–3 hours late." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt nå leses av appen mens den kjører; en måling som er eldre enn noen minutter, betyr at appen er lukket eller ikke tilkoblet. %@ oppgir forbruk per time 2–3 timer forsinket."
           }
         }
       }
@@ -5723,6 +5778,17 @@
         }
       }
     },
+    "This home has no live power (it needs a real-time reader). %@ reports hourly use 2–3 hours late." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette hjemmet har ikke effekt nå (det krever en sanntidsmåler). %@ oppgir forbruk per time 2–3 timer forsinket."
+          }
+        }
+      }
+    },
     "This unit does not support automatic fan speed." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6703,6 +6769,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ingen adresse"
+          }
+        }
+      }
+    },
+    "no address for live data" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ingen adresse for sanntidsdata"
+          }
+        }
+      }
+    },
+    "no data" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ingen data"
           }
         }
       }

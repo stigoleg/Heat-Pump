@@ -21,6 +21,13 @@ struct ToolRouter: Sendable {
     func handle(_ params: CallTool.Parameters) async -> CallTool.Result {
         do {
             let devices = try await hub.devices()
+            if ToolCatalog.meterTools.contains(params.name) {
+                let meter = try choose(devices, tool: params.name, argument: Arguments(params.arguments).string("device"))
+                guard let service = try await hub.meterService(for: meter.key) else {
+                    return ToolOutput.failure(L10n.format("Unknown device: %@. Choose one of: %@.", meter.name, choices(devices)))
+                }
+                return await MeterToolHandler(service: service, name: meter.name).handle(params)
+            }
             guard let primary = try await hub.primaryService() else {
                 return ToolOutput.failure(L10n.tr("No heat pump service is set up. Sign in in the app."))
             }
@@ -28,13 +35,13 @@ struct ToolRouter: Sendable {
                 return await ToolHandler(service: primary, approver: approver).handle(params)
             }
             if params.name == "list_devices" { return try await listDevices(devices, primary: primary) }
-            guard let capability = ToolCatalog.requiredCapability[params.name] else {
+            guard ToolCatalog.requiredCapability[params.name] != nil else {
                 // Shared by every device (get_prices): price control's own device for its part.
                 let control = try await hub.priceControlService()
                 return await ToolHandler(service: primary, approver: approver, priceControlService: control).handle(params)
             }
             let argument = Arguments(params.arguments).string("device")
-            let able = devices.filter { $0.capabilities.contains(capability) }
+            let able = devices.filter { ToolCatalog.canAnswer(params.name, $0) }
             if Self.answeredWithoutDevice.contains(params.name), able.count >= 2,
                 argument?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
             {
@@ -42,7 +49,7 @@ struct ToolRouter: Sendable {
                 // and name the choices for the device's own part.
                 return await ToolHandler(service: primary, approver: approver, deviceChoices: choices(able)).handle(params)
             }
-            let device = try choose(devices, capability: capability, argument: argument)
+            let device = try choose(devices, tool: params.name, argument: argument)
             guard let service = try await hub.heatPumpService(for: device.key) else {
                 return ToolOutput.failure(L10n.format("Unknown device: %@. Choose one of: %@.", device.name, choices(devices)))
             }
@@ -59,10 +66,21 @@ struct ToolRouter: Sendable {
     /// Device tools whose shared part (weather, prices, the house) is answered without `device`.
     static let answeredWithoutDevice: Set<String> = ["get_forecast", "get_house_consumption"]
 
-    /// The device `argument` names (key or name, case-insensitive), else the only device with
-    /// `capability`.
+    /// The device `argument` names (key or name, case-insensitive), else the only device that can
+    /// answer `tool` (its kind and capability).
+    func choose(_ devices: [DeviceDescriptor], tool: String, argument: String?) throws -> DeviceDescriptor {
+        try choose(devices, argument: argument) { ToolCatalog.canAnswer(tool, $0) }
+    }
+
+    /// The device `argument` names, else the only device with `capability` (any kind).
     func choose(_ devices: [DeviceDescriptor], capability: Capability, argument: String?) throws -> DeviceDescriptor {
-        let able = devices.filter { $0.capabilities.contains(capability) }
+        try choose(devices, argument: argument) { $0.capabilities.contains(capability) }
+    }
+
+    private func choose(
+        _ devices: [DeviceDescriptor], argument: String?, canAnswer: (DeviceDescriptor) -> Bool
+    ) throws -> DeviceDescriptor {
+        let able = devices.filter(canAnswer)
         if let argument = argument?.trimmingCharacters(in: .whitespacesAndNewlines), !argument.isEmpty {
             let wanted = argument.lowercased()
             guard
@@ -71,7 +89,7 @@ struct ToolRouter: Sendable {
             else {
                 throw ArgumentError(message: L10n.format("Unknown device: %@. Choose one of: %@.", argument, choices(devices)))
             }
-            guard device.capabilities.contains(capability) else {
+            guard canAnswer(device) else {
                 throw ArgumentError(
                     message: L10n.format("%1$@ cannot answer this. Choose one of: %2$@.", device.name, choices(able.isEmpty ? devices : able)))
             }
@@ -90,10 +108,10 @@ struct ToolRouter: Sendable {
         devices.map { "\($0.name) (\($0.key.rawValue))" }.joined(separator: ", ")
     }
 
-    /// The service names the descriptions use: the active integrations' (one name with one).
+    /// The service names the descriptions use: the heat pumps' integrations' (one name with one).
     private func serviceNames(_ devices: [DeviceDescriptor]) async -> String {
         var names: [String] = []
-        for device in devices {
+        for device in devices where device.kind != .energyMeter {
             guard let name = hub.integration(for: device.key)?.displayName, !names.contains(name) else { continue }
             names.append(name)
         }

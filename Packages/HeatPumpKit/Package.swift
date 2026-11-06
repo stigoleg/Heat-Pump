@@ -7,6 +7,7 @@ let package = Package(
     products: [
         .library(name: "HeatPumpKit", targets: ["HeatPumpKit"]),
         .library(name: "MELCloudIntegration", targets: ["MELCloudIntegration"]),
+        .library(name: "TibberIntegration", targets: ["TibberIntegration"]),
         .library(name: "DemoIntegration", targets: ["DemoIntegration"]),
         .library(name: "Integrations", targets: ["Integrations"]),
         .executable(name: "varmepumpe-mcp", targets: ["varmepumpe-mcp"]),
@@ -25,10 +26,12 @@ let package = Package(
         // embedded helper needs no resource bundle; give every target with documents
         // `exclude: ["Knowledge"]`.
         .target(name: "MELCloudIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
-        // The demo simulates a MELCloud unit, so it reuses that integration's wire formats.
-        .target(name: "DemoIntegration", dependencies: ["HeatPumpKit", "MELCloudIntegration"]),
+        // Tibber homes as energy meters (hourly use, live power).
+        .target(name: "TibberIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
+        // The demo simulates a MELCloud unit and a Tibber home, so it reuses their wire formats and texts.
+        .target(name: "DemoIntegration", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration"]),
         // The only list of integrations, and the factory the app and the helper start from.
-        .target(name: "Integrations", dependencies: ["HeatPumpKit", "MELCloudIntegration", "DemoIntegration"]),
+        .target(name: "Integrations", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "DemoIntegration"]),
         .executableTarget(
             name: "varmepumpe-mcp",
             dependencies: [
@@ -40,7 +43,9 @@ let package = Package(
         // Depends on the helper too, so its tool catalog is checked against a golden copy.
         .testTarget(
             name: "HeatPumpKitTests",
-            dependencies: ["HeatPumpKit", "MELCloudIntegration", "DemoIntegration", "Integrations", "varmepumpe-mcp"],
+            dependencies: [
+                "HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "DemoIntegration", "Integrations", "varmepumpe-mcp",
+            ],
             resources: [.copy("Fixtures")]
         ),
     ]

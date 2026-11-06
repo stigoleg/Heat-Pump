@@ -201,3 +201,64 @@ struct HeatPumpHomeCard: View {
         return result.error
     }
 }
+
+/// An energy meter on Home: power now, today's use and cost, and any problem.
+struct MeterHomeCard: View {
+    @Environment(AppModel.self) private var app
+    let device: EnergyMeterDeviceModel
+
+    var body: some View {
+        Button {
+            app.route = .device(device.key, .overview)
+        } label: {
+            CardSurface {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(spacing: Theme.Space.s) {
+                        IconBadge(systemImage: DeviceKind.energyMeter.systemImage, color: .yellow, size: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(device.displayName).font(.headline)
+                            Text(DeviceKind.energyMeter.title).font(.callout).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if device.powerNowW != nil {
+                            Label("Live", systemImage: "dot.radiowaves.left.and.right")
+                                .font(.callout)
+                                .foregroundStyle(Theme.Status.good)
+                        }
+                    }
+                    Text(Format.watts(device.powerNowW))
+                        .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                        .monospacedDigit()
+                    Divider()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label {
+                            Text("Today").foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "chart.bar.fill").foregroundStyle(Theme.Data.energy)
+                        }
+                        .font(.callout)
+                        Text(today)
+                            .font(.system(.title3, design: .rounded).weight(.semibold))
+                            .monospacedDigit()
+                    }
+                    if let problem = device.syncProblem ?? device.liveProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Status.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        }
+        .buttonStyle(.plain)
+        .help("Open \(device.displayName)")
+        .accessibilityElement(children: .combine)
+    }
+
+    private var today: String {
+        guard let today = device.status?.today else { return "—" }
+        let kr = today.cost.map { " · " + Format.kroner($0.totalNok) } ?? ""
+        return Format.kWh(today.kWh) + kr
+    }
+}

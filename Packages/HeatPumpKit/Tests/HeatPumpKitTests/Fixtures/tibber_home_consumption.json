@@ -1,0 +1,5 @@
+{"data":{"viewer":{"home":{"consumption":{"nodes":[
+ {"from":"2026-11-05T08:00:00.000+01:00","to":"2026-11-05T09:00:00.000+01:00","unitPrice":1.2,"unitPriceVAT":0.24,"consumption":2.0,"cost":2.4,"currency":"NOK"},
+ {"from":"2026-11-05T09:00:00.000+01:00","to":"2026-11-05T10:00:00.000+01:00","unitPrice":1.0,"unitPriceVAT":0.2,"consumption":1.5,"cost":1.5,"currency":"NOK"},
+ {"from":"2026-11-05T10:00:00.000+01:00","to":"2026-11-05T11:00:00.000+01:00","unitPrice":1.0,"unitPriceVAT":0.2,"consumption":null,"cost":null,"currency":"NOK"}
+]}}}}}

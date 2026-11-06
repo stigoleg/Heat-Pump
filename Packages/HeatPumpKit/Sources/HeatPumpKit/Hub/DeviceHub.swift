@@ -6,12 +6,12 @@ import Synchronization
 /// network access its devices use.
 public struct IntegrationRuntime: Sendable {
     public var integration: any Integration
-    public var connection: any DeviceConnection & ThermostatDriver
+    public var connection: any DeviceConnection
     public var credentials: (any CredentialProviding)?
     public var local: LocalAccess
 
     public init(
-        integration: any Integration, connection: any DeviceConnection & ThermostatDriver,
+        integration: any Integration, connection: any DeviceConnection,
         credentials: (any CredentialProviding)? = nil, local: LocalAccess = .unavailable
     ) {
         self.integration = integration
@@ -30,15 +30,24 @@ final class ActiveRuntimes: Sendable {
     func withLock<T: Sendable>(_ body: (inout [IntegrationRuntime]) -> T) -> T { runtimes.withLock { body(&$0) } }
 }
 
-/// A device's service, by kind. Today every device is an air-to-air heat pump; an energy meter
-/// gets its own case.
+/// A device's service, by kind.
 public enum DeviceService: Sendable {
     case heatPump(HeatPumpService)
+    case energyMeter(EnergyMeterService)
 
     /// The heat pump service, or nil for another kind.
     public var heatPump: HeatPumpService? {
         switch self {
         case .heatPump(let service): service
+        case .energyMeter: nil
+        }
+    }
+
+    /// The energy meter service, or nil for another kind.
+    public var energyMeter: EnergyMeterService? {
+        switch self {
+        case .energyMeter(let service): service
+        case .heatPump: nil
         }
     }
 }
@@ -85,6 +94,10 @@ public actor DeviceHub {
     private var services: [DeviceKey: HeatPumpService]
     /// Per active integration without an enabled device: a service that resolves one itself.
     private var unresolved: [String: HeatPumpService]
+    /// The enabled energy meters' services.
+    private var meters: [DeviceKey: EnergyMeterService] = [:]
+    /// Per active meter integration without an enabled meter: a service that signs in and lists.
+    private var meterAccounts: [String: EnergyMeterService] = [:]
 
     /// - Parameters:
     ///   - fixedIntegrations: the active integrations when they are not the user's choice (demo).
@@ -125,7 +138,19 @@ public actor DeviceHub {
         }
         energy = EnergyContextService(
             store: store, timeZone: timeZone, isDemo: isDemo, now: now, priceProvider: priceProvider,
-            weatherProvider: weatherProvider, houseProvider: houseProvider, referenceDevice: reference,
+            weatherProvider: weatherProvider, houseProvider: houseProvider,
+            houseMeter: {
+                // The first enabled meter of an active integration whose connection reports hours.
+                let runtimes = active.withLock { $0 }
+                for record in try store.devices() where record.enabled && record.kind == .energyMeter {
+                    guard let runtime = runtimes.first(where: { $0.integration.id == record.key.integration }),
+                        let driver = runtime.connection as? any EnergyMeterDriver
+                    else { continue }
+                    return HouseMeterSource(device: record.key, driver: driver, serviceName: runtime.integration.displayName)
+                }
+                return nil
+            },
+            referenceDevice: reference,
             referenceLocation: {
                 guard let key = try reference(),
                     let connection = active.withLock({ $0.first { $0.integration.id == key.integration }?.connection }),
@@ -137,20 +162,38 @@ public actor DeviceHub {
         // The services for what the registry holds now (no network).
         var services: [DeviceKey: HeatPumpService] = [:]
         var unresolved: [String: HeatPumpService] = [:]
+        var meters: [DeviceKey: EnergyMeterService] = [:]
+        var meterAccounts: [String: EnergyMeterService] = [:]
         let records = try store.devices()
         for runtime in runtimes {
             let enabled = records.filter { $0.enabled && $0.key.integration == runtime.integration.id }
-            for record in enabled {
-                services[record.key] = Self.makeService(
-                    runtime, device: record.key, store: store, energy: energy, timeZone: timeZone, now: now, sleep: sleep)
+            if let thermostat = runtime.connection as? any DeviceConnection & ThermostatDriver {
+                let heatPumps = enabled.filter { $0.kind != .energyMeter }
+                for record in heatPumps {
+                    services[record.key] = Self.makeService(
+                        runtime, thermostat, device: record.key, store: store, energy: energy, timeZone: timeZone, now: now,
+                        sleep: sleep)
+                }
+                if heatPumps.isEmpty {
+                    unresolved[runtime.integration.id] = Self.makeService(
+                        runtime, thermostat, device: nil, store: store, energy: energy, timeZone: timeZone, now: now, sleep: sleep)
+                }
             }
-            if enabled.isEmpty {
-                unresolved[runtime.integration.id] = Self.makeService(
-                    runtime, device: nil, store: store, energy: energy, timeZone: timeZone, now: now, sleep: sleep)
+            if let meter = runtime.connection as? any EnergyMeterDriver {
+                let enabledMeters = enabled.filter { $0.kind == .energyMeter }
+                for record in enabledMeters {
+                    meters[record.key] = Self.makeMeter(runtime, meter, device: record.key, store: store, energy: energy, timeZone: timeZone, now: now)
+                }
+                if enabledMeters.isEmpty {
+                    meterAccounts[runtime.integration.id] = Self.makeMeter(
+                        runtime, meter, device: nil, store: store, energy: energy, timeZone: timeZone, now: now)
+                }
             }
         }
         self.services = services
         self.unresolved = unresolved
+        self.meters = meters
+        self.meterAccounts = meterAccounts
         let primary = Self.primary(
             records: records, active: runtimes.map(\.integration.id), services: services, unresolved: unresolved)
         primaryAtLaunch = primary
@@ -163,17 +206,29 @@ public actor DeviceHub {
     }
 
     private static func makeService(
-        _ runtime: IntegrationRuntime, device: DeviceKey?, store: HistoryStore, energy: EnergyContextService, timeZone: TimeZone,
-        now: @escaping @Sendable () -> Date, sleep: @escaping @Sendable (TimeInterval) async -> Void
+        _ runtime: IntegrationRuntime, _ thermostat: any DeviceConnection & ThermostatDriver, device: DeviceKey?, store: HistoryStore,
+        energy: EnergyContextService, timeZone: TimeZone, now: @escaping @Sendable () -> Date,
+        sleep: @escaping @Sendable (TimeInterval) async -> Void
     ) -> HeatPumpService {
         HeatPumpService(
-            backend: runtime.connection, store: store, credentials: runtime.credentials, integration: runtime.integration,
+            backend: thermostat, store: store, credentials: runtime.credentials, integration: runtime.integration,
             policy: runtime.integration.rateLimitPolicy, timeZone: timeZone, now: now, sleep: sleep, local: runtime.local,
             energy: energy, device: device, resolutionScope: runtime.integration.id)
     }
 
-    private func makeService(_ runtime: IntegrationRuntime, device: DeviceKey?) -> HeatPumpService {
-        Self.makeService(runtime, device: device, store: store, energy: energy, timeZone: timeZone, now: now, sleep: sleep)
+    private func makeService(
+        _ runtime: IntegrationRuntime, _ thermostat: any DeviceConnection & ThermostatDriver, device: DeviceKey?
+    ) -> HeatPumpService {
+        Self.makeService(runtime, thermostat, device: device, store: store, energy: energy, timeZone: timeZone, now: now, sleep: sleep)
+    }
+
+    private static func makeMeter(
+        _ runtime: IntegrationRuntime, _ meter: any EnergyMeterDriver, device: DeviceKey?, store: HistoryStore,
+        energy: EnergyContextService, timeZone: TimeZone, now: @escaping @Sendable () -> Date
+    ) -> EnergyMeterService {
+        EnergyMeterService(
+            connection: meter, store: store, credentials: runtime.credentials, integration: runtime.integration, energy: energy,
+            device: device, timeZone: timeZone, now: now)
     }
 
     /// The first enabled device's service in registry order, else the first active integration's
@@ -204,7 +259,7 @@ public actor DeviceHub {
         return records.compactMap { record in
             guard let runtime = runtimes.first(where: { $0.integration.id == record.key.integration }) else { return nil }
             return DeviceDescriptor(
-                key: record.key, name: record.displayName, kind: record.kind, capabilities: runtime.connection.capabilities,
+                key: record.key, name: record.displayName, kind: record.kind, capabilities: runtime.connection.capabilities(of: record.summary),
                 isEnabled: record.enabled)
         }
     }
@@ -223,7 +278,15 @@ public actor DeviceHub {
 
     /// The service of an enabled device, by kind.
     public func service(for key: DeviceKey) async throws -> DeviceService? {
-        try await heatPumpService(for: key).map(DeviceService.heatPump)
+        _ = try await reconcile()
+        if let service = services[key] { return .heatPump(service) }
+        return meters[key].map(DeviceService.energyMeter)
+    }
+
+    /// The energy meter service of an enabled meter.
+    public func meterService(for key: DeviceKey) async throws -> EnergyMeterService? {
+        _ = try await reconcile()
+        return meters[key]
     }
 
     /// The heat pump service of an enabled device.
@@ -237,10 +300,24 @@ public actor DeviceHub {
         catalog.first { $0.id == key.integration }
     }
 
-    /// Turns a device on or off. A disabled device keeps its data but has no service.
-    public func setEnabled(_ enabled: Bool, for key: DeviceKey) async throws {
+    /// Turns a device on or off. A disabled device keeps its data but has no service. Turning off
+    /// the device price control steers while it is on first turns price control off, which sets
+    /// that device's temperature back (as choosing another device does); returns that restore's
+    /// outcome, or nil.
+    @discardableResult
+    public func setEnabled(_ enabled: Bool, for key: DeviceKey) async throws -> ChangeOutcome? {
+        let outcome = enabled ? nil : try await stopPriceControl(on: [key])
         try store.setDeviceEnabled(enabled, device: key)
         _ = try await reconcile()
+        return outcome
+    }
+
+    /// Turns price control off (restoring the temperature) when it is on and steers one of `keys`.
+    private func stopPriceControl(on keys: [DeviceKey]) async throws -> ChangeOutcome? {
+        guard let controlled = try await priceControlDevice(), keys.contains(controlled), let service = services[controlled],
+            try await service.priceControlSettings().enabled
+        else { return nil }
+        return try await service.disablePriceControl()
     }
 
     /// Gives a device the user's own name; nil or empty goes back to the integration's name.
@@ -274,41 +351,110 @@ public actor DeviceHub {
         }
         var next: [DeviceKey: HeatPumpService] = [:]
         var nextUnresolved: [String: HeatPumpService] = [:]
+        var nextMeters: [DeviceKey: EnergyMeterService] = [:]
+        var nextAccounts: [String: EnergyMeterService] = [:]
         for runtime in runtimes {
             let id = runtime.integration.id
             let enabled = records.filter { $0.enabled && $0.key.integration == id }
-            for record in enabled {
-                if let service = byDevice[record.key] {
-                    next[record.key] = service
-                } else if let service = unresolved[id], try await service.currentDevice() == record.key {
-                    await service.pin(to: record.key)
-                    next[record.key] = service
-                } else {
-                    next[record.key] = makeService(runtime, device: record.key)
+            if let thermostat = runtime.connection as? any DeviceConnection & ThermostatDriver {
+                let heatPumps = enabled.filter { $0.kind != .energyMeter }
+                for record in heatPumps {
+                    if let service = byDevice[record.key] {
+                        next[record.key] = service
+                    } else if let service = unresolved[id], try await service.currentDevice() == record.key {
+                        await service.pin(to: record.key)
+                        next[record.key] = service
+                    } else {
+                        next[record.key] = makeService(runtime, thermostat, device: record.key)
+                    }
+                }
+                if heatPumps.isEmpty { nextUnresolved[id] = unresolved[id] ?? makeService(runtime, thermostat, device: nil) }
+            }
+            if let meter = runtime.connection as? any EnergyMeterDriver {
+                let enabledMeters = enabled.filter { $0.kind == .energyMeter }
+                for record in enabledMeters {
+                    nextMeters[record.key] =
+                        meters[record.key]
+                        ?? Self.makeMeter(runtime, meter, device: record.key, store: store, energy: energy, timeZone: timeZone, now: now)
+                }
+                if enabledMeters.isEmpty {
+                    nextAccounts[id] =
+                        meterAccounts[id]
+                        ?? Self.makeMeter(runtime, meter, device: nil, store: store, energy: energy, timeZone: timeZone, now: now)
                 }
             }
-            if enabled.isEmpty { nextUnresolved[id] = unresolved[id] ?? makeService(runtime, device: nil) }
         }
         services = next
         unresolved = nextUnresolved
+        meters = nextMeters
+        meterAccounts = nextAccounts
         let primary = Self.primary(records: records, active: runtimes.map(\.integration.id), services: next, unresolved: nextUnresolved)
         if let name = primary?.serviceName { HeatPumpError.serviceName = name }
         return records
     }
 
-    /// Every service of an integration (its devices', or its unresolved one).
-    private func services(of id: String) -> [HeatPumpService] {
-        services.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (unresolved[id].map { [$0] } ?? [])
+    /// Every account-capable service of an integration (its devices', or its unresolved one).
+    private func accounts(of id: String) -> [any DeviceAccount] {
+        let heatPumps: [any DeviceAccount] =
+            services.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (unresolved[id].map { [$0] } ?? [])
+        let meters: [any DeviceAccount] =
+            self.meters.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (meterAccounts[id].map { [$0] } ?? [])
+        return heatPumps + meters
     }
 
     /// The service that speaks for an integration's account: its first device's (registry
     /// order), else its unresolved one.
-    private func anyService(of id: String) -> HeatPumpService? {
+    private func anyService(of id: String) -> (any DeviceAccount)? {
         let order = (try? store.devices()) ?? []
-        if let record = order.first(where: { $0.enabled && $0.key.integration == id }), let service = services[record.key] {
-            return service
+        for record in order where record.enabled && record.key.integration == id {
+            if let service = services[record.key] { return service }
+            if let meter = meters[record.key] { return meter }
         }
-        return unresolved[id] ?? services(of: id).first
+        return unresolved[id] ?? meterAccounts[id] ?? accounts(of: id).first
+    }
+
+    // MARK: Discovery
+
+    /// `fetch_state` name of an integration's daily device discovery.
+    static let discoveryName = "discovery"
+    /// How often each integration's device list is checked for new devices.
+    public static let discoveryInterval: TimeInterval = 86_400
+
+    /// Registers devices that appeared on an account (enabled) and disables the ones it no longer
+    /// lists, at most once a day per integration: from the listing the connection fetched anyway
+    /// when it has one, else with one listing request under the integration's spacing. Nothing in
+    /// demo mode. Returns whether the registry may have changed.
+    @discardableResult
+    public func discoverDevices() async throws -> Bool {
+        guard !isDemo else { return false }
+        _ = try await reconcile()
+        var changed = false
+        for runtime in runtimes {
+            let id = runtime.integration.id
+            let key = HistoryStore.fetchKey(Self.discoveryName, integration: id)
+            let t = now()
+            if let last = try store.fetchState(key: key)?.lastSuccess, t.timeIntervalSince(last) < Self.discoveryInterval { continue }
+            guard let account = anyService(of: id), await account.hasCredentials() else { continue }
+            if let listed = await runtime.connection.recentListing(), !listed.isEmpty {
+                _ = try store.syncDevices(listed, integration: id)
+            } else if try await account.refreshDeviceList() == nil {
+                continue
+            }
+            try store.recordFetchSuccess(key: key, now: t)
+            changed = true
+        }
+        if changed { _ = try await reconcile() }
+        return changed
+    }
+
+    /// The integrations whose sign-in values are shared with the price source (the price token was
+    /// saved or tested in Settings → Electricity price): lifts their "credentials rejected" stop
+    /// and forgets the cached answer to "are credentials stored?".
+    public func sharedCredentialsChanged() async throws {
+        for runtime in runtimes where runtime.integration.credentialMapping.isShared {
+            try store.clearCredentialsRejected(integration: runtime.integration.id)
+            for account in accounts(of: runtime.integration.id) { await account.forgetCredentialCache() }
+        }
     }
 
     // MARK: Integrations
@@ -346,11 +492,14 @@ public actor DeviceHub {
         return try await signIn(integration: id, values: credentials)
     }
 
-    /// Stops using an integration: forgets its sign-in values and session and drops its services.
-    /// Its devices keep their data and come back when the integration is added again.
+    /// Stops using an integration: forgets its sign-in values and session (unless they are shared
+    /// with the price source, `CredentialMapping.isShared`) and drops its services. Its devices
+    /// keep their data and come back when the integration is added again.
     public func removeIntegration(id: String) async throws {
         guard fixedIntegrations == nil else { throw HeatPumpError.validation(L10n.tr("Not available in demo mode.")) }
-        if let service = anyService(of: id) { try await service.signOut() }
+        _ = try await stopPriceControl(on: try await devices().filter { $0.integrationId == id }.map(\.key))
+        // Values shared with the price source stay; signing out deletes them.
+        if let service = anyService(of: id), runtime(id)?.integration.credentialMapping.isShared != true { try await service.signOut() }
         active.withLock { $0.removeAll { $0.integration.id == id } }
         try saveActiveIntegrations()
         _ = try await reconcile()
@@ -370,7 +519,7 @@ public actor DeviceHub {
         _ = try await reconcile()
         guard let service = anyService(of: id) else { throw HeatPumpError.notSupported }
         let result = try await service.signIn(values)
-        for other in services(of: id) where other !== service { await other.forgetCredentialCache() }
+        for other in accounts(of: id) where other !== service { await other.forgetCredentialCache() }
         _ = try await reconcile()
         return result
     }
@@ -379,7 +528,7 @@ public actor DeviceHub {
     public func signOut(integration id: String) async throws {
         guard let service = anyService(of: id) else { return }
         try await service.signOut()
-        for other in services(of: id) where other !== service { await other.forgetCredentialCache() }
+        for other in accounts(of: id) where other !== service { await other.forgetCredentialCache() }
     }
 
     // MARK: Price control
@@ -429,6 +578,9 @@ public actor DeviceHub {
         _ = try await reconcile()
         for (_, service) in services.sorted(by: { $0.key < $1.key }) {
             try await service.seedDemoHistoryIfNeeded()
+        }
+        for (_, meter) in meters.sorted(by: { $0.key < $1.key }) {
+            try await meter.seedDemoIfNeeded()
         }
     }
 }

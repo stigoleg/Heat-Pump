@@ -32,6 +32,8 @@ public enum Capability: String, Sendable, Codable, CaseIterable, Hashable {
         if connection is any WeeklyScheduleDriver { set.insert(.weeklySchedule) }
         if connection is any FirmwareDriver { set.insert(.firmwareUpdates) }
         if connection is any DeviceLocationReporting { set.insert(.location) }
+        if connection is any EnergyMeterDriver { set.insert(.energyLog) }
+        if connection is any LivePowerDriver { set.insert(.livePower) }
         return set
     }
 }

@@ -12,13 +12,16 @@ func instructions(for integration: any Integration, devices: [DeviceDescriptor] 
         let unit = hub?.integration(for: device.key)?.unitDescription ?? device.kind.rawValue
         return "\(device.name) (\(device.key.rawValue), \(unit))"
     }
+    let meter =
+        devices.contains { $0.kind == .energyMeter }
+        ? " get_meter_status gives the home's energy meter: live power and today's use and cost; get_house_consumption reads the house's use from it." : ""
     return baseInstructions(for: integration, opening: "Tools for the user's \(devices.count) devices: \(list.joined(separator: "; ")).")
         + " " + """
         Every tool about a device takes an optional device argument: the device's key or name from \
         list_devices. When it is left out and more than one device could answer, the tool returns an \
         error listing the choices; ask the user which device they mean when it is not clear. get_prices \
         is shared by all devices.
-        """
+        """ + meter
 }
 
 private func baseInstructions(for integration: any Integration, opening: String? = nil) -> String {
@@ -91,6 +94,14 @@ func runServer(hub: DeviceHub, approver: any ChangeApprover) async throws {
             resources: .init(subscribe: false, listChanged: false),
             tools: .init(listChanged: false)))
     let router = ToolRouter(hub: hub, approver: approver)
+    // The heat pump's documents, then those of an enabled meter's integration.
+    var integrations: [any Integration] = [service.integration]
+    for device in try await hub.devices() where device.kind == .energyMeter {
+        if let integration = hub.integration(for: device.key), !integrations.contains(where: { $0.id == integration.id }) {
+            integrations.append(integration)
+        }
+    }
+    let knowledge = Knowledge(integrations: integrations)
 
     await server.withMethodHandler(ListTools.self) { _ in
         ListTools.Result(tools: await router.tools())
@@ -100,14 +111,14 @@ func runServer(hub: DeviceHub, approver: any ChangeApprover) async throws {
     }
     await server.withMethodHandler(ListResources.self) { _ in
         ListResources.Result(
-            resources: service.knowledge.all().map {
+            resources: knowledge.all().map {
                 Resource(name: $0.name, uri: $0.uri, title: $0.title, description: L10n.tr("Knowledge document"), mimeType: "text/markdown")
             })
     }
     await server.withMethodHandler(ReadResource.self) { params in
         guard let name = params.uri.split(separator: "/").last.map(String.init),
             params.uri.hasPrefix("varmepumpe://knowledge/"),
-            let document = service.knowledge.document(named: name)
+            let document = knowledge.document(named: name)
         else {
             throw MCPError.invalidParams(L10n.format("Unknown resource: %@", params.uri))
         }

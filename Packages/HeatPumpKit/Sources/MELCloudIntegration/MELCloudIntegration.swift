@@ -57,7 +57,7 @@ public struct MELCloudIntegration: Integration {
     public var rateLimitPolicy: RateLimitPolicy { .standard }
 
     /// Needs `context.credentials`; the device object is shared through `context.store`.
-    public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver {
+    public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection {
         guard let credentials = context.credentials else { throw HeatPumpError.missingCredentials }
         return MELCloudClassicBackend(credentials: credentials, rawCache: context.store)
     }

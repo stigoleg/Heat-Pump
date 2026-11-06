@@ -54,6 +54,7 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 - **Borte hjemmefra** – frostsikring og feriemodus.
 - **Lokal tilkobling** – leser effekt, kompressor, avriming og en nøyaktig strømmåler direkte fra Wi-Fi-modulen på hjemmenettet. Bare lesing.
 - **Husets strømforbruk** – fra Tibber, med varmepumpens andel.
+- **Strømmåler (Tibber)** – valgfritt: legg til Tibber under Innstillinger → Konto → Legg til integrasjon … så vises Tibber-hjemmet ditt som en enhet med effekt nå (med Tibber Pulse eller Watty), dagens forbruk og kostnad, og historikk per time og døgn. Den bruker samme nøkkel som Tibber-prisene.
 - **Claude** – innebygd MCP-server med 25 verktøy, en helsesjekk og kunnskapsdokumenter om vedlikehold og feilkoder.
 - **Lys og mørk modus** – med ett klikk i verktøylinjen eller ⌘⇧L.
 - **Norsk og engelsk** – følger språket i macOS, eller velges under Innstillinger → Generelt → Språk.
@@ -213,7 +214,7 @@ Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste ju
 - **Claude leser fritt, men endrer bare med godkjenning** i vinduet på Macen. Alle endringer logges med kilde (app, Claude eller prisstyring), gammel og ny verdi, begrunnelse og resultat, og vises under Claude-aktivitet.
 - **Høflig mot MELCloud.** Status hentes høyst hvert minutt og gjenbrukes i 10 minutter. Høyst 12 endringer per time med minst 5 sekunder mellom. Ved «for mye trafikk» (HTTP 429) stopper all trafikk til sperren er over, og ved avvist passord stopper all henting til ny innlogging er lagret.
 - **Hemmeligheter** (MELCloud-innlogging, økt og Tibber-nøkkel) ligger i macOS-nøkkelringen, aldri i klartekst på disk.
-- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel), hvakosterstrommen.no (priser), Apple Kart (stedssøk i innstillingene) og GitHub (nye versjoner, én gang i døgnet). Ingen analyse eller sporing.
+- **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel; effekt nå over én tilkobling mens appen kjører, bare med strømmåleren slått på), hvakosterstrommen.no (priser), Apple Kart (stedssøk i innstillingene) og GitHub (nye versjoner, én gang i døgnet). Ingen analyse eller sporing.
 - **Ingen offisiell feilkodetabell** for MSZ-RW er offentlig. Forklaringene av feilkoder er derfor merket med usikkerhet.
 
 Varmepumpe er ikke laget av eller tilknyttet Mitsubishi Electric. MELCloud er et varemerke for Mitsubishi Electric.
@@ -260,7 +261,8 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 | `VARMEPUMPE_LANGUAGE` | `en` eller `nb`, uten å lagre valget (også for MCP-serveren) |
 | `VARMEPUMPE_SETTINGS_TAB` | Åpner Innstillinger på fanen: generelt, konto, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | Simulert kompressor går i korte runder |
-| `VARMEPUMPE_DEMO_DEVICES` | Simulerte enheter, kommaseparert (standard `heatpump`); `heatpump,heatpump` gir en varmepumpe til («Soverom (simulert)») |
+| `VARMEPUMPE_DEMO_DEVICES` | Simulerte enheter, kommaseparert (standard `heatpump`); `heatpump,heatpump` gir en varmepumpe til («Soverom (simulert)»), `heatpump,meter` et simulert Tibber-hjem («Hjemme (simulert)», nøkkel `demo-meter:home`) |
+| `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Åpner Legg til integrasjon på Konto-fanen (skjermbilder; med `VARMEPUMPE_SETTINGS_TAB=konto`) |
 
 </details>
 

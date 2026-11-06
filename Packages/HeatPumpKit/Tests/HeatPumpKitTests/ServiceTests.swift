@@ -3,6 +3,7 @@ import Testing
 @testable import HeatPumpKit
 @testable import DemoIntegration
 @testable import MELCloudIntegration
+@testable import TibberIntegration
 
 @Suite("Setpoint validation")
 struct ValidationTests {
@@ -297,7 +298,9 @@ struct KnowledgeTests {
 struct CompiledKnowledgeTests {
     /// The compiled documents of every target with a `Knowledge` folder. A new target with
     /// documents must be added here.
-    static let compiled: [String: KnowledgeSource] = ["MELCloudIntegration": MELCloudIntegration().knowledge]
+    static let compiled: [String: KnowledgeSource] = [
+        "MELCloudIntegration": MELCloudIntegration().knowledge, "TibberIntegration": TibberIntegration().knowledge,
+    ]
 
     static let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

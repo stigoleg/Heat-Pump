@@ -50,8 +50,8 @@ public enum DeviceNavigation {
                 }
             }
         case .energyMeter:
-            // The meter's screens come with its integration.
-            return []
+            // Live power and today on Overview, hours and days on History.
+            return [.overview, .history]
         }
     }
 

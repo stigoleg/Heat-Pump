@@ -18,7 +18,7 @@ struct DeviceNavigationTests {
         #expect(DeviceNavigation.screens(for: nil) == DeviceScreen.allCases)
         #expect(DeviceNavigation.screens(kind: .airToAirHeatPump, capabilities: [.thermostat]) == [.overview, .control, .history, .health])
         #expect(DeviceNavigation.screens(kind: .airToAirHeatPump, capabilities: []) == [.overview, .history, .health])
-        #expect(DeviceNavigation.screens(kind: .energyMeter, capabilities: [.energyLog]).isEmpty)
+        #expect(DeviceNavigation.screens(kind: .energyMeter, capabilities: [.energyLog]) == [.overview, .history])
     }
 
     @Test func groupsStartAtTwoDevices() {

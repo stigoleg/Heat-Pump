@@ -1,0 +1,1 @@
+{"errors":[{"message":"Could not find a home with the given id","locations":[{"line":1,"column":12}],"path":["viewer","home"],"extensions":{"code":"HOME_NOT_FOUND"}}],"data":{"viewer":{"home":null}}}

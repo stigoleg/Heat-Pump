@@ -40,11 +40,16 @@ struct LoginForm: View {
     @State private var result: (ok: Bool, message: String)?
     private let onSuccess: () -> Void
 
-    init(integration: any Integration, email: String = "", adding: Bool = false, onSuccess: @escaping () -> Void = {}) {
+    /// `stored`: values to start from (a token already saved for the electricity price).
+    init(
+        integration: any Integration, email: String = "", stored: [String: String] = [:], adding: Bool = false,
+        onSuccess: @escaping () -> Void = {}
+    ) {
         self.integration = integration
         self.adding = adding
         _values = State(initialValue: Dictionary(
-            integration.credentialFields.filter { $0.kind == .email }.map { ($0.id, email) }, uniquingKeysWith: { a, _ in a }))
+            integration.credentialFields.filter { $0.kind == .email }.map { ($0.id, email) }, uniquingKeysWith: { a, _ in a })
+            .merging(stored) { _, new in new })
         self.onSuccess = onSuccess
     }
 
@@ -99,6 +104,12 @@ struct LoginForm: View {
         case .token:
             SecureField("Token", text: value)
         }
+        if let url = field.helpURL {
+            Link(destination: url) {
+                Text("Get it at \(url.host() ?? url.absoluteString)")
+            }
+            .font(.callout)
+        }
     }
 }
 
@@ -119,6 +130,10 @@ struct AccountSettings: View {
     }
 
     private var multipleIntegrations: Bool { app.activeIntegrations.count >= 2 }
+
+    private var addable: [any Integration] {
+        app.addableIntegrations.isEmpty ? app.devAddableIntegrations : app.addableIntegrations
+    }
 
     var body: some View {
         Form {
@@ -142,9 +157,15 @@ struct AccountSettings: View {
             if allDevices.count >= 2 || multipleIntegrations {
                 DevicesSection(devices: allDevices) { allDevices = await app.allDevices() }
             }
-            if !app.addableIntegrations.isEmpty {
+            if !addable.isEmpty {
+                // Quiet, below everything else: the tab looks as before.
                 Section {
-                    Button("Add Integration…") { addingIntegration = true }
+                } footer: {
+                    HStack {
+                        Spacer()
+                        Button("Add Integration…") { addingIntegration = true }
+                            .buttonStyle(.borderless)
+                    }
                 }
             }
         }
@@ -155,7 +176,11 @@ struct AccountSettings: View {
             allDevices = await app.allDevices()
         }
         .sheet(isPresented: $addingIntegration) {
-            AddIntegrationSheet(integrations: app.addableIntegrations)
+            AddIntegrationSheet(integrations: addable)
+        }
+        .task {
+            // Dev only (screenshots): open the sheet.
+            if !app.devAddableIntegrations.isEmpty { addingIntegration = true }
         }
         .confirmationDialog("Sign out of \(model.serviceName)?", isPresented: $confirmingSignOut) {
             Button("Sign Out", role: .destructive) {

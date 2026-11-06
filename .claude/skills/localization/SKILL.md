@@ -128,6 +128,7 @@ Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.
 | cache | hurtigbuffer |
 | Refresh Now, Check for Updates…, Install and Restart, Restart Now | Oppdater nå, Se etter oppdateringer …, Installer og start på nytt, Start på nytt nå |
 | integration, device, energy meter, water heater | integrasjon, enhet, strømmåler, varmtvannsbereder |
+| live power (meter), real-time meter reader, token (Tibber) | effekt nå, sanntidsmåler, nøkkel |
 | Home (sidebar group with two or more devices), Devices, Add Integration…, Refresh Device List | Hjem, Enheter, Legg til integrasjon …, Oppdater enhetslisten |
 
 Add new terms here when you introduce them.

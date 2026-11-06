@@ -1,12 +1,12 @@
 import Foundation
 
-/// One hour of the whole house's electricity use as Tibber reports it.
+/// One hour of a meter's electricity use (the whole house's) as its service reports it.
 public struct HouseHour: Codable, Sendable, Equatable {
     public var hour: Date
     public var kWh: Double
-    /// What Tibber says the hour cost (NOK); a cross-check, not used for the app's own cost.
+    /// What the service says the hour cost (NOK); a cross-check, not used for the app's own cost.
     public var costNok: Double?
-    /// Tibber's `unitPrice` in øre/kWh.
+    /// The service's unit price in øre/kWh.
     public var unitPriceOre: Double?
 
     public init(hour: Date, kWh: Double, costNok: Double?, unitPriceOre: Double?) {
@@ -21,59 +21,6 @@ public struct HouseHour: Codable, Sendable, Equatable {
 public protocol HouseConsumptionProviding: Sendable {
     /// The last `lastHours` finished hours (Tibber caps it at 744).
     func fetchConsumption(lastHours: Int) async throws -> [HouseHour]
-}
-
-/// Tibber `viewer.homes[].consumption(resolution: HOURLY, last: N)`; nodes `from, to, unitPrice,
-/// unitPriceVAT, consumption, cost, currency`. Not real-time: the last hours fill in late.
-/// Rate limit about 100 requests per 5 minutes per IP; we ask at most hourly.
-public struct TibberConsumptionProvider: HouseConsumptionProviding {
-    private let token: String
-    private let transport: any HTTPTransport
-
-    public init(token: String, transport: any HTTPTransport = URLSessionTransport()) {
-        self.token = token
-        self.transport = transport
-    }
-
-    static func query(lastHours: Int) -> String {
-        let last = min(max(lastHours, 1), 744)
-        return "{ viewer { homes { consumption(resolution: HOURLY, last: \(last)) { nodes { from to unitPrice unitPriceVAT consumption cost currency } } } } }"
-    }
-
-    public func fetchConsumption(lastHours: Int) async throws -> [HouseHour] {
-        var request = URLRequest(url: TibberPriceProvider.endpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 20
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Varmepumpe/1.0 (macOS)", forHTTPHeaderField: "User-Agent")
-        request.httpBody = try JSONEncoder().encode(JSONValue.object(["query": .string(Self.query(lastHours: lastHours))]))
-        let (data, response): (Data, HTTPURLResponse)
-        do { (data, response) = try await transport.send(request) } catch let error as HeatPumpError {
-            if case .network(let detail) = error { throw PriceError.network(detail) }
-            throw PriceError.network(error.localizedDescription)
-        }
-        if response.statusCode == 401 || response.statusCode == 403 { throw PriceError.unauthorized }
-        guard (200..<300).contains(response.statusCode) else { throw PriceError.http(status: response.statusCode) }
-        return try Self.parse(data)
-    }
-
-    /// Hours from the first home with consumption data; hours Tibber has not finished (null) are skipped.
-    static func parse(_ data: Data) throws -> [HouseHour] {
-        let json: JSONValue
-        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding(L10n.tr("invalid JSON")) }
-        if let errors = json["errors"]?.array, !errors.isEmpty {
-            let message = errors.compactMap { $0["message"]?.string }.joined(separator: "; ")
-            if message.lowercased().contains("unauthor") || message.lowercased().contains("token") { throw PriceError.unauthorized }
-            throw PriceError.server(message)
-        }
-        let homes = json["data"]?["viewer"]?["homes"]?.array ?? []
-        let nodes = homes.compactMap { $0["consumption"]?["nodes"]?.array }.first { !$0.isEmpty } ?? []
-        return nodes.compactMap { node in
-            guard let from = PriceAggregation.iso(node["from"]?.string), let kWh = node["consumption"]?.double else { return nil }
-            return HouseHour(hour: from, kWh: kWh, costNok: node["cost"]?.double, unitPriceOre: node["unitPrice"]?.double.map { $0 * 100 })
-        }
-    }
 }
 
 /// One hour: the house and the heat pump.

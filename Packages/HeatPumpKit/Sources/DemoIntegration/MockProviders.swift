@@ -43,15 +43,20 @@ public struct MockHouseConsumptionProvider: HouseConsumptionProviding {
     public func fetchConsumption(lastHours: Int) async throws -> [HouseHour] {
         let current = (now().timeIntervalSince1970 / 3600).rounded(.down) * 3600
         return (1...min(max(lastHours, 1), 744)).map { back -> HouseHour in
-            let start = Date(timeIntervalSince1970: current - Double(back) * 3600)
-            let hourOfDay = Double(Calendar.current.component(.hour, from: start))
-            let base = 0.35 + 0.9 * exp(-pow((hourOfDay - 7.5) / 1.5, 2)) + 1.3 * exp(-pow((hourOfDay - 18) / 2.2, 2))
-            let pump = stride(from: 0.0, to: 3600, by: 900).map { MockLocalSimulation.averageW(at: start.addingTimeInterval($0 + 450)) }
-                .reduce(0, +) / 4 / 1000
-            let kWh = ((base + pump) * 100).rounded() / 100
-            let ore = 85 + 35 * sin(start.timeIntervalSince1970 / 86_400 * 0.9) + 40 * exp(-pow((hourOfDay - 18) / 2.0, 2))
-            return HouseHour(hour: start, kWh: kWh, costNok: (kWh * ore * 1.25).rounded() / 100, unitPriceOre: ore * 1.25)
+            Self.hour(starting: Date(timeIntervalSince1970: current - Double(back) * 3600))
         }
+    }
+
+    /// The simulated house's use in the hour starting at `start` (a pure function of time, so the
+    /// simulated meter's live power and hours agree with it).
+    public static func hour(starting start: Date) -> HouseHour {
+        let hourOfDay = Double(Calendar.current.component(.hour, from: start))
+        let base = 0.35 + 0.9 * exp(-pow((hourOfDay - 7.5) / 1.5, 2)) + 1.3 * exp(-pow((hourOfDay - 18) / 2.2, 2))
+        let pump = stride(from: 0.0, to: 3600, by: 900).map { MockLocalSimulation.averageW(at: start.addingTimeInterval($0 + 450)) }
+            .reduce(0, +) / 4 / 1000
+        let kWh = ((base + pump) * 100).rounded() / 100
+        let ore = 85 + 35 * sin(start.timeIntervalSince1970 / 86_400 * 0.9) + 40 * exp(-pow((hourOfDay - 18) / 2.0, 2))
+        return HouseHour(hour: start, kWh: kWh, costNok: (kWh * ore * 1.25).rounded() / 100, unitPriceOre: ore * 1.25)
     }
 }
 

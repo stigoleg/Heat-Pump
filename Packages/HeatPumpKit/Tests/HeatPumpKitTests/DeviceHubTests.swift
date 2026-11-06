@@ -15,7 +15,7 @@ struct RenamedDemoIntegration: Integration {
     var credentialFields: [CredentialField] { [] }
     var rateLimitPolicy: RateLimitPolicy { .standard }
     var errorCodes: any ErrorCodeExplaining { base.errorCodes }
-    func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver {
+    func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection {
         try base.makeConnection(context)
     }
 }

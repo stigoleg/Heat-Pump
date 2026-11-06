@@ -76,6 +76,12 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         try await refreshListing().compactMap(MELCloudClassicParser.summary)
     }
 
+    /// The listing `fetchState` refreshes every `listingMaxAge` anyway (device discovery).
+    public func recentListing() async -> [DeviceSummary]? {
+        guard let listing, now().timeIntervalSince(listing.fetchedAt) < 3600 else { return nil }
+        return listing.devices.compactMap(MELCloudClassicParser.summary)
+    }
+
     public func fetchState(device: DeviceKey) async throws -> DeviceState {
         let deviceId = try Self.deviceId(device)
         var devices = listing.flatMap { now().timeIntervalSince($0.fetchedAt) < listingMaxAge ? $0.devices : nil }

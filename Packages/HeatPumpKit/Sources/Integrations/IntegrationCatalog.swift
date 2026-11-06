@@ -2,13 +2,19 @@ import DemoIntegration
 import Foundation
 import HeatPumpKit
 import MELCloudIntegration
+import TibberIntegration
 
 /// The only list of integrations, and the factory the app and the MCP helper start from.
 public enum IntegrationCatalog {
     public static let melcloud = MELCloudIntegration()
+    public static let tibber = TibberIntegration()
     public static let demo = DemoIntegration()
+    public static let demoMeter = DemoMeterIntegration()
 
-    public static let all: [any Integration] = [melcloud, demo]
+    public static let all: [any Integration] = [melcloud, tibber, demo, demoMeter]
+
+    /// The simulated integrations (demo mode only; never offered to add).
+    public static let simulated: Set<String> = [demo.id, demoMeter.id]
 
     /// True when `VARMEPUMPE_BACKEND=mock` selects the demo integration.
     public static func isDemo(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
@@ -20,9 +26,9 @@ public enum IntegrationCatalog {
         isDemo(environment: environment) ? demo : melcloud
     }
 
-    /// The hub for this process. Demo mode (`VARMEPUMPE_BACKEND=mock`): the demo integration only,
-    /// with simulated providers and the units `VARMEPUMPE_DEMO_DEVICES` asks for (registered at
-    /// once, no network). Otherwise the active integrations the user chose (`integrations` in
+    /// The hub for this process. Demo mode (`VARMEPUMPE_BACKEND=mock`): the demo integration (and
+    /// the simulated Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`) only, with simulated
+    /// providers and the units `VARMEPUMPE_DEMO_DEVICES` asks for (registered at once, no network). Otherwise the active integrations the user chose (`integrations` in
     /// `app_settings`; MELCloud until then) with keychain credentials, real price, weather and house
     /// providers and the local adapter on the network. The database comes from
     /// `VARMEPUMPE_DB_PATH` or Application Support; it is opened with this process's integration,
@@ -33,9 +39,17 @@ public enum IntegrationCatalog {
         if isDemo(environment: environment) {
             let units = DemoUnit.units(environment: environment)
             try store.syncDevices(MockBackend.listing(units), integration: demo.id)
+            let meter = DemoUnit.wantsMeter(environment: environment)
+            if meter {
+                try store.syncDevices(MockMeter.listing, integration: demoMeter.id)
+                try store.setDeviceEnabled(true, device: MockMeter.device)
+            } else if try store.devices().contains(where: { $0.key == MockMeter.device }) {
+                try store.setDeviceEnabled(false, device: MockMeter.device)
+            }
             let local = LocalAccess.simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short")
+            let simulated = [demo.id] + (meter ? [demoMeter.id] : [])
             return try DeviceHub(
-                store: store, catalog: all, fixedIntegrations: [demo.id], defaultIntegrations: [demo.id], isDemo: true,
+                store: store, catalog: all, fixedIntegrations: simulated, defaultIntegrations: simulated, isDemo: true,
                 priceProvider: { _ in MockPriceProvider() }, weatherProvider: { _ in MockWeatherProvider() },
                 houseProvider: { MockHouseConsumptionProvider() },
                 makeRuntime: { integration in
@@ -59,7 +73,8 @@ public enum IntegrationCatalog {
                 METForecastProvider(
                     userAgent: METForecastProvider.userAgent(version: HeatPumpService.appVersion, contact: settings.contactEmail))
             },
-            // The token is read only when consumption is actually fetched (at most hourly).
+            // The token is read only when consumption is actually fetched (at most hourly); with an
+            // enabled Tibber meter the meter's own hours are used instead.
             houseProvider: { credentials.loadTibberToken().map { TibberConsumptionProvider(token: $0) } },
             makeRuntime: { integration in
                 let context = IntegrationContext(environment: environment, store: store, credentials: credentials)

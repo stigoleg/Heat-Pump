@@ -54,7 +54,8 @@ extension HistoryStore {
     }
 
     /// Inserts the device (enabled, last in order) when it is not in the registry; otherwise
-    /// updates its name and when it was last seen, and with `full` also its kind and metadata.
+    /// updates its name and when it was last seen, and with `full` also its kind and metadata. An
+    /// energy meter adopts the house's hours kept under `pendingMeterKey`.
     static func upsertDevice(_ device: DeviceSummary, seen: Date?, full: Bool, db: Database) throws {
         let json = full ? String(decoding: try JSONEncoder().encode(device.metadata), as: UTF8.self) : nil
         try db.execute(
@@ -72,6 +73,8 @@ extension HistoryStore {
                 device.key.rawValue, device.key.integration, device.kind.rawValue, device.name, device.key.nativeId, json,
                 seen, seen, full,
             ])
+        // The first meter takes over the house's hours fetched before any meter was known.
+        if full, device.kind == .energyMeter { try adoptPendingMeterHours(to: device.key, db: db) }
     }
 
     // MARK: Backup before device keys
@@ -81,10 +84,13 @@ extension HistoryStore {
 
     /// Where the copy taken before the device-key migration is kept: `<name>-pre-v12.sqlite`
     /// next to the database.
-    public static func backupPath(for path: String) -> String {
+    public static func backupPath(for path: String) -> String { backupPath(for: path, before: deviceKeyMigration) }
+
+    /// Where the copy taken before `migration` is kept: `<name>-pre-<migration>.sqlite`.
+    public static func backupPath(for path: String, before migration: String) -> String {
         let url = URL(fileURLWithPath: path)
         let name = url.deletingPathExtension().lastPathComponent
-        return url.deletingLastPathComponent().appending(path: "\(name)-pre-\(deviceKeyMigration).sqlite").path
+        return url.deletingLastPathComponent().appending(path: "\(name)-pre-\(migration).sqlite").path
     }
 
     /// Copies an existing database (one that has migrations but not the device-key one) with
@@ -94,7 +100,11 @@ extension HistoryStore {
     func backUpBeforeDeviceKeysIfNeeded(_ migrator: DatabaseMigrator) throws {
         let applied = try pool.read { db in try migrator.appliedIdentifiers(db) }
         guard !applied.isEmpty, !applied.contains(Self.deviceKeyMigration) else { return }
-        let backup = Self.backupPath(for: path)
+        try backUp(to: Self.backupPath(for: path))
+    }
+
+    /// Copies the database to `backup` once (see `backUpBeforeDeviceKeysIfNeeded`).
+    func backUp(to backup: String) throws {
         guard !FileManager.default.fileExists(atPath: backup) else { return }
         let partial = backup + ".partial-\(UUID().uuidString)"
         do {

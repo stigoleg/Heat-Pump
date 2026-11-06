@@ -117,7 +117,8 @@ public final class HistoryStore: Sendable {
     /// before device keys (v12) carry only the integration's own numeric device id; the
     /// migration builds their keys and namespaces their `fetch_state` keys with it. Opening a file
     /// that has such rows without it fails rather than guess. Before that migration runs on an
-    /// existing file, a copy is kept next to it (`backupPath(for:)`).
+    /// existing file, a copy is kept next to it (`backupPath(for:)`), and likewise before house
+    /// consumption became per meter (v14, `backupPath(for:before:)`).
     public init(path: String, legacyIntegration: String? = nil) throws {
         self.path = path
         let directory = URL(fileURLWithPath: path).deletingLastPathComponent()
@@ -128,6 +129,7 @@ public final class HistoryStore: Sendable {
         pool = try DatabasePool(path: path, configuration: config)
         let migrator = Self.migrator(legacyIntegration: legacyIntegration)
         try backUpBeforeDeviceKeysIfNeeded(migrator)
+        try backUpBeforeMetersIfNeeded(migrator)
         try migrator.migrate(pool)
     }
 
@@ -356,6 +358,10 @@ public final class HistoryStore: Sendable {
         migrator.registerMigration(Self.deviceScopeMigration) { db in
             // Per-device caches and fetch spacing, and the user's own device names.
             try Self.migrateToDeviceScope(db)
+        }
+        migrator.registerMigration(Self.meterMigration) { db in
+            // House consumption per energy meter, and live power per minute.
+            try Self.migrateToMeters(db)
         }
         return migrator
     }

@@ -3,6 +3,7 @@ import Synchronization
 import Testing
 @testable import HeatPumpKit
 @testable import DemoIntegration
+@testable import TibberIntegration
 
 /// Records the `last:` argument of each request and answers with fixed hours.
 final class FakeHouseProvider: HouseConsumptionProviding {

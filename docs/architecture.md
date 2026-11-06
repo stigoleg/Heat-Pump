@@ -21,7 +21,8 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 ```
 
 - **One entry point.** `DeviceHub` (`Packages/HeatPumpKit/Sources/HeatPumpKit/Hub`) holds one
-  `HeatPumpService` per enabled device (`Service/`), one connection per active integration and one
+  `HeatPumpService` per enabled heat pump and one `EnergyMeterService` per enabled energy meter
+  (`Service/`), one connection per active integration and one
   `EnergyContextService` (prices, weather, house consumption, price outlook) shared by all devices.
   The services are the only thing that talks to the network. The app and the MCP helper each build
   a hub (`IntegrationCatalog.makeHub`) and share the SQLite database and keychain, so rate limits,
@@ -48,16 +49,24 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   unit are spaced per device (`<integration>/<name>@<native id>`: reports, away, timer, firmware,
   local adapter), and the device caches in `app_settings` are per device
   (`<name>@<device key>`: away, weekly timer, firmware status, local connection). Migration v13
-  moved the old global copies to the then current device. Migration v12 converted older files (rows keyed by the
+  moved the old global copies to the then current device. Migration v14 made the house's
+  consumption per meter (`meter_hourly`, keyed by the meter; hours fetched with the price token
+  alone wait under the placeholder `house:meter` until the first meter adopts them, so the
+  numbers never change) and added `meter_live` (live power per minute, 48 hours), after copying
+  the file to `<name>-pre-v14.sqlite`. Migration v12 converted older files (rows keyed by the
   integration that opened the store, `IntegrationCatalog.makeService`) after copying the file to
   `<name>-pre-v12.sqlite` with SQLite's backup API.
 - **Credentials** (`CredentialStore`) are `CredentialValues` addressed through each integration's
   `CredentialMapping`. MELCloud keeps its original keychain items (`melcloud-credentials`,
   `melcloud-context-key`) so the access shared by app and helper survives; new integrations get
-  `<integration id>/<field>` items.
+  `<integration id>/<field>` items. Tibber maps its `token` field to the price token's item
+  (`tibber-token`, `isShared`): prices and the meter use one token, and removing the integration
+  keeps it.
 - **Providers** for electricity prices (Tibber, hvakosterstrommen.no), weather (MET Norway) and
-  house consumption (Tibber) are injected as closures, which is also how tests and demo mode
-  swap them.
+  house consumption (Tibber's token-only `TibberConsumptionProvider`) are injected as closures,
+  which is also how tests and demo mode swap them. With an enabled energy meter the house's
+  hours come from the meter's own driver instead (`EnergyContextService.houseMeter`), spaced per
+  meter (`<integration>/meter.hours@<native id>`) and shared with the meter's service.
 - **Local connection** (`Local/`) reads the Mitsubishi Wi-Fi adapter over the home network,
   read-only, for power, compressor and defrost data.
 - **Localization**: `L10n` resolves the language from the app's `AppleLanguages` (shared with the
@@ -73,7 +82,8 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 |---|---|
 | `HeatPumpKit` | The vendor-neutral core: service, store, models, health engine, pricing, weather, L10n. Names no vendor outside comments (`BoundaryTests`). |
 | `MELCloudIntegration` | `MELCloudIntegration: Integration`, the MELCloud Classic backend and parsers, the local adapter client (CN105), `ErrorCatalog`, `MELCloudHealthChecks` and the knowledge documents. |
-| `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents. |
+| `TibberIntegration` | Tibber homes as energy meters: `TibberConnection` (`EnergyMeterDriver`, `LivePowerDriver`), the GraphQL API (`TibberAPI`), the live socket client (`TibberLiveClient`, `graphql-transport-ws`, one socket for the app, never in the helper), the token-only house provider and the `energy-meter` knowledge document. The reference example for a new integration. |
+| `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents; `DemoMeterIntegration` (`demo-meter`, `MockMeter`) simulates a Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`. |
 | `Integrations` | `IntegrationCatalog`: the list of integrations, `current(environment:)` and `makeHub` (`makeService` is its primary service). |
 | `varmepumpe-mcp` | The MCP helper. |
 
@@ -91,8 +101,13 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 - **Health**: `healthChecks: HealthCheckProviding` for rules on the integration's own signals
   (including maintenance reminders), and `maintenanceTasks` for the maintenance tasks the unit has
   and their intervals.
-- **Credentials**: `credentialFields` and `credentialMapping` (keychain items, session item,
-  dev environment variables). `HealthEngine` runs the generic
+- **Connection**: `makeConnection` returns `any DeviceConnection`; its conformances decide what
+  the hub serves (`ThermostatDriver`: a `HeatPumpService` per heat pump; `EnergyMeterDriver`: an
+  `EnergyMeterService` per meter, `LivePowerDriver` for live power). `capabilities(of:)` gives a
+  device's own capabilities (live power only where Tibber reports a real-time reader), and
+  `recentListing()` lets the hub's daily discovery reuse a listing the connection fetched anyway.
+- **Credentials**: `credentialFields` (a field may carry a `helpURL`) and `credentialMapping`
+  (keychain items, session item, dev environment variables, `isShared`). `HealthEngine` runs the generic
   rules and asks the integration at fixed points, so findings keep their order.
 - **Knowledge**: `knowledge: KnowledgeSource`.
 - **Persisted identifiers**: `sourceTag` is stored with error-log entries and away settings.
@@ -107,12 +122,19 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   service's model, which keeps its model when the first sign-in finds the device.
 - **Device models** (`DeviceModels.swift`): `HeatPumpDeviceModel` (`@MainActor @Observable`) holds
   one heat pump's state, history, health, away modes, weekly timer, firmware, local connection,
-  debouncer and actions. Device screens read it from the environment
-  (`@Environment(HeatPumpDeviceModel.self)`) and app-wide data from `AppModel`.
+  debouncer and actions; `EnergyMeterDeviceModel` one meter's status, today, the last hour's live
+  minutes and its live stream (started while the app polls, stopped when the Mac sleeps or the
+  meter is turned off). Device screens read their model from the environment
+  (`@Environment(HeatPumpDeviceModel.self)`, `@Environment(EnergyMeterDeviceModel.self)`) and
+  app-wide data from `AppModel`. The meter's screens are `MeterOverviewView` and
+  `MeterHistoryView`, its Home card `MeterHomeCard`.
 - **Polling**: one loop, every 60 s. Devices are polled stalest first (`pollState`), then the
   shared syncs, then each device's slower reads (`pollDetails`), price control, the reloads and
   notifications (per device; with two or more the title names the device). An integration allows
-  one state fetch a minute for its account, so devices sharing one take turns.
+  one state fetch a minute for its account, so devices sharing one take turns. After each poll
+  the hub's `discoverDevices()` checks each integration's device list at most daily (from a
+  listing the connection fetched anyway when it has one): new devices are registered and
+  enabled, devices the account no longer lists are disabled.
 - **Routing** (`DeviceNavigation` in the kit, tested): `AppRoute.home(HomeScreen)` or
   `.device(DeviceKey?, DeviceScreen)` (nil: the primary device). With one device the sidebar is
   the flat list it always was; with two or more it has Home (overview of all devices, Forecast,
@@ -122,14 +144,20 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   them (with the model injected), its Home card and its Settings (today the local connection).
 - **Settings**: the sign-in form comes from the integration's `credentialFields`. With two or more
   integrations Account has a section per integration; with two or more devices a device list
-  (rename, turn on/off, refresh the list). "Add Integration…" appears only when the catalog has an
-  integration that is not active (the demo is never offered).
+  (rename, turn on/off, refresh the list). "Add Integration…" (a quiet button at the bottom of
+  Account) appears when the catalog has an integration that is not active (the simulated ones
+  are never offered); for Tibber the token saved for prices is filled in. Turning off (or
+  removing the integration of) price control's device first turns price control off, which sets
+  its temperature back (`DeviceHub.setEnabled`).
 
-**Adding a device kind** (e.g. the energy meter): a `DeviceService` case in the kit; its screens in
-`DeviceNavigation.screens(kind:capabilities:)`; a `final class …DeviceModel: DeviceModel` in the
-app, created in `AppModel.syncDevices()` from its `DeviceService` case; its screen views, Home card
-and Settings in `DeviceUIRegistry`. The compiler points at each switch over `DeviceService`,
-`DeviceKind` and `DeviceScreen` that needs a case.
+**Adding a device kind** (done for the energy meter, phase 5): a driver protocol and a service in
+the kit (`EnergyMeterDriver`, `EnergyMeterService`) and a `DeviceService` case the hub builds from
+the connection's conformance; its screens in `DeviceNavigation.screens(kind:capabilities:)`; a
+`final class …DeviceModel: DeviceModel` in the app, created in `AppModel.syncDevices()` from its
+`DeviceService` case; its screen views and Home card in `DeviceUIRegistry`; its MCP tools in the
+helper (`MeterTools`, kept apart from the heat pump's by `ToolCatalog.canAnswer`, which checks
+kind and capability). The compiler points at each switch over `DeviceService`, `DeviceKind` and
+`DeviceScreen` that needs a case.
 
 ### Known couplings (what the platform work removes)
 
@@ -197,10 +225,11 @@ Data (database, fetch status, blocks)
 - [ ] Prompt `helsesjekk`; resources `varmepumpe://knowledge/…` in the chosen language
 - [ ] With one device no `device` argument and no `list_devices` (catalog golden test); with two
   or more, both, and an error listing the choices when `device` is needed
+- [ ] `get_meter_status` only with an enabled energy meter; heat pump tools never ask to choose the meter
 
 **Developer hooks**
 - [ ] `VARMEPUMPE_BACKEND`, `VARMEPUMPE_DB_PATH`, `MELCLOUD_EMAIL`/`MELCLOUD_PASSWORD`,
   `VARMEPUMPE_APPROVAL`, `VARMEPUMPE_SCREEN`, `VARMEPUMPE_HISTORY_TAB`, `VARMEPUMPE_HISTORY_RANGE`,
   `VARMEPUMPE_SCROLL_TO`, `VARMEPUMPE_APPEARANCE`, `VARMEPUMPE_LANGUAGE`, `VARMEPUMPE_SETTINGS_TAB`,
-  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`
+  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`, `VARMEPUMPE_SETTINGS_SHEET`
 - [ ] `make demo`, `make l10n`, `make release`; CI and release workflows

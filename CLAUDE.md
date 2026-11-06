@@ -13,8 +13,8 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 |---|---|
 | `App/Sources` | SwiftUI app: `AppModel` (`@MainActor @Observable`, app-wide) with a model per device (`DeviceModels.swift`) and `DeviceUIRegistry`, one `XView.swift` per screen, Settings tabs, design system (`Theme.swift`, `DesignSystem.swift`, `ChartKit.swift`, `Components.swift`) |
 | `App/Resources` | String catalogs: `Localizable.xcstrings` (app), `HeatPumpKit.xcstrings` (package), `InfoPlist.xcstrings` |
-| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
-| `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `DemoIntegration`, `Integrations` | Integrations (backend, error codes, health rules, knowledge docs) and `IntegrationCatalog`; see the module map in docs/architecture.md |
+| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), `EnergyMeterService` per energy meter, SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
+| `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `TibberIntegration`, `DemoIntegration`, `Integrations` | Integrations (connection, error codes, health rules, knowledge docs) and `IntegrationCatalog`; Tibber (homes as energy meters) is the reference example; see the module map in docs/architecture.md |
 | `Packages/HeatPumpKit/Sources/varmepumpe-mcp` | MCP server embedded in the app bundle (`Contents/Helpers`); tools in `Tools.swift`, handlers in `ToolHandler.swift` |
 | `Packages/HeatPumpKit/Tests/HeatPumpKitTests` | Swift Testing suites, JSON fixtures, `TestSupport.swift` helpers |
 | `project.yml` | XcodeGen source of truth; `.xcodeproj` is generated and not checked in |
@@ -41,9 +41,12 @@ New Swift files in `App/Sources` are picked up by `make debug`/`make check` (the
 
 - **Rate limits are sacred.** MELCloud allows at most one fetch per 60 s across app and helper,
   reports hourly, 12 writes per rolling hour with 5 s spacing, and a block after 429/login
-  throttle stops all calls. All network access goes through `HeatPumpService`, which enforces
-  this via `HistoryStore.reserveFetch`/`reserveChange`. Never call a backend directly from the
-  app or MCP code, and never add a retry loop around a refused call.
+  throttle stops all calls. Tibber allows about 100 requests per 5 minutes and two open
+  sockets: homes and hours at most hourly, one live socket for the whole app, none in the
+  helper, and a refused token is never retried. All network access goes through the device's
+  service (`HeatPumpService`, `EnergyMeterService`), which enforces this via
+  `HistoryStore.reserveFetch`/`reserveChange`. Never call a backend directly from the app or MCP
+  code, and never add a retry loop around a refused call.
 - **Every write** is validated, budgeted, logged in `change_log`, and when it comes from Claude
   (`source: .claude`) approved by the user in the approval dialog. Business refusals return
   `ChangeOutcome`, they do not throw.

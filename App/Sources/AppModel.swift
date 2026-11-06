@@ -191,6 +191,9 @@ final class AppModel {
 
     private var pollTask: Task<Void, Never>?
     private let notifier = Notifier()
+    /// Between the Mac's sleep and wake notifications (live power is paused).
+    private var isAsleep = false
+    @ObservationIgnored private var sleepObservers: [NSObjectProtocol] = []
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         launchIntegration = IntegrationCatalog.current(environment: environment)
@@ -220,6 +223,28 @@ final class AppModel {
         priceControl = PriceControlRunner(service: service)
         connect(primary)
         priceControl.afterChange = { [weak self] in await self?.afterPriceControl() }
+        observeSleep()
+    }
+
+    /// Live power pauses while the Mac sleeps and resumes after it wakes (while polling).
+    private func observeSleep() {
+        let center = NSWorkspace.shared.notificationCenter
+        sleepObservers = [
+            center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.isAsleep = true
+                    for meter in self.meters { meter.stopLive() }
+                }
+            },
+            center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.isAsleep = false
+                    if self.pollTask != nil { for meter in self.meters { meter.startLive() } }
+                }
+            },
+        ]
     }
 
     /// Wires a heat pump's model to the app: its setpoints feed price control when it is price
@@ -243,6 +268,8 @@ final class AppModel {
     // MARK: Devices
 
     var heatPumps: [HeatPumpDeviceModel] { devices.compactMap { $0 as? HeatPumpDeviceModel } }
+
+    var meters: [EnergyMeterDeviceModel] { devices.compactMap { $0 as? EnergyMeterDeviceModel } }
 
     /// The first heat pump: what the app shows with one device, and the screens of Home use.
     var primaryHeatPump: HeatPumpDeviceModel { heatPumps.first ?? fallbackHeatPump }
@@ -284,6 +311,10 @@ final class AppModel {
                     let model = heatPumps.first { $0.service === service } ?? makeHeatPump(service)
                     if model.descriptor != descriptor { model.descriptor = descriptor }
                     next.append(model)
+                case .energyMeter(let service):
+                    let model = meters.first { $0.service === service } ?? EnergyMeterDeviceModel(service: service, descriptor: descriptor)
+                    if model.descriptor != descriptor { model.descriptor = descriptor }
+                    next.append(model)
                 case nil: continue
                 }
             }
@@ -294,7 +325,13 @@ final class AppModel {
                 if model.descriptor != nil { model.descriptor = nil }
                 next = [model]
             }
-            if next.map(ObjectIdentifier.init) != devices.map(ObjectIdentifier.init) { devices = next }
+            if next.map(ObjectIdentifier.init) != devices.map(ObjectIdentifier.init) {
+                // A meter that is no longer served stops its live stream; a new one starts while polling.
+                let kept = Set(next.map(ObjectIdentifier.init))
+                for meter in meters where !kept.contains(ObjectIdentifier(meter)) { meter.stopLive() }
+                devices = next
+                if pollTask != nil, !isAsleep { for meter in meters { meter.startLive() } }
+            }
             await loadIntegrations()
             let controlled = try await hub.priceControlService()
             if controlled !== priceControl.service, !priceControl.isBusy { await priceControl.use(controlled) }
@@ -321,6 +358,9 @@ final class AppModel {
 
     func setEnabled(_ enabled: Bool, device key: DeviceKey) async -> String? {
         guard let hub else { return startupError }
+        // Turning off price control's device turns price control off first (the temperature is
+        // set back), as choosing another device does.
+        if !enabled, key == priceControlDevice, priceControl.enabled { await priceControl.setEnabled(false) }
         do {
             try await hub.setEnabled(enabled, for: key)
         } catch {
@@ -405,10 +445,17 @@ final class AppModel {
             if let keychain { await Task.detached { keychain.migrateAccessIfNeeded() }.value }
             await self?.checkTibberToken()
             if let hub = self?.hub, hub.isDemo { try? await hub.seedDemoHistoryIfNeeded() }
+            if let self, !self.isAsleep { for meter in self.meters { meter.startLive() } }
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.syncDevices()
                 await self.refresh(force: false)
+                // New devices on an account (at most daily per integration, mostly from listings
+                // the integration fetched anyway).
+                if let hub = self.hub, (try? await hub.discoverDevices()) == true {
+                    await self.syncDevices()
+                    await self.reloadLocal()
+                }
                 do {
                     try await Task.sleep(for: .seconds(60))
                 } catch {
@@ -426,6 +473,7 @@ final class AppModel {
     func stop() {
         pollTask?.cancel()
         pollTask = nil
+        for meter in meters { meter.stopLive() }
     }
 
     /// The devices with the stalest state first. An integration allows one state fetch a minute
@@ -604,6 +652,8 @@ final class AppModel {
             return error.localizedDescription
         }
         let message = await service.testTibberToken(token)
+        // The meter shares the token: a refused one may work again now.
+        try? await hub?.sharedCredentialsChanged()
         await savePriceSettings(priceSettings)
         return message
     }
@@ -647,7 +697,23 @@ final class AppModel {
     var addableIntegrations: [any Integration] {
         guard let hub, !isDemo, integrationsLoaded else { return [] }
         let active = Set(activeIntegrations.map(\.id))
-        return hub.catalog.filter { !active.contains($0.id) && $0.id != IntegrationCatalog.demo.id }
+        return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) }
+    }
+
+    /// Dev only (`VARMEPUMPE_SETTINGS_SHEET=add-integration`, screenshots): the integrations the
+    /// sheet would offer outside demo mode.
+    var devAddableIntegrations: [any Integration] {
+        guard let hub, ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_SHEET"] == "add-integration" else { return [] }
+        let active = Set(activeIntegrations.map(\.id))
+        return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) && $0.id != IntegrationCatalog.melcloud.id }
+    }
+
+    /// Values already stored for an integration that is not active yet (its token shared with the
+    /// electricity price), to fill in its sign-in form. Reads the keychain; call from Settings only.
+    func storedValues(for integration: any Integration) async -> [String: String] {
+        guard integration.credentialMapping.isShared, let credentials = service?.credentials else { return [:] }
+        let mapping = integration.credentialMapping
+        return await Task.detached { (try? credentials.loadValues(for: mapping))?.fields ?? [:] }.value
     }
 
     func credentialFields(for integration: any Integration) -> [CredentialField] {
@@ -693,6 +759,7 @@ final class AppModel {
     /// Stops using an integration; its devices keep their data.
     func removeIntegration(_ integration: any Integration) async -> String? {
         guard let hub else { return startupError }
+        if priceControlDevice?.integration == integration.id, priceControl.enabled { await priceControl.setEnabled(false) }
         do {
             try await hub.removeIntegration(id: integration.id)
         } catch {
@@ -718,6 +785,13 @@ final class AppModel {
     /// Shows a sign-in's test fetch on the device it found and says how it went.
     private func signedIn(_ result: StateResult, integration id: String) async -> (Bool, String) {
         await syncDevices()
+        if result.state == nil, result.refreshed, result.error == nil {
+            // An integration without a heat pump (a meter): it listed its devices.
+            await reloadLocal()
+            let found = await allDevices().filter { $0.integrationId == id }.map(\.name)
+            if found.count == 1, let name = found.first { return (true, String(localized: "Signed in. Found “\(name)”.")) }
+            return (true, String(localized: "Signed in. Found \(found.count) devices."))
+        }
         let device =
             heatPumps.first { $0.key != nil && $0.key == result.state?.key }
             ?? heatPumps.first { $0.key?.integration == id } ?? primaryHeatPump

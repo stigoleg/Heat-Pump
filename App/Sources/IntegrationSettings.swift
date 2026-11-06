@@ -42,7 +42,11 @@ struct IntegrationSection: View {
                 Task { message = await app.removeIntegration(integration) }
             }
         } message: {
-            Text("The sign-in is deleted from the keychain and the app stops fetching from \(integration.displayName). The devices' history is kept and comes back if you add it again.")
+            if integration.credentialMapping.isShared {
+                Text("The app stops fetching from \(integration.displayName). The token stays in the keychain, because the electricity price uses it too. The devices' history is kept and comes back if you add it again.")
+            } else {
+                Text("The sign-in is deleted from the keychain and the app stops fetching from \(integration.displayName). The devices' history is kept and comes back if you add it again.")
+            }
         }
     }
 
@@ -141,8 +145,11 @@ private struct DeviceRow: View {
 /// Choose an integration that is not in use yet and sign in to it.
 struct AddIntegrationSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var app
     let integrations: [any Integration]
     @State private var chosen: String?
+    /// Values already stored per integration (a token saved for the electricity price).
+    @State private var stored: [String: [String: String]] = [:]
 
     var body: some View {
         let integration = integrations.first { $0.id == chosen } ?? integrations.first
@@ -154,10 +161,16 @@ struct AddIntegrationSheet: View {
                 Picker("Service", selection: Binding(get: { integration?.id }, set: { chosen = $0 })) {
                     ForEach(integrations, id: \.id) { Text($0.displayName).tag(Optional($0.id)) }
                 }
+            } else if let integration {
+                LabeledContent("Service") { Text(integration.displayName).font(.headline) }
             }
             if let integration {
-                LoginForm(integration: integration, adding: true) { dismiss() }
-                    .id(integration.id)
+                LoginForm(integration: integration, stored: stored[integration.id] ?? [:], adding: true) { dismiss() }
+                    .id("\(integration.id)-\(stored[integration.id]?.isEmpty == false)")
+                if stored[integration.id]?.isEmpty == false {
+                    Text("The token you saved for the electricity price is filled in.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
             }
             HStack {
                 Spacer()
@@ -166,6 +179,11 @@ struct AddIntegrationSheet: View {
         }
         .padding(Theme.Space.xl)
         .frame(width: 460)
+        .task {
+            for integration in integrations where stored[integration.id] == nil {
+                stored[integration.id] = await app.storedValues(for: integration)
+            }
+        }
     }
 }
 

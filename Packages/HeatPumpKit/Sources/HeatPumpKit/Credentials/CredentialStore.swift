@@ -45,10 +45,13 @@ public struct CredentialMapping: Sendable, Equatable {
     /// Dev only: environment variables (field → variable) that replace the keychain values when
     /// all of them are set.
     public var environment: [String: String]
+    /// The values are also used outside the integration (the electricity price source reads the
+    /// same token), so removing the integration keeps them; only signing out deletes them.
+    public var isShared: Bool
 
     public init(
         integrationId: String, serviceName: String, items: [Item], identityField: String? = nil, sessionAccount: String? = nil,
-        environment: [String: String] = [:]
+        environment: [String: String] = [:], isShared: Bool = false
     ) {
         self.integrationId = integrationId
         self.serviceName = serviceName
@@ -56,6 +59,7 @@ public struct CredentialMapping: Sendable, Equatable {
         self.identityField = identityField
         self.sessionAccount = sessionAccount
         self.environment = environment
+        self.isShared = isShared
     }
 
     /// One item per field named `<integration id>/<field>`, the session in
@@ -114,7 +118,9 @@ extension CredentialProviding {
 /// disk in plain text. Which items an integration uses is its `CredentialMapping`.
 public struct KeychainCredentialStore: CredentialProviding {
     public static let service = "com.stigole.varmepumpe"
-    static let tibberTokenAccount = "tibber-token"
+    /// The price token's item. An integration may map a field to it (`CredentialMapping.isShared`);
+    /// it is then read and written through the token's cache.
+    public static let tibberTokenAccount = "tibber-token"
 
     private let environment: [String: String]
     private let items: any KeychainItems
@@ -153,6 +159,12 @@ public struct KeychainCredentialStore: CredentialProviding {
         if let values = environmentValues(mapping) { return values }
         var values = CredentialValues()
         for item in mapping.items {
+            // The price token's item, shared with an integration: read through its cache.
+            if item.account == Self.tibberTokenAccount, let field = item.fields.first, item.fields.count == 1 {
+                guard let token = loadTibberToken() else { return nil }
+                values[field] = token
+                continue
+            }
             guard let data = try items.read(account: item.account) else { return nil }
             guard let decoded = Self.decode(data, item: item) else { return nil }
             values.fields.merge(decoded.fields) { _, new in new }
@@ -162,6 +174,7 @@ public struct KeychainCredentialStore: CredentialProviding {
 
     public func hasValues(for mapping: CredentialMapping) -> Bool {
         if environmentValues(mapping) != nil { return true }
+        if mapping.items.map(\.account) == [Self.tibberTokenAccount] { return hasTibberToken() }
         return !mapping.items.isEmpty && mapping.items.allSatisfy { items.attributes(account: $0.account) != nil }
     }
 
@@ -178,6 +191,10 @@ public struct KeychainCredentialStore: CredentialProviding {
 
     public func saveValues(_ values: CredentialValues, for mapping: CredentialMapping) throws {
         for item in mapping.items {
+            if item.account == Self.tibberTokenAccount, let field = item.fields.first, item.fields.count == 1 {
+                try saveTibberToken(values[field])
+                continue
+            }
             let identity = mapping.identityField.flatMap { item.fields.contains($0) ? values[$0] : nil }
             try write(
                 account: item.account, data: try Self.encode(values, item: item), label: Self.loginLabel(mapping),
@@ -200,7 +217,10 @@ public struct KeychainCredentialStore: CredentialProviding {
     }
 
     public func deleteValues(for mapping: CredentialMapping) throws {
-        for item in mapping.items { try items.delete(account: item.account) }
+        for item in mapping.items {
+            try items.delete(account: item.account)
+            if item.account == Self.tibberTokenAccount { tibberCache.set(nil) }
+        }
         if let account = mapping.sessionAccount { try items.delete(account: account) }
     }
 
@@ -264,7 +284,8 @@ public struct KeychainCredentialStore: CredentialProviding {
         guard KeychainAccess.shared(label: Self.tibberLabel) != nil else { return }
         var accounts: [(account: String, label: String, identity: (item: CredentialMapping.Item, field: String)?)] = []
         for mapping in mappings {
-            for item in mapping.items {
+            // The price token's item is listed once below, under its own label.
+            for item in mapping.items where item.account != Self.tibberTokenAccount {
                 let identity = mapping.identityField.flatMap { item.fields.contains($0) ? (item, $0) : nil }
                 accounts.append((item.account, Self.loginLabel(mapping), identity))
             }
@@ -434,21 +455,36 @@ public final class InMemoryCredentialStore: CredentialProviding {
     public func loadValues(for mapping: CredentialMapping) throws -> CredentialValues? {
         state.withLock {
             $0.loadCount += 1
+            if let field = Self.tokenField(mapping) { return $0.tibberToken.map { CredentialValues([field: $0]) } }
             return $0.values[mapping.integrationId]
         }
     }
     public func hasValues(for mapping: CredentialMapping) -> Bool {
         state.withLock {
             $0.existenceChecks += 1
+            if Self.tokenField(mapping) != nil { return $0.tibberToken != nil }
             return $0.values[mapping.integrationId] != nil
         }
+    }
+
+    /// The field of a mapping that uses the price token's item, like the keychain store.
+    private static func tokenField(_ mapping: CredentialMapping) -> String? {
+        guard mapping.items.count == 1, let item = mapping.items.first, item.account == KeychainCredentialStore.tibberTokenAccount
+        else { return nil }
+        return item.fields.first
     }
     /// Number of `hasValues` calls.
     public var existenceChecks: Int { state.withLock { $0.existenceChecks } }
     /// Number of `loadValues` calls (tests check that polling does not read secrets).
     public var loadCount: Int { state.withLock { $0.loadCount } }
     public func saveValues(_ values: CredentialValues, for mapping: CredentialMapping) throws {
-        state.withLock { $0.values[mapping.integrationId] = values }
+        state.withLock {
+            if let field = Self.tokenField(mapping) {
+                $0.tibberToken = values[field]
+            } else {
+                $0.values[mapping.integrationId] = values
+            }
+        }
     }
     public func loadSessionKey(for mapping: CredentialMapping) -> String? { state.withLock { $0.sessions[mapping.integrationId] } }
     public func saveSessionKey(_ key: String?, for mapping: CredentialMapping) throws {
@@ -460,6 +496,7 @@ public final class InMemoryCredentialStore: CredentialProviding {
     }
     public func deleteValues(for mapping: CredentialMapping) throws {
         state.withLock {
+            if Self.tokenField(mapping) != nil { $0.tibberToken = nil }
             $0.values[mapping.integrationId] = nil
             $0.sessions[mapping.integrationId] = nil
         }

@@ -75,33 +75,3 @@ extension HistoryStore {
         }
     }
 }
-
-extension HistoryStore {
-    // MARK: House consumption
-
-    public func upsertHouseHours(_ hours: [HouseHour]) throws {
-        try pool.write { db in
-            for h in hours {
-                try db.execute(
-                    sql: """
-                        INSERT INTO house_consumption_hourly (hour, kWh, cost, unitPrice) VALUES (?, ?, ?, ?)
-                        ON CONFLICT(hour) DO UPDATE SET kWh = excluded.kWh, cost = excluded.cost, unitPrice = excluded.unitPrice
-                        """,
-                    arguments: [h.hour, h.kWh, h.costNok, h.unitPriceOre])
-            }
-        }
-    }
-
-    /// House hours with `from <= hour < to`.
-    public func houseHours(from: Date, to: Date) throws -> [HouseHour] {
-        try pool.read { db in
-            try Row.fetchAll(
-                db, sql: "SELECT * FROM house_consumption_hourly WHERE hour >= ? AND hour < ? ORDER BY hour", arguments: [from, to]
-            ).map { HouseHour(hour: $0["hour"], kWh: $0["kWh"], costNok: $0["cost"], unitPriceOre: $0["unitPrice"]) }
-        }
-    }
-
-    public func latestHouseHour() throws -> Date? {
-        try pool.read { db in try Date.fetchOne(db, sql: "SELECT MAX(hour) FROM house_consumption_hourly") }
-    }
-}

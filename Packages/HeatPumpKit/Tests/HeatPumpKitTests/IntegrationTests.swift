@@ -45,7 +45,8 @@ struct IntegrationTests {
 
     @Test func catalogListsEachIntegrationOnce() {
         let ids = IntegrationCatalog.all.map(\.id)
-        #expect(ids == ["melcloud-classic", "demo"])
+        #expect(ids == ["melcloud-classic", "tibber", "demo", "demo-meter"])
+        #expect(IntegrationCatalog.tibber.credentialFields.map(\.kind) == [.token])
         #expect(IntegrationCatalog.melcloud.displayName == "MELCloud")
         #expect(IntegrationCatalog.melcloud.credentialFields.map(\.kind) == [.email, .password])
         #expect(IntegrationCatalog.demo.credentialFields.isEmpty)

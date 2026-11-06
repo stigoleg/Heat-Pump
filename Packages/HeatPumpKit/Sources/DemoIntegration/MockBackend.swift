@@ -31,13 +31,19 @@ public struct DemoUnit: Sendable, Equatable {
     }
 
     /// The units `VARMEPUMPE_DEMO_DEVICES` asks for: a comma list of device kinds, `heatpump` by
-    /// default (`heatpump,heatpump` adds a bedroom unit). Unknown entries are skipped; at least one
-    /// unit is always simulated.
+    /// default (`heatpump,heatpump` adds a bedroom unit; `meter` is the simulated Tibber home,
+    /// `wantsMeter`). Unknown entries are skipped; at least one unit is always simulated.
     public static func units(environment: [String: String]) -> [DemoUnit] {
         let kinds = (environment["VARMEPUMPE_DEMO_DEVICES"] ?? "heatpump").split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
         let count = kinds.filter { $0 == "heatpump" }.count
         return (0..<max(1, count)).map(unit)
+    }
+
+    /// Whether `VARMEPUMPE_DEMO_DEVICES` asks for the simulated Tibber home (`meter`).
+    public static func wantsMeter(environment: [String: String]) -> Bool {
+        (environment["VARMEPUMPE_DEMO_DEVICES"] ?? "").split(separator: ",")
+            .contains { $0.trimmingCharacters(in: .whitespaces).lowercased() == "meter" }
     }
 }
 

@@ -14,8 +14,8 @@ public protocol Integration: Sendable {
     /// The unit model as reported to Claude (`get_device_info`); nil when the integration does
     /// not know it.
     var modelName: String? { get }
-    /// What Claude is told it controls, in the first line of the MCP server instructions.
-    /// Defaults to "\(displayName) heat pump".
+    /// What Claude is told the device is (the first line of the MCP server instructions, the
+    /// device list). Defaults to "\(displayName) heat pump".
     var unitDescription: String { get }
     /// Stored with rows the integration produced (error log, away settings). Persisted, so it
     /// never changes for an existing integration. Defaults to `id`.
@@ -34,8 +34,11 @@ public protocol Integration: Sendable {
     var credentialMapping: CredentialMapping { get }
     /// Knowledge documents about the unit (MCP resources, the Health page). Defaults to none.
     var knowledge: KnowledgeSource { get }
-    /// The connection to the unit. Throws when the context lacks what it needs (e.g. credentials).
-    func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver
+    /// The connection every device of the integration shares. Its conformances decide what the
+    /// hub serves: a `ThermostatDriver` gets a `HeatPumpService` per device, an
+    /// `EnergyMeterDriver` an `EnergyMeterService` per meter. Throws when the context lacks what
+    /// it needs (e.g. credentials).
+    func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection
 }
 
 extension Integration {

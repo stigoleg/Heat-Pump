@@ -74,8 +74,8 @@ struct ExampleView: View {
   screen also goes into `DeviceScreen` and `DeviceNavigation.screens` (kit) and
   `DeviceUIRegistry` (app); a Home screen into `HomeScreen` and the `detail` switch in `RootView.swift`.
 - Device screens read `@Environment(HeatPumpDeviceModel.self) private var model` (the device's
-  state and actions) and `@Environment(AppModel.self) private var app` (prices, weather,
-  navigation, settings tab).
+  state and actions; an energy meter's screens `EnergyMeterDeviceModel`, see `MeterOverviewView`)
+  and `@Environment(AppModel.self) private var app` (prices, weather, navigation, settings tab).
 
 ## Components
 

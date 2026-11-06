@@ -30,7 +30,7 @@ public struct DemoIntegration: Integration {
     public var maintenanceTasks: [MaintenanceTask] { simulated.maintenanceTasks }
     public var knowledge: KnowledgeSource { simulated.knowledge }
 
-    public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver {
+    public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection {
         MockBackend(timeZone: context.timeZone, now: context.now, units: DemoUnit.units(environment: context.environment))
     }
 }
