@@ -5,7 +5,10 @@ import GRDB
 public struct DeviceRecord: Sendable, Equatable {
     public var key: DeviceKey
     public var kind: DeviceKind
+    /// The name the integration reports (updated with every status).
     public var name: String
+    /// The user's own name for the device (`rename`), or nil.
+    public var customName: String?
     /// Disabled devices keep their data but are not served.
     public var enabled: Bool
     public var sortOrder: Int
@@ -15,6 +18,12 @@ public struct DeviceRecord: Sendable, Equatable {
     public var lastSeen: Date?
 
     public var summary: DeviceSummary { DeviceSummary(key: key, name: name, kind: kind, metadata: metadata) }
+
+    /// The user's name when set, else the integration's.
+    public var displayName: String {
+        guard let customName, !customName.isEmpty else { return name }
+        return customName
+    }
 }
 
 extension HistoryStore {
@@ -30,7 +39,7 @@ extension HistoryStore {
                 }
                 return DeviceRecord(
                     key: key, kind: DeviceKind(rawValue: row["kind"]) ?? .airToAirHeatPump, name: row["name"],
-                    enabled: row["enabled"], sortOrder: row["sortOrder"], metadata: metadata ?? [:],
+                    customName: row["customName"], enabled: row["enabled"], sortOrder: row["sortOrder"], metadata: metadata ?? [:],
                     firstSeen: row["firstSeen"], lastSeen: row["lastSeen"])
             }
         }

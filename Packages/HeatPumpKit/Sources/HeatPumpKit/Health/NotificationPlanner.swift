@@ -26,8 +26,25 @@ public enum NotificationPlanner {
     public static let filterReminderInterval: TimeInterval = 86_400
 
     /// `serviceName` names the service in the active-error text; `noErrorCodes` are the
-    /// integration's "no error" codes.
+    /// integration's "no error" codes. `device` is set when more than one device is enabled: the
+    /// titles start with its name and the identifiers end with its key, so each device notifies
+    /// on its own (its `memory` is its own too).
     public static func plan(
+        state: DeviceState?, errorEvents: [ErrorLogEntry], maintenance: [MaintenanceStatus],
+        memory: NotificationMemory, now: Date, serviceName: String, noErrorCodes: Set<Int>,
+        device: (key: DeviceKey, name: String)? = nil
+    ) -> (notifications: [PlannedNotification], memory: NotificationMemory) {
+        let planned = planned(
+            state: state, errorEvents: errorEvents, maintenance: maintenance, memory: memory, now: now, serviceName: serviceName,
+            noErrorCodes: noErrorCodes)
+        guard let device else { return planned }
+        let named = planned.notifications.map {
+            PlannedNotification(id: "\($0.id)@\(device.key.rawValue)", title: L10n.format("%1$@: %2$@", device.name, $0.title), body: $0.body)
+        }
+        return (named, planned.memory)
+    }
+
+    private static func planned(
         state: DeviceState?, errorEvents: [ErrorLogEntry], maintenance: [MaintenanceStatus],
         memory: NotificationMemory, now: Date, serviceName: String, noErrorCodes: Set<Int>
     ) -> (notifications: [PlannedNotification], memory: NotificationMemory) {

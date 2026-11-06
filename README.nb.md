@@ -260,6 +260,7 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 | `VARMEPUMPE_LANGUAGE` | `en` eller `nb`, uten å lagre valget (også for MCP-serveren) |
 | `VARMEPUMPE_SETTINGS_TAB` | Åpner Innstillinger på fanen: generelt, konto, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | Simulert kompressor går i korte runder |
+| `VARMEPUMPE_DEMO_DEVICES` | Simulerte enheter, kommaseparert (standard `heatpump`); `heatpump,heatpump` gir en varmepumpe til («Soverom (simulert)») |
 
 </details>
 

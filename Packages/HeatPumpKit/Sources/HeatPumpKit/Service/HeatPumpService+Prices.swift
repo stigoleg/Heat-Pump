@@ -41,141 +41,28 @@ extension HeatPumpService {
     /// Most single-day files fetched in one update from sources without range requests.
     static let maxPriceFilesPerSync = 10
 
-    // MARK: Settings
+    // MARK: Settings and prices (shared by every device: `energy`)
 
-    public func priceSettings() throws -> PriceSettings {
-        try store.setting(PriceSettings.self, key: Self.priceSettingsKey) ?? .default
-    }
+    public func priceSettings() throws -> PriceSettings { try energy.priceSettings() }
 
-    public func savePriceSettings(_ settings: PriceSettings) throws {
-        try store.saveSetting(settings, key: Self.priceSettingsKey)
-    }
-
-    /// Where stored spot prices for `settings` come from (nil for Norgespris).
-    func priceKey(_ settings: PriceSettings) -> (source: String, area: String)? {
-        if settings.agreement == .norgespris { return nil }
-        if isDemo { return ("mock", "NO1") }
-        return settings.agreement == .tibber ? ("tibber", "tibber") : ("hvakosterstrommen", settings.area.rawValue)
-    }
-
-    // MARK: Fetching
+    public func savePriceSettings(_ settings: PriceSettings) throws { try energy.savePriceSettings(settings) }
 
     /// Fetches missing spot prices: the last 30 days, today and, after 13:30, tomorrow.
     /// At most once per hour per source; nothing is fetched when all is stored.
-    public func syncPrices() async throws -> PriceSync {
-        let settings = try priceSettings()
-        guard let key = priceKey(settings) else { return PriceSync(status: .notNeeded) }
-        let t = now()
-        let calendar = WireDate.calendar(timeZone)
-        let today = calendar.startOfDay(for: t)
-        var days = (0...Self.priceBackfillDays).compactMap { calendar.date(byAdding: .day, value: -$0, to: today) }
-        let parts = calendar.dateComponents([.hour, .minute], from: t)
-        if (parts.hour ?? 0) * 60 + (parts.minute ?? 0) >= 13 * 60 + 30,
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)
-        {
-            days.insert(tomorrow, at: 0)
-        }
-        let missing = try days.filter { day in
-            guard let end = calendar.date(byAdding: .day, value: 1, to: day) else { return false }
-            return try store.prices(source: key.source, area: key.area, from: day, to: end).count < 23
-        }
-        guard !missing.isEmpty else { return PriceSync(status: .upToDate) }
-
-        switch try store.reserveFetch(
-            key: "prices.\(key.source).\(key.area)", minInterval: Self.priceInterval, now: t, blockingIntegration: nil)
-        {
-        case .throttled(let next):
-            return PriceSync(status: .skipped, nextAllowed: next)
-        case .blocked, .credentialsRejected:
-            return PriceSync(status: .skipped)
-        case .allowed:
-            guard let provider = priceProvider(settings) else {
-                return PriceSync(status: .failed, message: PriceError.missingToken.errorDescription)
-            }
-            let request = provider.fetchesRangesInOneRequest ? missing : Array(missing.prefix(Self.maxPriceFilesPerSync))
-            do {
-                let prices = try await provider.fetchPrices(days: request, timeZone: timeZone)
-                try store.upsertPrices(prices)
-                try store.recordFetchSuccess(key: "prices.\(key.source).\(key.area)", now: t)
-                return PriceSync(status: .fetched, count: prices.count)
-            } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                return PriceSync(status: .failed, message: message)
-            }
-        }
-    }
+    public func syncPrices() async throws -> PriceSync { try await energy.syncPrices() }
 
     /// Checks a Tibber token with one small request (at most one test per 10 s).
     public func testTibberToken(_ token: String, transport: any HTTPTransport = URLSessionTransport()) async -> String {
-        guard !token.trimmingCharacters(in: .whitespaces).isEmpty else { return PriceError.missingToken.errorDescription ?? "" }
-        if isDemo { return L10n.tr("Demo: the token was not tested against Tibber.") }
-        guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), blockingIntegration: nil)) == .allowed else {
-            return L10n.tr("Wait a few seconds before you test again.")
-        }
-        do {
-            let hours = try await TibberPriceProvider(token: token, transport: transport, now: now).test(timeZone: timeZone)
-            return L10n.format("The token works. Found %lld hourly prices for today.", hours)
-        } catch {
-            return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
+        await energy.testTibberToken(token, transport: transport)
     }
-
-    // MARK: Prices
 
     /// Price per kWh for each hour with `from <= hour < to` (hours without spot data are left out).
-    public func priceBreakdowns(from: Date, to: Date) throws -> [PriceBreakdown] {
-        let settings = try priceSettings()
-        let calendar = WireDate.calendar(timeZone)
-        guard var hour = calendar.dateInterval(of: .hour, for: from)?.start else { return [] }
-        var spots: [Date: HourPrice] = [:]
-        if let key = priceKey(settings) {
-            let history = hour.addingTimeInterval(-Double(PriceLevel.trailingHours) * 3600)
-            for p in try store.prices(source: key.source, area: key.area, from: history, to: to) { spots[p.hour] = p }
-        }
-        var result: [PriceBreakdown] = []
-        while hour < to {
-            if var b = PriceCalculator.breakdown(hour: hour, settings: settings, spot: spots[hour], timeZone: timeZone) {
-                if let spot = spots[hour] {
-                    if let tibber = spot.level.flatMap(PriceLevel.init(tibber:)) {
-                        (b.level, b.levelFromTibber) = (tibber, true)
-                    } else {
-                        // Same bands as Tibber, against the previous 72 hours' spot price.
-                        let trailing = (1...PriceLevel.trailingHours).compactMap { spots[hour.addingTimeInterval(-Double($0) * 3600)]?.totalOre }
-                        if trailing.count >= PriceLevel.minTrailingHours {
-                            b.level = PriceLevel.relative(price: spot.totalOre, average: trailing.reduce(0, +) / Double(trailing.count))
-                        }
-                    }
-                }
-                result.append(b)
-            }
-            guard let next = calendar.date(byAdding: .hour, value: 1, to: hour) else { break }
-            hour = next
-        }
-        return result
-    }
+    public func priceBreakdowns(from: Date, to: Date) throws -> [PriceBreakdown] { try energy.priceBreakdowns(from: from, to: to) }
 
     /// Hour prices for the local day containing `day`.
-    public func prices(day: Date) throws -> [PriceBreakdown] {
-        let calendar = WireDate.calendar(timeZone)
-        let start = calendar.startOfDay(for: day)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
-        return try priceBreakdowns(from: start, to: end)
-    }
+    public func prices(day: Date) throws -> [PriceBreakdown] { try energy.prices(day: day) }
 
-    public func priceOverview(sync: Bool = true) async throws -> PriceOverview {
-        let syncResult = sync ? try await syncPrices() : nil
-        let settings = try priceSettings()
-        let t = now()
-        let calendar = WireDate.calendar(timeZone)
-        let today = try prices(day: t)
-        let tomorrow = try calendar.date(byAdding: .day, value: 1, to: t).map { try prices(day: $0) } ?? []
-        let hourStart = calendar.dateInterval(of: .hour, for: t)?.start ?? t
-        let ahead = (today + tomorrow).filter { $0.hour >= hourStart }
-        return PriceOverview(
-            agreement: settings.agreement, agreementName: settings.agreement.displayName,
-            current: today.first { $0.hour == hourStart }, today: today, tomorrow: tomorrow,
-            cheapestAhead: Array(ahead.sorted { $0.totalOre < $1.totalOre }.prefix(3)), sync: syncResult)
-    }
+    public func priceOverview(sync: Bool = true) async throws -> PriceOverview { try await energy.priceOverview(sync: sync) }
 
     // MARK: Consumption
 
@@ -251,17 +138,18 @@ extension HeatPumpService {
 }
 
 extension HeatPumpService {
-    /// Demo mode only: fills the last 48 hours with simulated snapshots (every 15 minutes) and 45
-    /// days of outdoor temperatures so charts, hourly cost, power and forecast estimates have data
-    /// on first launch. Does nothing when the
-    /// database already has older snapshots or the backend does not simulate data.
+    /// Demo mode only: fills the last 48 hours of the served device with simulated snapshots
+    /// (every 15 minutes) and 45 days of outdoor temperatures so charts, hourly cost, power and
+    /// forecast estimates have data on first launch. Does nothing when the database already has
+    /// older snapshots or the backend does not simulate the device.
     public func seedDemoHistoryIfNeeded() async throws {
-        guard let demo = backend as? any DemoDataSeeding else { return }
+        guard let demo = backend as? any DemoDataSeeding,
+            let device = try currentDevice() ?? demo.demoDevices.first, demo.demoDevices.contains(device)
+        else { return }
         let t = now()
-        try seedDemoLocalIfNeeded(demo, now: t)
+        if device == demo.demoDevices.first { try seedDemoLocalIfNeeded(demo, device: device, now: t) }
         // Older outdoor temperatures (the temperature log only goes 7 days back per request), so the
         // degree-day model behind "Estimate tomorrow" has enough days.
-        let device = demo.demoDevice
         let older = DateInterval(start: t.addingTimeInterval(-45 * 86_400), end: t.addingTimeInterval(-7 * 86_400))
         if try store.temperaturePoints(device: device, from: older.start, to: older.end).isEmpty {
             try store.upsertTemperaturePoints(try await demo.fetchTemperatureLog(device: device, range: older), device: device)
@@ -270,23 +158,23 @@ extension HeatPumpService {
         guard existing.isEmpty else { return }
         var at = t.addingTimeInterval(-48 * 3600)
         while at < t.addingTimeInterval(-60) {
-            try store.insertSnapshot(await demo.demoState(at: at))
+            try store.insertSnapshot(await demo.demoState(at: at, device: device))
             at = at.addingTimeInterval(15 * 60)
         }
     }
 
-    /// Demo mode: turns local access on (simulated adapter) the first time, and while it is on
-    /// fills the last 7 days with one simulated reading per minute.
-    func seedDemoLocalIfNeeded(_ demo: any DemoDataSeeding, now t: Date) throws {
-        if try store.setting(LocalSettings.self, key: Self.localSettingsKey) == nil {
-            try saveLocalSettings(LocalSettings(enabled: true, host: demo.demoLocalHost))
+    /// Demo mode: turns local access on (simulated adapter) for `device` the first time, and while
+    /// it is on fills the last 7 days with one simulated reading per minute.
+    func seedDemoLocalIfNeeded(_ demo: any DemoDataSeeding, device: DeviceKey, now t: Date) throws {
+        if try store.deviceSetting(LocalSettings.self, name: Self.localSettingsKey, device: device) == nil {
+            try store.saveDeviceSetting(LocalSettings(enabled: true, host: demo.demoLocalHost), name: Self.localSettingsKey, device: device)
         }
         let from = t.addingTimeInterval(-7 * 86_400)
-        guard try localSettings().enabled,
-            try store.localSamples(device: demo.demoDevice, from: from, to: t.addingTimeInterval(-3600)).isEmpty
+        guard try store.deviceSetting(LocalSettings.self, name: Self.localSettingsKey, device: device)?.enabled == true,
+            try store.localSamples(device: device, from: from, to: t.addingTimeInterval(-3600)).isEmpty
         else { return }
         try store.insertLocalSamples(
             demo.demoLocalSamples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling),
-            device: demo.demoDevice)
+            device: device)
     }
 }

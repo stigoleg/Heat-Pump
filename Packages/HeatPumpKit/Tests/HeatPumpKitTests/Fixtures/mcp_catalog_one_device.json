@@ -1,0 +1,572 @@
+{
+ "instructions": "Tools for the user's Mitsubishi MSZ-RW25VG wall heat pump (MELCloud Classic).\nRead tools are safe to call freely. Write tools (set_*) change the physical heat pump: propose the change, explain why in plain words, and only call the tool after the user agrees in the conversation. Each set_* call then opens a confirmation dialog on the user's Mac (\"Approve\"/\"Reject\", rejected after 120 s without an answer); the change is only sent if the user clicks Approve. Never chain several changes without asking. The user is not a heat-pump expert; answer in the user's language (the app and its texts are set to English). Data may be cached: check meta.dataAgeSeconds and meta.blockedUntil. MELCloud blocks accounts that poll too often, so do not call refresh repeatedly. When local access is on, get_live_status gives live power (W), compressor activity and starts per hour straight from the adapter on the home network (read-only); use it for \"what is it doing now\" (heating, resting, defrosting). get_forecast combines the MET Norway forecast with prices and an estimate for tomorrow; get_house_consumption shows the heat pump's share of the house (Tibber). Frost protection and holiday mode (get_away_settings, set_frost_protection, set_holiday_mode) are bigger changes: explain what happens and get a clear yes first. Weather data: MET Norway (CC BY 4.0).",
+ "tools": [
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Current state of the heat pump (power, mode, temperatures, fan, vanes, errors, connectivity). Served from cache when younger than 10 minutes; never hits MELCloud more than once per minute. Check meta.dataAgeSeconds and meta.blockedUntil.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_status"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Health assessment with prioritized findings (severity ok/info/warning/critical, title/detail/recommendation in the user's language, machine-readable code). Syncs history at most once per hour.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_health_report"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Error log entries from MELCloud (stored locally), newest first.",
+   "inputSchema": {
+    "properties": {
+     "days": {
+      "description": "Look-back in days (default 90).",
+      "maximum": 365,
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   },
+   "name": "get_error_log"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Time series for one metric from polled snapshots and the MELCloud temperature log. power_w (W), compressor_hz and defrost come from the local Wi-Fi adapter readings (only when local access is on; long ranges are averaged per bucket, source \"local\"). defrost gives minutes of defrost per hour (value) and the number of defrosts that hour (text). Timestamps are ISO 8601.",
+   "inputSchema": {
+    "properties": {
+     "from": {
+      "description": "ISO 8601 date or date-time (default: 24 h ago).",
+      "type": "string"
+     },
+     "metric": {
+      "enum": [
+       "room_temperature",
+       "outdoor_temperature",
+       "set_temperature",
+       "mode",
+       "power",
+       "power_w",
+       "compressor_hz",
+       "defrost"
+      ],
+      "type": "string"
+     },
+     "to": {
+      "description": "ISO 8601 date or date-time (default: now).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "metric"
+    ],
+    "type": "object"
+   },
+   "name": "get_history"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Energy use in kWh aggregated per day, ISO week or month, with cost in NOK (costNok, split into electricity/grid tariff/electricity subsidy, isEstimate when part of a day is priced at the day's average). MELCloud energy data lags 1.5–3 h and can contain zeros.",
+   "inputSchema": {
+    "properties": {
+     "from": {
+      "description": "ISO 8601 date (default depends on period).",
+      "type": "string"
+     },
+     "period": {
+      "enum": [
+       "day",
+       "week",
+       "month"
+      ],
+      "type": "string"
+     },
+     "to": {
+      "description": "ISO 8601 date (default: today).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "period"
+    ],
+    "type": "object"
+   },
+   "name": "get_energy"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Electricity price per kWh for the user's agreement (Norgespris or spot via Tibber/hvakosterstrommen.no): current hour, today, tomorrow (after about 13:00), and the three cheapest hours ahead. Prices in øre/kWh incl. VAT = electricity + grid tariff energy charge − electricity subsidy. For spot agreements also a clearly labelled ESTIMATE (label \"anslag\") for the hours after the published prices up to 7 days ahead (median and 25–75 % band per day and for the next 48 hours; built from the last 4 weeks of prices and the weather forecast; uncertain, not a published price). Also the app's price control (lowers the setpoint in expensive hours while the app runs): settings, status and plan, read-only — Claude cannot turn it on or off or change it. Use for price-aware advice; small pre-heating before expensive hours is fine, avoid big swings and frequent on/off.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_prices"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": true
+   },
+   "description": "Live readings from the Wi-Fi adapter on the home network (read-only, unofficial local endpoint; must be switched on in the app): power in W, compressor frequency (Hz) and whether it runs, room/outdoor temperature, setpoint and mode as the unit itself reports them, error code (0x8000 = none), adapter firmware and Wi-Fi signal, what it is doing now (phase: heating, resting, defrost, preheat …, with an explanation in the user's language), age of the reading, compressor starts and defrosts in the last 1/3/24 h and min/avg/max W over the last 60 min. Reads the adapter at most every 20 s (reuses a reading younger than 60 s). Control still goes through MELCloud (set_* tools). Many starts per hour while heating (≥ 4/h over 3 h) is short cycling.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_live_status"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Weather forecast from MET Norway (yr.no) for the house for the next 48 hours (temperature, wind, precipitation) combined with hourly electricity prices and price levels, the coldest, cheapest and most expensive hours ahead, and the expected heat-pump use and cost tomorrow (degree-day model fitted on at least 10 days of this unit's own history; includes a range). The forecast is fetched at most hourly and only when MET's copy has expired. Location comes from MELCloud or the app's settings; coordinates are never returned. Attribution: weather data from MET Norway (see the attribution field). Use for planning: a small pre-heating step (max 1 °C, a few hours before a cold and expensive period) is fine; avoid frequent on/off and big swings.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_forecast"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "The whole house's hourly electricity use from Tibber (only when the user has saved a Tibber token in the app) next to the heat pump's own use, per day: house kWh, heat-pump kWh, the heat pump's share, and Tibber's own cost for the house. The heat pump's kWh are exact when measured by the local adapter (heatPumpMeasured), otherwise estimated from MELCloud's counter. Fetched from Tibber at most hourly; Tibber's data lags a few hours.",
+   "inputSchema": {
+    "properties": {
+     "from": {
+      "description": "ISO 8601 date (default: 7 days ago).",
+      "type": "string"
+     },
+     "to": {
+      "description": "ISO 8601 date (default: now).",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "name": "get_house_consumption"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Frost protection (keeps the room between a minimum and maximum temperature while the unit is otherwise off; 4–14 °C / 6–16 °C, max at least 2 °C above min) and holiday mode (start/end; the unit follows frost protection in that period) as MELCloud reports them, plus a short view of MELCloud's weekly timer (enabled, events, next event; full plan in get_weekly_timer). Read from MELCloud at most hourly (timer every 6 h); cached otherwise.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_away_settings"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "MELCloud's weekly timer (the weekly schedule): whether it is on, every season (start date, whether it is the one in force) with its events (weekday, time, on/off, mode, temperature, fan, vanes), and the next event. The plan runs in MELCloud, also when the Mac is off; a change made with set_* lasts until the next planned event. Read-only for Claude: the user creates and edits the plan in the app (Weekly schedule page). Read from MELCloud at most every 6 h; cached otherwise. decoded=false means only the event count is known.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_weekly_timer"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Firmware of the Wi-Fi adapter: current version, whether MELCloud has an update waiting, whether this account owns the unit (only owners may update), and MELCloud's update status (phase with text in the user's language, files downloaded x/y, minutes offline), plus canStart/startProblem and whether an update is running. MELCloud is asked only when an update waits or runs: at most every 60 s, every 15 s while it runs. Updates go through start_firmware_update.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_firmware_status"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": true
+   },
+   "description": "When each filter/maintenance task was last recorded, the recommended interval from the owner manual, and whether it is due.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_maintenance_status"
+  },
+  {
+   "annotations": {
+    "openWorldHint": false,
+    "readOnlyHint": true
+   },
+   "description": "Recent changes to the heat pump (from the app, Claude or the app's price control, source automation) with old/new value, reason and result (ok/failed/rejected/pending).",
+   "inputSchema": {
+    "properties": {
+     "limit": {
+      "description": "Default 20.",
+      "maximum": 500,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "source": {
+      "enum": [
+       "app",
+       "claude",
+       "automation"
+      ],
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "name": "get_change_log"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Static device information: model, IDs, firmware, setpoint limits per mode, fan speeds, energy counters, and the list of knowledge resources.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "name": "get_device_info"
+  },
+  {
+   "annotations": {
+    "openWorldHint": true,
+    "readOnlyHint": true
+   },
+   "description": "Refresh state from MELCloud (force=true bypasses the 10-minute cache but is still limited to once per 60 s across app and MCP, and never runs while MELCloud has blocked us) and sync history reports (each at most hourly).",
+   "inputSchema": {
+    "properties": {
+     "force": {
+      "description": "Default false.",
+      "type": "boolean"
+     }
+    },
+    "type": "object"
+   },
+   "name": "refresh"
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Turn the heat pump on or off. This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected. Turning it off in winter can let the house cool down.",
+   "inputSchema": {
+    "properties": {
+     "on": {
+      "type": "boolean"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "on",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_power"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Set operation mode (heat, dry, cool, fan, auto). This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected.",
+   "inputSchema": {
+    "properties": {
+     "mode": {
+      "enum": [
+       "heat",
+       "dry",
+       "cool",
+       "fan",
+       "auto"
+      ],
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "mode",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_mode"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Set target temperature in °C. Rounded to 0.5 °C; rejected outside the device's limits for the current mode (see get_device_info). This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected.",
+   "inputSchema": {
+    "properties": {
+     "celsius": {
+      "type": "number"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "celsius",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_temperature"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Set fan speed: 0 = auto, 1…N (N from get_device_info, usually 5). This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected.",
+   "inputSchema": {
+    "properties": {
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     },
+     "speed": {
+      "maximum": 5,
+      "minimum": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "speed",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_fan_speed"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Set vane (airflow direction) positions. Each axis is sent as a separate request. This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected.",
+   "inputSchema": {
+    "properties": {
+     "horizontal": {
+      "enum": [
+       "auto",
+       "1_left",
+       "2",
+       "3",
+       "4",
+       "5_right",
+       "split",
+       "swing"
+      ],
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     },
+     "vertical": {
+      "enum": [
+       "auto",
+       "1_up",
+       "2",
+       "3",
+       "4",
+       "5_down",
+       "swing"
+      ],
+      "type": "string"
+     }
+    },
+    "required": [
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_vanes"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Switch MELCloud frost protection on or off and set its range (whole °C; minimum 4–14, maximum 6–16, maximum at least 2 above minimum). Useful before leaving a cold house or cabin. This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected. Counts toward the 12 writes per hour.",
+   "inputSchema": {
+    "properties": {
+     "enabled": {
+      "type": "boolean"
+     },
+     "maximum": {
+      "description": "°C (default: the current value; required when it is unknown).",
+      "maximum": 16,
+      "minimum": 6,
+      "type": "number"
+     },
+     "minimum": {
+      "description": "°C (default: the current value; required when it is unknown). 8 or more is recommended.",
+      "maximum": 14,
+      "minimum": 4,
+      "type": "number"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "enabled",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_frost_protection"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Switch MELCloud holiday mode on (with start and end, local time) or off. While on, the unit may stand off and only frost protection keeps the house from getting cold, so holiday mode is refused unless frost protection is on (turn it on first with set_frost_protection, 8–12 °C is typical); frost protection cannot be switched off during a holiday. Check get_away_settings first. This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected. Counts toward the 12 writes per hour.",
+   "inputSchema": {
+    "properties": {
+     "enabled": {
+      "type": "boolean"
+     },
+     "end": {
+      "description": "ISO 8601 local date-time (required when enabled; at most a year after start).",
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     },
+     "start": {
+      "description": "ISO 8601 local date-time, e.g. 2026-12-20T10:00 (required when enabled).",
+      "type": "string"
+     }
+    },
+    "required": [
+     "enabled",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "set_holiday_mode"
+  },
+  {
+   "annotations": {
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true,
+    "readOnlyHint": false
+   },
+   "description": "Start the firmware update MELCloud has waiting for the Wi-Fi adapter. Firmware CANNOT be rolled back; the pump must stay powered with good Wi-Fi, nobody may cut the power or use the remote control while it runs, and the adapter restarts (no control for a while). Check get_firmware_status first (canStart). Refused without asking when the account is not the owner, nothing waits, the unit is offline or MELCloud does not offer the update now. This CHANGES THE PHYSICAL HEAT PUMP. Only call it after the user has explicitly agreed to this exact change in the conversation. Propose first, then wait for a yes. The call then opens a confirmation dialog on the user's Mac and blocks until they click Approve (sent) or Reject (not sent); no answer within 120 s counts as rejected. Counts toward the 12 writes per hour. Follow progress with get_firmware_status. Cancelling is only possible in the app.",
+   "inputSchema": {
+    "properties": {
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "start_firmware_update"
+  },
+  {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false,
+    "readOnlyHint": false
+   },
+   "description": "Record that a maintenance task was done (e.g. the user cleaned the air filter). Does not touch the heat pump, but writes to the shared history; only call it when the user said the task was done.",
+   "inputSchema": {
+    "properties": {
+     "date": {
+      "description": "ISO 8601 date or date-time, not in the future (default: now).",
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "airFilter",
+       "deodorizingFilter",
+       "vBlockingFilter",
+       "professionalService",
+       "other"
+      ],
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why this change is made, in the user's words or a short sentence in English. Shown to the user in the approval dialog and logged in the change log.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "reason"
+    ],
+    "type": "object"
+   },
+   "name": "record_maintenance"
+  }
+ ]
+}

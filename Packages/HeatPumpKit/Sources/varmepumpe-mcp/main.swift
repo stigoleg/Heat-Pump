@@ -4,10 +4,26 @@ import HeatPumpKit
 import Integrations
 import MCP
 
-/// The server instructions; the integration names the unit and the service.
-func instructions(for integration: any Integration) -> String {
+/// The server instructions; the integration names the unit and the service. With two or more
+/// devices they list them and explain the `device` argument.
+func instructions(for integration: any Integration, devices: [DeviceDescriptor] = [], hub: DeviceHub? = nil) -> String {
+    guard devices.count >= 2 else { return baseInstructions(for: integration) }
+    let list = devices.map { device in
+        let unit = hub?.integration(for: device.key)?.unitDescription ?? device.kind.rawValue
+        return "\(device.name) (\(device.key.rawValue), \(unit))"
+    }
+    return baseInstructions(for: integration, opening: "Tools for the user's \(devices.count) devices: \(list.joined(separator: "; ")).")
+        + " " + """
+        Every tool about a device takes an optional device argument: the device's key or name from \
+        list_devices. When it is left out and more than one device could answer, the tool returns an \
+        error listing the choices; ask the user which device they mean when it is not clear. get_prices \
+        is shared by all devices.
+        """
+}
+
+private func baseInstructions(for integration: any Integration, opening: String? = nil) -> String {
     """
-    Tools for the user's \(integration.unitDescription).
+    \(opening ?? "Tools for the user's \(integration.unitDescription).")
     Read tools are safe to call freely. Write tools (set_*) change the physical heat pump: \
     propose the change, explain why in plain words, and only call the tool after the user \
     agrees in the conversation. Each set_* call then opens a confirmation dialog on the user's Mac \
@@ -36,9 +52,9 @@ func healthCheckPrompt(serviceName: String) -> String {
 let application = NSApplication.shared
 application.setActivationPolicy(.accessory)
 
-let service: HeatPumpService
+let hub: DeviceHub
 do {
-    service = try IntegrationCatalog.makeService()
+    hub = try IntegrationCatalog.makeHub()
 } catch {
     Log.error("fatal: \(error)")
     exit(1)
@@ -51,7 +67,7 @@ if !(approver is DialogApprover) {
 
 Task {
     do {
-        try await runServer(service: service, approver: approver)
+        try await runServer(hub: hub, approver: approver)
     } catch {
         Log.error("fatal: \(error)")
         exit(1)
@@ -60,23 +76,27 @@ Task {
 }
 application.run()
 
-func runServer(service: HeatPumpService, approver: any ChangeApprover) async throws {
+func runServer(hub: DeviceHub, approver: any ChangeApprover) async throws {
+    guard let service = try await hub.primaryService() else {
+        Log.error("fatal: no active integration")
+        exit(1)
+    }
     let server = Server(
         name: "varmepumpe",
         version: "0.2.0",
         title: L10n.tr("Heat Pump"),
-        instructions: instructions(for: service.integration),
+        instructions: instructions(for: service.integration, devices: try await hub.devices(), hub: hub),
         capabilities: .init(
             prompts: .init(listChanged: false),
             resources: .init(subscribe: false, listChanged: false),
             tools: .init(listChanged: false)))
-    let handler = ToolHandler(service: service, approver: approver)
+    let router = ToolRouter(hub: hub, approver: approver)
 
     await server.withMethodHandler(ListTools.self) { _ in
-        ListTools.Result(tools: ToolCatalog.all(service: service.serviceName))
+        ListTools.Result(tools: await router.tools())
     }
     await server.withMethodHandler(CallTool.self) { params in
-        await handler.handle(params)
+        await router.handle(params)
     }
     await server.withMethodHandler(ListResources.self) { _ in
         ListResources.Result(

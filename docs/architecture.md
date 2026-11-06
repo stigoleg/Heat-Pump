@@ -20,10 +20,14 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 └────────────────────────────────────────────────┘
 ```
 
-- **One entry point.** `HeatPumpService` (`Packages/HeatPumpKit/Sources/HeatPumpKit/Service`) is the
-  only thing that talks to the network. The app and the MCP helper each create one
-  (`IntegrationCatalog.makeService`) and share the SQLite database and keychain, so rate limits,
-  blocks and the change budget hold across both processes.
+- **One entry point.** `DeviceHub` (`Packages/HeatPumpKit/Sources/HeatPumpKit/Hub`) holds one
+  `HeatPumpService` per enabled device (`Service/`), one connection per active integration and one
+  `EnergyContextService` (prices, weather, house consumption, price outlook) shared by all devices.
+  The services are the only thing that talks to the network. The app and the MCP helper each build
+  a hub (`IntegrationCatalog.makeHub`) and share the SQLite database and keychain, so rate limits,
+  blocks and the change budget hold across both processes. Active integrations are stored in
+  `app_settings.integrations` (MELCloud until changed; demo mode: the demo only). The app serves
+  the primary device (`primaryService()`); the MCP helper chooses per call (`ToolRouter`).
 - **Cache first.** Reads return the stored snapshot unless it is older than the allowed age;
   `HistoryStore.reserveFetch` decides whether a network call may happen.
 - **Writes** go through validation → safety checks → change budget (`reserveChange`) → optional
@@ -34,13 +38,17 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   (`VARMEPUMPE_BACKEND=mock`).
 - **Devices** are named by `DeviceKey` (`"<integration id>:<native id>"`, e.g.
   `melcloud-classic:12345`, `demo:100001`) everywhere above the drivers; a driver maps the key to
-  its own ids. The store's `devices` table registers every device it holds data for; the service
-  serves the first enabled one. Device enums (`OperationMode`, vanes) are stored by their keys;
+  its own ids. The store's `devices` table registers every device it holds data for (with the
+  user's own name in `customName`); the hub gives every enabled one a service fixed to it. Device enums (`OperationMode`, vanes) are stored by their keys;
   each integration maps its wire numbers in its own module.
 - **Storage** (`Storage/HistoryStore*.swift`): device-scoped tables carry `deviceKey`;
   `fetch_state` keys of an integration are namespaced (`melcloud-classic/state`,
-  `melcloud-classic/global`, …), so blocks, spacing and the change budget are per integration and
-  still shared across processes. Migration v12 converted older files (rows keyed by the
+  `melcloud-classic/global`, …), so blocks, the state spacing, endpoint refusals and the change
+  budget are per integration (the account's) and still shared across processes. Requests about one
+  unit are spaced per device (`<integration>/<name>@<native id>`: reports, away, timer, firmware,
+  local adapter), and the device caches in `app_settings` are per device
+  (`<name>@<device key>`: away, weekly timer, firmware status, local connection). Migration v13
+  moved the old global copies to the then current device. Migration v12 converted older files (rows keyed by the
   integration that opened the store, `IntegrationCatalog.makeService`) after copying the file to
   `<name>-pre-v12.sqlite` with SQLite's backup API.
 - **Credentials** (`CredentialStore`) are `CredentialValues` addressed through each integration's
@@ -66,7 +74,7 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 | `HeatPumpKit` | The vendor-neutral core: service, store, models, health engine, pricing, weather, L10n. Names no vendor outside comments (`BoundaryTests`). |
 | `MELCloudIntegration` | `MELCloudIntegration: Integration`, the MELCloud Classic backend and parsers, the local adapter client (CN105), `ErrorCatalog`, `MELCloudHealthChecks` and the knowledge documents. |
 | `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents. |
-| `Integrations` | `IntegrationCatalog`: the list of integrations, `current(environment:)` and `makeService`. |
+| `Integrations` | `IntegrationCatalog`: the list of integrations, `current(environment:)` and `makeHub` (`makeService` is its primary service). |
 | `varmepumpe-mcp` | The MCP helper. |
 
 ### What an integration supplies (`Integration`)
@@ -74,8 +82,10 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 - **Texts**: `displayName` is the service name in every text (`HeatPumpService.serviceName`,
   `AppModel.serviceName`; keys carry it as `%@`), `brandName` ("the … app"), `modelName`
   (`get_device_info`) and `unitDescription` (first line of the MCP instructions). Error texts
-  (`HeatPumpError`) are created far from the service, so they read `HeatPumpError.serviceName`,
-  which `HeatPumpService.init` sets for the process.
+  (`HeatPumpError`) are created far from the service; texts a service builds name its own
+  integration (`HeatPumpService.describe(_:)`, `HeatPumpError.description(serviceName:)`), and
+  `errorDescription` falls back to the process-wide `HeatPumpError.serviceName` (the primary
+  device's integration, set by the hub).
 - **Error codes**: `errorCodes: ErrorCodeExplaining` (lookup, `hasExplanation`, caveat, the
   codes that mean "no error").
 - **Health**: `healthChecks: HealthCheckProviding` for rules on the integration's own signals
@@ -89,9 +99,9 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 
 ### Known couplings (what the platform work removes)
 
-Device models have air-to-air fields; the service holds one device and one backend;
-`HeatPumpError` names the service process-wide; local-adapter settings are global; every screen
-assumes one heat pump.
+Device models have air-to-air fields; the app serves only the hub's primary device, so every
+screen assumes one heat pump; the generic error text fallback (`errorDescription`) still names the
+primary device's service.
 
 ## Direction: an integration platform
 
@@ -109,7 +119,8 @@ one heat pump the app looks and behaves exactly as before.**
   to; screens and MCP tools appear only for devices that have the capability.
 - **Each integration owns its rules**: credential fields (drive a generic sign-in form), rate-limit
   policy, error texts, health checks and knowledge documents.
-- **`DeviceHub`** replaces `makeDefault` as the entry point; per-device services do the work.
+- **`DeviceHub`** is the entry point; per-device services do the work (done in phase 4a; the
+  app UI for several devices follows).
 - **Several devices at once.** With two or more, the sidebar gets a Home group (overview of all
   devices, Forecast, Claude activity) and a group per device.
 
@@ -150,10 +161,12 @@ Data (database, fetch status, blocks)
 - [ ] Change tools (approval each): `set_power`, `set_mode`, `set_temperature`, `set_fan_speed`,
   `set_vanes`, `set_frost_protection`, `set_holiday_mode`, `start_firmware_update`, `record_maintenance`
 - [ ] Prompt `helsesjekk`; resources `varmepumpe://knowledge/…` in the chosen language
+- [ ] With one device no `device` argument and no `list_devices` (catalog golden test); with two
+  or more, both, and an error listing the choices when `device` is needed
 
 **Developer hooks**
 - [ ] `VARMEPUMPE_BACKEND`, `VARMEPUMPE_DB_PATH`, `MELCLOUD_EMAIL`/`MELCLOUD_PASSWORD`,
   `VARMEPUMPE_APPROVAL`, `VARMEPUMPE_SCREEN`, `VARMEPUMPE_HISTORY_TAB`, `VARMEPUMPE_HISTORY_RANGE`,
   `VARMEPUMPE_SCROLL_TO`, `VARMEPUMPE_APPEARANCE`, `VARMEPUMPE_LANGUAGE`, `VARMEPUMPE_SETTINGS_TAB`,
-  `VARMEPUMPE_MOCK_CYCLING`
+  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`
 - [ ] `make demo`, `make l10n`, `make release`; CI and release workflows

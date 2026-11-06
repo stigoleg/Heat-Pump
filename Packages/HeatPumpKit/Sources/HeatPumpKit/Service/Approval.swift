@@ -8,17 +8,21 @@ public struct ApprovalRequest: Sendable, Equatable {
     public var summaries: [String]
     /// Claude's stated reason.
     public var reason: String
+    /// The device's name, set when more than one device is enabled.
+    public var device: String?
 
-    public init(summaries: [String], reason: String) {
+    public init(summaries: [String], reason: String, device: String? = nil) {
         self.summaries = summaries
         self.reason = reason
+        self.device = device
     }
 
     /// Body text for the dialog.
     public var message: String {
         // Non-breaking space keeps "21.5 °C" on one line in a narrow dialog.
         let list = summaries.map { "• \($0.replacingOccurrences(of: " °C", with: "\u{00A0}°C"))" }.joined(separator: "\n")
-        return L10n.format("%@\n\nReason from Claude: %@", list, reason)
+        let body = L10n.format("%@\n\nReason from Claude: %@", list, reason)
+        return device.map { L10n.format("Device: %@", $0) + "\n\n" + body } ?? body
     }
 }
 
@@ -44,6 +48,23 @@ public enum ApprovalDecision: Sendable, Equatable {
 /// Asks a human whether a change may be sent. The MCP helper implements it with a native dialog.
 public protocol ChangeApprover: Sendable {
     func requestApproval(_ request: ApprovalRequest) async -> ApprovalDecision
+}
+
+/// Names the device in every request before `base` asks (more than one device enabled).
+public struct DeviceNamingApprover: ChangeApprover {
+    public let base: any ChangeApprover
+    public let device: String
+
+    public init(base: any ChangeApprover, device: String) {
+        self.base = base
+        self.device = device
+    }
+
+    public func requestApproval(_ request: ApprovalRequest) async -> ApprovalDecision {
+        var named = request
+        named.device = device
+        return await base.requestApproval(named)
+    }
 }
 
 /// Always answers the same. Used by tests and by the dev-only `VARMEPUMPE_APPROVAL` switch.

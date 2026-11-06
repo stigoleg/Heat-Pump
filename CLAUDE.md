@@ -13,7 +13,7 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 |---|---|
 | `App/Sources` | SwiftUI app: `AppModel` (`@MainActor @Observable`), one `XView.swift` per screen, Settings tabs, design system (`Theme.swift`, `DesignSystem.swift`, `ChartKit.swift`, `Components.swift`) |
 | `App/Resources` | String catalogs: `Localizable.xcstrings` (app), `HeatPumpKit.xcstrings` (package), `InfoPlist.xcstrings` |
-| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `HeatPumpService` (actor, the single entry point), SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
+| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
 | `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `DemoIntegration`, `Integrations` | Integrations (backend, error codes, health rules, knowledge docs) and `IntegrationCatalog`; see the module map in docs/architecture.md |
 | `Packages/HeatPumpKit/Sources/varmepumpe-mcp` | MCP server embedded in the app bundle (`Contents/Helpers`); tools in `Tools.swift`, handlers in `ToolHandler.swift` |
 | `Packages/HeatPumpKit/Tests/HeatPumpKitTests` | Swift Testing suites, JSON fixtures, `TestSupport.swift` helpers |

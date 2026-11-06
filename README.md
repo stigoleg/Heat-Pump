@@ -261,6 +261,7 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 | `VARMEPUMPE_LANGUAGE` | `en` or `nb`, without saving the choice (also for the MCP server) |
 | `VARMEPUMPE_SETTINGS_TAB` | Opens Settings on a tab: generelt, konto, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | The simulated compressor runs in short cycles |
+| `VARMEPUMPE_DEMO_DEVICES` | Simulated devices, comma-separated (default `heatpump`); `heatpump,heatpump` adds a second heat pump (“Bedroom (simulated)”) |
 
 </details>
 

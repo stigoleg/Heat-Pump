@@ -3,7 +3,8 @@ import HeatPumpKit
 import MELCloudIntegration
 
 /// Simulated data for demo mode and screenshots (`VARMEPUMPE_BACKEND=mock`): one MELCloud-like
-/// heat pump, its Wi-Fi adapter, prices, weather and house consumption. Never touches the network.
+/// heat pump (more with `VARMEPUMPE_DEMO_DEVICES`), its Wi-Fi adapter, prices, weather and house
+/// consumption. Never touches the network.
 public struct DemoIntegration: Integration {
     public init() {}
 
@@ -30,6 +31,6 @@ public struct DemoIntegration: Integration {
     public var knowledge: KnowledgeSource { simulated.knowledge }
 
     public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver {
-        MockBackend(timeZone: context.timeZone, now: context.now)
+        MockBackend(timeZone: context.timeZone, now: context.now, units: DemoUnit.units(environment: context.environment))
     }
 }

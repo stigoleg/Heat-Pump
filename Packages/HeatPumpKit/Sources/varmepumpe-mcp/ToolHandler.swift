@@ -2,10 +2,13 @@ import Foundation
 import HeatPumpKit
 import MCP
 
+/// Answers one tool call for one device (`ToolRouter` picks the device).
 struct ToolHandler: Sendable {
     let service: HeatPumpService
     /// Asks the user (native dialog) before any change reaches the heat pump.
     let approver: any ChangeApprover
+    /// The service price control runs on (`get_prices`); the device's own service by default.
+    var priceControlService: HeatPumpService?
 
     func handle(_ params: CallTool.Parameters) async -> CallTool.Result {
         let args = Arguments(params.arguments)
@@ -38,7 +41,7 @@ struct ToolHandler: Sendable {
             return ToolOutput.failure(error.message)
         } catch {
             Log.error("\(params.name): \(error)")
-            return ToolOutput.failure((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            return ToolOutput.failure(service.describe(error))
         }
     }
 
@@ -277,7 +280,7 @@ struct ToolHandler: Sendable {
                 },
                 method: PriceOutlook.methodText)
         }
-        let control = try await service.priceControlOverview()
+        let control = try await (priceControlService ?? service).priceControlOverview()
         let now = Date()
         let priceControl = PriceControl(
             enabled: control.settings.enabled, reduceExpensiveC: control.settings.reduceExpensive,

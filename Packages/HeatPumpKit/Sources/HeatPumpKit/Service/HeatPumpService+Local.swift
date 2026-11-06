@@ -32,7 +32,7 @@ extension HeatPumpService {
     // MARK: Settings
 
     public func localSettings() throws -> LocalSettings {
-        try store.setting(LocalSettings.self, key: Self.localSettingsKey) ?? .default
+        try deviceSetting(LocalSettings.self, Self.localSettingsKey) ?? .default
     }
 
     /// Saves the settings. A host that is not a private IPv4 address is refused.
@@ -47,21 +47,21 @@ extension HeatPumpService {
             clean.host = nil
         }
         let previous = try localSettings()
-        try store.saveSetting(clean, key: Self.localSettingsKey)
+        try saveDeviceSetting(clean, Self.localSettingsKey)
         if previous.host != clean.host || !previous.enabled {
             // A new address or a fresh start: forget the old failures and back-off.
-            try store.saveSetting(LocalStatusRecord(), key: Self.localStatusKey)
+            try saveDeviceSetting(LocalStatusRecord(), Self.localStatusKey)
         }
     }
 
     func localStatusRecord() throws -> LocalStatusRecord {
-        try store.setting(LocalStatusRecord.self, key: Self.localStatusKey) ?? LocalStatusRecord()
+        try deviceSetting(LocalStatusRecord.self, Self.localStatusKey) ?? LocalStatusRecord()
     }
 
     public func localReachability() throws -> LocalReachability {
         let settings = try localSettings()
         let record = try localStatusRecord()
-        let fetch = try store.fetchState(key: fetchKey(Self.localFetchKey))
+        let fetch = try store.fetchState(key: try deviceFetchKey(Self.localFetchKey))
         let next = fetch?.lastAttempt.map { $0.addingTimeInterval(Self.localBackoff(failures: record.consecutiveFailures)) }
         return LocalReachability(
             enabled: settings.enabled, host: settings.host, lastAttempt: fetch?.lastAttempt, lastSuccess: fetch?.lastSuccess,
@@ -92,7 +92,7 @@ extension HeatPumpService {
     /// address leaves both the history and the failure state alone.
     func readLocal(host: String, minInterval: TimeInterval, persist: Bool = true) async throws -> LocalRead {
         let t = now()
-        switch try store.reserveFetch(key: fetchKey(Self.localFetchKey), minInterval: minInterval, now: t, blockingIntegration: nil) {
+        switch try reserveDeviceFetch(Self.localFetchKey, minInterval: minInterval, now: t, blocking: false) {
         case .throttled(let next):
             return .throttled(nextAllowed: next)
         case .blocked, .credentialsRejected:
@@ -102,18 +102,18 @@ extension HeatPumpService {
                 let sample = try await local.makeClient(host).readSample(now: now)
                 guard persist else { return .sample(sample) }
                 try store.insertLocalSample(sample, device: try currentDevice())
-                try store.recordFetchSuccess(key: fetchKey(Self.localFetchKey), now: t)
-                try store.saveSetting(LocalStatusRecord(), key: Self.localStatusKey)
+                try store.recordFetchSuccess(key: try deviceFetchKey(Self.localFetchKey), now: t)
+                try saveDeviceSetting(LocalStatusRecord(), Self.localStatusKey)
                 try pruneLocalIfDue()
                 return .sample(sample)
             } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                let message = describe(error)
                 guard persist else { return .failed(message) }
                 var record = try localStatusRecord()
                 record.consecutiveFailures += 1
                 record.failingSince = record.failingSince ?? t
                 record.lastError = message
-                try store.saveSetting(record, key: Self.localStatusKey)
+                try saveDeviceSetting(record, Self.localStatusKey)
                 return .failed(message)
             }
         }
@@ -203,7 +203,7 @@ extension HeatPumpService {
     /// (from the MELCloud listing; never shown) on the Mac's own /24. At most once per minute.
     public func discoverLocal() async throws -> LocalDiscoveryResult {
         guard
-            try store.reserveFetch(key: fetchKey(Self.localDiscoveryKey), minInterval: 60, now: now(), blockingIntegration: nil)
+            try reserveDeviceFetch(Self.localDiscoveryKey, minInterval: 60, now: now(), blocking: false)
                 == .allowed
         else {
             return LocalDiscoveryResult(host: nil, message: L10n.tr("The search was just run. Wait a minute before you try again."))
@@ -216,9 +216,7 @@ extension HeatPumpService {
         let record = try localStatusRecord()
         guard let host = try localSettings().host, isOnNetwork(host),
             record.consecutiveFailures >= Self.localRediscoveryAfterFailures,
-            try store.reserveFetch(
-                key: fetchKey(Self.localAutoDiscoveryKey), minInterval: Self.localRediscoveryInterval, now: now(),
-                blockingIntegration: nil)
+            try reserveDeviceFetch(Self.localAutoDiscoveryKey, minInterval: Self.localRediscoveryInterval, now: now(), blocking: false)
                 == .allowed
         else { return }
         _ = try await discover(trySaved: false)

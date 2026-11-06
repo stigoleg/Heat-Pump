@@ -1,17 +1,20 @@
 import Foundation
 
-/// Single entry point for the app and the MCP server.
+/// One device's entry point for the app and the MCP server (`DeviceHub` holds one per enabled
+/// device; a lone service, as in tests, serves the first enabled device it finds).
 ///
 /// Reads come from the shared SQLite cache; the network is touched only when the cache
 /// is too old, never more than once per `policy.minRefreshInterval` across all processes, and
 /// never while a block is active. Every change is validated, budgeted (`policy.changeBudget`,
-/// across processes) and logged.
+/// across processes) and logged. Prices, weather and house consumption are shared by every
+/// device (`energy`).
 public actor HeatPumpService {
     public static let historyDays = 90
 
     static let stateKey = "state"
 
-    /// The connection to the unit. Optional capabilities are reached with `as? any …Driver`.
+    /// The connection to the unit (shared by every device of the integration). Optional
+    /// capabilities are reached with `as? any …Driver`.
     public nonisolated let backend: any DeviceConnection & ThermostatDriver
     /// The integration the backend belongs to: its name in texts, error codes, health rules,
     /// maintenance kinds and knowledge documents.
@@ -22,18 +25,22 @@ public actor HeatPumpService {
     public nonisolated let timeZone: TimeZone
     /// Credential store used by `saveCredentials` / `signOut` (nil for the mock backend).
     public nonisolated let credentials: (any CredentialProviding)?
+    /// Prices, weather, house consumption and the price outlook, shared by every device.
+    public nonisolated let energy: EnergyContextService
     let now: @Sendable () -> Date
     let sleep: @Sendable (TimeInterval) async -> Void
+    /// The device this service is fixed to (hub services), or nil to serve the first enabled one.
+    private var pinned: DeviceKey?
+    /// Without a pinned device: the integration whose devices it may resolve to (nil: any).
+    private let resolutionScope: String?
     private var device: DeviceSummary?
-    /// Builds the price source for the current settings (nil for Norgespris or a missing token).
-    let priceProvider: @Sendable (PriceSettings) -> (any PriceProvider)?
+    /// Set while `signIn` runs: the account's devices are listed again before the test fetch.
+    private var relistOnFetch = false
     /// Read-only access to the Wi-Fi adapter on the home network (unavailable unless injected).
     let local: LocalAccess
-    /// Builds the forecast source for the current weather settings (nil: no forecast).
-    let weatherProvider: @Sendable (WeatherSettings) -> (any WeatherProviding)?
-    /// The house's consumption source (Tibber; nil without a token). Called at most hourly.
-    let houseProvider: @Sendable () -> (any HouseConsumptionProviding)?
 
+    /// A lone service with its own price, weather and house sources, serving the first enabled
+    /// device (tests, and anything that runs without a hub).
     public init(
         backend: any DeviceConnection & ThermostatDriver, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
         integration: any Integration, policy: RateLimitPolicy = .standard, timeZone: TimeZone = .current,
@@ -46,9 +53,31 @@ public actor HeatPumpService {
         weatherProvider: @escaping @Sendable (WeatherSettings) -> (any WeatherProviding)? = { _ in nil },
         houseProvider: @escaping @Sendable () -> (any HouseConsumptionProviding)? = { nil }
     ) {
-        self.priceProvider = priceProvider
-        self.houseProvider = houseProvider
-        self.weatherProvider = weatherProvider
+        let reference: @Sendable () throws -> DeviceKey? = { try store.devices().first(where: \.enabled)?.key }
+        let energy = EnergyContextService(
+            store: store, timeZone: timeZone, isDemo: backend.identifier == "mock", now: now, priceProvider: priceProvider,
+            weatherProvider: weatherProvider, houseProvider: houseProvider, referenceDevice: reference,
+            referenceLocation: {
+                guard let key = try reference(), let reporter = backend as? any DeviceLocationReporting else { return nil }
+                return reporter.location(fromStoredListing: try store.rawDevice(key)?.listing)
+            })
+        self.init(
+            backend: backend, store: store, credentials: credentials, integration: integration, policy: policy, timeZone: timeZone,
+            now: now, sleep: sleep, local: local, energy: energy)
+    }
+
+    /// A service sharing `energy` with the other devices. `device` fixes it to one device (the
+    /// hub's services); without it, it serves the first enabled device of `resolutionScope`'s
+    /// integration (any integration when nil), listing the account's devices when none is known.
+    public init(
+        backend: any DeviceConnection & ThermostatDriver, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
+        integration: any Integration, policy: RateLimitPolicy = .standard, timeZone: TimeZone = .current,
+        now: @escaping @Sendable () -> Date = { Date() },
+        sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(for: .seconds(max(0, seconds)))
+        },
+        local: LocalAccess = .unavailable, energy: EnergyContextService, device: DeviceKey? = nil, resolutionScope: String? = nil
+    ) {
         self.local = local
         self.backend = backend
         self.integration = integration
@@ -59,6 +88,9 @@ public actor HeatPumpService {
         self.timeZone = timeZone
         self.now = now
         self.sleep = sleep
+        self.energy = energy
+        self.pinned = device
+        self.resolutionScope = resolutionScope
     }
 
     /// The service as texts name it, e.g. "MELCloud".
@@ -69,6 +101,13 @@ public actor HeatPumpService {
 
     /// Knowledge documents for the MCP resources and the Health page.
     public nonisolated var knowledge: Knowledge { Knowledge(integration: integration) }
+
+    /// Display text for `error`, naming this device's service (also when another integration's
+    /// service set the process-wide `HeatPumpError.serviceName`).
+    public nonisolated func describe(_ error: any Error) -> String {
+        if let error = error as? HeatPumpError { return error.description(serviceName: serviceName) }
+        return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+    }
 
     /// Marketing version of the running app or helper (for User-Agent strings).
     public static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
@@ -108,11 +147,16 @@ public actor HeatPumpService {
     }
 
     /// Saves credentials, forgets the old session and does one test fetch right away
-    /// (one login + one fetch). It skips the 60 s refresh spacing but still respects 429 and
-    /// login-throttle blocks, is recorded like any fetch, and is itself limited to one per 10 s.
+    /// (one login, the account's device list and one fetch). It skips the 60 s refresh spacing but
+    /// still respects 429 and login-throttle blocks, is recorded like any fetch, and is itself
+    /// limited to one per 10 s. The listed devices are registered; the integration's devices the
+    /// account does not list are disabled (another account was signed in), and this service moves
+    /// to the account's first device when its own is gone.
     public func signIn(_ new: CredentialValues) async throws -> StateResult {
         try saveCredentials(new)
         await backend.resetSession()
+        relistOnFetch = true
+        defer { relistOnFetch = false }
         return try await fetchState(minInterval: Self.signInMinInterval, cached: try latestSnapshot(), maxAge: 0)
     }
 
@@ -124,19 +168,54 @@ public actor HeatPumpService {
         device = nil
     }
 
+    /// Forgets the cached answer of `hasCredentials` (another service of the same integration
+    /// signed in or out).
+    func forgetCredentialCache() { credentialsStored = nil }
+
     // MARK: Device and store scope
 
     /// The `fetch_state` key of `name` in this integration's namespace (its blocks, spacing and
     /// last fetches are its own).
     public nonisolated func fetchKey(_ name: String) -> String { HistoryStore.fetchKey(name, integration: integration.id) }
 
-    /// The device this service serves: the one resolved in this process, else the first enabled
-    /// one in the registry. No network; nil until a device is known.
+    /// The device this service serves: its pinned device, else the one resolved in this process,
+    /// else the first enabled one in the registry (of its integration, for a hub's service). No
+    /// network; nil until a device is known.
     public func currentDevice() throws -> DeviceKey? {
+        if let pinned { return pinned }
         if let device { return device.key }
-        guard let record = try store.devices().first(where: \.enabled) else { return nil }
+        guard let record = try store.devices().first(where: { $0.enabled && inScope($0.key) }) else { return nil }
         device = record.summary
         return record.key
+    }
+
+    private func inScope(_ key: DeviceKey) -> Bool { resolutionScope.map { key.integration == $0 } ?? true }
+
+    /// The `fetch_state` key of `name` for the served device: requests about one unit (reports,
+    /// away, timer, firmware, the local adapter) are spaced per device. The integration's key
+    /// until a device is known.
+    public func deviceFetchKey(_ name: String) throws -> String {
+        guard let key = try currentDevice() else { return fetchKey(name) }
+        return HistoryStore.fetchKey(name, device: key)
+    }
+
+    /// `reserveFetch` for a per-device key; honours the integration's blocks unless `blocking` is
+    /// false (the local adapter, which no cloud block stops).
+    func reserveDeviceFetch(_ name: String, minInterval: TimeInterval, now: Date, blocking: Bool = true) throws -> FetchDecision {
+        try store.reserveFetch(
+            key: deviceFetchKey(name), minInterval: minInterval, now: now, blockingIntegration: blocking ? integration.id : nil)
+    }
+
+    /// The served device's copy of an `app_settings` cache (`HistoryStore.deviceSettingNames`);
+    /// the plain-named copy until a device is known.
+    func deviceSetting<T: Decodable>(_ type: T.Type, _ name: String) throws -> T? {
+        guard let key = try currentDevice() else { return try store.setting(type, key: name) }
+        return try store.deviceSetting(type, name: name, device: key)
+    }
+
+    func saveDeviceSetting<T: Encodable>(_ value: T, _ name: String) throws {
+        guard let key = try currentDevice() else { return try store.saveSetting(value, key: name) }
+        try store.saveDeviceSetting(value, name: name, device: key)
     }
 
     /// The newest stored snapshot of the served device.
@@ -181,7 +260,7 @@ public actor HeatPumpService {
         guard hasCredentials() else {
             var r = result(
                 cached?.state, now: t, refreshed: false, stale: cached != nil,
-                error: HeatPumpError.missingCredentials.errorDescription)
+                error: describe(HeatPumpError.missingCredentials))
             r.needsLogin = true
             return r
         }
@@ -194,7 +273,7 @@ public actor HeatPumpService {
         case .credentialsRejected:
             var r = result(
                 cached?.state, now: t, refreshed: false, stale: true,
-                error: HeatPumpError.credentialsRejected.errorDescription)
+                error: describe(HeatPumpError.credentialsRejected))
             r.needsLogin = true
             return r
         case .blocked(let until):
@@ -206,8 +285,8 @@ public actor HeatPumpService {
             return result(latest?.state, now: t, refreshed: false, stale: isStale, nextRefreshAllowed: next)
         case .allowed:
             do {
-                let summary = try await resolveDevice()
-                let state = try await backend.fetchState(device: summary.key)
+                let key = relistOnFetch ? try await relist() : try await resolveDevice()
+                let state = try await backend.fetchState(device: key)
                 try store.insertSnapshot(state)
                 try store.recordFetchSuccess(key: fetchKey(Self.stateKey), now: t)
                 return result(state, now: now(), refreshed: true, stale: false)
@@ -217,26 +296,61 @@ public actor HeatPumpService {
                 var r = result(
                     cached?.state, now: t, refreshed: false, stale: true, blockedUntil: blocked,
                     error: blocked == nil
-                        ? (error.isCredentialProblem ? HeatPumpError.credentialsRejected : error).errorDescription : nil)
+                        ? describe(error.isCredentialProblem ? HeatPumpError.credentialsRejected : error) : nil)
                 r.needsLogin = r.needsLogin || error.isCredentialProblem || error == .missingCredentials
                 return r
             }
         }
     }
 
-    /// The served device: from this process, else the registry, else the first the backend
-    /// lists (every listed device is registered).
-    private func resolveDevice() async throws -> DeviceSummary {
-        if let device { return device }
-        if let record = try store.devices().first(where: \.enabled) {
-            device = record.summary
-            return record.summary
-        }
+    /// The served device: pinned, from this process, else the registry, else the first the
+    /// backend lists (every listed device is registered).
+    private func resolveDevice() async throws -> DeviceKey {
+        if let key = try currentDevice() { return key }
         let listed = try await backend.listDevices()
         guard let first = listed.first else { throw HeatPumpError.deviceNotFound }
         try store.registerDevices(listed)
         device = first
-        return first
+        return first.key
+    }
+
+    /// Lists the account's devices (the caller holds the state reservation), registers them and
+    /// disables the integration's devices the account no longer lists. Stays on the served device
+    /// when it is listed, else moves to the first listed one.
+    private func relist() async throws -> DeviceKey {
+        try await relisted().key
+    }
+
+    private func relisted() async throws -> (key: DeviceKey, listed: [DeviceSummary]) {
+        let listed = try await backend.listDevices()
+        try store.syncDevices(listed, integration: listed.first?.key.integration ?? integration.id)
+        let current = try currentDevice()
+        guard let target = listed.first(where: { $0.key == current }) ?? listed.first else { throw HeatPumpError.deviceNotFound }
+        if pinned != nil { pinned = target.key }
+        device = target
+        return (target.key, listed)
+    }
+
+    /// Fixes the service to `key` (the hub adopts a service that resolved its device by itself).
+    func pin(to key: DeviceKey) {
+        pinned = key
+        if device?.key != key { device = nil }
+    }
+
+    /// Lists the account's devices again: one listing request under the state spacing and the
+    /// integration's blocks (nothing is sent when they do not allow it, nor without credentials).
+    /// New devices are registered, devices the account no longer lists are disabled. Returns
+    /// the listing, or nil when nothing was sent.
+    public func refreshDeviceList() async throws -> [DeviceSummary]? {
+        guard hasCredentials() else { return nil }
+        let t = now()
+        guard try reserveFetch(Self.stateKey, minInterval: policy.minRefreshInterval, now: t) == .allowed else { return nil }
+        do {
+            return try await relisted().listed
+        } catch let error as HeatPumpError {
+            try handleBlock(error, now: t)
+            throw error
+        }
     }
 
     private func result(
@@ -248,7 +362,7 @@ public actor HeatPumpService {
         let until = blockedUntil ?? block?.until
         var message: String?
         if credentialsRejected {
-            message = HeatPumpError.credentialsRejected.errorDescription
+            message = describe(HeatPumpError.credentialsRejected)
         } else if let until {
             message = (block?.reason ?? .rateLimited).message(until: until, serviceName: serviceName)
         }
@@ -296,7 +410,7 @@ public actor HeatPumpService {
         if try credentialsRejected() {
             return ReportKind.allCases.map {
                 ReportSync(kind: $0, status: .blocked, count: 0,
-                           message: HeatPumpError.credentialsRejected.errorDescription, nextAllowed: nil)
+                           message: describe(HeatPumpError.credentialsRejected), nextAllowed: nil)
             }
         }
         var deviceState = try latestSnapshot()?.state
@@ -309,11 +423,11 @@ public actor HeatPumpService {
         var results: [ReportSync] = []
         for kind in ReportKind.allCases {
             let key = "report.\(kind.rawValue)"
-            switch try reserveFetch(key, minInterval: policy.reportInterval, now: t) {
+            switch try reserveDeviceFetch(key, minInterval: policy.reportInterval, now: t) {
             case .credentialsRejected:
                 results.append(
                     ReportSync(kind: kind, status: .blocked, count: 0,
-                               message: HeatPumpError.credentialsRejected.errorDescription, nextAllowed: nil))
+                               message: describe(HeatPumpError.credentialsRejected), nextAllowed: nil))
             case .blocked(let until):
                 results.append(ReportSync(kind: kind, status: .blocked, count: 0, message: nil, nextAllowed: until))
             case .throttled(let next):
@@ -321,14 +435,14 @@ public actor HeatPumpService {
             case .allowed:
                 do {
                     let count = try await fetchReport(kind, device: state.key, key: key, now: t)
-                    try store.recordFetchSuccess(key: fetchKey(key), now: t)
+                    try store.recordFetchSuccess(key: try deviceFetchKey(key), now: t)
                     results.append(ReportSync(kind: kind, status: .fetched, count: count, message: nil, nextAllowed: nil))
                 } catch let error as HeatPumpError {
                     let blocked = try handleBlock(error, now: t)
                     let stopped = blocked != nil || error.isCredentialProblem
                     results.append(
                         ReportSync(kind: kind, status: stopped ? .blocked : .failed, count: 0,
-                                   message: error.errorDescription, nextAllowed: blocked))
+                                   message: describe(error), nextAllowed: blocked))
                 }
             }
         }
@@ -344,7 +458,7 @@ public actor HeatPumpService {
         let earliest = t.addingTimeInterval(-Double(Self.historyDays) * 86_400)
         switch kind {
         case .errorLog:
-            let lastSuccess = try store.fetchState(key: fetchKey(key))?.lastSuccess
+            let lastSuccess = try store.fetchState(key: try deviceFetchKey(key))?.lastSuccess
             let from = max(earliest, (lastSuccess ?? earliest).addingTimeInterval(-86_400))
             guard let range = interval(from, t) else { return 0 }
             let entries = try await driver((any ErrorLogReporting).self).fetchErrorLog(device: device, range: range)
@@ -482,7 +596,7 @@ public actor HeatPumpService {
         if try credentialsRejected() {
             return .rejected(try rejectAll(
                 normalized, source: source, reason: reason, state: start,
-                error: HeatPumpError.credentialsRejected.errorDescription ?? "", now: t))
+                error: describe(HeatPumpError.credentialsRejected), now: t))
         }
         if let block = try blockStatus(now: t) {
             var outcomes = try rejectAll(
@@ -552,7 +666,7 @@ public actor HeatPumpService {
                 if waited + wait > policy.maxWriteWait {
                     let outcomes = try rejectAll(
                         request, source: source, reason: reason, state: base,
-                        error: HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", now: t)
+                        error: describe(HeatPumpError.writeTooSoon(nextAllowed: next)), now: t)
                     return (outcomes.map { var o = $0; o.nextAllowed = next; return o }, base)
                 }
                 waited += wait
@@ -561,7 +675,7 @@ public actor HeatPumpService {
             case .exceeded(let next):
                 let outcomes = try rejectAll(
                     request, source: source, reason: reason, state: base,
-                    error: HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", now: t)
+                    error: describe(HeatPumpError.changeBudgetExceeded(nextAllowed: next)), now: t)
                 return (outcomes.map { var o = $0; o.nextAllowed = next; return o }, base)
             case .reserved(let ids):
                 do {
@@ -593,7 +707,7 @@ public actor HeatPumpService {
                     }
                     return (outcomes, expected)
                 } catch {
-                    let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    let message = describe(error)
                     try store.finishChange(ids: ids, result: .failed, error: message)
                     let blocked = try (error as? HeatPumpError).flatMap { try handleBlock($0, now: t) }
                     let outcomes = request.map { change in
@@ -620,7 +734,7 @@ public actor HeatPumpService {
         let t = now()
         switch try reserveFetch(Self.stateKey, minInterval: policy.minRefreshInterval, now: t) {
         case .credentialsRejected:
-            return HeatPumpError.credentialsRejected.errorDescription
+            return describe(HeatPumpError.credentialsRejected)
         case .blocked(let until):
             return (try blockStatus(now: t)?.reason ?? .rateLimited).message(until: until, serviceName: serviceName)
         case .throttled(let next):
@@ -641,7 +755,7 @@ public actor HeatPumpService {
                 try handleBlock(error, now: t)
                 return L10n.format(
                     "The change was not sent because the status from the heat pump could not be fetched first: %@",
-                    error.errorDescription ?? L10n.tr("unknown error"))
+                    describe(error))
             }
         }
     }
@@ -926,11 +1040,21 @@ public actor HeatPumpService {
         try store.changes(device: try currentDevice(), limit: limit, source: source)
     }
 
-    /// The integration's fetch status rows, keyed by name without the namespace (`state`,
-    /// `global`, `report.energy`, …).
+    /// The fetch status rows of the integration and the served device, keyed by name without the
+    /// namespace (`state`, `global`, `report.energy`, …). Per-device rows carry the integration's
+    /// endpoint refusal (`blockedUntil`).
     public func fetchStatus() throws -> [FetchStateRow] {
         try ([Self.stateKey, HistoryStore.globalKey] + ReportKind.allCases.map { "report.\($0.rawValue)" }
             + [Self.awayFetchKey, Self.timerFetchKey])
-            .compactMap { name in try store.fetchState(key: fetchKey(name)).map { var row = $0; row.key = name; return row } }
+            .compactMap { name in
+                let shared = try store.fetchState(key: fetchKey(name))
+                guard name != Self.stateKey, name != HistoryStore.globalKey else {
+                    return shared.map { var row = $0; row.key = name; return row }
+                }
+                guard var row = try store.fetchState(key: try deviceFetchKey(name)) ?? shared else { return nil }
+                row.key = name
+                row.blockedUntil = name.hasPrefix("report.") ? row.blockedUntil : shared?.blockedUntil
+                return row
+            }
     }
 }

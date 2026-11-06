@@ -1,6 +1,7 @@
 import Foundation
 
-/// Weather forecast from MET Norway and the expected use tomorrow.
+/// Weather forecast from MET Norway (shared, `EnergyContextService`) and this device's expected
+/// use tomorrow.
 ///
 /// MET's terms: identifying User-Agent, at most every 10 minutes (we use 1 h, `fetch_state` key
 /// `weather`), respect `Expires`, send `If-Modified-Since`. The forecast is stored so the MCP helper
@@ -15,125 +16,28 @@ extension HeatPumpService {
     /// Days of history used for the degree-day model.
     static let forecastModelDays = 45
 
-    // MARK: Settings and location
+    // MARK: Settings, location and forecast (shared by every device: `energy`)
 
-    public func weatherSettings() throws -> WeatherSettings {
-        try store.setting(WeatherSettings.self, key: Self.weatherSettingsKey) ?? .default
-    }
+    public func weatherSettings() throws -> WeatherSettings { try energy.weatherSettings() }
 
     /// Saves the settings; refuses coordinates outside the globe and an e-mail without "@".
-    /// When the place changes, the stored forecast hours ahead are dropped (they were for the
-    /// old place) so nothing stale is shown until the next fetch.
-    public func saveWeatherSettings(_ settings: WeatherSettings) throws {
-        var clean = settings
-        if (settings.latitude == nil) != (settings.longitude == nil) {
-            throw HeatPumpError.validation(L10n.tr("Enter both latitude and longitude, or neither."))
-        }
-        if let lat = settings.latitude, let lon = settings.longitude {
-            guard (-90...90).contains(lat), (-180...180).contains(lon) else {
-                throw HeatPumpError.validation(L10n.tr("Latitude must be between −90 and 90, longitude between −180 and 180."))
-            }
-        }
-        let email = settings.contactEmail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !email.isEmpty, !email.contains("@") || email.contains(" ") {
-            throw HeatPumpError.validation(L10n.tr("The contact email does not look right."))
-        }
-        clean.contactEmail = email.isEmpty ? nil : email
-        let place = settings.placeName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        clean.placeName = place.isEmpty ? nil : place
-        let oldKey = try weatherLocation()?.key
-        try store.saveSetting(clean, key: Self.weatherSettingsKey)
-        if try weatherLocation()?.key != oldKey { try store.clearForecast(from: now()) }
-    }
+    public func saveWeatherSettings(_ settings: WeatherSettings) throws { try energy.saveWeatherSettings(settings) }
 
-    /// Typed coordinates win; otherwise the MELCloud building location; the demo uses Oslo.
-    public func weatherLocation() throws -> WeatherLocation? {
-        let settings = try weatherSettings()
-        if let lat = settings.latitude, let lon = settings.longitude {
-            return WeatherLocation(latitude: lat, longitude: lon, placeName: settings.placeName, source: .manual)
-        }
-        if let device = try currentDevice(), let reporter = backend as? any DeviceLocationReporting,
-            let location = reporter.location(fromStoredListing: try store.rawDevice(device)?.listing)
-        {
-            return WeatherLocation(latitude: location.latitude, longitude: location.longitude, placeName: settings.placeName, source: .service)
-        }
-        if isDemo { return WeatherLocation(latitude: 59.91, longitude: 10.75, placeName: settings.placeName, source: .demo) }
-        return nil
-    }
-
-    func weatherMeta() throws -> WeatherFetchMeta {
-        try store.setting(WeatherFetchMeta.self, key: Self.weatherMetaKey) ?? WeatherFetchMeta()
-    }
-
-    // MARK: Fetching
+    /// Typed coordinates win; otherwise the reference (primary) device's location as its service
+    /// stores it; the demo uses Oslo.
+    public func weatherLocation() throws -> WeatherLocation? { try energy.weatherLocation() }
 
     /// Fetches the forecast when the stored one has expired, at most hourly across processes.
-    public func syncWeather() async throws -> WeatherSync {
-        guard let location = try weatherLocation() else {
-            return WeatherSync(status: .noLocation, message: L10n.tr("No position for the weather forecast. Enter a place under Settings → Weather."))
-        }
-        let t = now()
-        var meta = try weatherMeta()
-        let sameLocation = meta.locationKey == location.key
-        if sameLocation, let expires = meta.expires, expires > t, meta.lastError == nil {
-            return WeatherSync(status: .upToDate)
-        }
-        let minInterval = sameLocation ? Self.weatherInterval : Self.weatherNewLocationInterval
-        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, blockingIntegration: nil) {
-        case .throttled(let next):
-            return WeatherSync(status: .skipped, nextAllowed: next)
-        case .blocked, .credentialsRejected:
-            return WeatherSync(status: .skipped)
-        case .allowed:
-            guard let provider = weatherProvider(try weatherSettings()) else {
-                return WeatherSync(status: .failed, message: L10n.tr("The weather forecast is not available."))
-            }
-            do {
-                let response = try await provider.fetch(
-                    latitude: location.latitude, longitude: location.longitude,
-                    ifModifiedSince: sameLocation ? meta.lastModified : nil)
-                meta.locationKey = location.key
-                meta.expires = response.expires ?? t.addingTimeInterval(Self.weatherInterval)
-                meta.lastModified = response.lastModified
-                meta.lastError = nil
-                if response.status == 304 {
-                    try store.saveSetting(meta, key: Self.weatherMetaKey)
-                    try store.recordFetchSuccess(key: Self.weatherFetchKey, now: t)
-                    return WeatherSync(status: .notModified)
-                }
-                // Keep at most nine days.
-                let hours = response.hours.filter { $0.time < t.addingTimeInterval(9 * 86_400) }
-                try store.replaceForecast(hours, fetchedAt: t)
-                meta.fetchedAt = t
-                try store.saveSetting(meta, key: Self.weatherMetaKey)
-                try store.recordFetchSuccess(key: Self.weatherFetchKey, now: t)
-                return WeatherSync(status: .fetched, count: hours.count)
-            } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                meta.lastError = message
-                if case .throttled(let until) = error as? WeatherError { meta.expires = until }
-                try store.saveSetting(meta, key: Self.weatherMetaKey)
-                return WeatherSync(status: .failed, message: message)
-            }
-        }
-    }
+    public func syncWeather() async throws -> WeatherSync { try await energy.syncWeather() }
 
     /// Stored forecast hours with `from <= hour < to` and where they are for.
-    public func weatherForecast(from: Date, to: Date) throws -> WeatherForecast {
-        WeatherForecast(location: try weatherLocation(), hours: try store.forecast(from: from, to: to), fetchedAt: try weatherMeta().fetchedAt)
-    }
+    public func weatherForecast(from: Date, to: Date) throws -> WeatherForecast { try energy.weatherForecast(from: from, to: to) }
 
     // MARK: Expected use tomorrow
 
     /// Daily mean outdoor temperature (`yyyy-MM-dd`) for local days with at least 12 hours of data.
     func dailyOutdoorMeans(from: Date, to: Date) throws -> [String: Double] {
-        let device = try currentDevice()
-        let hourly = try store.hourlyOutdoorMeans(device: device, from: from, to: to)
-        let calendar = WireDate.calendar(timeZone)
-        let byDay = Dictionary(grouping: hourly) { WireDate.day(calendar.startOfDay(for: $0.key), timeZone: timeZone) }
-        return byDay.compactMapValues { hours in
-            hours.count >= 12 ? hours.reduce(0) { $0 + $1.value } / Double(hours.count) : nil
-        }
+        try energy.dailyOutdoorMeans(device: try currentDevice(), from: from, to: to)
     }
 
     /// The degree-day model from the last 45 complete days with kWh (exact local days where

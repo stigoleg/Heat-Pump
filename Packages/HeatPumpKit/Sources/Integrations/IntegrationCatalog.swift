@@ -20,29 +20,32 @@ public enum IntegrationCatalog {
         isDemo(environment: environment) ? demo : melcloud
     }
 
-    /// The service for this process: the demo integration with simulated providers for
-    /// `VARMEPUMPE_BACKEND=mock`, otherwise MELCloud with keychain credentials, real price, weather
-    /// and house providers and the local adapter on the network. The database comes from
-    /// `VARMEPUMPE_DB_PATH` or Application Support. The store is opened with this process's
-    /// integration, which owns the rows from before device keys.
-    public static func makeService(
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) throws -> HeatPumpService {
+    /// The hub for this process. Demo mode (`VARMEPUMPE_BACKEND=mock`): the demo integration only,
+    /// with simulated providers and the units `VARMEPUMPE_DEMO_DEVICES` asks for (registered at
+    /// once, no network). Otherwise the active integrations the user chose (`integrations` in
+    /// `app_settings`; MELCloud until then) with keychain credentials, real price, weather and house
+    /// providers and the local adapter on the network. The database comes from
+    /// `VARMEPUMPE_DB_PATH` or Application Support; it is opened with this process's integration,
+    /// which owns the rows from before device keys.
+    public static func makeHub(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> DeviceHub {
         let store = try HistoryStore(
             path: HistoryStore.defaultPath(environment: environment), legacyIntegration: current(environment: environment).id)
         if isDemo(environment: environment) {
-            let context = IntegrationContext(environment: environment, store: store)
-            return HeatPumpService(
-                backend: try demo.makeConnection(context), store: store, integration: demo, policy: demo.rateLimitPolicy,
-                priceProvider: { _ in MockPriceProvider() },
-                local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
-                weatherProvider: { _ in MockWeatherProvider() }, houseProvider: { MockHouseConsumptionProvider() })
+            let units = DemoUnit.units(environment: environment)
+            try store.syncDevices(MockBackend.listing(units), integration: demo.id)
+            let local = LocalAccess.simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short")
+            return try DeviceHub(
+                store: store, catalog: all, fixedIntegrations: [demo.id], defaultIntegrations: [demo.id], isDemo: true,
+                priceProvider: { _ in MockPriceProvider() }, weatherProvider: { _ in MockWeatherProvider() },
+                houseProvider: { MockHouseConsumptionProvider() },
+                makeRuntime: { integration in
+                    let context = IntegrationContext(environment: environment, store: store)
+                    return IntegrationRuntime(integration: integration, connection: try integration.makeConnection(context), local: local)
+                })
         }
         let credentials = KeychainCredentialStore(environment: environment, mappings: all.map(\.credentialMapping))
-        let context = IntegrationContext(environment: environment, store: store, credentials: credentials)
-        return HeatPumpService(
-            backend: try melcloud.makeConnection(context), store: store, credentials: credentials, integration: melcloud,
-            policy: melcloud.rateLimitPolicy,
+        return try DeviceHub(
+            store: store, catalog: all, defaultIntegrations: [melcloud.id],
             priceProvider: { settings in
                 switch settings.agreement {
                 case .norgespris: return nil
@@ -51,12 +54,32 @@ public enum IntegrationCatalog {
                     // Read only when prices are actually fetched (at most hourly).
                     return credentials.loadTibberToken().map { TibberPriceProvider(token: $0) }
                 }
-            }, local: .network,
+            },
             weatherProvider: { settings in
                 METForecastProvider(
                     userAgent: METForecastProvider.userAgent(version: HeatPumpService.appVersion, contact: settings.contactEmail))
             },
             // The token is read only when consumption is actually fetched (at most hourly).
-            houseProvider: { credentials.loadTibberToken().map { TibberConsumptionProvider(token: $0) } })
+            houseProvider: { credentials.loadTibberToken().map { TibberConsumptionProvider(token: $0) } },
+            makeRuntime: { integration in
+                let context = IntegrationContext(environment: environment, store: store, credentials: credentials)
+                let local: LocalAccess =
+                    switch integration.id {
+                    case melcloud.id: .network
+                    case demo.id: .simulated(shortCycling: false)
+                    default: .unavailable
+                    }
+                return IntegrationRuntime(
+                    integration: integration, connection: try integration.makeConnection(context), credentials: credentials, local: local)
+            })
+    }
+
+    /// The primary device's service of `makeHub` (what the app and the helper served before the
+    /// hub). Kept for code that runs one device only.
+    public static func makeService(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> HeatPumpService {
+        guard let service = try makeHub(environment: environment).primaryAtLaunch else { throw HeatPumpError.deviceNotFound }
+        return service
     }
 }

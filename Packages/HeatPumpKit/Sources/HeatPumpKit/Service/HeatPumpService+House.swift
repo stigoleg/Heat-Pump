@@ -24,35 +24,9 @@ extension HeatPumpService {
 
     /// Backfills up to 744 hours the first time, then fetches only the hours since the newest
     /// stored one (plus two, which Tibber may complete late). At most once an hour.
-    public func syncHouseConsumption() async throws -> HouseSync {
-        let t = now()
-        switch try store.reserveFetch(key: Self.houseFetchKey, minInterval: Self.houseInterval, now: t, blockingIntegration: nil) {
-        case .throttled(let next):
-            return HouseSync(status: .skipped, nextAllowed: next)
-        case .blocked, .credentialsRejected:
-            return HouseSync(status: .skipped)
-        case .allowed:
-            guard let provider = houseProvider() else { return HouseSync(status: .notConfigured) }
-            let last: Int
-            if let latest = try store.latestHouseHour() {
-                last = min(744, max(3, Int((t.timeIntervalSince(latest) / 3600).rounded(.up)) + 2))
-            } else {
-                last = 744
-            }
-            do {
-                let hours = try await provider.fetchConsumption(lastHours: last)
-                try store.upsertHouseHours(hours)
-                try store.recordFetchSuccess(key: Self.houseFetchKey, now: t)
-                return HouseSync(status: .fetched, count: hours.count)
-            } catch {
-                return HouseSync(status: .failed, message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
-            }
-        }
-    }
+    public func syncHouseConsumption() async throws -> HouseSync { try await energy.syncHouseConsumption() }
 
-    public func houseHours(from: Date, to: Date) throws -> [HouseHour] {
-        try store.houseHours(from: from, to: to)
-    }
+    public func houseHours(from: Date, to: Date) throws -> [HouseHour] { try energy.houseHours(from: from, to: to) }
 
     /// House and heat pump per hour and per day. The heat pump's hours come from its exact local
     /// counter where it covers them, otherwise from MELCloud's counter (an estimate).

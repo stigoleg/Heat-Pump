@@ -137,10 +137,11 @@ public protocol HardwareAddressReporting: Sendable {
 
 /// Demo data: lets the service fill an empty database with simulated history on first launch.
 public protocol DemoDataSeeding: TemperatureLogReporting {
-    var demoDevice: DeviceKey { get }
-    /// Simulated state at any time.
-    func demoState(at date: Date) async -> DeviceState
-    /// Address of the simulated Wi-Fi adapter.
+    /// Every simulated device; the first one has the simulated Wi-Fi adapter.
+    var demoDevices: [DeviceKey] { get }
+    /// Simulated state of `device` at any time.
+    func demoState(at date: Date, device: DeviceKey) async -> DeviceState
+    /// Address of the first device's simulated Wi-Fi adapter.
     var demoLocalHost: String { get }
     /// Simulated local readings every minute from `from` to `to`.
     func demoLocalSamples(from: Date, to: Date, shortCycling: Bool) -> [LocalSample]

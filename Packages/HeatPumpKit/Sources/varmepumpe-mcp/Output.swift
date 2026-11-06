@@ -28,7 +28,8 @@ struct Meta: Encodable {
         let fetchedAt = state?.fetchedAt ?? snapshot?.state.fetchedAt
         var synced: [String: Date] = [:]
         for kind in ReportKind.allCases {
-            if let date = (try? store.fetchState(key: service.fetchKey("report.\(kind.rawValue)")))??.lastSuccess {
+            guard let key = try? await service.deviceFetchKey("report.\(kind.rawValue)") else { continue }
+            if let date = (try? store.fetchState(key: key))??.lastSuccess {
                 synced[kind.rawValue] = date
             }
         }

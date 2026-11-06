@@ -37,9 +37,10 @@ let package = Package(
                 .product(name: "MCP", package: "swift-sdk"),
             ]
         ),
+        // Depends on the helper too, so its tool catalog is checked against a golden copy.
         .testTarget(
             name: "HeatPumpKitTests",
-            dependencies: ["HeatPumpKit", "MELCloudIntegration", "DemoIntegration", "Integrations"],
+            dependencies: ["HeatPumpKit", "MELCloudIntegration", "DemoIntegration", "Integrations", "varmepumpe-mcp"],
             resources: [.copy("Fixtures")]
         ),
     ]

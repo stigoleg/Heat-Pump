@@ -180,7 +180,7 @@ extension HeatPumpService {
     func priceControlContext(settings: PriceControlSettings, steps: [PlannedStep], now t: Date) throws -> PriceControlContext {
         var blocked: String?
         if try credentialsRejected() {
-            blocked = HeatPumpError.credentialsRejected.errorDescription
+            blocked = describe(HeatPumpError.credentialsRejected)
         } else if let block = try blockStatus(now: t) {
             blocked = block.reason.message(until: block.until, serviceName: serviceName)
         }

@@ -353,6 +353,10 @@ public final class HistoryStore: Sendable {
             // Device keys, the device registry, string modes and per-integration fetch keys.
             try Self.migrateToDeviceKeys(db, legacyIntegration: legacyIntegration)
         }
+        migrator.registerMigration(Self.deviceScopeMigration) { db in
+            // Per-device caches and fetch spacing, and the user's own device names.
+            try Self.migrateToDeviceScope(db)
+        }
         return migrator
     }
 

@@ -26,9 +26,13 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
     /// (HTTP 401/403) although the session works for everything else. Never triggers a new login.
     case endpointRefused(status: Int)
 
-    public var errorDescription: String? {
-        let serviceName = Self.serviceName
-        return switch self {
+    /// Display text naming the process's service (`HeatPumpError.serviceName`). Where the device
+    /// the error came from is known, `description(serviceName:)` names its service instead.
+    public var errorDescription: String? { description(serviceName: Self.serviceName) }
+
+    /// Display text naming `serviceName`: the service of the device the error came from.
+    public func description(serviceName: String) -> String {
+        switch self {
         case .missingCredentials:
             L10n.format("No %@ login. Enter your email and password in the app.", serviceName)
         case .invalidCredentials(let detail):
@@ -75,10 +79,11 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
 extension HeatPumpError {
     private static let name = Mutex("")
 
-    /// The service these error texts name. Errors are created far from the service that knows its
-    /// integration (backends, the store) and their text is read wherever they are caught, so the
-    /// name is the process's: `HeatPumpService.init` sets it to its integration's `displayName`.
-    /// One integration per process; empty until a service exists.
+    /// The service `errorDescription` names. Errors are created far from the service that knows its
+    /// integration (backends, the store) and their text is read wherever they are caught, so this
+    /// is the process's fallback: `HeatPumpService.init` sets it to its integration's
+    /// `displayName`, and `DeviceHub` to the primary device's. Texts a service builds itself name
+    /// its own integration (`HeatPumpService.describe(_:)`). Empty until a service exists.
     public static var serviceName: String {
         get { name.withLock { $0 } }
         set { name.withLock { $0 = newValue } }

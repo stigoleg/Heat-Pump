@@ -29,6 +29,7 @@ App hooks you can pass after the file name:
 | `VARMEPUMPE_SCROLL_TO` | a section `.id(…)` on the screen; scrolls there after 3 s |
 | `VARMEPUMPE_APPEARANCE` | light, dark, system (not saved) |
 | `VARMEPUMPE_MOCK_CYCLING` | short (simulated short cycling, for Health) |
+| `VARMEPUMPE_DEMO_DEVICES` | heatpump (default), heatpump,heatpump (adds “Bedroom (simulated)”, for multi-device screens) |
 
 The window size is passed as an argument-domain default, so the real app's saved window frame is
 not changed. The script compiles `scripts/tools/window-id.swift` into `build/tools/` on first use.

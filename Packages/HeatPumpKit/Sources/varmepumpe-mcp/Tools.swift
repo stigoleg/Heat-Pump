@@ -16,6 +16,52 @@ enum ToolCatalog {
     /// Every tool; `service` names the heat pump service in the descriptions.
     static func all(service: String) -> [Tool] { readTools(service: service) + writeTools(service: service) }
 
+    /// What a device needs for each device tool; tools not listed (`get_prices`, `list_devices`)
+    /// are not about one device.
+    static let requiredCapability: [String: Capability] = [
+        "get_status": .thermostat, "get_health_report": .thermostat, "get_error_log": .errorLog, "get_history": .thermostat,
+        "get_energy": .energyLog, "get_live_status": .localTelemetry, "get_forecast": .energyLog,
+        "get_house_consumption": .energyLog, "get_away_settings": .awayModes, "get_weekly_timer": .weeklySchedule,
+        "get_firmware_status": .firmwareUpdates, "get_maintenance_status": .thermostat, "get_change_log": .thermostat,
+        "get_device_info": .thermostat, "refresh": .thermostat, "set_power": .thermostat, "set_mode": .thermostat,
+        "set_temperature": .thermostat, "set_fan_speed": .fanSpeed, "set_vanes": .airflow, "set_frost_protection": .awayModes,
+        "set_holiday_mode": .awayModes, "start_firmware_update": .firmwareUpdates, "record_maintenance": .thermostat,
+    ]
+
+    /// The tools for these enabled devices. Before any device is known, and with one device, the
+    /// catalog is `all(service:)` minus tools no device can answer (with one heat pump: all of it).
+    /// With two or more, every device tool takes an optional `device` and `list_devices` is added.
+    static func tools(for devices: [DeviceDescriptor], service: String) -> [Tool] {
+        let all = all(service: service)
+        guard !devices.isEmpty else { return all }
+        let capabilities = devices.reduce(into: Set<Capability>()) { $0.formUnion($1.capabilities) }
+        let available = all.filter { tool in requiredCapability[tool.name].map(capabilities.contains) ?? true }
+        guard devices.count >= 2 else { return available }
+        return [listDevicesTool] + available.map { requiredCapability[$0.name] == nil ? $0 : withDeviceArgument($0) }
+    }
+
+    static let listDevicesTool = Tool(
+        name: "list_devices",
+        description: "The user's devices: key, name, kind, integration (service), capabilities and whether the device was online at the last status. Pass a device's key or name as the device argument of the other tools.",
+        inputSchema: ["type": "object", "properties": [:]],
+        annotations: Tool.Annotations(readOnlyHint: true, openWorldHint: false))
+
+    static let deviceProperty: Value = [
+        "type": "string",
+        "description": "Which device: its key or name from list_devices (case-insensitive). Needed when more than one device could answer.",
+    ]
+
+    /// `tool` with the optional `device` argument added to its schema.
+    static func withDeviceArgument(_ tool: Tool) -> Tool {
+        guard case .object(var schema) = tool.inputSchema else { return tool }
+        var properties = schema["properties"]?.objectValue ?? [:]
+        properties["device"] = deviceProperty
+        schema["properties"] = .object(properties)
+        return Tool(
+            name: tool.name, title: tool.title, description: tool.description, inputSchema: .object(schema),
+            annotations: tool.annotations, outputSchema: tool.outputSchema, icons: tool.icons, _meta: tool._meta)
+    }
+
     static let readOnly = Tool.Annotations(readOnlyHint: true, openWorldHint: true)
 
     static func readTools(service: String) -> [Tool] {

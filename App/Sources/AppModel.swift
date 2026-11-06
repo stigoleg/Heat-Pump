@@ -135,11 +135,14 @@ struct EnergyData {
     var previousHourly: [HourCost] = []
 }
 
-/// App state. Wraps the `HeatPumpService` actor; all rules (caching, rate limits, validation,
-/// logging) live in HeatPumpKit.
+/// App state. Wraps the primary device's `HeatPumpService` actor from the `DeviceHub`; all rules
+/// (caching, rate limits, validation, logging) live in HeatPumpKit.
 @MainActor
 @Observable
 final class AppModel {
+    /// Every device and integration; nil when the database could not be opened.
+    let hub: DeviceHub?
+    /// The primary device's service (the one the app shows).
     let service: HeatPumpService?
     let startupError: String?
     let isDemo: Bool
@@ -216,11 +219,13 @@ final class AppModel {
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         integration = IntegrationCatalog.current(environment: environment)
         do {
-            let service = try IntegrationCatalog.makeService(environment: environment)
-            self.service = service
-            self.isDemo = service.isDemo
+            let hub = try IntegrationCatalog.makeHub(environment: environment)
+            self.hub = hub
+            self.service = hub.primaryAtLaunch
+            self.isDemo = hub.isDemo
             self.startupError = nil
         } catch {
+            self.hub = nil
             self.service = nil
             self.isDemo = IntegrationCatalog.isDemo(environment: environment)
             self.startupError = String(localized: "Could not open the database: \(error.localizedDescription)")
@@ -303,7 +308,7 @@ final class AppModel {
             // the ACL shared with the helper (a read during the swap could miss an item).
             if let keychain { await Task.detached { keychain.migrateAccessIfNeeded() }.value }
             await self?.checkTibberToken()
-            if let service = self?.service, service.isDemo { try? await service.seedDemoHistoryIfNeeded() }
+            if let hub = self?.hub, hub.isDemo { try? await hub.seedDemoHistoryIfNeeded() }
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh(force: false)
@@ -779,12 +784,13 @@ final class AppModel {
 
     /// One login + state fetch. Returns (success, message).
     func signIn(email: String, password: String) async -> (Bool, String) {
-        guard let service else { return (false, startupError ?? "") }
+        guard let hub, service != nil else { return (false, startupError ?? "") }
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !email.isEmpty, !password.isEmpty else { return (false, String(localized: "Enter both email and password.")) }
         do {
             // The sign-in form's fields (`CredentialField.id`); a form per integration comes later.
-            let result = try await service.signIn(CredentialValues(["email": email, "password": password]))
+            let result = try await hub.signIn(
+                integration: integration.id, values: CredentialValues(["email": email, "password": password]))
             stateResult = result
             hasCredentials = true
             await reloadLocal()
@@ -809,9 +815,9 @@ final class AppModel {
     }
 
     func signOut() async {
-        guard let service else { return }
+        guard let hub, let service else { return }
         do {
-            try await service.signOut()
+            try await hub.signOut(integration: integration.id)
         } catch {
             lastError = error.localizedDescription
         }

@@ -2,41 +2,110 @@ import Foundation
 import HeatPumpKit
 import MELCloudIntegration
 
+/// A simulated air-to-air unit (`VARMEPUMPE_DEMO_DEVICES`): MELCloud-style ids, a name and how
+/// its use compares with the living room's.
+public struct DemoUnit: Sendable, Equatable {
+    public var deviceId: Int
+    public var name: String
+    /// Share of the living room unit's consumption (a smaller room uses less).
+    public var scale: Double
+    /// Setpoint at start.
+    public var setTemperature: Double
+    /// Whether the unit reports the simulated error-log entries.
+    public var reportsErrors: Bool
+
+    public var key: DeviceKey { DeviceKey(integration: DemoIntegration.id, nativeId: String(deviceId)) }
+
+    /// The `index`th simulated unit: the living room, the bedroom, then numbered units.
+    public static func unit(_ index: Int) -> DemoUnit {
+        switch index {
+        case 0:
+            DemoUnit(deviceId: MockBackend.deviceId, name: L10n.tr("Living room (simulated)"), scale: 1, setTemperature: 21, reportsErrors: true)
+        case 1:
+            DemoUnit(deviceId: MockBackend.deviceId + 1, name: L10n.tr("Bedroom (simulated)"), scale: 0.6, setTemperature: 19, reportsErrors: false)
+        default:
+            DemoUnit(
+                deviceId: MockBackend.deviceId + index, name: L10n.format("Heat pump %lld (simulated)", index + 1), scale: 0.8,
+                setTemperature: 20, reportsErrors: false)
+        }
+    }
+
+    /// The units `VARMEPUMPE_DEMO_DEVICES` asks for: a comma list of device kinds, `heatpump` by
+    /// default (`heatpump,heatpump` adds a bedroom unit). Unknown entries are skipped; at least one
+    /// unit is always simulated.
+    public static func units(environment: [String: String]) -> [DemoUnit] {
+        let kinds = (environment["VARMEPUMPE_DEMO_DEVICES"] ?? "heatpump").split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+        let count = kinds.filter { $0 == "heatpump" }.count
+        return (0..<max(1, count)).map(unit)
+    }
+}
+
 /// Deterministic backend with realistic Norwegian winter data. Selected with
 /// `VARMEPUMPE_BACKEND=mock`. All history is a pure function of time, so repeated
-/// runs and separate processes see the same past; only writes are per-process.
+/// runs and separate processes see the same past; only writes are per-process. Simulates one
+/// unit by default, more with `VARMEPUMPE_DEMO_DEVICES`.
 public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver, FirmwareDriver, DemoDataSeeding {
     public nonisolated let identifier = "mock"
 
-    /// The simulated unit's MELCloud-style ids; its key is `demo:100001`.
+    /// The first simulated unit's MELCloud-style ids; its key is `demo:100001`.
     public static let deviceId = 100_001
     public static let buildingId = 200_001
     public static let device = DeviceKey(integration: DemoIntegration.id, nativeId: String(deviceId))
 
+    /// What one simulated unit holds between calls.
+    struct UnitState: Sendable {
+        var unit: DemoUnit
+        var power = true
+        var mode: OperationMode = .heat
+        var setTemperature: Double
+        var fanSpeed = 0
+        var vaneVertical: VaneVertical = .auto
+        var vaneHorizontal: VaneHorizontal = .position3
+        var frost = FrostProtection(enabled: false, minimum: 8, maximum: 12, defined: true)
+        var holiday = HolidayMode(enabled: false, defined: false)
+        /// The weekly timer in the wire shape (`Timer/Get2`); a save replaces it, so a read returns it.
+        var timerJSON: JSONValue = MockBackend.initialTimer()
+        /// When the simulated firmware update was started (nil: still waiting for approval).
+        var firmwareApprovedAt: Date?
+
+        init(_ unit: DemoUnit) {
+            self.unit = unit
+            setTemperature = unit.setTemperature
+        }
+    }
+
     private let now: @Sendable () -> Date
     private let timeZone: TimeZone
-    private var power = true
-    private var mode: OperationMode = .heat
-    private var setTemperature = 21.0
-    private var fanSpeed = 0
-    private var vaneVertical: VaneVertical = .auto
-    private var vaneHorizontal: VaneHorizontal = .position3
+    /// The simulated units, in listing order.
+    public nonisolated let units: [DemoUnit]
+    private var states: [DeviceKey: UnitState]
     public private(set) var appliedChanges: [ChangeSet] = []
-    public private(set) var frost = FrostProtection(enabled: false, minimum: 8, maximum: 12, defined: true)
-    public private(set) var holiday = HolidayMode(enabled: false, defined: false)
     public private(set) var awayReads = 0
     public private(set) var awayWrites = 0
     public private(set) var timerReads = 0
     public private(set) var timerWrites = 0
-    /// When the simulated firmware update was started (nil: still waiting for approval).
-    public private(set) var firmwareApprovedAt: Date?
     public private(set) var firmwareReads = 0
     public private(set) var firmwareApprovals = 0
     public private(set) var firmwareCancels = 0
 
-    public init(timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }) {
+    public init(timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }, units: [DemoUnit] = [.unit(0)]) {
         self.now = now
         self.timeZone = timeZone
+        let units = units.isEmpty ? [.unit(0)] : units
+        self.units = units
+        states = Dictionary(units.map { ($0.key, UnitState($0)) }, uniquingKeysWith: { a, _ in a })
+    }
+
+    /// The first unit's frost protection, holiday mode and firmware approval (tests).
+    public var frost: FrostProtection { states[Self.device]?.frost ?? FrostProtection(enabled: false, minimum: 8, maximum: 12, defined: true) }
+    public var holiday: HolidayMode { states[Self.device]?.holiday ?? HolidayMode(enabled: false, defined: false) }
+    public var firmwareApprovedAt: Date? { states[Self.device]?.firmwareApprovedAt }
+
+    /// The state of `device`, or `deviceNotFound` for a device this backend does not simulate.
+    private func unitState(_ device: DeviceKey) throws -> UnitState {
+        guard let state = states[device] else { throw HeatPumpError.deviceNotFound }
+        return state
     }
 
     /// Simulates the Wi-Fi adapter's local readings and live power too.
@@ -49,8 +118,10 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     // MARK: DemoDataSeeding
 
-    public nonisolated var demoDevice: DeviceKey { Self.device }
-    public func demoState(at date: Date) -> DeviceState { state(at: date) }
+    public nonisolated var demoDevices: [DeviceKey] { units.map(\.key) }
+    public func demoState(at date: Date, device: DeviceKey) -> DeviceState {
+        (try? state(at: date, device: device)) ?? state(at: date)
+    }
     public nonisolated var demoLocalHost: String { MockLocalSimulation.host }
 
     public nonisolated func demoLocalSamples(from: Date, to: Date, shortCycling: Bool) -> [LocalSample] {
@@ -59,50 +130,65 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     public func login() async throws {}
 
-    public func listDevices() async throws -> [DeviceSummary] {
-        [
-            DeviceSummary(
-                key: Self.device, name: L10n.tr("Living room (simulated)"), metadata: ["buildingId": String(Self.buildingId)])
-        ]
+    /// The listing, without a network call (demo mode registers it at startup).
+    public nonisolated var listing: [DeviceSummary] { Self.listing(units) }
+
+    public static func listing(_ units: [DemoUnit]) -> [DeviceSummary] {
+        units.map { DeviceSummary(key: $0.key, name: $0.name, metadata: ["buildingId": String(buildingId)]) }
     }
+
+    public func listDevices() async throws -> [DeviceSummary] { listing }
 
     public func fetchState(device: DeviceKey) async throws -> DeviceState {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
-        return state(at: now())
+        try state(at: now(), device: device)
     }
 
-    /// Simulated state at any time (also used to seed demo history).
+    /// Simulated state of the first unit at any time (also used to seed demo history).
     public func state(at t: Date) -> DeviceState {
+        // The first unit always exists.
+        (try? state(at: t, device: units[0].key)) ?? state(at: t, of: UnitState(units[0]))
+    }
+
+    /// Simulated state of `device` at any time.
+    public func state(at t: Date, device: DeviceKey) throws -> DeviceState {
+        state(at: t, of: try unitState(device))
+    }
+
+    private func state(at t: Date, of s: UnitState) -> DeviceState {
         let outdoor = Self.outdoorTemperature(at: t)
+        let first = s.unit.key == Self.device
         return DeviceState(
-            key: Self.device, name: L10n.tr("Living room (simulated)"),
-            serialNumber: "MOCK0000000", macAddress: "00:00:5e:00:53:01",
-            power: power, mode: mode, setTemperature: setTemperature,
-            roomTemperature: roomTemperature(at: t, outdoor: outdoor),
+            key: s.unit.key, name: s.unit.name,
+            serialNumber: first ? "MOCK0000000" : String(format: "MOCK%07d", s.unit.deviceId - Self.deviceId),
+            macAddress: first ? "00:00:5e:00:53:01" : String(format: "00:00:5e:00:53:%02x", (s.unit.deviceId - Self.deviceId + 1) % 256),
+            power: s.power, mode: s.mode, setTemperature: s.setTemperature,
+            roomTemperature: roomTemperature(at: t, outdoor: outdoor, of: s),
             outdoorTemperature: (outdoor * 2).rounded() / 2,
-            fanSpeed: fanSpeed, actualFanSpeed: power ? 2 : 0, numberOfFanSpeeds: 5, hasAutomaticFanSpeed: true,
-            vaneVertical: vaneVertical, vaneHorizontal: vaneHorizontal,
+            fanSpeed: s.fanSpeed, actualFanSpeed: s.power ? 2 : 0, numberOfFanSpeeds: 5, hasAutomaticFanSpeed: true,
+            vaneVertical: s.vaneVertical, vaneHorizontal: s.vaneHorizontal,
             hasError: false, errorCode: 8000, offline: false,
             lastCommunication: t.addingTimeInterval(-40), nextCommunication: t.addingTimeInterval(20),
             wifiSignal: -62, hasPendingCommand: false,
-            firmware: firmware(at: t),
+            firmware: firmware(at: t, of: s),
             lastServiceDate: nil,
             energy: EnergyCounters(
-                currentConsumedKWh: Self.counterKWh(at: t), totalHeatingKWh: 1180.2, totalCoolingKWh: 54.3),
+                currentConsumedKWh: Self.counterKWh(at: t, scale: s.unit.scale), totalHeatingKWh: first ? 1180.2 : 640.5,
+                totalCoolingKWh: first ? 54.3 : 12.1),
             limits: TemperatureLimits(minHeat: 10, maxHeat: 31, minCoolDry: 16, maxCoolDry: 31, minAuto: 16, maxAuto: 31),
             temperatureIncrement: 0.5, fetchedAt: t)
     }
 
     @discardableResult
     public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
-        guard changes.device == Self.device else { throw HeatPumpError.deviceNotFound }
+        var s = try unitState(changes.device)
         appliedChanges.append(changes)
-        if let value = changes.power { power = value }
-        if let value = changes.mode { mode = value }
-        if let value = changes.setTemperature { setTemperature = value }
-        if let value = changes.fanSpeed { fanSpeed = value }
-        if let value = changes.vaneVertical { vaneVertical = value }
-        if let value = changes.vaneHorizontal { vaneHorizontal = value }
+        if let value = changes.power { s.power = value }
+        if let value = changes.mode { s.mode = value }
+        if let value = changes.setTemperature { s.setTemperature = value }
+        if let value = changes.fanSpeed { s.fanSpeed = value }
+        if let value = changes.vaneVertical { s.vaneVertical = value }
+        if let value = changes.vaneHorizontal { s.vaneHorizontal = value }
+        states[changes.device] = s
         var state = try await fetchState(device: changes.device)
         state.hasPendingCommand = true
         return state
@@ -110,6 +196,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     /// One simulated error every 17 days at 03:12 UTC, anchored to a fixed epoch so entries are stable.
     public func fetchErrorLog(device: DeviceKey, range: DateInterval) async throws -> [ErrorLogEntry] {
+        guard try unitState(device).unit.reportsErrors else { return [] }
         let anchor = Date(timeIntervalSince1970: 1_767_236_000)  // 2026-01-01T03:13:20Z
         let period: TimeInterval = 17 * 86_400
         var entries: [ErrorLogEntry] = []
@@ -120,7 +207,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
             if start >= range.start {
                 entries.append(
                     ErrorLogEntry(
-                        device: Self.device, start: start, end: start.addingTimeInterval(240),
+                        device: device, start: start, end: start.addingTimeInterval(240),
                         message: L10n.tr("Communication error between the indoor and outdoor unit (simulated)"), code: nil, source: MELCloudIntegration.sourceTag))
             }
             k += 1
@@ -129,6 +216,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     }
 
     public func fetchTemperatureLog(device: DeviceKey, range: DateInterval) async throws -> [TemperaturePoint] {
+        let s = try unitState(device)
         var points: [TemperaturePoint] = []
         let step: TimeInterval = 3600
         var t = (range.start.timeIntervalSince1970 / step).rounded(.up) * step
@@ -138,7 +226,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
             let outdoor = Self.outdoorTemperature(at: date)
             points.append(
                 TemperaturePoint(
-                    timestamp: date, room: roomTemperature(at: date, outdoor: outdoor), set: 21,
+                    timestamp: date, room: roomTemperature(at: date, outdoor: outdoor, of: s), set: s.unit.setTemperature,
                     outdoor: (outdoor * 2).rounded() / 2))
             t += step
         }
@@ -146,6 +234,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     }
 
     public func fetchEnergy(device: DeviceKey, range: DateInterval) async throws -> [EnergyDay] {
+        let scale = try unitState(device).unit.scale
         let calendar = WireDate.calendar(timeZone)
         var day = calendar.startOfDay(for: range.start)
         let last = calendar.startOfDay(for: min(range.end, now()))
@@ -155,7 +244,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
                 Self.outdoorTemperature(at: day.addingTimeInterval($0 * 3600 + 1800))
             }.reduce(0, +) / 24
             let degreeDays = max(0, 17 - meanOutdoor)
-            let kWh = (max(0.4, degreeDays * 0.42) * 10).rounded() / 10
+            let kWh = (max(0.4, degreeDays * 0.42) * scale * 10).rounded() / 10
             days.append(EnergyDay(day: WireDate.day(day, timeZone: timeZone), totalKWh: kWh, heatingKWh: kWh, coolingKWh: 0))
             guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
             day = next
@@ -166,22 +255,20 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     public func fetchSignalStrength(device: DeviceKey) async throws -> Int? { -62 }
 
     public func fetchAwaySettings(device: DeviceKey) async throws -> AwaySettings {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
+        let s = try unitState(device)
         awayReads += 1
-        return AwaySettings(frost: frost, holiday: holiday, fetchedAt: now(), source: MELCloudIntegration.sourceTag)
+        return AwaySettings(frost: s.frost, holiday: s.holiday, fetchedAt: now(), source: MELCloudIntegration.sourceTag)
     }
 
     public func applyAway(_ change: AwayChange, device: DeviceKey) async throws {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
+        var s = try unitState(device)
         awayWrites += 1
         switch change {
-        case .frostProtection(let value): frost = value
-        case .holidayMode(let value): holiday = value
+        case .frostProtection(let value): s.frost = value
+        case .holidayMode(let value): s.holiday = value
         }
+        states[device] = s
     }
-
-    /// The weekly timer in the wire shape (`Timer/Get2`); a save replaces it, so a read returns it.
-    private var timerJSON: JSONValue = MockBackend.initialTimer()
 
     /// Error for the next timer reads (tests).
     private var timerReadError: HeatPumpError?
@@ -196,25 +283,25 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     public func transformNextSavedTimer(_ transform: @escaping @Sendable (JSONValue) -> JSONValue) { timerSaveTransform = transform }
 
-    /// Replaces the plan as if it had been changed in the MELCloud app (tests).
-    public func replaceTimer(_ json: JSONValue) { timerJSON = json }
+    /// Replaces the first unit's plan as if it had been changed in the MELCloud app (tests).
+    public func replaceTimer(_ json: JSONValue) { states[Self.device]?.timerJSON = json }
 
     public func fetchWeeklyTimer(device: DeviceKey) async throws -> WeeklyTimer {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
+        let s = try unitState(device)
         timerReads += 1
         if let error = timerReadError, timerReadFailures > 0 {
             timerReadFailures -= 1
             throw error
         }
-        var timer = MELCloudClassicParser.weeklyTimer(timerJSON)
+        var timer = MELCloudClassicParser.weeklyTimer(s.timerJSON)
         timer.fetchedAt = now()
         return timer
     }
 
     /// Stores what `Timer/SetAta2` would receive, built by the same code as the real body.
     public func saveWeeklyTimer(_ timer: WeeklyTimer, device: DeviceKey) async throws {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
-        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: Self.deviceId)
+        let unit = try unitState(device).unit
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: unit.deviceId)
         let count = body["Seasons"]?.array?.reduce(0) { $0 + ($1["Events"]?.array?.count ?? 0) } ?? 0
         if count > Self.timerMaxEvents {
             let response: JSONValue = .object(["Data": .object(["ErrorCode": .number(2), "MaxEvents": .number(Double(Self.timerMaxEvents))])])
@@ -232,11 +319,12 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
             })
             return .object(object)
         }
-        timerJSON = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": .array(seasons)])
+        var json: JSONValue = .object(["Enabled": body["TimerEnabled"] ?? .bool(false), "Seasons": .array(seasons)])
         if let transform = timerSaveTransform {
             timerSaveTransform = nil
-            timerJSON = transform(timerJSON)
+            json = transform(json)
         }
+        states[device]?.timerJSON = json
     }
 
     static let timerMaxEvents = 50
@@ -277,34 +365,34 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     static let firmwareFiles = 4
 
     public func firmwareUpdates(device: DeviceKey) async throws -> [FirmwareUpdateStatus] {
-        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
+        let s = try unitState(device)
         firmwareReads += 1
-        let (phase, approval, files) = firmwareProgress(at: now())
+        let (phase, approval, files) = firmwareProgress(at: now(), of: s)
         return [
             FirmwareUpdateStatus(
-                id: Self.firmwareUpdateId, device: Self.device, currentPhase: phase, approvalStatus: approval, minutesOffline: 0,
-                filesDownloaded: files, filesToDownload: Self.firmwareFiles, retries: 0, dateApproved: firmwareApprovedAt,
+                id: Self.firmwareUpdateId, device: device, currentPhase: phase, approvalStatus: approval, minutesOffline: 0,
+                filesDownloaded: files, filesToDownload: Self.firmwareFiles, retries: 0, dateApproved: s.firmwareApprovedAt,
                 dateCreated: Date(timeIntervalSince1970: 1_767_236_000), lastCommunication: now().addingTimeInterval(-40))
         ]
     }
 
     public func approveFirmwareUpdate(id: Int, device: DeviceKey) async throws {
-        guard device == Self.device, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
-        let current = firmwareProgress(at: now())
+        guard let s = states[device], id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
+        let current = firmwareProgress(at: now(), of: s)
         guard FirmwareUpdatePhase.from(phase: current.phase, approval: current.approval, minutesOffline: 0).canApprove else { throw HeatPumpError.server(L10n.tr("The update cannot be approved now")) }
         firmwareApprovals += 1
-        firmwareApprovedAt = now()
+        states[device]?.firmwareApprovedAt = now()
     }
 
     public func cancelFirmwareUpdate(id: Int, device: DeviceKey) async throws {
-        guard device == Self.device, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
+        guard states[device] != nil, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
         firmwareCancels += 1
-        firmwareApprovedAt = nil
+        states[device]?.firmwareApprovedAt = nil
     }
 
     /// Phase, approval status and files downloaded at `t` (web client numbering).
-    private func firmwareProgress(at t: Date) -> (phase: Int, approval: Int, files: Int) {
-        guard let start = firmwareApprovedAt, t >= start else { return (0, 0, 0) }
+    private func firmwareProgress(at t: Date, of s: UnitState) -> (phase: Int, approval: Int, files: Int) {
+        guard let start = s.firmwareApprovedAt, t >= start else { return (0, 0, 0) }
         let elapsed = t.timeIntervalSince(start)
         switch elapsed {
         case ..<20: return (1, 3, 0)
@@ -315,8 +403,8 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         }
     }
 
-    private func firmware(at t: Date) -> FirmwareInfo {
-        let done = firmwareProgress(at: t).phase == 4
+    private func firmware(at t: Date, of s: UnitState) -> FirmwareInfo {
+        let done = firmwareProgress(at: t, of: s).phase == 4
         return FirmwareInfo(
             deployment: done ? nil : "4711", updateAborted: false, adaptorType: 4, appVersion: done ? 35000 : 34000,
             adapterStatus: "NORMAL", accessLevel: FirmwareInfo.ownerAccessLevel)
@@ -326,6 +414,10 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     /// Lifetime energy counter: the integral of 0.0175 kWh per hour and degree below 17 °C
     /// (same model as `fetchEnergy`), in 0.1 kWh steps like the real counter.
+    static func counterKWh(at date: Date, scale: Double) -> Double {
+        scale == 1 ? counterKWh(at: date) : ((counterKWh(at: date) - 1000) * scale * 10).rounded(.down) / 10 + 500
+    }
+
     static func counterKWh(at date: Date) -> Double {
         let anchor = 1_767_225_600.0  // 2026-01-01T00:00:00Z
         let h = (date.timeIntervalSince1970 - anchor) / 3600
@@ -347,10 +439,10 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         return -4 + daily + weather
     }
 
-    private func roomTemperature(at date: Date, outdoor: Double) -> Double {
+    private func roomTemperature(at date: Date, outdoor: Double, of s: UnitState) -> Double {
         let hours = date.timeIntervalSince1970 / 3600
         let ripple = 0.3 * sin(2 * .pi * hours / 1.7)
-        let value = power && (mode == .heat || mode == .auto) ? setTemperature - 0.3 + ripple : 16 + 0.1 * outdoor
+        let value = s.power && (s.mode == .heat || s.mode == .auto) ? s.setTemperature - 0.3 + ripple : 16 + 0.1 * outdoor
         return (value * 2).rounded() / 2
     }
 }

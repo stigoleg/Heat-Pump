@@ -23,6 +23,17 @@
         }
       }
     },
+    "%1$@ cannot answer this. Choose one of: %2$@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ kan ikke svare på dette. Velg en av: %2$@."
+          }
+        }
+      }
+    },
     "%1$@ updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is %1$@'s split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -30,6 +41,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. byMode er %1$@ sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med døgnets snittpris fordi forbruk per time mangler."
+          }
+        }
+      }
+    },
+    "%1$@: %2$@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
           }
         }
       }
@@ -844,6 +866,17 @@
         }
       }
     },
+    "Bedroom (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soverom (simulert)"
+          }
+        }
+      }
+    },
     "Blinks steadily: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1291,6 +1324,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Luktfilter/luftrenser"
+          }
+        }
+      }
+    },
+    "Device: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enhet: %@"
           }
         }
       }
@@ -1990,6 +2034,17 @@
         }
       }
     },
+    "Heat pump %lld (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe %lld (simulert)"
+          }
+        }
+      }
+    },
     "Heating" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2649,6 +2704,17 @@
         }
       }
     },
+    "More than one device can answer this. Give device as one of: %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mer enn én enhet kan svare på dette. Oppgi device som en av: %@."
+          }
+        }
+      }
+    },
     "Move the router closer, or set up a Wi-Fi extender or mesh node near the indoor unit." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3012,6 +3078,17 @@
         }
       }
     },
+    "No heat pump service is set up. Sign in in the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen varmepumpetjeneste er satt opp. Logg inn i appen."
+          }
+        }
+      }
+    },
     "No known electricity prices for the next hours yet." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3100,6 +3177,17 @@
         }
       }
     },
+    "None of the devices can answer this." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen av enhetene kan svare på dette."
+          }
+        }
+      }
+    },
     "Normal" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3151,6 +3239,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vanlig temperatur (%@)."
+          }
+        }
+      }
+    },
+    "Not available in demo mode." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke tilgjengelig i demomodus."
           }
         }
       }
@@ -5833,6 +5932,17 @@
         }
       }
     },
+    "Unknown device: %@. Choose one of: %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent enhet: %1$@. Velg en av: %2$@."
+          }
+        }
+      }
+    },
     "Unknown error code" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6725,17 +6835,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ukjent"
-          }
-        }
-      }
-    },
-    "unknown error" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ukjent feil"
           }
         }
       }

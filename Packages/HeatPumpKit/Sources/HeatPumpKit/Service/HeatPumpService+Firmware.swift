@@ -23,7 +23,7 @@ extension HeatPumpService {
     }
 
     public func storedFirmwareStatus() throws -> FirmwareStatus? {
-        try store.setting(FirmwareStatus.self, key: Self.firmwareStatusKey)
+        try deviceSetting(FirmwareStatus.self, Self.firmwareStatusKey)
     }
 
     // MARK: Reading
@@ -52,20 +52,20 @@ extension HeatPumpService {
             status.message = firmwareRefusedMessage
             return done(status)
         }
-        switch try reserveFetch(Self.firmwareFetchKey, minInterval: interval, now: t) {
+        switch try reserveDeviceFetch(Self.firmwareFetchKey, minInterval: interval, now: t) {
         case .throttled:
             break
         case .credentialsRejected:
-            status.message = HeatPumpError.credentialsRejected.errorDescription
+            status.message = describe(HeatPumpError.credentialsRejected)
         case .blocked(let until):
             status.message = try blockStatus(now: t)?.reason.message(until: until, serviceName: serviceName)
-                ?? HeatPumpError.blocked(until: until).errorDescription
+                ?? describe(HeatPumpError.blocked(until: until))
         case .allowed:
             do {
                 status.updates = try await driver((any FirmwareDriver).self).firmwareUpdates(device: state.key)
                 status.fetchedAt = t
-                try store.saveSetting(status, key: Self.firmwareStatusKey)
-                try store.recordFetchSuccess(key: fetchKey(Self.firmwareFetchKey), now: t)
+                try saveDeviceSetting(status, Self.firmwareStatusKey)
+                try store.recordFetchSuccess(key: try deviceFetchKey(Self.firmwareFetchKey), now: t)
                 // Finished: the next status read should show the new version.
                 if status.phase == .complete, cached?.isInProgress(now: t) == true {
                     try store.markLatestSnapshotStale(device: state.key)
@@ -78,7 +78,7 @@ extension HeatPumpService {
                 } else {
                     status.message = L10n.format(
                         "Could not read the firmware status from %@: %@", serviceName,
-                        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+                        describe(error))
                 }
             }
         }
@@ -168,7 +168,7 @@ extension HeatPumpService {
         // Nothing is read, counted or asked for a start that would be refused anyway.
         if let problem = firmwareUnitProblem(state) { return try reject(problem) }
         guard let device = state?.key else { return try reject(L10n.tr("No status from the heat pump yet.")) }
-        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if try credentialsRejected() { return try reject(describe(HeatPumpError.credentialsRejected)) }
         if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
@@ -187,7 +187,7 @@ extension HeatPumpService {
             // everything again against the newest state before sending.
             let after = try latestSnapshot()?.state
             if let problem = firmwareUnitProblem(after) { return try reject(problem) }
-            if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+            if try credentialsRejected() { return try reject(describe(HeatPumpError.credentialsRejected)) }
             if let block = try blockStatus(now: now()) {
                 return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
             }
@@ -205,7 +205,7 @@ extension HeatPumpService {
             succeeded: { at in
                 status.startedAt = at
                 status.fetchedAt = nil  // read again on the next poll
-                try? self.store.saveSetting(status, key: Self.firmwareStatusKey)
+                try? self.store.saveDeviceSetting(status, name: Self.firmwareStatusKey, device: device)
                 return L10n.tr("The firmware update has started. Follow it under Health → Firmware. It can take a while, and the Wi-Fi adapter restarts along the way.")
             })
     }
@@ -220,7 +220,7 @@ extension HeatPumpService {
             try firmwareReject(message, source: source, reason: reason, old: oldValue, new: newValue, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         guard let device = state?.key else { return try reject(L10n.tr("No status from the heat pump yet.")) }
-        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if try credentialsRejected() { return try reject(describe(HeatPumpError.credentialsRejected)) }
         if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
@@ -239,7 +239,7 @@ extension HeatPumpService {
             succeeded: { _ in
                 status.startedAt = nil
                 status.fetchedAt = nil
-                try? self.store.saveSetting(status, key: Self.firmwareStatusKey)
+                try? self.store.saveDeviceSetting(status, name: Self.firmwareStatusKey, device: device)
                 return L10n.format("The cancellation has been sent to %@. The status is updated in a little while.", serviceName)
             })
     }
@@ -272,20 +272,20 @@ extension HeatPumpService {
                 let wait = max(0, next.timeIntervalSince(at))
                 if waited + wait > policy.maxWriteWait {
                     return try firmwareReject(
-                        HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", source: source, reason: reason, old: old,
+                        describe(HeatPumpError.writeTooSoon(nextAllowed: next)), source: source, reason: reason, old: old,
                         new: new, nextAllowed: next, blockedUntil: nil)
                 }
                 waited += wait
                 await sleep(wait + 0.05)
             case .exceeded(let next):
                 return try firmwareReject(
-                    HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", source: source, reason: reason,
+                    describe(HeatPumpError.changeBudgetExceeded(nextAllowed: next)), source: source, reason: reason,
                     old: old, new: new, nextAllowed: next, blockedUntil: nil)
             case .reserved(let ids):
                 do {
                     try await send()
                 } catch {
-                    let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                    let message = describe(error)
                     try store.finishChange(ids: ids, result: .failed, error: message)
                     let blocked = try handleAwayError(error, now: at)
                     return ChangeOutcome(
