@@ -15,7 +15,7 @@ struct KnowledgeSheet: View {
             Divider()
             HStack {
                 Spacer()
-                Button("Ferdig") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
             }
             .padding(12)
         }

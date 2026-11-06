@@ -68,7 +68,7 @@ enum ToolOutput {
                 structuredContent: Optional(structured),
                 isError: isError ? true : nil)
         } catch {
-            return failure("Kunne ikke lage svar: \(error.localizedDescription)")
+            return failure(L10n.format("Could not build the response: %@", error.localizedDescription))
         }
     }
 
@@ -81,7 +81,7 @@ enum ToolOutput {
     }
 }
 
-/// Status shaped for Claude: readable names next to raw values, Norwegian summary.
+/// Status shaped for Claude: readable names next to raw values, summary in the user's language.
 struct StatusView: Encodable {
     var summary: String
     var power: Bool?
@@ -113,7 +113,7 @@ struct StatusView: Encodable {
         stale = result.stale
         refreshError = result.error
         guard let s = result.state else {
-            summary = "Ingen status tilgjengelig ennå." + (result.error.map { " \($0)" } ?? "")
+            summary = L10n.tr("No status available yet.") + (result.error.map { " \($0)" } ?? "")
             return
         }
         power = s.power
@@ -135,16 +135,16 @@ struct StatusView: Encodable {
         hasPendingCommand = s.hasPendingCommand
         var parts: [String] = []
         if s.power {
-            parts.append("Varmepumpen er PÅ i modus \(s.mode?.displayName ?? "ukjent").")
+            parts.append(L10n.format("The heat pump is ON in mode %@.", s.mode?.displayName ?? L10n.tr("unknown")))
         } else {
-            parts.append("Varmepumpen er AV.")
+            parts.append(L10n.tr("The heat pump is OFF."))
         }
-        if let room = s.roomTemperature { parts.append(Display.format("Inne: %.1f °C.", room)) }
-        if let set = s.setTemperature { parts.append(Display.format("Ønsket: %.1f °C.", set)) }
-        if let out = s.outdoorTemperature { parts.append(Display.format("Ute: %.1f °C.", out)) }
-        if s.hasActiveError { parts.append("Melder feil (kode \(s.errorCode.map(String.init) ?? "ukjent")).") }
-        if s.offline { parts.append("Frakoblet MELCloud.") }
-        if result.stale { parts.append("Merk: dataene kan være utdaterte.") }
+        if let room = s.roomTemperature { parts.append(L10n.format("Indoor: %.1f °C.", room)) }
+        if let set = s.setTemperature { parts.append(L10n.format("Target: %.1f °C.", set)) }
+        if let out = s.outdoorTemperature { parts.append(L10n.format("Outdoor: %.1f °C.", out)) }
+        if s.hasActiveError { parts.append(L10n.format("Reports an error (code %@).", s.errorCode.map(String.init) ?? L10n.tr("unknown"))) }
+        if s.offline { parts.append(L10n.tr("Not connected to MELCloud.")) }
+        if result.stale { parts.append(L10n.tr("Note: the data may be out of date.")) }
         summary = parts.joined(separator: " ")
     }
 }
@@ -183,11 +183,13 @@ struct FirmwareView: Encodable {
         updateAborted = info.updateAborted
         adapterStatus = info.adapterStatus
         adaptorType = info.adaptorType
-        note = "Status og start av oppdateringen: get_firmware_status og start_firmware_update (krever godkjenning; fastvare kan ikke rulles tilbake)."
+        note = L10n.tr(
+            "Status and starting the update: get_firmware_status and start_firmware_update (requires approval; firmware cannot be rolled back)."
+        )
     }
 }
 
-/// `get_firmware_status`: what the app shows under Helse → Fastvare.
+/// `get_firmware_status`: what the app shows under Health → Firmware.
 struct FirmwareStatusView: Encodable {
     struct Update: Encodable {
         var phase: String

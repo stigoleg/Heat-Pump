@@ -32,7 +32,7 @@ struct ToolHandler: Sendable {
             case "set_power", "set_mode", "set_temperature", "set_fan_speed", "set_vanes":
                 return try await write(params.name, args)
             case "record_maintenance": return try await recordMaintenance(args)
-            default: return ToolOutput.failure("Ukjent verktøy: \(params.name)")
+            default: return ToolOutput.failure(L10n.format("Unknown tool: %@", params.name))
             }
         } catch let error as ArgumentError {
             return ToolOutput.failure(error.message)
@@ -66,7 +66,7 @@ struct ToolHandler: Sendable {
                 view.nextTimerEvent = "\(next.event.weekdayName) \(next.event.timeText): \(next.event.summary)"
             }
             if timer.enabled == true {
-                view.summary += " Ukeplanen i MELCloud er på; varmepumpen kan endre seg selv etter planen."
+                view.summary += " " + L10n.tr("The weekly schedule in MELCloud is on; the heat pump may change by itself according to the schedule.")
             }
         }
         return try await output(view, state: state)
@@ -93,7 +93,7 @@ struct ToolHandler: Sendable {
 
     private func getHistory(_ args: Arguments) async throws -> CallTool.Result {
         guard let metric = args.string("metric").flatMap(HistoryMetric.init(rawValue:)) else {
-            throw ArgumentError(message: "metric må være en av: " + HistoryMetric.allCases.map(\.rawValue).joined(separator: ", "))
+            throw ArgumentError(message: L10n.format("metric must be one of: %@", HistoryMetric.allCases.map(\.rawValue).joined(separator: ", ")))
         }
         await syncQuietly()
         let to = args.date("to") ?? Date()
@@ -111,7 +111,7 @@ struct ToolHandler: Sendable {
 
     private func getEnergy(_ args: Arguments) async throws -> CallTool.Result {
         guard let period = args.string("period").flatMap(EnergyPeriod.init(rawValue:)) else {
-            throw ArgumentError(message: "period må være day, week eller month")
+            throw ArgumentError(message: L10n.tr("period must be day, week or month"))
         }
         await syncQuietly()
         let to = args.date("to") ?? Date()
@@ -163,11 +163,9 @@ struct ToolHandler: Sendable {
                 isEstimate: buckets.contains { $0.isEstimate }, cost: total,
                 agreement: try await service.priceSettings().agreement.displayName, byMode: byMode.isEmpty ? nil : byMode,
                 buckets: buckets,
-                note: "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. "
-                    + "byMode er MELCloud sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). "
-                    + "Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. "
-                    + "Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med "
-                    + "døgnets snittpris fordi forbruk per time mangler."))
+                note: L10n.tr(
+                    "MELCloud updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is MELCloud's split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing."
+                )))
     }
 
     private func getPrices() async throws -> CallTool.Result {
@@ -284,24 +282,20 @@ struct ToolHandler: Sendable {
                     text: $0.summary(now: now, timeZone: .current))
             },
             planNote: control.plan.note,
-            note: "Prisstyringen kjører bare i appen mens Macen er på og våken, og bare i varmemodus. Den senker ønsket "
-                + "temperatur i dyre timer (aldri under minimumC, høyst maxReducedHoursPerDay timer per døgn, de dyreste; endrer "
-                + "aldri av/på eller modus) og setter den tilbake etterpå. "
-                + "Planen bygger bare på publiserte priser, ikke på anslaget. Claude kan lese den, men ikke slå den av eller på "
-                + "eller endre innstillingene; det gjør brukeren under Prognose i appen. Endringene vises i endringsloggen med "
-                + "source automation. appRunning false betyr at appen ikke har rapportert de siste minuttene.")
+            note: L10n.tr(
+                "Price control runs only in the app while the Mac is on and awake, and only in heat mode. It lowers the target temperature in expensive hours (never below minimumC, at most maxReducedHoursPerDay hours per day, the most expensive ones; never changes on/off or mode) and sets it back afterwards. The plan is based only on published prices, not on the estimate. Claude can read it, but cannot turn it on or off or change the settings; the user does that under Forecast in the app. The changes appear in the change log with source automation. appRunning false means the app has not reported in the last few minutes."
+            ))
+        var priceNote = L10n.tr(
+            "Prices in øre/kWh incl. VAT: electricity + grid tariff (energy charge) − electricity subsidy. Tomorrow's prices arrive around 13:00. The capacity charge is not included. level (VERY_CHEAP … VERY_EXPENSIVE) is Tibber's level, or for other sources the same thresholds measured against the average of the last 72 hours (spot price). No level with Norgespris. estimate is an ESTIMATE (label \"anslag\", uncertain), not published prices: median and the band between the 25th and 75th percentile on the same basis as totalOre; always say that it is an estimate."
+        )
+        if let missing = outlook.estimateMissing { priceNote += " " + L10n.format("No estimate: %@", missing) }
         return try await output(
             View(
                 agreement: overview.agreement.rawValue, agreementName: overview.agreementName,
                 current: overview.current.map(hour), cheapestAhead: overview.cheapestAhead.map(hour),
                 today: overview.today.map(hour), tomorrow: overview.tomorrow.isEmpty ? nil : overview.tomorrow.map(hour),
                 sync: overview.sync, estimate: estimate, priceControl: priceControl,
-                note: "Priser i øre/kWh inkl. mva: strøm + nettleie (energiledd) − strømstøtte. "
-                    + "Morgendagens priser kommer rundt kl. 13. Kapasitetsledd er ikke med. "
-                    + "level (VERY_CHEAP … VERY_EXPENSIVE) er Tibbers nivå, eller for andre kilder samme grenser regnet mot "
-                    + "snittet siste 72 timer (spotpris). Ingen nivå med Norgespris. estimate er et ANSLAG (usikkert), ikke "
-                    + "publiserte priser: median og 25–75 %-område i samme grunnlag som totalOre; si alltid at det er et anslag."
-                    + (outlook.estimateMissing.map { " Ingen anslag: " + $0 } ?? "")))
+                note: priceNote))
     }
 
     private func getForecast() async throws -> CallTool.Result {
@@ -351,10 +345,9 @@ struct ToolHandler: Sendable {
                 cheapestHours: Array(priced.sorted { ($0.priceOre ?? 0) < ($1.priceOre ?? 0) }.prefix(3)),
                 mostExpensiveHours: Array(priced.sorted { ($0.priceOre ?? 0) > ($1.priceOre ?? 0) }.prefix(3)),
                 tomorrow: tomorrow, tomorrowText: tomorrow?.shortText, attribution: WeatherForecast.attribution,
-                note: "Anslaget for i morgen er en enkel modell (forbruk mot graddager, basis 17 °C) fra denne varmepumpens "
-                    + "egne data, med et usikkerhetsområde (kWhLow–kWhHigh). pricesFromToday betyr at morgendagens priser ikke "
-                    + "er kommet ennå og dagens timepriser er brukt. Forvarming: høyst 1 °C opp et par timer før en kald og dyr "
-                    + "periode, og tilbake etterpå; unngå hyppige av/på og store hopp."))
+                note: L10n.tr(
+                    "The estimate for tomorrow is a simple model (consumption against degree days, base 17 °C) from this heat pump's own data, with an uncertainty range (kWhLow–kWhHigh). pricesFromToday means tomorrow's prices have not arrived yet and today's hourly prices are used. Pre-heating: at most 1 °C up a couple of hours before a cold and expensive period, and back afterwards; avoid frequent on/off and big jumps."
+                )))
     }
 
     private func getHouseConsumption(_ args: Arguments) async throws -> CallTool.Result {
@@ -382,15 +375,15 @@ struct ToolHandler: Sendable {
                 day: $0.day, houseKWh: $0.houseKWh, heatPumpKWh: $0.heatPumpKWh, heatPumpShare: $0.share.map { ($0 * 1000).rounded() / 1000 },
                 hoursWithBoth: $0.hoursWithBoth, heatPumpMeasured: $0.heatPumpMeasured, houseCostNokFromTibber: $0.houseCostNok)
         }
-        let yesterday = summary.yesterday?.share.map { Display.format("Varmepumpen sto for %.0f %% av strømmen i går.", $0 * 100) }
+        let yesterday = summary.yesterday?.share.map { L10n.format("The heat pump used %.0f %% of the electricity yesterday.", $0 * 100) }
         return try await output(
             View(
                 sync: sync, yesterdayText: yesterday, days: days,
                 note: sync.status == .notConfigured && days.isEmpty
-                    ? "Krever en Tibber-nøkkel (Innstillinger → Strømpris i appen)."
-                    : "Andelen regnes bare over timer der både huset og varmepumpen har tall (minst 20 timer for et døgn). "
-                        + "houseCostNokFromTibber er Tibbers egen kostnad for hele huset (kontrolltall); appens egen "
-                        + "kostnadsberegning for varmepumpen (get_energy) er uendret."))
+                    ? L10n.tr("Requires a Tibber token (Settings → Electricity price in the app).")
+                    : L10n.tr(
+                        "The share is calculated only over hours where both the house and the heat pump have figures (at least 20 hours for a day). houseCostNokFromTibber is Tibber's own cost for the whole house (a control figure); the app's own cost calculation for the heat pump (get_energy) is unchanged."
+                    )))
     }
 
     private func getAwaySettings() async throws -> CallTool.Result {
@@ -446,10 +439,9 @@ struct ToolHandler: Sendable {
                         events: t.events.map { Event(weekday: $0.weekdayName, time: $0.timeText, action: $0.summary) },
                         next: next.map { "\($0.event.weekdayName) \($0.event.timeText): \($0.event.summary)" }, fetchedAt: t.fetchedAt)
                 },
-                note: "Frostsikring holder rommet mellom minimum og maksimum når varmepumpen ellers er av. Feriemodus gjør at "
-                    + "varmepumpen følger frostsikringen i perioden. Endepunktene er ikke verifisert mot denne kontoen ennå; "
-                    + "den første endringen bør brukeren gjøre selv i appen. Hele ukeplanen står i get_weekly_timer; den endres bare "
-                    + "i appen (decoded=false betyr at bare antallet er kjent)."))
+                note: L10n.tr(
+                    "Frost protection keeps the room between minimum and maximum when the heat pump is otherwise off. Holiday mode makes the heat pump follow frost protection during the period. The endpoints have not been verified against this account yet; the user should make the first change in the app. The full weekly schedule is in get_weekly_timer; it is only changed in the app (decoded=false means only the count is known)."
+                )))
     }
 
     private func getWeeklyTimer() async throws -> CallTool.Result {
@@ -486,8 +478,8 @@ struct ToolHandler: Sendable {
         guard let timer else {
             return try await output(
                 View(
-                    enabled: nil, summary: "Ukeplanen er ikke hentet fra MELCloud ennå.", decoded: false, eventCount: 0, maxEvents: nil,
-                    seasons: [], next: nil, fetchedAt: nil, note: "Prøv igjen senere."),
+                    enabled: nil, summary: L10n.tr("The weekly schedule has not been fetched from MELCloud yet."), decoded: false,
+                    eventCount: 0, maxEvents: nil, seasons: [], next: nil, fetchedAt: nil, note: L10n.tr("Try again later.")),
                 state: state)
         }
         let now = Date()
@@ -509,16 +501,17 @@ struct ToolHandler: Sendable {
                 enabled: timer.enabled, summary: timer.summary, decoded: timer.decoded, eventCount: timer.totalEvents,
                 maxEvents: timer.maxEvents, seasons: seasons,
                 next: next.map { "\($0.event.weekdayName) \($0.event.timeText): \($0.event.summary)" }, fetchedAt: timer.fetchedAt,
-                note: "Ukeplanen ligger i MELCloud og kjører selv om Macen er av. En endring med set_* varer til neste hendelse i planen. "
-                    + "Claude kan bare lese planen; brukeren lager og endrer den i appen (siden Ukeplan)."),
+                note: L10n.tr(
+                    "The weekly schedule lives in MELCloud and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page)."
+                )),
             state: state)
     }
 
     private func writeAway(_ tool: String, _ args: Arguments) async throws -> CallTool.Result {
         guard let reason = args.string("reason")?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty else {
-            throw ArgumentError(message: "reason er påkrevd for alle endringer")
+            throw ArgumentError(message: L10n.tr("reason is required for all changes"))
         }
-        guard let enabled = args.bool("enabled") else { throw ArgumentError(message: "enabled (true/false) mangler") }
+        guard let enabled = args.bool("enabled") else { throw ArgumentError(message: L10n.tr("enabled (true/false) is missing")) }
         // Current values for the log (old → new); MELCloud is read at most hourly.
         let current = try await service.awaySettings()
         let change: AwayChange
@@ -529,13 +522,16 @@ struct ToolHandler: Sendable {
                 enabled: enabled, minimum: args.double("minimum"), maximum: args.double("maximum"), current: current.frost)
             else {
                 throw ArgumentError(
-                    message: "Nåværende frostsikring er ukjent (kunne ikke leses fra MELCloud). Oppgi både minimum og maximum, "
-                        + "så det er tydelig hvilket område som sendes.")
+                    message: L10n.tr(
+                        "The current frost protection is unknown (it could not be read from MELCloud). Give both minimum and maximum, so it is clear which range is sent."
+                    ))
             }
             change = .frostProtection(fp)
         } else {
             for key in ["start", "end"] {
-                if let text = args.string(key), args.date(key) == nil { throw ArgumentError(message: "Ugyldig dato i \(key): \(text)") }
+                if let text = args.string(key), args.date(key) == nil {
+                    throw ArgumentError(message: L10n.format("Invalid date in %1$@: %2$@", key, text))
+                }
             }
             change = .holidayMode(
                 HolidayMode(
@@ -554,7 +550,7 @@ struct ToolHandler: Sendable {
 
     private func startFirmwareUpdate(_ args: Arguments) async throws -> CallTool.Result {
         guard let reason = args.string("reason")?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty else {
-            throw ArgumentError(message: "reason er påkrevd for alle endringer")
+            throw ArgumentError(message: L10n.tr("reason is required for all changes"))
         }
         // Make sure a current state exists (owner, waiting update, connection).
         _ = try await service.currentState()
@@ -629,13 +625,9 @@ struct ToolHandler: Sendable {
                 startsLast3Hours: summary.startsLast3Hours, startsLast24Hours: summary.startsLast24Hours,
                 observedHoursLast24: summary.observedHoursLast24, powerLast60Minutes: summary.powerLast60Minutes,
                 defrostsLast24Hours: summary.defrostsLast24Hours, defrostMinutesLast24Hours: summary.defrostMinutesLast24Hours,
-                note: "Lest lokalt fra Wi-Fi-modulen (kun lesing). Effekten gjelder hele varmepumpen. "
-                    + "Kompressorstarter og avriminger telles bare når appen eller Claude har lest minst hvert 5. minutt; "
-                    + "observedHoursLast24 sier hvor mye av døgnet som er dekket. Feilkode 0x8000 betyr ingen feil. "
-                    + "phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. "
-                    + "Avriming (defrost) er normalt i fuktig kulde, typisk 3–10 minutter hvert 40.–90. driftsminutt. "
-                    + "stage og autoSubMode er rå verdier med usikker betydning. runtimeHoursIndoorUnit er innedelens "
-                    + "egen teller (trolig total driftstid), ikke verifisert mot produsenten."))
+                note: L10n.tr(
+                    "Read locally from the Wi-Fi adapter (read-only). The power applies to the whole heat pump. Compressor starts and defrosts are only counted when the app or Claude has read at least every 5 minutes; observedHoursLast24 says how much of the day is covered. Error code 0x8000 means no error. phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. Defrosting is normal in damp cold, typically 3–10 minutes every 40–90 minutes of running. stage and autoSubMode are raw values with uncertain meaning. runtimeHoursIndoorUnit is the indoor unit's own counter (probably total running time), not verified against the manufacturer."
+                )))
     }
 
     private func getChangeLog(_ args: Arguments) async throws -> CallTool.Result {
@@ -674,39 +666,39 @@ struct ToolHandler: Sendable {
     private func changes(for tool: String, _ args: Arguments) throws -> [DeviceChange] {
         switch tool {
         case "set_power":
-            guard let on = args.bool("on") else { throw ArgumentError(message: "on (true/false) mangler") }
+            guard let on = args.bool("on") else { throw ArgumentError(message: L10n.tr("on (true/false) is missing")) }
             return [.power(on)]
         case "set_mode":
             guard let mode = args.string("mode").flatMap(OperationMode.init(key:)) else {
-                throw ArgumentError(message: "mode må være heat, dry, cool, fan eller auto")
+                throw ArgumentError(message: L10n.tr("mode must be heat, dry, cool, fan or auto"))
             }
             return [.mode(mode)]
         case "set_temperature":
-            guard let celsius = args.double("celsius") else { throw ArgumentError(message: "celsius mangler") }
+            guard let celsius = args.double("celsius") else { throw ArgumentError(message: L10n.tr("celsius is missing")) }
             return [.temperature(celsius)]
         case "set_fan_speed":
-            guard let speed = args.int("speed") else { throw ArgumentError(message: "speed mangler") }
+            guard let speed = args.int("speed") else { throw ArgumentError(message: L10n.tr("speed is missing")) }
             return [.fanSpeed(speed)]
         case "set_vanes":
             var result: [DeviceChange] = []
             if let key = args.string("vertical") {
-                guard let vane = VaneVertical(key: key) else { throw ArgumentError(message: "Ugyldig vertical: \(key)") }
+                guard let vane = VaneVertical(key: key) else { throw ArgumentError(message: L10n.format("Invalid vertical: %@", key)) }
                 result.append(.vaneVertical(vane))
             }
             if let key = args.string("horizontal") {
-                guard let vane = VaneHorizontal(key: key) else { throw ArgumentError(message: "Ugyldig horizontal: \(key)") }
+                guard let vane = VaneHorizontal(key: key) else { throw ArgumentError(message: L10n.format("Invalid horizontal: %@", key)) }
                 result.append(.vaneHorizontal(vane))
             }
-            guard !result.isEmpty else { throw ArgumentError(message: "Oppgi vertical og/eller horizontal") }
+            guard !result.isEmpty else { throw ArgumentError(message: L10n.tr("Give vertical and/or horizontal")) }
             return result
         default:
-            throw ArgumentError(message: "Ukjent verktøy \(tool)")
+            throw ArgumentError(message: L10n.format("Unknown tool: %@", tool))
         }
     }
 
     private func write(_ tool: String, _ args: Arguments) async throws -> CallTool.Result {
         guard let reason = args.string("reason")?.trimmingCharacters(in: .whitespacesAndNewlines), !reason.isEmpty else {
-            throw ArgumentError(message: "reason er påkrevd for alle endringer")
+            throw ArgumentError(message: L10n.tr("reason is required for all changes"))
         }
         let requested = try changes(for: tool, args)
         // Make sure a current state exists so the dialog and the log show old → new.
@@ -719,11 +711,11 @@ struct ToolHandler: Sendable {
 
     private func recordMaintenance(_ args: Arguments) async throws -> CallTool.Result {
         guard let kind = args.string("kind").flatMap(MaintenanceKind.init(rawValue:)) else {
-            throw ArgumentError(message: "kind må være en av: " + MaintenanceKind.allCases.map(\.rawValue).joined(separator: ", "))
+            throw ArgumentError(message: L10n.format("kind must be one of: %@", MaintenanceKind.allCases.map(\.rawValue).joined(separator: ", ")))
         }
-        guard args.string("reason")?.isEmpty == false else { throw ArgumentError(message: "reason er påkrevd") }
+        guard args.string("reason")?.isEmpty == false else { throw ArgumentError(message: L10n.tr("reason is required")) }
         if let text = args.string("date"), args.date("date") == nil {
-            throw ArgumentError(message: "Ugyldig dato: \(text)")
+            throw ArgumentError(message: L10n.format("Invalid date: %@", text))
         }
         let record = try await service.recordMaintenance(
             kind: kind, date: args.date("date"), note: args.string("note"), reason: args.string("reason"))

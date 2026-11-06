@@ -1,35 +1,35 @@
-# Enhetsprofil: Mitsubishi Electric MSZ-RW25VG
+# Unit profile: Mitsubishi Electric MSZ-RW25VG
 
-Dette er fakta om varmepumpen, hentet fra typeskiltet og bruksanvisningen. Serienummer, MAC-adresse, Wi-Fi-navn (SSID) og Wi-Fi-nøkkel er bevisst utelatt.
+These are facts about the heat pump, taken from the rating plate and the owner's manual. Serial number, MAC address, Wi-Fi name (SSID) and Wi-Fi key are deliberately left out.
 
-## Modell
+## Model
 
-| Felt | Verdi |
+| Field | Value |
 |---|---|
-| Innedel | MSZ-RW25VG (servicereferanse MSZ-RW25VG-SC1) |
-| Type | Luft-til-luft varmepumpe, veggmontert innedel |
-| Produsert | april 2022 |
-| Kjølemiddel | R32 |
-| Spenning | 230 V |
-| Kapslingsgrad innedel | IP20 (kun innendørs, tåler ikke vannsprut) |
-| Vekt innedel | 14,5 kg |
-| Effektforbruk innedel | 21 W (vifte og styring) |
-| Merkestrøm innedel | 0,21 A |
-| Høyeste tillatte trykk (HP PS) | 4,17 MPa |
-| Wi-Fi-modul | Innebygd (MB507IF ifølge bruksanvisningen), koblet til MELCloud (klassisk) |
+| Indoor unit | MSZ-RW25VG (service reference MSZ-RW25VG-SC1) |
+| Type | Air-to-air heat pump, wall-mounted indoor unit |
+| Manufactured | April 2022 |
+| Refrigerant | R32 |
+| Voltage | 230 V |
+| Indoor unit protection rating | IP20 (indoor use only, not protected against splashing water) |
+| Indoor unit weight | 14.5 kg |
+| Indoor unit power input | 21 W (fan and controls) |
+| Indoor unit rated current | 0.21 A |
+| Maximum allowable pressure (HP PS) | 4.17 MPa |
+| Wi-Fi adapter | Built in (MB507IF according to the owner's manual), connected to MELCloud (Classic) |
 
-## Driftsområde (fra bruksanvisningen)
+## Operating range (from the owner's manual)
 
-- Oppvarming: garantert driftsområde er −30 °C til 24 °C ute (tørr temperatur) og 20–27 °C inne. Merkeeffekten er målt ved 20 °C inne og 7 °C ute.
-- Kjøling: −10 °C til 46 °C ute.
-- Ved svært lave utetemperaturer faller varmeeffekten. Det er normalt.
+- Heating: the guaranteed operating range is −30 °C to 24 °C outdoors (dry bulb) and 20–27 °C indoors. The rated capacity is measured at 20 °C indoors and 7 °C outdoors.
+- Cooling: −10 °C to 46 °C outdoors.
+- At very low outdoor temperatures the heating capacity drops. This is normal.
 
 ## MELCloud
 
-- Enheten bruker klassisk MELCloud (app.melcloud.com), ikke MELCloud Home.
-- MELCloud rapporterer romtemperatur, ønsket temperatur, modus, vifte, spjeld, Wi-Fi-signal (dBm) og feilstatus.
-- MELCloud har ikke noe eget varsel for filterrengjøring. Det må registreres manuelt i appen.
+- The unit uses MELCloud Classic (app.melcloud.com), not MELCloud Home.
+- MELCloud reports room temperature, target temperature, mode, fan, vanes, Wi-Fi signal (dBm) and error status.
+- MELCloud has no reminder of its own for filter cleaning. It has to be recorded manually in the app.
 
-## Sikkerhetsmerknad om Wi-Fi-modulen
+## Security note about the Wi-Fi adapter
 
-Wi-Fi-adaptere i samme gruppe som MSZ-RW25VG-SC1 er omfattet av sårbarheten CVE-2026-5667 (fast kodet passord for adapterens eget tilgangspunkt) for adapterversjon 42.00 og eldre. Feilen er rettet i versjon 43.00. Sårbarheten er bare relevant når enheten ikke er koblet til en ruter (oppsettmodus). Sjekk fastvareversjonen i MELCloud eller hos forhandleren, og hold enheten koblet til ruteren. Appen viser modulens fastvareversjon under Innstillinger → Konto og Helse → Fastvare (MELCloud oppgir for eksempel 34000, som betyr versjon 34.00). Oppdatering anbefales, men er ikke akutt så lenge enheten er koblet til hjemmenettet. Oppdateringen kan startes under Helse → Fastvare, av Claude etter at du har godkjent det i dialogen, eller i MELCloud-appen. Se «Fastvareoppdatering» i rådene om trygg drift før du starter.
+Wi-Fi adapters in the same group as MSZ-RW25VG-SC1 are affected by vulnerability CVE-2026-5667 (hard-coded password for the adapter's own access point) for adapter version 42.00 and earlier. The flaw is fixed in version 43.00. The vulnerability only matters when the unit is not connected to a router (setup mode). Check the firmware version in MELCloud or with the dealer, and keep the unit connected to the router. The app shows the adapter's firmware version under Settings → Account and Health → Firmware (MELCloud reports for example 34000, which means version 34.00). Updating is recommended, but not urgent as long as the unit is connected to the home network. The update can be started under Health → Firmware, by Claude after you have approved it in the dialog, or in the MELCloud app. See “Firmware update” in the safe operating guidance before you start.

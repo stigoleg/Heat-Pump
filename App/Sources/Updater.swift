@@ -8,7 +8,7 @@ import UserNotifications
 /// Updates the app from GitHub releases. Checks once a day (and on request), downloads the zip,
 /// checks its SHA-256, unpacks it next to the installed app and only accepts it when it is a
 /// notarized Developer ID build of this app from the same team. The swap is atomic: when the
-/// app quits (automatic mode) or at once with a relaunch ("Installer og start på nytt").
+/// app quits (automatic mode) or at once with a relaunch ("Install and Restart").
 @MainActor
 @Observable
 final class Updater {
@@ -175,22 +175,22 @@ final class Updater {
             switch self {
             case .http(let code):
                 code == 403 || code == 429
-                    ? "GitHub avviste forespørselen (for mange på kort tid). Prøv igjen senere."
-                    : "GitHub svarte med feilkode \(code)."
-            case .noChecksum: "Utgivelsen mangler sjekksum, så nedlastingen kan ikke kontrolleres."
-            case .checksumMismatch: "Nedlastingen var ødelagt (sjekksummen stemte ikke). Prøv igjen."
-            case .unpackFailed: "Kunne ikke pakke ut oppdateringen."
-            case .wrongApp(let detail): "Nedlastingen er ikke en gyldig Varmepumpe-versjon: \(detail)."
+                    ? String(localized: "GitHub rejected the request (too many in a short time). Try again later.")
+                    : String(localized: "GitHub responded with error code \(code).")
+            case .noChecksum: String(localized: "The release has no checksum, so the download cannot be verified.")
+            case .checksumMismatch: String(localized: "The download was corrupt (the checksum did not match). Try again.")
+            case .unpackFailed: String(localized: "Could not unpack the update.")
+            case .wrongApp(let detail): String(localized: "The download is not a valid Heat Pump version: \(detail).")
             case .notTrusted(let status):
-                "Oppdateringen er ikke signert og notarisert av samme utvikler (kode \(status)), så den installeres ikke."
-            case .swapFailed(let code): "Kunne ikke bytte ut appen (feil \(code))."
+                String(localized: "The update is not signed and notarized by the same developer (code \(status)), so it will not be installed.")
+            case .swapFailed(let code): String(localized: "Could not replace the app (error \(code)).")
             }
         }
     }
 
     private nonisolated static func message(_ error: Error) -> String {
         if let error = error as? LocalizedError, let text = error.errorDescription { return text }
-        if (error as? URLError)?.code == .notConnectedToInternet { return "Ingen internettforbindelse." }
+        if (error as? URLError)?.code == .notConnectedToInternet { return String(localized: "No internet connection.") }
         return error.localizedDescription
     }
 
@@ -242,12 +242,12 @@ final class Updater {
                 throw UpdateError.unpackFailed
             }
             let app = folder.appendingPathComponent("Varmepumpe.app")
-            guard let info = Bundle(url: app)?.infoDictionary else { throw UpdateError.wrongApp("fant ikke Varmepumpe.app") }
+            guard let info = Bundle(url: app)?.infoDictionary else { throw UpdateError.wrongApp(String(localized: "Varmepumpe.app not found")) }
             guard info["CFBundleIdentifier"] as? String == AppUpdate.bundleIdentifier else {
-                throw UpdateError.wrongApp("feil identitet")
+                throw UpdateError.wrongApp(String(localized: "wrong identity"))
             }
             guard let version = (info["CFBundleShortVersionString"] as? String).flatMap(AppVersion.init), version == release.version
-            else { throw UpdateError.wrongApp("versjonen stemmer ikke med utgivelsen") }
+            else { throw UpdateError.wrongApp(String(localized: "the version does not match the release")) }
             try await Task.detached { try checkSignature(app) }.value
             return (folder, app)
         } catch {
@@ -300,20 +300,21 @@ final class Updater {
             SecRequirementCreateWithString(AppUpdate.codeRequirement as CFString, [], &requirement) == errSecSuccess,
             let requirement, SecCodeCheckValidity(code, [], requirement) == errSecSuccess
         else {
-            return "Dette er en utviklerversjon. Den oppdateres med make install, ikke herfra."
+            return String(localized: "This is a development build. It is updated with make install, not from here.")
         }
         let files = FileManager.default
         guard files.isWritableFile(atPath: bundleURL.deletingLastPathComponent().path), files.isWritableFile(atPath: bundleURL.path)
         else {
-            return "Appen ligger i en mappe du ikke kan endre (\(bundleURL.deletingLastPathComponent().path)). Flytt den til Programmer-mappen, eller last ned nye versjoner selv."
+            let folder = bundleURL.deletingLastPathComponent().path
+            return String(localized: "The app is in a folder you cannot change (\(folder)). Move it to the Applications folder, or download new versions yourself.")
         }
         return nil
     }
 
     private func notifyReady(_ version: AppVersion) async {
         let content = UNMutableNotificationContent()
-        content.title = "Varmepumpe \(version) er klar"
-        content.body = "Den installeres når du avslutter appen. Du kan også installere den nå under Innstillinger → Generelt."
+        content.title = String(localized: "Heat Pump \(version.description) is ready")
+        content.body = String(localized: "It will be installed when you quit the app. You can also install it now under Settings → General.")
         let request = UNNotificationRequest(identifier: "update-\(version)", content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)
     }

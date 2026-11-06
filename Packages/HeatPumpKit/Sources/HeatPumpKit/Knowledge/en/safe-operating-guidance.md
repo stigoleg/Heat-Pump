@@ -1,97 +1,97 @@
-# Trygg og fornuftig bruk
+# Safe and sensible use
 
-Dette er praktiske og godt etablerte råd. Der noe er usikkert for akkurat denne modellen, står det «usikkert».
+This is practical, well-established advice. Where something is uncertain for this particular model, it says “uncertain”.
 
-## Temperatur og drift
+## Temperature and operation
 
-- **Hold jevn temperatur.** En luft-til-luft varmepumpe er mest effektiv når den går jevnt. Hyppig av/på og store hopp i ønsket temperatur gir høyere forbruk og mer slitasje.
-- **Senk heller enn å slå av.** Reis du bort noen dager, senk temperaturen et par grader i stedet for å slå av. Dette sparer mest i kaldt vær.
-- **Ikke skru høyt for å få varme fortere.** Varmepumpen varmer ikke raskere av at du setter 28 °C. Den går bare lenger og bruker mer strøm.
-- **Små justeringer.** En eller to grader om gangen er nok. Vent minst en time og se på resultatet.
-- **Velg riktig modus.** Varme om vinteren. «Auto» kan veksle mellom varme og kjøling og er sjelden best i norsk vinter.
+- **Keep the temperature steady.** An air-to-air heat pump is most efficient when it runs steadily. Frequent on/off and big jumps in the target temperature give higher consumption and more wear.
+- **Lower rather than turn off.** If you go away for a few days, lower the temperature a couple of degrees instead of turning it off. This saves the most in cold weather.
+- **Do not turn it up high to get heat faster.** The heat pump does not heat faster because you set 28 °C. It just runs longer and uses more electricity.
+- **Small adjustments.** One or two degrees at a time is enough. Wait at least an hour and look at the result.
+- **Choose the right mode.** Heat in winter. “Auto” can switch between heating and cooling and is rarely best in a Norwegian winter.
 
-## Luftstrøm
+## Airflow
 
-- Ikke blokker innedelen med møbler, gardiner eller hyller. Luften må kunne sirkulere fritt.
-- Ved oppvarming bør spjeldet peke nedover eller stå på auto, så den varme luften når gulvet.
-- Hold dører åpne til rom du vil varme.
+- Do not block the indoor unit with furniture, curtains or shelves. The air must be able to circulate freely.
+- When heating, the vane should point downwards or be set to auto, so the warm air reaches the floor.
+- Keep doors open to rooms you want to heat.
 
-## Utedelen om vinteren
+## The outdoor unit in winter
 
-- Hold utedelen fri for snø og is, særlig under og foran. Den må få luft og kunne drenere smeltevann.
-- Måk rundt utedelen etter snøfall. Ikke hakk is av lamellene med hardt verktøy.
-- **Avriming er normalt.** Om vinteren stopper varmepumpen innimellom i opptil 10 minutter for å tine is. Utedelen kan da dampe («hvit røyk») og dryppe. Det er ikke en feil.
-- Ved svært lave utetemperaturer synker varmeeffekten. Enheten er garantert å varme ned til −30 °C, men med lavere effekt.
+- Keep the outdoor unit free of snow and ice, especially underneath and in front. It needs air and must be able to drain meltwater.
+- Clear snow around the outdoor unit after snowfall. Do not chip ice off the fins with hard tools.
+- **Defrosting is normal.** In winter the heat pump stops now and then for up to 10 minutes to melt ice. The outdoor unit may then steam (“white smoke”) and drip. This is not a fault.
+- At very low outdoor temperatures the heating capacity drops. The unit is guaranteed to heat down to −30 °C, but with lower capacity.
 
-## Hytte og frostsikring
+## Cabins and frost protection
 
-- Mange Mitsubishi-modeller har en egen «10 °C varme»-funksjon for frostsikring. **Usikkert:** Bruksanvisningen for MSZ-RW nevner ikke en slik funksjon, og laveste ønsket temperatur i MELCloud avhenger av enheten. Sjekk minimumsverdien i appen før du stoler på lav vedlikeholdsvarme.
-- Ikke bruk varmepumpen som eneste frostsikring hvis strømbrudd eller nettbrudd kan gi skader. Den starter automatisk igjen etter strømbrudd (automatisk omstart), men du får ikke beskjed om den har stoppet.
-- **Frostsikring i MELCloud** (appen: «Borte hjemmefra»): når den er på, holder varmepumpen rommet mellom en laveste og høyeste temperatur selv om den ellers står av. Laveste kan være 4–14 °C, høyeste 6–16 °C, og høyeste må være minst 2 °C over laveste. 8–12 °C er et vanlig valg for et hus eller en hytte som står tom.
-- **Feriemodus**: velg start og slutt. I perioden kan varmepumpen stå av, og da er det frostsikringen som hindrer at huset blir for kaldt. Appen og Claude slår derfor ikke på feriemodus før frostsikring er på, og slår ikke av frostsikring mens feriemodus er på. Laveste temperatur på 8 °C eller mer anbefales.
-- **Tidene i feriemodus**: hvordan MELCloud lagrer tidspunktene (UTC eller lokal tid) er ikke bekreftet. Etter en endring viser appen tidene MELCloud leser tilbake ved siden av det du valgte; er de ulike (for eksempel én time forskjøvet), sjekk i MELCloud-appen.
-- Begge deler er større endringer enn å justere temperaturen, så appen ber deg bekrefte, og Claude må få godkjenning i vinduet på Macen. Funksjonene er ikke testet mot denne kontoen ennå: gjør den første endringen selv i appen og sjekk i MELCloud-appen at den er registrert.
-- **Ukeplan**: er ukeplanen i MELCloud slått på, kan varmepumpen endre temperatur eller slå seg av og på etter planen. Planen ligger i MELCloud og kjører selv om Macen er av, og den samme planen vises i MELCloud-appen. En endring du gjør i Kontroll (eller som Claude gjør) varer bare til neste hendelse i planen. Planen lages og endres på siden «Ukeplan» i appen, og hver lagring teller som én av 12 sendinger i timen. Claude kan lese planen, men ikke endre den. Lagringen er ikke prøvd mot denne kontoen ennå: sjekk i MELCloud-appen at planen ser riktig ut etter første lagring.
+- Many Mitsubishi models have a separate “10 °C heating” function for frost protection. **Uncertain:** the owner's manual for MSZ-RW does not mention such a function, and the lowest target temperature in MELCloud depends on the unit. Check the minimum value in the app before relying on low background heat.
+- Do not use the heat pump as the only frost protection if a power or network outage could cause damage. It starts again automatically after a power outage (auto restart), but you are not told if it has stopped.
+- **Frost protection in MELCloud** (in the app: “Away”): when it is on, the heat pump keeps the room between a lowest and highest temperature even if it is otherwise off. The lowest can be 4–14 °C, the highest 6–16 °C, and the highest must be at least 2 °C above the lowest. 8–12 °C is a common choice for a house or cabin that stands empty.
+- **Holiday mode**: choose a start and end. During the period the heat pump may stand off, and then frost protection is what keeps the house from getting too cold. The app and Claude therefore do not turn on holiday mode until frost protection is on, and do not turn off frost protection while holiday mode is on. A lowest temperature of 8 °C or more is recommended.
+- **Times in holiday mode**: how MELCloud stores the times (UTC or local time) is not confirmed. After a change, the app shows the times MELCloud reads back next to what you chose; if they differ (for example shifted by one hour), check in the MELCloud app.
+- Both are bigger changes than adjusting the temperature, so the app asks you to confirm, and Claude must get approval in the window on the Mac. The functions have not been tested against this account yet: make the first change yourself in the app and check in the MELCloud app that it was registered.
+- **Weekly schedule**: if the weekly schedule in MELCloud is turned on, the heat pump may change temperature or turn itself on and off according to the schedule. The schedule lives in MELCloud and runs even when the Mac is off, and the same schedule is shown in the MELCloud app. A change you make in Control (or that Claude makes) lasts only until the next event in the schedule. The schedule is created and changed on the “Weekly schedule” page in the app, and every save counts as one of the 12 sends per hour. Claude can read the schedule, but not change it. Saving has not been tried against this account yet: check in the MELCloud app that the schedule looks right after the first save.
 
-## Fukt og lukt
+## Humidity and odor
 
-- Rengjør luftfilteret hver 2. uke. Skitne filtre gir kondens og kan gi mugg.
-- Lukter det rart, sjekk filtrene først.
+- Clean the air filter every 2 weeks. Dirty filters cause condensation and can lead to mold.
+- If it smells odd, check the filters first.
 
-## Strømpris
+## Electricity price
 
-- Når strømmen er dyr noen timer (typisk morgen og ettermiddag), kan du heve ønsket temperatur 0,5–1 °C et par timer før, og senke like mye mens prisen er høy. Huset lagrer litt varme.
-- Unngå store hopp (mer enn 2 °C) og å slå varmepumpen av og på for å spare. Hyppig av/på sliter på kompressoren, og det koster mer å varme opp igjen et nedkjølt hus.
-- Med Norgespris er prisen lik hele døgnet; da sparer du mest på jevn, litt lavere temperatur. Nettleien er likevel lavere om natten og i helgene.
-- Kostnaden appen viser er strøm + nettleiens energiledd − strømstøtte. Kapasitetsleddet (fastleddet) er ikke med, fordi det avhenger av hele husets høyeste forbruk.
-- Prisnivå: Tibber merker hver time fra «svært billig» til «svært dyr» i forhold til snittet de siste dagene. Med andre spotkilder regner appen ut det samme mot snittet de siste 72 timene. Med Norgespris er prisen fast, så nivå vises ikke.
-- **Prisanslag** (siden «Prognose»): for dagene etter de publiserte prisene viser appen et anslag ut fra hvordan prisen har variert gjennom døgnet de siste fire ukene og nivået den siste uka, justert for værvarselet når prisen har fulgt temperaturen. Det er usikkert og ikke en pris; virkelige priser for i morgen kommer rundt kl. 13. Kall det alltid et anslag.
-- **Prisstyring** (siden «Prognose»): når brukeren har slått den på, senker appen ønsket temperatur i dyre timer (standard 1 °C, i svært dyre 2 °C, aldri under en laveste temperatur, standard 18 °C, og høyst et valgt antall timer per døgn, standard 8, de dyreste) og setter den tilbake etterpå; valgfritt +1 °C i et par billige timer før. Den bruker bare publiserte priser, virker bare i varmemodus, endrer aldri av/på eller modus, og står over feriemodus og hendelser i ukeplanen. Den virker bare mens appen kjører og Macen er på og våken. Endrer brukeren temperaturen selv, tar prisstyringen pause til neste skifte. Endringene logges med kilde «Prisstyring» og teller i de 12 sendingene per time. Claude kan lese status og plan, men ikke slå den av eller på eller endre den. Er prisstyringen på, bør Claude ikke i tillegg flytte temperaturen opp og ned etter pris.
+- When electricity is expensive for a few hours (typically morning and afternoon), you can raise the target temperature 0.5–1 °C a couple of hours before, and lower it by the same amount while the price is high. The house stores some heat.
+- Avoid big jumps (more than 2 °C) and turning the heat pump off and on to save money. Frequent on/off wears the compressor, and it costs more to heat a cooled-down house back up.
+- With Norgespris (fixed price) the price is the same all day; then you save the most with a steady, slightly lower temperature. The grid tariff is still lower at night and on weekends.
+- The cost the app shows is electricity + the grid tariff energy charge − the electricity subsidy. The capacity charge (fixed charge) is not included, because it depends on the whole household's peak consumption.
+- Price level: Tibber marks every hour from “very cheap” to “very expensive” relative to the average of the last few days. With other spot sources the app calculates the same against the average of the last 72 hours. With Norgespris the price is fixed, so no level is shown.
+- **Price estimate** (the “Forecast” page): for the days after the published prices, the app shows an estimate based on how the price has varied through the day over the last four weeks and the level over the last week, adjusted for the weather forecast when the price has followed the temperature. It is uncertain and not a price; real prices for tomorrow arrive around 13:00. Always call it an estimate.
+- **Price control** (the “Forecast” page): when the user has turned it on, the app lowers the target temperature in expensive hours (by default 1 °C, in very expensive hours 2 °C, never below a lowest temperature, by default 18 °C, and at most a chosen number of hours per day, by default 8, the most expensive ones) and sets it back afterwards; optionally +1 °C in a couple of cheap hours before. It uses only published prices, works only in heat mode, never changes on/off or mode, and takes precedence over holiday mode and events in the weekly schedule. It only works while the app is running and the Mac is on and awake. If the user changes the temperature themselves, price control pauses until the next step. The changes are logged with the source “Price control” and count toward the 12 sends per hour. Claude can read the status and plan, but cannot turn it on or off or change it. If price control is on, Claude should not also move the temperature up and down according to price.
 
-## Værvarsel og forvarming
+## Weather forecast and pre-heating
 
-Appen henter værvarsel fra MET Norway (yr.no) for huset, høyst én gang i timen. Værdata: MET Norway, CC BY 4.0.
+The app fetches a weather forecast from MET Norway (yr.no) for the house, at most once an hour. Weather data: MET Norway, CC BY 4.0.
 
-- **Forvarming før kulde og dyre timer**: kommer en kald periode samtidig med høye priser, kan du heve ønsket temperatur med høyst 1 °C to–tre timer før, og sette den tilbake når perioden starter eller er over. Små steg er nok; huset holder på varmen en stund.
-- **Unngå**: å skru mye opp og ned flere ganger om dagen, å slå varmepumpen av for å spare, og store hopp. Hyppige endringer gir kraftige starter og sliter på kompressoren, og et nedkjølt hus koster mer å varme opp igjen.
-- **Vind og fukt**: sterk vind øker varmetapet; fuktig vær rundt 0 °C gir mer avriming. Begge deler kan øke forbruket litt uten at noe er galt.
-- **Anslag for i morgen**: appen sammenligner forbruket mot hvor kaldt det har vært (graddager med grense 17 °C) i minst 10 av de siste 45 dagene, og bruker morgendagens varsel og priser. Det er et grovt anslag med et usikkerhetsområde, ikke et løfte.
+- **Pre-heating before cold and expensive hours**: if a cold period comes at the same time as high prices, you can raise the target temperature by at most 1 °C two to three hours before, and set it back when the period starts or is over. Small steps are enough; the house holds its heat for a while.
+- **Avoid**: turning it far up and down several times a day, turning the heat pump off to save money, and big jumps. Frequent changes cause hard starts and wear the compressor, and a cooled-down house costs more to heat back up.
+- **Wind and humidity**: strong wind increases heat loss; damp weather around 0 °C causes more defrosting. Both can increase consumption a little without anything being wrong.
+- **Estimate for tomorrow**: the app compares consumption with how cold it has been (degree days with a base of 17 °C) on at least 10 of the last 45 days, and uses tomorrow's forecast and prices. It is a rough estimate with an uncertainty range, not a promise.
 
-## Lokale målinger (effekt og kompressor)
+## Local readings (power and compressor)
 
-Når lokal tilkobling er slått på i appen, leser appen Wi-Fi-modulen direkte på hjemmenettet (bare lesing, aldri styring). Det gir:
+When the local connection is turned on in the app, the app reads the Wi-Fi adapter directly on the home network (read only, never control). This gives:
 
-- **Effekt (W)**: hva hele varmepumpen trekker akkurat nå. Rundt 4 W betyr at kompressoren står (bare elektronikk og vifte i hvile). Mens den varmer er 300–1200 W vanlig for denne størrelsen; mer når det er kaldt ute eller når den varmer opp et kaldt rom.
-- **Kompressor (Hz)**: hvor hardt kompressoren jobber. 0 Hz betyr at den står. Lav, jevn frekvens over lang tid er det mest effektive.
-- **Strømmåler**: en teller i pumpen med 0,1 kWh oppløsning. Den gir nøyaktig forbruk per time, så kostnaden blir eksakt (ikke anslag) for døgn appen har målt hele.
-- **Kompressorstarter per time**: Én til tre starter i timen er normalt. Mange korte runder (fire eller flere i timen over flere timer) kalles korte sykluser og sliter på kompressoren. Se «Vedlikehold» for hva du kan gjøre.
-- **Hva den gjør nå**: «Varmer», «Hviler (ønsket temperatur nådd)», «Forvarmer» (varmer opp før viften går for fullt, så den ikke blåser kaldt) eller «Avriser». Under avriming smelter utedelen bort is; innedelen blåser da lite eller kald luft i noen minutter. Det er normalt og skal ikke stoppes. Ikke endre innstillinger på grunn av en avriming.
-- **Driftstid totalt**: innedelen teller minutter selv. Tallet er trolig total driftstid siden enheten ble satt i drift, men betydningen er ikke bekreftet av Mitsubishi.
+- **Power (W)**: what the whole heat pump draws right now. Around 4 W means the compressor is idle (only electronics and the fan at rest). While heating, 300–1200 W is common for this size; more when it is cold outside or when it heats up a cold room.
+- **Compressor (Hz)**: how hard the compressor works. 0 Hz means it is idle. A low, steady frequency over a long time is the most efficient.
+- **Energy meter**: a counter in the pump with 0.1 kWh resolution. It gives accurate consumption per hour, so the cost is exact (not an estimate) for days the app has measured in full.
+- **Compressor starts per hour**: one to three starts per hour is normal. Many short runs (four or more per hour over several hours) are called short cycling and wear the compressor. See “Maintenance” for what you can do.
+- **What it is doing now**: “Heating”, “Resting (target temperature reached)”, “Preheating” (warming up before the fan runs at full speed, so it does not blow cold air) or “Defrosting”. During defrosting the outdoor unit melts away ice; the indoor unit then blows little or cold air for a few minutes. This is normal and should not be stopped. Do not change settings because of a defrost.
+- **Total running time**: the indoor unit counts minutes itself. The figure is probably the total running time since the unit was put into service, but its meaning is not confirmed by Mitsubishi.
 
-Råd for styring ut fra effekt:
+Advice for control based on power:
 
-- Unngå å skru ønsket temperatur mye opp og ned. Hvert hopp gir en kraftig start med høy effekt.
-- Er effekten høy over lang tid selv om det ikke er kaldt ute, sjekk luftfilteret og utedelen før du endrer innstillinger.
-- Endepunktet i modulen er uoffisielt og kan slutte å virke etter en fastvareoppdatering. Da virker alt annet via MELCloud som før.
+- Avoid turning the target temperature far up and down. Every jump causes a hard start with high power.
+- If the power is high for a long time even though it is not cold outside, check the air filter and the outdoor unit before changing settings.
+- The endpoint in the adapter is unofficial and may stop working after a firmware update. Everything else then works through MELCloud as before.
 
-## Fastvareoppdatering
+## Firmware update
 
-MELCloud gir beskjed når det finnes ny fastvare til Wi-Fi-modulen. Appen viser det under Helse → Fastvare, der du kan starte oppdateringen og følge den. Claude kan også starte den, men bare etter at du har godkjent det i dialogen på Macen.
+MELCloud reports when there is new firmware for the Wi-Fi adapter. The app shows it under Health → Firmware, where you can start the update and follow it. Claude can also start it, but only after you have approved it in the dialog on the Mac.
 
-- **Kan ikke angres**: en fastvareoppdatering kan ikke rulles tilbake når den først er startet.
-- **Strøm og Wi-Fi**: varmepumpen må stå på strøm og ha godt Wi-Fi hele tiden. Ikke koble den fra strømnettet og ikke bruk fjernkontrollen mens oppdateringen pågår (MELCloud gir samme advarsel).
-- **Tid**: oppdateringen kan ta en stund. Wi-Fi-modulen laster ned filer og starter på nytt; så lenge kan varmepumpen ikke styres fra appen eller MELCloud.
-- **Bare eieren**: bare kontoen som eier enheten i MELCloud kan starte oppdateringen, og bare når enheten er tilkoblet.
-- **Avbryte**: mens oppdateringen venter på enheten eller laster ned, kan den avbrytes i appen.
-- **Ikke akutt**: start helst når du er hjemme og ikke trenger å endre noe den nærmeste timen.
+- **Cannot be undone**: a firmware update cannot be rolled back once it has started.
+- **Power and Wi-Fi**: the heat pump must stay powered and have good Wi-Fi the whole time. Do not disconnect it from the mains and do not use the remote control while the update is running (MELCloud gives the same warning).
+- **Time**: the update can take a while. The Wi-Fi adapter downloads files and restarts; during that time the heat pump cannot be controlled from the app or MELCloud.
+- **Owner only**: only the account that owns the unit in MELCloud can start the update, and only when the unit is connected.
+- **Canceling**: while the update is waiting for the unit or downloading, it can be canceled in the app.
+- **Not urgent**: preferably start it when you are at home and do not need to change anything for the next hour.
 
-## Sikkerhet
+## Safety
 
-- R32 er et brennbart kjølemiddel. Ved mistanke om lekkasje: slå av, luft ut, ingen åpen flamme, ring forhandleren.
-- Ikke stikk fingre eller gjenstander inn i luftinntak eller utblåsing.
-- Ikke klatre på eller sett ting på utedelen.
+- R32 is a flammable refrigerant. If you suspect a leak: turn it off, ventilate, no open flame, call the dealer.
+- Do not put fingers or objects into the air inlet or outlet.
+- Do not climb on or put things on the outdoor unit.
 
-## Om endringer via appen og Claude
+## About changes through the app and Claude
 
-- Alle endringer på varmepumpen krever at du godkjenner dem.
-- Appen tillater maks 12 endringer per time og henter status maks én gang i minuttet, så MELCloud ikke stenger kontoen for mye trafikk.
+- All changes to the heat pump require your approval.
+- The app allows at most 12 changes per hour and fetches status at most once a minute, so MELCloud does not block the account for too much traffic.

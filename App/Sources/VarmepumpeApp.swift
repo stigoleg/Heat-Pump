@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Saved choice (Visning → Utseende); dev VARMEPUMPE_APPEARANCE=dark|light overrides it.
+        // Saved choice (View → Appearance); dev VARMEPUMPE_APPEARANCE=dark|light overrides it.
         MainActor.assumeIsolated {
             model.applyAppearance()
             // Polling belongs to the app, so it can outlive the window while price control is on.
@@ -56,7 +56,7 @@ struct VarmepumpeApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Varmepumpe", id: "main") {
+        WindowGroup("Heat Pump", id: "main") {
             RootView()
                 .environment(model)
                 .environment(\.locale, L10n.locale)
@@ -70,18 +70,18 @@ struct VarmepumpeApp: App {
                 CheckForUpdatesCommand(model: model)
             }
             CommandGroup(after: .toolbar) {
-                Button("Oppdater nå") {
+                Button("Refresh Now") {
                     Task { await model.refresh(force: true) }
                 }
                 .keyboardShortcut("r")
-                Menu("Utseende") {
-                    Picker("Utseende", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
+                Menu("Appearance") {
+                    Picker("Appearance", selection: Binding(get: { model.appearance }, set: { model.setAppearance($0) })) {
                         ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
                     Divider()
-                    Button("Bytt utseende") { model.cycleAppearance() }
+                    Button("Toggle Appearance") { model.cycleAppearance() }
                         .keyboardShortcut("l", modifiers: [.command, .shift])
                 }
             }
@@ -101,7 +101,7 @@ struct VarmepumpeApp: App {
                 .environment(model)
                 .environment(\.locale, L10n.locale)
         } label: {
-            Label("Varmepumpe – prisstyring", systemImage: "bolt.badge.clock")
+            Label("Heat Pump – price control", systemImage: "bolt.badge.clock")
         }
     }
 }

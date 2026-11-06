@@ -1,7 +1,7 @@
 import HeatPumpKit
 import SwiftUI
 
-/// Helse → Fastvare: the Wi-Fi adapter's firmware and MELCloud's update status. Starting needs a
+/// Health → Firmware: the Wi-Fi adapter's firmware and MELCloud's update status. Starting needs a
 /// confirmation sheet with the warnings (firmware cannot be rolled back). While an update runs and
 /// the page is visible, the status is read every 15 s.
 struct FirmwareSection: View {
@@ -17,9 +17,14 @@ struct FirmwareSection: View {
     private var status: FirmwareStatus? { model.firmware }
     private var running: Bool { status?.isInProgress(now: Date()) == true }
 
+    private var adapterHint: LocalizedStringKey {
+        if let version = model.state?.firmware.version ?? status?.currentVersion { return "Wi-Fi adapter \(version)" }
+        return "Wi-Fi adapter, unknown version"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Fastvare", hint: (model.state?.firmware.version ?? status?.currentVersion).map { "Wi-Fi-modul \($0)" } ?? "Wi-Fi-modul, ukjent versjon")
+            SectionHeader("Firmware", hint: adapterHint)
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     statusLine
@@ -49,11 +54,11 @@ struct FirmwareSection: View {
         }
         .task(id: running) { await poll() }
         .sheet(isPresented: $confirming) { confirmSheet }
-        .confirmationDialog("Avbryte fastvareoppdateringen?", isPresented: $confirmingCancel) {
-            Button("Avbryt oppdateringen", role: .destructive) { send { await model.cancelFirmwareUpdate() } }
-            Button("Fortsett oppdateringen", role: .cancel) {}
+        .confirmationDialog("Cancel the firmware update?", isPresented: $confirmingCancel) {
+            Button("Cancel Update", role: .destructive) { send { await model.cancelFirmwareUpdate() } }
+            Button("Continue Update", role: .cancel) {}
         } message: {
-            Text("MELCloud stopper oppdateringen hvis den ikke er installert ennå. Du kan starte den igjen senere.")
+            Text("MELCloud stops the update if it is not installed yet. You can start it again later.")
         }
     }
 
@@ -69,31 +74,31 @@ struct FirmwareSection: View {
     @ViewBuilder private var statusLine: some View {
         if let current = status?.current, status?.updateAvailable == true || running || current.phase == .complete {
             if running, current.phase == .approvalRequired {
-                Label("Oppdateringen er sendt til MELCloud. Venter på at enheten tar den imot.", systemImage: "clock.arrow.circlepath")
+                Label("The update has been sent to MELCloud. Waiting for the unit to accept it.", systemImage: "clock.arrow.circlepath")
             } else {
                 Label(current.displayText, systemImage: icon(current.phase)).foregroundStyle(color(current.phase))
             }
         } else if status?.updateAvailable == true || model.state?.firmware.updateAvailable == true {
-            Label("MELCloud har en nyere fastvare klar for Wi-Fi-modulen.", systemImage: "arrow.down.circle")
+            Label("MELCloud has newer firmware ready for the Wi-Fi adapter.", systemImage: "arrow.down.circle")
         } else {
-            Label("Ingen ny fastvare venter i MELCloud.", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
+            Label("No new firmware is waiting in MELCloud.", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
         }
     }
 
     private var actions: some View {
         HStack(spacing: Theme.Space.m) {
             if let at = status?.fetchedAt {
-                Text("Status hentet \(Format.relative(at))").font(.caption).foregroundStyle(.secondary)
+                Text("Status fetched \(Format.relative(at))").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if status?.updateAvailable == true || running {
-                Button("Oppdater status") { Task { await model.loadFirmware(force: true) } }
+                Button("Refresh Status") { Task { await model.loadFirmware(force: true) } }
             }
             if status?.canCancel == true {
-                Button("Avbryt oppdateringen", role: .destructive) { confirmingCancel = true }
+                Button("Cancel Update", role: .destructive) { confirmingCancel = true }
             }
             if status?.canStart == true, !running {
-                Button("Oppdater fastvare…") { confirming = true }
+                Button("Update Firmware…") { confirming = true }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -112,7 +117,7 @@ struct FirmwareSection: View {
 
     private var confirmSheet: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Label("Oppdatere fastvaren?", systemImage: "arrow.down.circle.fill").font(.title2.bold())
+            Label("Update the firmware?", systemImage: "arrow.down.circle.fill").font(.title2.bold())
             Text(HeatPumpService.firmwareApprovalSummaries(version: status?.currentVersion).first ?? "")
                 .font(.body.weight(.medium))
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -125,9 +130,9 @@ struct FirmwareSection: View {
             .foregroundStyle(Theme.Status.caution)
             HStack {
                 Spacer()
-                Button("Avbryt", role: .cancel) { confirming = false }
+                Button("Cancel", role: .cancel) { confirming = false }
                     .keyboardShortcut(.cancelAction)
-                Button("Start oppdateringen") {
+                Button("Start Update") {
                     confirming = false
                     send { await model.startFirmwareUpdate() }
                 }

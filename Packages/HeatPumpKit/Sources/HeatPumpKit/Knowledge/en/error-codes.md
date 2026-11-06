@@ -1,35 +1,35 @@
-# Feilkoder
+# Error codes
 
-## Viktig forbehold
+## Important caveat
 
-Mitsubishi har ingen offentlig feilkodetabell for MSZ-RW-serien slik den vises i MELCloud. Servicehåndboken for MSZ-RW (OBH902C) har vi ikke. Tabellene under er hentet fra servicehåndboken for den beslektede MSZ-LN-serien (OBH766H) og fra observasjoner i MELCloud. Hvordan MELCloud sin `ErrorCode` henger sammen med blinkekodene er ukjent. Bruk forklaringene som en pekepinn, og la forhandleren stille diagnosen.
+Mitsubishi has no public error code table for the MSZ-RW series as it appears in MELCloud. We do not have the service manual for MSZ-RW (OBH902C). The tables below come from the service manual for the related MSZ-LN series (OBH766H) and from observations in MELCloud. How MELCloud's `ErrorCode` relates to the blink codes is unknown. Use the explanations as a pointer, and let the dealer make the diagnosis.
 
 ## MELCloud
 
-- `ErrorCode` 8000 betyr «ingen feil» på luft-til-luft-enheter (observert i flere åpne integrasjoner).
-- `HasError` = sann betyr at enheten melder feil nå.
-- Feilloggen i MELCloud gir en tekst (`ErrorMessage`) med start- og sluttid. Den teksten kommer fra Mitsubishi og er den beste kilden vi har.
-- Noen 4-sifrede koder er kjent fra andre Mitsubishi-serier (for eksempel 5101 romføler, 5102 rørføler, 6840 kommunikasjon inne/ute). Det er **ikke** bekreftet at de betyr det samme på MSZ-RW.
+- `ErrorCode` 8000 means “no error” on air-to-air units (observed in several open integrations).
+- `HasError` = true means the unit is reporting an error right now.
+- The error log in MELCloud gives a text (`ErrorMessage`) with start and end time. That text comes from Mitsubishi and is the best source we have.
+- Some 4-digit codes are known from other Mitsubishi series (for example 5101 room sensor, 5102 pipe sensor, 6840 indoor/outdoor communication). It is **not** confirmed that they mean the same on MSZ-RW.
 
-## Når driftslampen blinker (MSZ-LN §10-4, beslektet modell)
+## When the operation lamp blinks (MSZ-LN §10-4, related model)
 
-Driftslampen (POWER) på innedelen blinker et antall ganger, så er den av i 2,5 sekunder, og gjentar mønsteret.
+The operation lamp (POWER) on the indoor unit blinks a number of times, then stays off for 2.5 seconds, and repeats the pattern.
 
-| Blink | Hva det gjelder | Forklaring |
+| Blinks | What it concerns | Explanation |
 |---|---|---|
-| Blinker jevnt (0,5 s på/av) | Feilkobling eller seriesignal | Innedelen mottar ikke signal fra utedelen på 6 minutter. |
-| 2 | Temperaturføler i innedel | Rørføler eller romføler er kortsluttet eller brutt. |
-| 3 | Viftemotor i innedel | Viftemotoren gir ikke turtallssignal. |
-| 4 | Styrekort i innedel | Kortet klarer ikke å lese minnet sitt. |
-| 5 | Strømsystem i utedel | Kompressoren har stoppet for overstrøm eller oppstartsfeil tre ganger på rad. |
-| 6 | Temperaturfølere i utedel | En føler er kortsluttet eller brutt mens kompressoren går. |
-| 7 | Styrekort i utedel | Kortet klarer ikke å lese minnet sitt. |
-| 14 eller flere | Annen feil | Blant annet følere, ventiler eller stoppventil. Ikke start igjen før det er reparert. |
+| Blinks steadily (0.5 s on/off) | Miswiring or serial signal | The indoor unit receives no signal from the outdoor unit for 6 minutes. |
+| 2 | Indoor unit temperature sensor | Pipe sensor or room sensor is short-circuited or open. |
+| 3 | Indoor unit fan motor | The fan motor gives no speed signal. |
+| 4 | Indoor unit control board | The board cannot read its memory. |
+| 5 | Outdoor unit power system | The compressor has stopped because of overcurrent or a start-up failure three times in a row. |
+| 6 | Outdoor unit temperature sensors | A sensor is short-circuited or open while the compressor runs. |
+| 7 | Outdoor unit control board | The board cannot read its memory. |
+| 14 or more | Other fault | Among other things sensors, valves or the stop valve. Do not start it again until it has been repaired. |
 
-Servicehåndboken har i tillegg en «feilminne»-funksjon (§10-2.4) som teknikeren kan bruke. Der betyr 1 blink romføler, 2 blink rørføler, 3 blink seriesignal fra utedel, 11 blink viftemotor og 12 blink styrekort. §10-2.5 i samme håndbok er feilminnetabellen for luftrenseren (AIR PURIFYING) og i-see-sensoren, ikke for utedelen. Feilminnetabellen for utedelen står i servicehåndboken for utedelen, som vi ikke har.
+The service manual also has a “failure memory” function (§10-2.4) that the technician can use. There, 1 blink means room sensor, 2 blinks pipe sensor, 3 blinks serial signal from the outdoor unit, 11 blinks fan motor and 12 blinks control board. §10-2.5 in the same manual is the failure memory table for the air purifier (AIR PURIFYING) and the i-see sensor, not for the outdoor unit. The failure memory table for the outdoor unit is in the service manual for the outdoor unit, which we do not have.
 
-## Hva du gjør
+## What to do
 
-1. Tell antall blink minst to runder.
-2. Noter tidspunkt og eventuell feiltekst fra MELCloud.
-3. Slå av varmepumpen. Bruksanvisningen sier at du skal slutte å bruke den og kontakte forhandleren når driftslampen blinker.
+1. Count the number of blinks for at least two rounds.
+2. Note the time and any error text from MELCloud.
+3. Turn off the heat pump. The owner's manual says to stop using it and contact the dealer when the operation lamp blinks.
