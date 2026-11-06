@@ -59,8 +59,8 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         # Read-only status requests to the heat pump's Wi-Fi adapter on the home network.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Heat Pump reads status (power and temperatures) directly from the heat pump's Wi-Fi adapter on your home network. The app changes nothing over the home network."
-        MARKETING_VERSION: "1.1.5"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "4"
         ENABLE_APP_SANDBOX: NO
         COMBINE_HIDPI_IMAGES: YES
     dependencies:
@@ -84,8 +84,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.stigole.varmepumpe.mcp
         GENERATE_INFOPLIST_FILE: YES
         CREATE_INFOPLIST_SECTION_IN_BINARY: YES
-        MARKETING_VERSION: "1.1.5"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "4"
         SKIP_INSTALL: YES
     dependencies:
       - package: HeatPumpKit

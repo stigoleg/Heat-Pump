@@ -2,7 +2,7 @@
 
 New entries are in English. Entries up to 1.1.5 are in Norwegian.
 
-## [Unreleased]
+## [1.2.0] – 2026-11-06
 
 - **English and Norwegian**: the app is now in English, with Norwegian bokmål as a full translation. It follows the macOS language (Norwegian on a Norwegian Mac, English otherwise), or you can choose under Settings → General → Language; the change takes effect after a restart. The app is called Heat Pump in English. The Claude helper follows the same choice: the approval window, health texts and knowledge documents come in the chosen language. Text already stored, such as reasons in the change log, stays in the language it was written in.
 - **README** in English, with the Norwegian version in README.nb.md.
