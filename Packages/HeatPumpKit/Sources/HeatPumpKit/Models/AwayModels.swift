@@ -104,7 +104,7 @@ public struct AwaySettings: Codable, Sendable, Equatable {
     public var refusedUntil: Date?
 
     public init(
-        frost: FrostProtection? = nil, holiday: HolidayMode? = nil, fetchedAt: Date? = nil, source: String = "melcloud",
+        frost: FrostProtection? = nil, holiday: HolidayMode? = nil, fetchedAt: Date? = nil, source: String,
         message: String? = nil, pendingSince: Date? = nil
     ) {
         self.frost = frost
@@ -179,12 +179,15 @@ public enum AwayChange: Sendable, Equatable {
 
     /// Reason this change is unsafe with the current settings, or nil. Holiday mode may
     /// leave the unit off, so it is only switched on while frost protection is known to be on, and
-    /// frost protection is not switched off during a holiday.
-    public func safetyProblem(current: AwaySettings?, now: Date) -> String? {
+    /// frost protection is not switched off during a holiday. `serviceName` names where the
+    /// settings are read from.
+    public func safetyProblem(current: AwaySettings?, now: Date, serviceName: String) -> String? {
         switch self {
         case .holidayMode(let hm) where hm.enabled:
             guard let frost = current?.frost else {
-                return L10n.tr("Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from MELCloud). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again.")
+                return L10n.format(
+                    "Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from %@). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again.",
+                    serviceName)
             }
             guard frost.enabled else {
                 return L10n.tr("Holiday mode was not turned on because frost protection is off. In holiday mode the heat pump may stand off, and then frost protection is what keeps the house from getting too cold. Turn on frost protection first (for example 8–12 °C).")

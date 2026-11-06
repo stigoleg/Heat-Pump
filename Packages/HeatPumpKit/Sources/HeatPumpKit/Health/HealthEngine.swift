@@ -12,16 +12,20 @@ public struct HealthInput: Sendable {
     public var maintenance: [MaintenanceRecord]
     public var now: Date
     public var timeZone: TimeZone
-    /// Set while MELCloud blocks our requests; explains why data is old.
+    /// Set while the service blocks our requests; explains why data is old.
     public var blockedUntil: Date?
     /// Local adapter readings and reachability (nil when local access was never used).
     public var local: LocalHealthInput?
+    /// Names the service in texts and supplies error codes, maintenance kinds and its own rules.
+    public var integration: any Integration
 
     public init(
         latestState: DeviceState?, snapshots: [DeviceState] = [], temperaturePoints: [TemperaturePoint] = [],
         errorEvents: [ErrorLogEntry] = [], energyDays: [EnergyDay] = [], maintenance: [MaintenanceRecord] = [],
-        now: Date, timeZone: TimeZone = .current, blockedUntil: Date? = nil, local: LocalHealthInput? = nil
+        now: Date, timeZone: TimeZone = .current, blockedUntil: Date? = nil, local: LocalHealthInput? = nil,
+        integration: any Integration
     ) {
+        self.integration = integration
         self.local = local
         self.latestState = latestState
         self.snapshots = snapshots
@@ -58,12 +62,13 @@ public enum HealthEngine {
 
     public static func evaluate(_ input: HealthInput) -> HealthReport {
         var findings: [HealthFinding] = []
+        let serviceName = input.integration.displayName
         if let state = input.latestState {
-            findings += activeError(state)
-            findings += connectivity(state, now: input.now, blockedUntil: input.blockedUntil)
-            findings += wifi(state)
+            findings += activeError(state, errorCodes: input.integration.errorCodes, serviceName: serviceName)
+            findings += connectivity(state, now: input.now, blockedUntil: input.blockedUntil, serviceName: serviceName)
+            findings += wifi(state, serviceName: serviceName)
             findings += setpointNotReached(input)
-            findings += firmware(state)
+            findings += firmware(state, serviceName: serviceName)
         } else {
             findings.append(
                 HealthFinding(
@@ -73,10 +78,10 @@ public enum HealthEngine {
         }
         if let local = input.local {
             findings += LocalHealth.evaluate(local, cloudErrorShown: findings.contains { ["active_error", "error_flag"].contains($0.code) },
-                                             now: input.now, timeZone: input.timeZone)
+                                             now: input.now, timeZone: input.timeZone, integration: input.integration)
         }
         findings += errorLog(input)
-        findings += energyAnomaly(input)
+        findings += energyAnomaly(input, serviceName: serviceName)
         findings += maintenance(input)
         if !findings.contains(where: { $0.severity >= .warning }) && input.latestState != nil {
             findings.append(
@@ -90,36 +95,37 @@ public enum HealthEngine {
 
     // MARK: Rules
 
-    static func activeError(_ state: DeviceState) -> [HealthFinding] {
+    static func activeError(_ state: DeviceState, errorCodes: any ErrorCodeExplaining, serviceName: String) -> [HealthFinding] {
         guard state.hasActiveError else { return [] }
         guard let code = state.errorCode, !DeviceState.noErrorCodes.contains(code) else {
             // HasError without a real code: real but unspecific, so not critical.
             return [
                 HealthFinding(
-                    code: "error_flag", severity: .warning, title: L10n.tr("MELCloud reports an error without an error code"),
-                    detail: L10n.tr("The heat pump has set an error flag, but MELCloud gives no error code. So we do not know what the error is about."),
+                    code: "error_flag", severity: .warning, title: L10n.format("%@ reports an error without an error code", serviceName),
+                    detail: L10n.format(
+                        "The heat pump has set an error flag, but %@ gives no error code. So we do not know what the error is about.", serviceName),
                     recommendation: L10n.tr("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If it does not blink and the heating works, watch whether the error goes away at the next refresh."))
             ]
         }
-        let entry = ErrorCatalog.lookup(errorCode: code)
+        let entry = errorCodes.lookup(errorCode: code)
         let uncertain = entry.confidence == .low || entry.confidence == .unknown
         return [
             HealthFinding(
                 code: "active_error", severity: .critical, title: L10n.tr("The heat pump is reporting an error now"),
                 detail: uncertain
-                    ? L10n.format("Error code %@. %@: %@ %@", String(code), entry.title, entry.explanation, ErrorCatalog.caveat)
+                    ? L10n.format("Error code %@. %@: %@ %@", String(code), entry.title, entry.explanation, errorCodes.caveat)
                     : L10n.format("Error code %@. %@: %@", String(code), entry.title, entry.explanation),
                 recommendation: L10n.format("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. %@", entry.recommendation))
         ]
     }
 
-    /// Judges connectivity at the time of the snapshot. When our own data is old (MELCloud
+    /// Judges connectivity at the time of the snapshot. When our own data is old (the service
     /// blocks us, no internet), only says the data is old: the unit may be perfectly fine.
-    static func connectivity(_ state: DeviceState, now: Date, blockedUntil: Date?) -> [HealthFinding] {
+    static func connectivity(_ state: DeviceState, now: Date, blockedUntil: Date?, serviceName: String) -> [HealthFinding] {
         let dataAge = now.timeIntervalSince(state.fetchedAt)
         if dataAge > Threshold.staleDataAfter {
             let why =
-                blockedUntil.map { L10n.format("MELCloud has temporarily blocked updates until %@.", Display.dateTime($0)) }
+                blockedUntil.map { L10n.format("%@ has temporarily blocked updates until %@.", serviceName, Display.dateTime($0)) }
                 ?? L10n.tr("Fetching a new status has not succeeded (for example without internet).")
             return [
                 HealthFinding(
@@ -139,20 +145,21 @@ public enum HealthEngine {
             ?? L10n.tr("The Wi-Fi adapter had not reported in for over an hour when the status was fetched. The heat pump can still heat as normal, but we cannot see what it is doing.")
         return [
             HealthFinding(
-                code: "offline", severity: .warning, title: L10n.tr("The heat pump has no contact with MELCloud"),
+                code: "offline", severity: .warning, title: L10n.format("The heat pump has no contact with %@", serviceName),
                 detail: detail,
                 recommendation: L10n.tr("Check that the router and the internet work, and that the heat pump has power. If that does not help, switch off the circuit breaker for the heat pump for one minute and switch it back on."))
         ]
     }
 
-    static func wifi(_ state: DeviceState) -> [HealthFinding] {
-        // MELCloud reports dBm (negative). Ignore values that do not look like dBm.
+    static func wifi(_ state: DeviceState, serviceName: String) -> [HealthFinding] {
+        // The adapter reports dBm (negative). Ignore values that do not look like dBm.
         guard let rssi = state.wifiSignal, rssi < 0 else { return [] }
         if rssi < Threshold.wifiWarning {
             return [
                 HealthFinding(
                     code: "wifi_weak", severity: .warning, title: L10n.tr("Weak Wi-Fi signal"),
-                    detail: L10n.format("The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to MELCloud.", rssi),
+                    detail: L10n.format(
+                        "The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to %@.", rssi, serviceName),
                     recommendation: L10n.tr("Move the router closer, or set up a Wi-Fi extender or mesh node near the indoor unit."))
             ]
         }
@@ -204,19 +211,21 @@ public enum HealthEngine {
         ]
     }
 
-    static func firmware(_ state: DeviceState) -> [HealthFinding] {
+    static func firmware(_ state: DeviceState, serviceName: String) -> [HealthFinding] {
         var findings: [HealthFinding] = []
-        // The deployment id is MELCloud-internal and never shown; the version is.
+        // The deployment id is internal to the service and never shown; the version is.
         if state.firmware.updateAvailable {
             let detail =
-                state.firmware.version.map { L10n.format("The adapter has firmware %@. MELCloud has a newer version ready.", $0) }
-                ?? L10n.tr("MELCloud has a newer firmware version ready for the adapter.")
+                state.firmware.version.map { L10n.format("The adapter has firmware %@. %@ has a newer version ready.", $0, serviceName) }
+                ?? L10n.format("%@ has a newer firmware version ready for the adapter.", serviceName)
             findings.append(
                 HealthFinding(
                     code: "firmware_pending", severity: .info, title: L10n.tr("Update available for the Wi-Fi adapter"),
                     detail: detail,
                     recommendation:
-                        L10n.tr("Start the update under Health → Firmware in this app (or in the MELCloud app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back.")))
+                        L10n.format(
+                            "Start the update under Health → Firmware in this app (or in the %@ app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back.",
+                            serviceName)))
         }
         if state.firmware.updateAborted {
             findings.append(
@@ -233,15 +242,16 @@ public enum HealthEngine {
         let cutoff = input.now.addingTimeInterval(-Double(Threshold.recentErrorDays) * 86_400)
         let recent = input.errorEvents.filter { $0.start >= cutoff }.sorted { $0.start > $1.start }
         if let latest = recent.first {
-            let entry = ErrorCatalog.lookup(errorCode: latest.code.flatMap(Int.init), message: latest.message)
+            let errorCodes = input.integration.errorCodes
+            let entry = errorCodes.lookup(errorCode: latest.code.flatMap(Int.init), message: latest.message)
             return [
                 HealthFinding(
                     code: "recent_error_log", severity: .warning,
                     title: L10n.format("Errors recorded in the last %lld days", Threshold.recentErrorDays),
                     detail: L10n.format("%lld errors in the error log. Latest: “%@” %@.", recent.count, latest.message, Display.dateTime(latest.start)),
-                    recommendation: entry.confidence == .melcloud
+                    recommendation: entry.confidence == .serviceText
                         ? L10n.tr("If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless.")
-                        : L10n.format("If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless. %@", ErrorCatalog.caveat))
+                        : L10n.format("If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless. %@", errorCodes.caveat))
             ]
         }
         guard let latest = input.errorEvents.max(by: { $0.start < $1.start }) else { return [] }
@@ -253,7 +263,7 @@ public enum HealthEngine {
         ]
     }
 
-    static func energyAnomaly(_ input: HealthInput) -> [HealthFinding] {
+    static func energyAnomaly(_ input: HealthInput, serviceName: String) -> [HealthFinding] {
         let today = WireDate.day(input.now, timeZone: input.timeZone)
         // Daily mean outdoor temperature from snapshots and log points.
         var sums: [String: (Double, Int)] = [:]
@@ -291,58 +301,66 @@ public enum HealthEngine {
                 detail: L10n.format(
                     "On %@ the heat pump used %.2f kWh per degree day, %.1f times more than usual (median %.2f over recent days). Degree days are adjusted for the outdoor temperature.",
                     latest.day, latest.ratio, factor, median),
-                recommendation: L10n.tr("Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that MELCloud sometimes reports energy figures late or wrong."))
+                recommendation: L10n.format(
+                    "Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that %@ sometimes reports energy figures late or wrong.",
+                    serviceName))
         ]
     }
 
+    /// Only for the maintenance kinds the integration's unit has.
     static func maintenance(_ input: HealthInput) -> [HealthFinding] {
         var findings: [HealthFinding] = []
+        let kinds = Set(input.integration.maintenanceKinds)
         func latest(_ kind: MaintenanceKind) -> MaintenanceRecord? {
             input.maintenance.filter { $0.kind == kind }.max { $0.timestamp < $1.timestamp }
         }
         func days(since date: Date) -> Int { Int(input.now.timeIntervalSince(date) / 86_400) }
 
-        if let record = latest(.airFilter) {
-            let age = days(since: record.timestamp)
-            if age > Threshold.airFilterWarningDays {
+        if kinds.contains(.airFilter) {
+            if let record = latest(.airFilter) {
+                let age = days(since: record.timestamp)
+                if age > Threshold.airFilterWarningDays {
+                    findings.append(
+                        HealthFinding(
+                            code: "air_filter_overdue", severity: .warning, title: L10n.tr("The air filter should be cleaned now"),
+                            detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
+                            recommendation: L10n.tr("Turn off the heat pump, take out the air filter, vacuum or rinse it, and let it dry in the shade before putting it back. Record the cleaning afterwards.")))
+                } else if age > Threshold.airFilterInfoDays {
+                    findings.append(
+                        HealthFinding(
+                            code: "air_filter_due", severity: .info, title: L10n.tr("Time to clean the air filter soon"),
+                            detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
+                            recommendation: L10n.tr("Clean the air filter within the next few days and record it.")))
+                }
+            } else {
                 findings.append(
                     HealthFinding(
-                        code: "air_filter_overdue", severity: .warning, title: L10n.tr("The air filter should be cleaned now"),
-                        detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
-                        recommendation: L10n.tr("Turn off the heat pump, take out the air filter, vacuum or rinse it, and let it dry in the shade before putting it back. Record the cleaning afterwards.")))
-            } else if age > Threshold.airFilterInfoDays {
-                findings.append(
-                    HealthFinding(
-                        code: "air_filter_due", severity: .info, title: L10n.tr("Time to clean the air filter soon"),
-                        detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
-                        recommendation: L10n.tr("Clean the air filter within the next few days and record it.")))
+                        code: "air_filter_unknown", severity: .info, title: L10n.tr("No filter cleaning recorded"),
+                        detail: L10n.tr("We do not know when the air filter was last cleaned. The manual recommends every 2 weeks."),
+                        recommendation: L10n.tr("Clean the air filter and record it, so the app can remind you next time.")))
             }
-        } else {
-            findings.append(
-                HealthFinding(
-                    code: "air_filter_unknown", severity: .info, title: L10n.tr("No filter cleaning recorded"),
-                    detail: L10n.tr("We do not know when the air filter was last cleaned. The manual recommends every 2 weeks."),
-                    recommendation: L10n.tr("Clean the air filter and record it, so the app can remind you next time.")))
         }
 
-        if let record = latest(.deodorizingFilter) {
-            let age = days(since: record.timestamp)
-            if age > Threshold.deodorizingFilterDays {
+        if kinds.contains(.deodorizingFilter) {
+            if let record = latest(.deodorizingFilter) {
+                let age = days(since: record.timestamp)
+                if age > Threshold.deodorizingFilterDays {
+                    findings.append(
+                        HealthFinding(
+                            code: "deodorizing_filter_due", severity: .info, title: L10n.tr("The air purifying and deodorizing filters should be cleaned"),
+                            detail: L10n.format("It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months.", age),
+                            recommendation: L10n.tr("Vacuum the filters (the deodorizing filter can be soaked in lukewarm water at 30–40 °C for about 15 minutes) and dry them in the shade. Spare part if needed: MAC-3010FT-E.")))
+                }
+            } else {
                 findings.append(
                     HealthFinding(
-                        code: "deodorizing_filter_due", severity: .info, title: L10n.tr("The air purifying and deodorizing filters should be cleaned"),
-                        detail: L10n.format("It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months.", age),
-                        recommendation: L10n.tr("Vacuum the filters (the deodorizing filter can be soaked in lukewarm water at 30–40 °C for about 15 minutes) and dry them in the shade. Spare part if needed: MAC-3010FT-E.")))
+                        code: "deodorizing_filter_unknown", severity: .info, title: L10n.tr("Unknown when the deodorizing filter was last cleaned"),
+                        detail: L10n.tr("The air purifying filter and the black deodorizing filter should be cleaned every 3 months."),
+                        recommendation: L10n.tr("Clean them at the next filter cleaning and record it.")))
             }
-        } else {
-            findings.append(
-                HealthFinding(
-                    code: "deodorizing_filter_unknown", severity: .info, title: L10n.tr("Unknown when the deodorizing filter was last cleaned"),
-                    detail: L10n.tr("The air purifying filter and the black deodorizing filter should be cleaned every 3 months."),
-                    recommendation: L10n.tr("Clean them at the next filter cleaning and record it.")))
         }
 
-        if let record = latest(.vBlockingFilter), days(since: record.timestamp) > Threshold.deodorizingFilterDays {
+        if kinds.contains(.vBlockingFilter), let record = latest(.vBlockingFilter), days(since: record.timestamp) > Threshold.deodorizingFilterDays {
             findings.append(
                 HealthFinding(
                     code: "v_blocking_filter_due", severity: .info, title: L10n.tr("The green V-blocking filter should be cleaned"),

@@ -41,12 +41,12 @@
         }
       }
     },
-    "%@ Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to MELCloud”." : {
+    "%@ Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to %@”." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ Varme. Du kan endre temperaturene etterpå. Ingenting lagres før du trykker «Lagre i MELCloud»."
+            "value" : "%1$@ Varme. Du kan endre temperaturene etterpå. Ingenting lagres før du trykker «Lagre i %2$@»."
           }
         }
       }
@@ -71,6 +71,16 @@
         }
       }
     },
+    "%@ account" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@-konto"
+          }
+        }
+      }
+    },
     "%@ average · known prices" : {
       "localizations" : {
         "nb" : {
@@ -91,6 +101,46 @@
         }
       }
     },
+    "%@ block" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@-blokkering"
+          }
+        }
+      }
+    },
+    "%@ did not allow reading the weekly schedule for this account. The app will try again %@, or click “Fetch Now”." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen %2$@, eller trykk «Hent nå»."
+          }
+        }
+      }
+    },
+    "%@ did not say whether the schedule is on. Choose on or off before you save." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oppga ikke om planen er på. Velg på eller av før du lagrer."
+          }
+        }
+      }
+    },
+    "%@ has newer firmware ready for the Wi-Fi adapter." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ har en nyere fastvare klar for Wi-Fi-modulen."
+          }
+        }
+      }
+    },
     "%@ of the time" : {
       "localizations" : {
         "nb" : {
@@ -107,6 +157,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ per døgn"
+          }
+        }
+      }
+    },
+    "%@ rejected the sign-in. Enter the password again." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ avviste innloggingen. Skriv inn passordet på nytt."
+          }
+        }
+      }
+    },
+    "%@ shows: %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ viser: %2$@"
+          }
+        }
+      }
+    },
+    "%@ stops the update if it is not installed yet. You can start it again later." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ stopper oppdateringen hvis den ikke er installert ennå. Du kan starte den igjen senere."
+          }
+        }
+      }
+    },
+    "%@ updates energy figures with a delay of a few hours." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oppdaterer energitall med noen timers forsinkelse."
           }
         }
       }
@@ -801,12 +891,12 @@
         }
       }
     },
-    "Changes are sent automatically a few seconds after you set them. The weekly schedule in MELCloud is on, so the heat pump can also change by itself." : {
+    "Changes are sent automatically a few seconds after you set them. The weekly schedule in %@ is on, so the heat pump can also change by itself." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen i MELCloud er på, så varmepumpen kan også endre seg selv."
+            "value" : "Endringer sendes automatisk et par sekunder etter at du har stilt inn. Ukeplanen i %@ er på, så varmepumpen kan også endre seg selv."
           }
         }
       }
@@ -1521,12 +1611,12 @@
         }
       }
     },
-    "During the period the heat pump may be off, and frost protection makes sure the house does not get too cold. Afterwards it goes back to how it was. The times MELCloud stores are shown on the page afterwards; compare them with what you chose." : {
+    "During the period the heat pump may be off, and frost protection makes sure the house does not get too cold. Afterwards it goes back to how it was. The times %@ stores are shown on the page afterwards; compare them with what you chose." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I perioden kan varmepumpen stå av, og frostsikringen passer på at huset ikke blir for kaldt. Etterpå går den tilbake til slik den var. Tidene MELCloud lagrer vises på siden etterpå; sammenlign dem med det du valgte."
+            "value" : "I perioden kan varmepumpen stå av, og frostsikringen passer på at huset ikke blir for kaldt. Etterpå går den tilbake til slik den var. Tidene %@ lagrer vises på siden etterpå; sammenlign dem med det du valgte."
           }
         }
       }
@@ -1941,52 +2031,52 @@
         }
       }
     },
-    "Fetched from MELCloud %@." : {
+    "Fetched from %@ %@." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hentet fra MELCloud %@."
+            "value" : "Hentet fra %1$@ %2$@."
           }
         }
       }
     },
-    "Fetches new status from MELCloud. At most once a minute, so the account is not blocked." : {
+    "Fetches new status from %@. At most once a minute, so the account is not blocked." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henter ny status fra MELCloud. Høyst én gang i minuttet, så kontoen ikke blir sperret."
+            "value" : "Henter ny status fra %@. Høyst én gang i minuttet, så kontoen ikke blir sperret."
           }
         }
       }
     },
-    "Fetches the weekly schedule from MELCloud (at most every 10 minutes; otherwise automatically every 6 hours)." : {
+    "Fetches the weekly schedule from %@ (at most every 10 minutes; otherwise automatically every 6 hours)." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henter ukeplanen fra MELCloud (høyst hvert 10. minutt; ellers automatisk hver 6. time)."
+            "value" : "Henter ukeplanen fra %@ (høyst hvert 10. minutt; ellers automatisk hver 6. time)."
           }
         }
       }
     },
-    "Fetching from MELCloud" : {
+    "Fetching from %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henting fra MELCloud"
+            "value" : "Henting fra %@"
           }
         }
       }
     },
-    "Fetching from MELCloud…" : {
+    "Fetching from %@…" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hentes fra MELCloud …"
+            "value" : "Hentes fra %@ …"
           }
         }
       }
@@ -2001,12 +2091,12 @@
         }
       }
     },
-    "Fetching the weekly schedule from MELCloud…" : {
+    "Fetching the weekly schedule from %@…" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen hentes fra MELCloud …"
+            "value" : "Ukeplanen hentes fra %@ …"
           }
         }
       }
@@ -2061,12 +2151,12 @@
         }
       }
     },
-    "For now from MELCloud’s device list; fetched directly at most once an hour." : {
+    "For now from %@’s device list; fetched directly at most once an hour." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Foreløpig fra MELCloud sin enhetsliste; hentes direkte høyst én gang i timen."
+            "value" : "Foreløpig fra %@ sin enhetsliste; hentes direkte høyst én gang i timen."
           }
         }
       }
@@ -2141,22 +2231,22 @@
         }
       }
     },
-    "From MELCloud" : {
+    "From %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fra MELCloud"
+            "value" : "Fra %@"
           }
         }
       }
     },
-    "From the building in MELCloud" : {
+    "From the building in %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fra bygget i MELCloud"
+            "value" : "Fra bygget i %@"
           }
         }
       }
@@ -2181,12 +2271,12 @@
         }
       }
     },
-    "Frost protection keeps the room between a lowest and a highest temperature even when the heat pump is otherwise off. In holiday mode the heat pump can be off for a period you choose, and frost protection is then what keeps the house from getting too cold; that is why frost protection must be on first. Both are stored in MELCloud, so they work even when the Mac is off." : {
+    "Frost protection keeps the room between a lowest and a highest temperature even when the heat pump is otherwise off. In holiday mode the heat pump can be off for a period you choose, and frost protection is then what keeps the house from getting too cold; that is why frost protection must be on first. Both are stored in %@, so they work even when the Mac is off." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frostsikring holder rommet mellom en laveste og høyeste temperatur selv om varmepumpen ellers er av. I feriemodus kan varmepumpen stå av i en periode du velger, og da er det frostsikringen som hindrer at huset blir for kaldt; derfor må frostsikring være på først. Begge deler lagres i MELCloud, så de virker selv om Macen er av."
+            "value" : "Frostsikring holder rommet mellom en laveste og høyeste temperatur selv om varmepumpen ellers er av. I feriemodus kan varmepumpen stå av i en periode du velger, og da er det frostsikringen som hindrer at huset blir for kaldt; derfor må frostsikring være på først. Begge deler lagres i %@, så de virker selv om Macen er av."
           }
         }
       }
@@ -2851,12 +2941,12 @@
         }
       }
     },
-    "Log in to MELCloud in Settings." : {
+    "Log in to %@ in Settings." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logg inn på MELCloud i Innstillinger."
+            "value" : "Logg inn på %@ i Innstillinger."
           }
         }
       }
@@ -3007,96 +3097,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Laveste: %@"
-          }
-        }
-      }
-    },
-    "MELCloud account" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud-konto"
-          }
-        }
-      }
-    },
-    "MELCloud block" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud-blokkering"
-          }
-        }
-      }
-    },
-    "MELCloud did not allow reading the weekly schedule for this account. The app will try again %@, or click “Fetch Now”." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen %@, eller trykk «Hent nå»."
-          }
-        }
-      }
-    },
-    "MELCloud did not say whether the schedule is on. Choose on or off before you save." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud oppga ikke om planen er på. Velg på eller av før du lagrer."
-          }
-        }
-      }
-    },
-    "MELCloud has newer firmware ready for the Wi-Fi adapter." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har en nyere fastvare klar for Wi-Fi-modulen."
-          }
-        }
-      }
-    },
-    "MELCloud rejected the sign-in. Enter the password again." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud avviste innloggingen. Skriv inn passordet på nytt."
-          }
-        }
-      }
-    },
-    "MELCloud shows: %@" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud viser: %@"
-          }
-        }
-      }
-    },
-    "MELCloud stops the update if it is not installed yet. You can start it again later." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud stopper oppdateringen hvis den ikke er installert ennå. Du kan starte den igjen senere."
-          }
-        }
-      }
-    },
-    "MELCloud updates energy figures with a delay of a few hours." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud oppdaterer energitall med noen timers forsinkelse."
           }
         }
       }
@@ -3501,12 +3501,12 @@
         }
       }
     },
-    "No new firmware is waiting in MELCloud." : {
+    "No new firmware is waiting in %@." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ingen ny fastvare venter i MELCloud."
+            "value" : "Ingen ny fastvare venter i %@."
           }
         }
       }
@@ -3721,12 +3721,12 @@
         }
       }
     },
-    "Not the same. Check in the MELCloud app which applies." : {
+    "Not the same. Check in the %@ app which applies." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ikke det samme. Sjekk i MELCloud-appen hva som gjelder."
+            "value" : "Ikke det samme. Sjekk i %@-appen hva som gjelder."
           }
         }
       }
@@ -4541,42 +4541,42 @@
         }
       }
     },
-    "Save the weekly schedule to MELCloud" : {
+    "Save the weekly schedule to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagre ukeplanen i MELCloud"
+            "value" : "Lagre ukeplanen i %@"
           }
         }
       }
     },
-    "Save to MELCloud" : {
+    "Save to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagre i MELCloud"
+            "value" : "Lagre i %@"
           }
         }
       }
     },
-    "Save to MELCloud…" : {
+    "Save to %@…" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagre i MELCloud…"
+            "value" : "Lagre i %@…"
           }
         }
       }
     },
-    "Saved to MELCloud" : {
+    "Saved to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagret i MELCloud"
+            "value" : "Lagret i %@"
           }
         }
       }
@@ -4651,22 +4651,22 @@
         }
       }
     },
-    "Saving is new and has not been tried against your account yet. Feel free to check in the MELCloud app that the schedule is correct. Each save counts as one of %lld sends per hour." : {
+    "Saving is new and has not been tried against your account yet. Feel free to check in the %@ app that the schedule is correct. Each save counts as one of %lld sends per hour." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagringen er ny og ikke prøvd mot din konto ennå. Sjekk gjerne i MELCloud-appen at planen er riktig. Hver lagring teller som én av %lld sendinger i timen."
+            "value" : "Lagringen er ny og ikke prøvd mot din konto ennå. Sjekk gjerne i %1$@-appen at planen er riktig. Hver lagring teller som én av %2$lld sendinger i timen."
           }
         }
       }
     },
-    "Saving to MELCloud…" : {
+    "Saving to %@…" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagrer i MELCloud …"
+            "value" : "Lagrer i %@ …"
           }
         }
       }
@@ -4681,12 +4681,12 @@
         }
       }
     },
-    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in MELCloud is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save." : {
+    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in %@ is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk etter adressen eller stedet, eller klikk i kartet. Søket går via Apple Kart. Uten valgt sted brukes posisjonen til bygget i MELCloud. Posisjonen rundes av til omtrent én kilometer før den sendes til MET, og Claude ser bare stedsnavnet. Husk å trykke Lagre."
+            "value" : "Søk etter adressen eller stedet, eller klikk i kartet. Søket går via Apple Kart. Uten valgt sted brukes posisjonen til bygget i %@. Posisjonen rundes av til omtrent én kilometer før den sendes til MET, og Claude ser bare stedsnavnet. Husk å trykke Lagre."
           }
         }
       }
@@ -4721,12 +4721,12 @@
         }
       }
     },
-    "Send to MELCloud" : {
+    "Send to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Send til MELCloud"
+            "value" : "Send til %@"
           }
         }
       }
@@ -4741,12 +4741,12 @@
         }
       }
     },
-    "Sent to MELCloud" : {
+    "Sent to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sendt til MELCloud"
+            "value" : "Sendt til %@"
           }
         }
       }
@@ -4831,22 +4831,22 @@
         }
       }
     },
-    "Sign in to MELCloud" : {
+    "Sign in to %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logg inn på MELCloud"
+            "value" : "Logg inn på %@"
           }
         }
       }
     },
-    "Sign out of MELCloud?" : {
+    "Sign out of %@?" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logge ut av MELCloud?"
+            "value" : "Logge ut av %@?"
           }
         }
       }
@@ -5081,22 +5081,22 @@
         }
       }
     },
+    "Switch %@ account" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt %@-konto"
+          }
+        }
+      }
+    },
     "Switch Account…" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bytt konto…"
-          }
-        }
-      }
-    },
-    "Switch MELCloud account" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bytt MELCloud-konto"
           }
         }
       }
@@ -5201,12 +5201,12 @@
         }
       }
     },
-    "Temperatures are shown once the app has fetched the status a few times, and from MELCloud when the log is available." : {
+    "Temperatures are shown once the app has fetched the status a few times, and from %@ when the log is available." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Temperaturer vises når appen har hentet status noen ganger, og fra MELCloud når loggen er tilgjengelig."
+            "value" : "Temperaturer vises når appen har hentet status noen ganger, og fra %@ når loggen er tilgjengelig."
           }
         }
       }
@@ -5271,12 +5271,12 @@
         }
       }
     },
-    "The app fetches status from the heat pump through MELCloud, the same service the Mitsubishi app uses. Sign in with the email and password for your MELCloud account. The password is stored securely in the keychain on the Mac." : {
+    "The app fetches status from the heat pump through %@, the same service the %@ app uses. Sign in with the email and password for your %@ account. The password is stored securely in the keychain on the Mac." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appen henter status fra varmepumpen gjennom MELCloud, den samme tjenesten som Mitsubishi-appen bruker. Logg inn med e-post og passord til MELCloud-kontoen din. Passordet lagres trygt i nøkkelringen på Macen."
+            "value" : "Appen henter status fra varmepumpen gjennom %1$@, den samme tjenesten som %2$@-appen bruker. Logg inn med e-post og passord til %3$@-kontoen din. Passordet lagres trygt i nøkkelringen på Macen."
           }
         }
       }
@@ -5301,12 +5301,12 @@
         }
       }
     },
-    "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the MELCloud app, or click “Fetch Now”." : {
+    "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the %@ app, or click “Fetch Now”." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appen viser og endrer bare planer den kan lese helt, så den ikke sletter hendelser den ikke forstår. Se og endre planen i MELCloud-appen, eller trykk «Hent nå»."
+            "value" : "Appen viser og endrer bare planer den kan lese helt, så den ikke sletter hendelser den ikke forstår. Se og endre planen i %@-appen, eller trykk «Hent nå»."
           }
         }
       }
@@ -5361,12 +5361,12 @@
         }
       }
     },
-    "The change is saved to MELCloud only when you click “Save to MELCloud” on the page." : {
+    "The change is saved to %@ only when you click “Save to %@” on the page." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Endringen lagres i MELCloud først når du trykker «Lagre i MELCloud» på siden."
+            "value" : "Endringen lagres i %1$@ først når du trykker «Lagre i %2$@» på siden."
           }
         }
       }
@@ -5381,12 +5381,12 @@
         }
       }
     },
-    "The changes you have made here will be lost. The schedule is fetched from MELCloud, and you can make the changes again." : {
+    "The changes you have made here will be lost. The schedule is fetched from %@, and you can make the changes again." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Endringene du har gjort her forsvinner. Planen hentes fra MELCloud, og du kan gjøre endringene igjen."
+            "value" : "Endringene du har gjort her forsvinner. Planen hentes fra %@, og du kan gjøre endringene igjen."
           }
         }
       }
@@ -5491,12 +5491,12 @@
         }
       }
     },
-    "The error text comes from MELCloud." : {
+    "The error text comes from %@." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feilteksten kommer fra MELCloud."
+            "value" : "Feilteksten kommer fra %@."
           }
         }
       }
@@ -5631,32 +5631,32 @@
         }
       }
     },
-    "The history builds up while the app is open, and older data is fetched from MELCloud (at most once an hour)." : {
+    "The history builds up while the app is open, and older data is fetched from %@ (at most once an hour)." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Historikken bygges opp mens appen er åpen, og eldre data hentes fra MELCloud (høyst én gang i timen)."
+            "value" : "Historikken bygges opp mens appen er åpen, og eldre data hentes fra %@ (høyst én gang i timen)."
           }
         }
       }
     },
-    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light)." : {
+    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from %@ (light)." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra MELCloud (lys)."
+            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra %@ (lys)."
           }
         }
       }
     },
-    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light). The house cost %@ in the period according to Tibber (electricity, without grid tariff)." : {
+    "The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from %@ (light). The house cost %@ in the period according to Tibber (electricity, without grid tariff)." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra MELCloud (lys). Huset kostet %@ i perioden ifølge Tibber (strøm, uten nettleie)."
+            "value" : "Husets forbruk kommer fra Tibber (noen timers forsinkelse). Varmepumpens del er målt lokalt der det er mulig (mørk), ellers anslått fra %1$@ (lys). Huset kostet %2$@ i perioden ifølge Tibber (strøm, uten nettleie)."
           }
         }
       }
@@ -5741,32 +5741,32 @@
         }
       }
     },
-    "The schedule has changed in MELCloud" : {
+    "The schedule has changed in %@" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Planen er endret i MELCloud"
+            "value" : "Planen er endret i %@"
           }
         }
       }
     },
-    "The schedule in MELCloud is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again." : {
+    "The schedule in %@ is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Planen i MELCloud er ikke lenger den du begynte å redigere, så appen lagrer ikke over den. Hent planen på nytt og gjør endringene igjen."
+            "value" : "Planen i %@ er ikke lenger den du begynte å redigere, så appen lagrer ikke over den. Hent planen på nytt og gjør endringene igjen."
           }
         }
       }
     },
-    "The schedule is stored in MELCloud and also runs when the Mac is off, and the same schedule is shown in the MELCloud app. Changes you make in Control last until the next event in the schedule." : {
+    "The schedule is stored in %@ and also runs when the Mac is off, and the same schedule is shown in the %@ app. Changes you make in Control last until the next event in the schedule." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Planen ligger i MELCloud og kjører også når Macen er av, og den samme planen vises i MELCloud-appen. Endringer du gjør i Kontroll varer til neste hendelse i planen."
+            "value" : "Planen ligger i %1$@ og kjører også når Macen er av, og den samme planen vises i %2$@-appen. Endringer du gjør i Kontroll varer til neste hendelse i planen."
           }
         }
       }
@@ -5791,12 +5791,12 @@
         }
       }
     },
-    "The temperature log from MELCloud is not available. The chart shows the readings the app has fetched itself, and builds up while the app is open." : {
+    "The temperature log from %@ is not available. The chart shows the readings the app has fetched itself, and builds up while the app is open." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Temperaturloggen fra MELCloud er ikke tilgjengelig. Grafen viser målingene appen selv har hentet, og bygges opp mens appen er åpen."
+            "value" : "Temperaturloggen fra %@ er ikke tilgjengelig. Grafen viser målingene appen selv har hentet, og bygges opp mens appen er åpen."
           }
         }
       }
@@ -5841,12 +5841,12 @@
         }
       }
     },
-    "The update has been sent to MELCloud. Waiting for the unit to accept it." : {
+    "The update has been sent to %@. Waiting for the unit to accept it." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppdateringen er sendt til MELCloud. Venter på at enheten tar den imot."
+            "value" : "Oppdateringen er sendt til %@. Venter på at enheten tar den imot."
           }
         }
       }
@@ -5901,22 +5901,22 @@
         }
       }
     },
-    "The whole schedule is sent (%@). It applies from the next event and runs in MELCloud even when the Mac is off." : {
+    "The whole schedule is sent (%@). It applies from the next event and runs in %@ even when the Mac is off." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hele planen sendes (%@). Den gjelder fra neste hendelse og kjører i MELCloud også når Macen er av."
+            "value" : "Hele planen sendes (%1$@). Den gjelder fra neste hendelse og kjører i %2$@ også når Macen er av."
           }
         }
       }
     },
-    "These are new features that have not been tried against your account yet. Feel free to check in the MELCloud app that the change has been registered. Each change counts as one of 12 sends per hour." : {
+    "These are new features that have not been tried against your account yet. Feel free to check in the %@ app that the change has been registered. Each change counts as one of 12 sends per hour." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette er nye funksjoner som ikke er prøvd mot din konto ennå. Sjekk gjerne i MELCloud-appen at endringen er registrert. Hver endring teller som én av 12 sendinger i timen."
+            "value" : "Dette er nye funksjoner som ikke er prøvd mot din konto ennå. Sjekk gjerne i %@-appen at endringen er registrert. Hver endring teller som én av 12 sendinger i timen."
           }
         }
       }
@@ -6241,22 +6241,22 @@
         }
       }
     },
-    "Use the Location from MELCloud Instead" : {
+    "Use the Location from %@ Instead" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bruk posisjonen fra MELCloud i stedet"
+            "value" : "Bruk posisjonen fra %@ i stedet"
           }
         }
       }
     },
-    "Use the same email and password as in the MELCloud app. They are stored in the keychain on the Mac. The first time Claude uses them, macOS asks for access: choose “Always Allow”." : {
+    "Use the same email and password as in the %@ app. They are stored in the keychain on the Mac. The first time Claude uses them, macOS asks for access: choose “Always Allow”." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bruk samme e-post og passord som i MELCloud-appen. De lagres i nøkkelringen på Macen. Første gang Claude bruker dem, spør macOS om tilgang: velg «Tillat alltid»."
+            "value" : "Bruk samme e-post og passord som i %@-appen. De lagres i nøkkelringen på Macen. Første gang Claude bruker dem, spør macOS om tilgang: velg «Tillat alltid»."
           }
         }
       }

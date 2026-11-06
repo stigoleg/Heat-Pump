@@ -18,13 +18,13 @@ let package = Package(
     targets: [
         .target(
             name: "HeatPumpKit",
-            dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
-            // Knowledge/*.md is compiled in (KnowledgeContent.generated.swift) so the
-            // embedded helper needs no resource bundle.
-            exclude: ["Knowledge"]
+            dependencies: [.product(name: "GRDB", package: "GRDB.swift")]
         ),
-        // One target per integration; the core above names no vendor.
-        .target(name: "MELCloudIntegration", dependencies: ["HeatPumpKit"]),
+        // One target per integration; the core above names no vendor (BoundaryTests).
+        // A target's Knowledge/*.md is compiled in (KnowledgeContent.generated.swift) so the
+        // embedded helper needs no resource bundle; give every target with documents
+        // `exclude: ["Knowledge"]`.
+        .target(name: "MELCloudIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
         // The demo simulates a MELCloud unit, so it reuses that integration's wire formats.
         .target(name: "DemoIntegration", dependencies: ["HeatPumpKit", "MELCloudIntegration"]),
         // The only list of integrations, and the factory the app and the helper start from.

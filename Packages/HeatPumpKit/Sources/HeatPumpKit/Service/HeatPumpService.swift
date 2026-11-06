@@ -13,6 +13,9 @@ public actor HeatPumpService {
 
     /// The connection to the unit. Optional capabilities are reached with `as? any …Driver`.
     public nonisolated let backend: any DeviceConnection & ThermostatDriver
+    /// The integration the backend belongs to: its name in texts, error codes, health rules,
+    /// maintenance kinds and knowledge documents.
+    public nonisolated let integration: any Integration
     /// The integration's rate limits.
     public nonisolated let policy: RateLimitPolicy
     public nonisolated let store: HistoryStore
@@ -33,7 +36,7 @@ public actor HeatPumpService {
 
     public init(
         backend: any DeviceConnection & ThermostatDriver, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
-        policy: RateLimitPolicy = .standard, timeZone: TimeZone = .current,
+        integration: any Integration, policy: RateLimitPolicy = .standard, timeZone: TimeZone = .current,
         now: @escaping @Sendable () -> Date = { Date() },
         sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(for: .seconds(max(0, seconds)))
@@ -48,6 +51,8 @@ public actor HeatPumpService {
         self.weatherProvider = weatherProvider
         self.local = local
         self.backend = backend
+        self.integration = integration
+        HeatPumpError.serviceName = integration.displayName
         self.policy = policy
         self.store = store
         self.credentials = credentials
@@ -55,6 +60,15 @@ public actor HeatPumpService {
         self.now = now
         self.sleep = sleep
     }
+
+    /// The service as texts name it, e.g. "MELCloud".
+    public nonisolated var serviceName: String { integration.displayName }
+
+    /// The integration's error-code explanations.
+    public nonisolated var errorCodes: any ErrorCodeExplaining { integration.errorCodes }
+
+    /// Knowledge documents for the MCP resources and the Health page.
+    public nonisolated var knowledge: Knowledge { Knowledge(integration: integration) }
 
     /// Marketing version of the running app or helper (for User-Agent strings).
     public static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
@@ -77,14 +91,14 @@ public actor HeatPumpService {
         return stored
     }
 
-    /// E-mail of the stored MELCloud account, for display. Reads only the item's attributes
+    /// E-mail of the stored account, for display. Reads only the item's attributes
     /// (no secret); still a keychain call, so on demand (e.g. when Settings opens), not from polling.
     public func accountEmail() -> String? {
         credentials?.storedEmail()
     }
 
     /// Saves new credentials and lifts a "credentials rejected" stop. Does not call the network.
-    public func saveCredentials(_ new: MELCloudCredentials) throws {
+    public func saveCredentials(_ new: AccountCredentials) throws {
         guard let credentials else { return }
         try credentials.saveCredentials(new)
         credentialsStored = true
@@ -95,7 +109,7 @@ public actor HeatPumpService {
     /// Saves credentials, forgets the old session and does one test fetch right away
     /// (one login + one fetch). It skips the 60 s refresh spacing but still respects 429 and
     /// login-throttle blocks, is recorded like any fetch, and is itself limited to one per 10 s.
-    public func signIn(_ new: MELCloudCredentials) async throws -> StateResult {
+    public func signIn(_ new: AccountCredentials) async throws -> StateResult {
         try saveCredentials(new)
         await backend.resetSession()
         return try await fetchState(minInterval: Self.signInMinInterval, cached: try store.latestSnapshot(), maxAge: 0)
@@ -200,7 +214,7 @@ public actor HeatPumpService {
         if credentialsRejected {
             message = HeatPumpError.credentialsRejected.errorDescription
         } else if let until {
-            message = (block?.reason ?? .rateLimited).message(until: until)
+            message = (block?.reason ?? .rateLimited).message(until: until, serviceName: serviceName)
         }
         return StateResult(
             state: state, fetchedAt: state?.fetchedAt,
@@ -437,7 +451,7 @@ public actor HeatPumpService {
         if let block = try store.blockStatus(now: t) {
             var outcomes = try rejectAll(
                 normalized, source: source, reason: reason, state: start,
-                error: block.reason.message(until: block.until), now: t)
+                error: block.reason.message(until: block.until, serviceName: serviceName), now: t)
             for i in outcomes.indices { outcomes[i].blockedUntil = block.until }
             return .rejected(outcomes)
         }
@@ -537,7 +551,7 @@ public actor HeatPumpService {
                             message: timerOn
                                 ? L10n.format(
                                     "Sent: %@. It may take up to a couple of minutes before the heat pump confirms. %@", change.displaySummary,
-                                    Self.weeklyTimerNote)
+                                    weeklyTimerNote)
                                 : L10n.format("Sent: %@. It may take up to a couple of minutes before the heat pump confirms.", change.displaySummary),
                             field: change.field, oldValue: change.currentValue(in: base), newValue: change.valueDescription)
                     }
@@ -572,7 +586,7 @@ public actor HeatPumpService {
         case .credentialsRejected:
             return HeatPumpError.credentialsRejected.errorDescription
         case .blocked(let until):
-            return (try store.blockStatus(now: t)?.reason ?? .rateLimited).message(until: until)
+            return (try store.blockStatus(now: t)?.reason ?? .rateLimited).message(until: until, serviceName: serviceName)
         case .throttled(let next):
             // Another process may have just fetched and stored the device object.
             if await isFresh() { return nil }
@@ -585,7 +599,8 @@ public actor HeatPumpService {
                 try store.insertSnapshot(state)
                 try store.recordFetchSuccess(key: Self.stateKey, now: t)
                 if await isFresh() { return nil }
-                return L10n.tr("The change was not sent because the answer from MELCloud lacked a complete status for the heat pump.")
+                return L10n.format(
+                    "The change was not sent because the answer from %@ lacked a complete status for the heat pump.", serviceName)
             } catch let error as HeatPumpError {
                 try handleBlock(error, now: t)
                 return L10n.format(
@@ -707,7 +722,7 @@ public actor HeatPumpService {
     public func maintenanceStatus() throws -> [MaintenanceStatus] {
         let t = now()
         let records = try store.maintenanceRecords(limit: 500)
-        return MaintenanceKind.allCases.map { kind in
+        return integration.maintenanceKinds.map { kind in
             let last = records.filter { $0.kind == kind }.max { $0.timestamp < $1.timestamp }
             let days = last.map { Int(t.timeIntervalSince($0.timestamp) / 86_400) }
             let interval = kind.recommendedIntervalDays
@@ -747,7 +762,8 @@ public actor HeatPumpService {
                     deviceId: $0, fromDay: WireDate.day(since, timeZone: timeZone), toDay: WireDate.day(t, timeZone: timeZone))
             } ?? [],
             maintenance: try store.maintenanceRecords(limit: 500),
-            now: t, timeZone: timeZone, blockedUntil: try store.blockedUntil(now: t), local: try localHealthInput(now: t))
+            now: t, timeZone: timeZone, blockedUntil: try store.blockedUntil(now: t), local: try localHealthInput(now: t),
+            integration: integration)
         return HealthEngine.evaluate(input)
     }
 
@@ -789,7 +805,7 @@ public actor HeatPumpService {
     /// (`fromMELCloud` false) so the chart still shows what has been seen while the app ran.
     public func temperatureHistory(from: Date, to: Date) throws -> TemperatureHistory {
         guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
-            return TemperatureHistory(points: [], fromMELCloud: false)
+            return TemperatureHistory(points: [], fromService: false)
         }
         let log = try store.temperaturePoints(deviceId: deviceId, from: from, to: to)
         let after = log.last?.timestamp ?? .distantPast
@@ -799,7 +815,7 @@ public actor HeatPumpService {
                 timestamp: s.fetchedAt, room: s.roomTemperature, set: s.power ? s.setTemperature : nil,
                 outdoor: s.outdoorTemperature)
         }
-        return TemperatureHistory(points: log + own, fromMELCloud: !log.isEmpty)
+        return TemperatureHistory(points: log + own, fromService: !log.isEmpty)
     }
 
     public func energy(period: EnergyPeriod, from: Date, to: Date) throws -> [EnergyBucket] {

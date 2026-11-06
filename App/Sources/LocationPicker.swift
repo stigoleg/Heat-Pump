@@ -66,7 +66,7 @@ struct LocationPicker: View {
     @Binding var placeName: String
     /// Where the forecast is for when nothing is chosen (MELCloud building or demo).
     var fallback: CLLocationCoordinate2D?
-    var fallbackTitle = String(localized: "From MELCloud")
+    var fallbackTitle: String
 
     @State private var search = PlaceSearch()
     @State private var camera: MapCameraPosition = .automatic

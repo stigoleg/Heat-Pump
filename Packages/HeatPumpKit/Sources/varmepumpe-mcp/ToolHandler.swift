@@ -59,14 +59,17 @@ struct ToolHandler: Sendable {
 
     private func getStatus() async throws -> CallTool.Result {
         let state = try await service.currentState()
-        var view = StatusView(state)
+        var view = StatusView(state, serviceName: service.serviceName)
         if state.state != nil, let timer = try? await service.weeklyTimer() {
             view.weeklyTimerEnabled = timer.enabled
             if let next = timer.nextEvent(after: Date(), timeZone: .current) {
                 view.nextTimerEvent = "\(next.event.weekdayName) \(next.event.timeText): \(next.event.summary)"
             }
             if timer.enabled == true {
-                view.summary += " " + L10n.tr("The weekly schedule in MELCloud is on; the heat pump may change by itself according to the schedule.")
+                view.summary +=
+                    " "
+                    + L10n.format(
+                        "The weekly schedule in %@ is on; the heat pump may change by itself according to the schedule.", service.serviceName)
             }
         }
         return try await output(view, state: state)
@@ -88,7 +91,7 @@ struct ToolHandler: Sendable {
             var entries: [ErrorLogEntry]
             var caveat: String
         }
-        return try await output(View(days: days, count: entries.count, entries: entries, caveat: ErrorCatalog.caveat))
+        return try await output(View(days: days, count: entries.count, entries: entries, caveat: service.errorCodes.caveat))
     }
 
     private func getHistory(_ args: Arguments) async throws -> CallTool.Result {
@@ -163,9 +166,9 @@ struct ToolHandler: Sendable {
                 isEstimate: buckets.contains { $0.isEstimate }, cost: total,
                 agreement: try await service.priceSettings().agreement.displayName, byMode: byMode.isEmpty ? nil : byMode,
                 buckets: buckets,
-                note: L10n.tr(
-                    "MELCloud updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is MELCloud's split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing."
-                )))
+                note: L10n.format(
+                    "%1$@ updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is %1$@'s split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing.",
+                    service.serviceName)))
     }
 
     private func getPrices() async throws -> CallTool.Result {
@@ -339,7 +342,7 @@ struct ToolHandler: Sendable {
         let tomorrow = try await service.tomorrowEstimate()
         return try await output(
             View(
-                location: forecast.location?.displayName, locationSource: forecast.location?.source.rawValue,
+                location: forecast.location?.displayName(serviceName: service.serviceName), locationSource: forecast.location?.source.rawValue,
                 fetchedAt: forecast.fetchedAt, sync: sync, hours: hours,
                 coldestHours: Array(hours.sorted { $0.temperature < $1.temperature }.prefix(3)),
                 cheapestHours: Array(priced.sorted { ($0.priceOre ?? 0) < ($1.priceOre ?? 0) }.prefix(3)),
@@ -478,7 +481,7 @@ struct ToolHandler: Sendable {
         guard let timer else {
             return try await output(
                 View(
-                    enabled: nil, summary: L10n.tr("The weekly schedule has not been fetched from MELCloud yet."), decoded: false,
+                    enabled: nil, summary: L10n.format("The weekly schedule has not been fetched from %@ yet.", service.serviceName), decoded: false,
                     eventCount: 0, maxEvents: nil, seasons: [], next: nil, fetchedAt: nil, note: L10n.tr("Try again later.")),
                 state: state)
         }
@@ -501,9 +504,9 @@ struct ToolHandler: Sendable {
                 enabled: timer.enabled, summary: timer.summary, decoded: timer.decoded, eventCount: timer.totalEvents,
                 maxEvents: timer.maxEvents, seasons: seasons,
                 next: next.map { "\($0.event.weekdayName) \($0.event.timeText): \($0.event.summary)" }, fetchedAt: timer.fetchedAt,
-                note: L10n.tr(
-                    "The weekly schedule lives in MELCloud and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page)."
-                )),
+                note: L10n.format(
+                    "The weekly schedule lives in %@ and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page).",
+                    service.serviceName)),
             state: state)
     }
 
@@ -522,9 +525,9 @@ struct ToolHandler: Sendable {
                 enabled: enabled, minimum: args.double("minimum"), maximum: args.double("maximum"), current: current.frost)
             else {
                 throw ArgumentError(
-                    message: L10n.tr(
-                        "The current frost protection is unknown (it could not be read from MELCloud). Give both minimum and maximum, so it is clear which range is sent."
-                    ))
+                    message: L10n.format(
+                        "The current frost protection is unknown (it could not be read from %@). Give both minimum and maximum, so it is clear which range is sent.",
+                        service.serviceName))
             }
             change = .frostProtection(fp)
         } else {
@@ -545,7 +548,7 @@ struct ToolHandler: Sendable {
 
     private func getFirmwareStatus() async throws -> CallTool.Result {
         let state = try await service.currentState()
-        return try await output(FirmwareStatusView(try await service.firmwareStatus()), state: state)
+        return try await output(FirmwareStatusView(try await service.firmwareStatus(), serviceName: service.serviceName), state: state)
     }
 
     private func startFirmwareUpdate(_ args: Arguments) async throws -> CallTool.Result {
@@ -639,15 +642,15 @@ struct ToolHandler: Sendable {
     private func getDeviceInfo() async throws -> CallTool.Result {
         let state = try await service.currentState()
         guard let s = state.state else {
-            return try await output(StatusView(state), state: state, isError: true)
+            return try await output(StatusView(state, serviceName: service.serviceName), state: state, isError: true)
         }
         let view = DeviceInfoView(
-            name: s.name, deviceId: s.deviceId, buildingId: s.buildingId, model: "Mitsubishi Electric MSZ-RW25VG (MSZ-RW25VG-SC1)", firmware: FirmwareView(s.firmware),
+            name: s.name, deviceId: s.deviceId, buildingId: s.buildingId, model: service.integration.modelName, firmware: FirmwareView(s.firmware),
             lastServiceDate: s.lastServiceDate, numberOfFanSpeeds: s.numberOfFanSpeeds,
             hasAutomaticFanSpeed: s.hasAutomaticFanSpeed, temperatureIncrement: s.temperatureIncrement,
             limits: s.limits, energyCounters: s.energy, wifiSignalDbm: s.wifiSignal,
             runtimeHoursIndoorUnit: (try? await service.storedLiveStatus())?.sample?.runtimeHours,
-            knowledge: Knowledge.all().map(\.uri))
+            knowledge: service.knowledge.all().map(\.uri))
         return try await output(view, state: state)
     }
 
@@ -658,7 +661,7 @@ struct ToolHandler: Sendable {
             var status: StatusView
             var reports: [ReportSync]
         }
-        return try await output(View(status: StatusView(state), reports: reports), state: state)
+        return try await output(View(status: StatusView(state, serviceName: service.serviceName), reports: reports), state: state)
     }
 
     // MARK: Write tools

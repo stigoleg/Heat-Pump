@@ -16,8 +16,11 @@ extension HeatPumpService {
     /// A start or cancel is based on a list at most this old.
     static let firmwareActionMaxAge: TimeInterval = 60
     static let firmwareField = "firmware"
-    static let firmwareRefusedMessage =
-        L10n.tr("MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”.")
+    nonisolated var firmwareRefusedMessage: String {
+        L10n.format(
+            "%@ did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”.",
+            serviceName)
+    }
 
     public func storedFirmwareStatus() throws -> FirmwareStatus? {
         try store.setting(FirmwareStatus.self, key: Self.firmwareStatusKey)
@@ -35,7 +38,7 @@ extension HeatPumpService {
         let state = try store.latestSnapshot()?.state
         let cached = try storedFirmwareStatus()
         var status = Self.firmwareBase(state, cached: cached)
-        func done(_ status: FirmwareStatus) -> FirmwareStatus { Self.decorated(status, state: state) }
+        func done(_ status: FirmwareStatus) -> FirmwareStatus { decorated(status, state: state) }
         guard let state else {
             status.message = L10n.tr("No status from the heat pump yet.")
             return done(status)
@@ -46,7 +49,7 @@ extension HeatPumpService {
         let interval = active || force ? Self.firmwareActiveInterval : Self.firmwareInterval
         if let at = status.fetchedAt, t.timeIntervalSince(at) < interval { return done(status) }
         if try endpointRefusedUntil(Self.firmwareFetchKey) != nil {
-            status.message = Self.firmwareRefusedMessage
+            status.message = firmwareRefusedMessage
             return done(status)
         }
         switch try store.reserveFetch(key: Self.firmwareFetchKey, minInterval: interval, now: t) {
@@ -55,7 +58,7 @@ extension HeatPumpService {
         case .credentialsRejected:
             status.message = HeatPumpError.credentialsRejected.errorDescription
         case .blocked(let until):
-            status.message = try store.blockStatus(now: t)?.reason.message(until: until)
+            status.message = try store.blockStatus(now: t)?.reason.message(until: until, serviceName: serviceName)
                 ?? HeatPumpError.blocked(until: until).errorDescription
         case .allowed:
             do {
@@ -71,10 +74,10 @@ extension HeatPumpService {
                 _ = try handleAwayError(error, now: t)
                 if try isRefusal(error) {
                     try store.recordKeyRefusal(key: Self.firmwareFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
-                    status.message = Self.firmwareRefusedMessage
+                    status.message = firmwareRefusedMessage
                 } else {
                     status.message = L10n.format(
-                        "Could not read the firmware status from MELCloud: %@",
+                        "Could not read the firmware status from %@: %@", serviceName,
                         (error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
                 }
             }
@@ -94,7 +97,7 @@ extension HeatPumpService {
         return status
     }
 
-    static func decorated(_ status: FirmwareStatus, state: DeviceState?) -> FirmwareStatus {
+    nonisolated func decorated(_ status: FirmwareStatus, state: DeviceState?) -> FirmwareStatus {
         var status = status
         status.startProblem = firmwareUnitProblem(state) ?? firmwareListProblem(status)
         status.canCancel = status.current.map { $0.phase.canCancel && $0.id != nil } ?? false
@@ -102,13 +105,13 @@ extension HeatPumpService {
     }
 
     /// Why the unit itself rules out starting an update (no list needed), or nil.
-    static func firmwareUnitProblem(_ state: DeviceState?) -> String? {
+    nonisolated func firmwareUnitProblem(_ state: DeviceState?) -> String? {
         guard let state else { return L10n.tr("No status from the heat pump yet.") }
         switch state.firmware.isOwner {
         case nil:
-            return L10n.tr("MELCloud has not said whether the account owns the unit. Refresh the status and try again.")
+            return L10n.format("%@ has not said whether the account owns the unit. Refresh the status and try again.", serviceName)
         case false:
-            return L10n.tr("Only the owner of the unit in MELCloud can start a firmware update.")
+            return L10n.format("Only the owner of the unit in %@ can start a firmware update.", serviceName)
         case true:
             break
         }
@@ -117,24 +120,34 @@ extension HeatPumpService {
         return nil
     }
 
-    static let offlineMessage = L10n.tr("The unit is disconnected from MELCloud. The update can be started when it is connected again.")
+    nonisolated var offlineMessage: String {
+        L10n.format("The unit is disconnected from %@. The update can be started when it is connected again.", serviceName)
+    }
 
-    /// Why MELCloud's update list rules out starting, or nil.
-    static func firmwareListProblem(_ status: FirmwareStatus) -> String? {
+    nonisolated var missingUpdateIdMessage: String { L10n.format("%@ gave no id for the update.", serviceName) }
+
+    nonisolated var staleFirmwareListMessage: String {
+        L10n.format("Did not get a fresh firmware status from %@. Try again in a little while.", serviceName)
+    }
+
+    /// Why the service's update list rules out starting, or nil.
+    nonisolated func firmwareListProblem(_ status: FirmwareStatus) -> String? {
         guard let current = status.current else {
-            return L10n.tr("Has not received the update list from MELCloud yet. Refresh the status and try again.")
+            return L10n.format("Has not received the update list from %@ yet. Refresh the status and try again.", serviceName)
         }
         if current.unitOffline { return offlineMessage }
-        guard current.phase.canApprove else { return L10n.format("The update cannot be started now: %@", current.displayText) }
-        guard current.id != nil else { return L10n.tr("MELCloud gave no id for the update.") }
+        guard current.phase.canApprove else {
+            return L10n.format("The update cannot be started now: %@", current.displayText(serviceName: serviceName))
+        }
+        guard current.id != nil else { return missingUpdateIdMessage }
         return nil
     }
 
     /// Lines for the approval dialog (and the app's confirmation sheet).
-    public static func firmwareApprovalSummaries(version: String?) -> [String] {
+    public static func firmwareApprovalSummaries(version: String?, serviceName: String) -> [String] {
         [version.map { L10n.format("Start a firmware update of the Wi-Fi adapter (now version %@)", $0) }
             ?? L10n.tr("Start a firmware update of the Wi-Fi adapter")]
-            + FirmwareStatus.warnings
+            + FirmwareStatus.warnings(serviceName: serviceName)
     }
 
     // MARK: Writing
@@ -153,37 +166,37 @@ extension HeatPumpService {
             try firmwareReject(message, source: source, reason: reason, old: oldValue, new: newValue, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         // Nothing is read, counted or asked for a start that would be refused anyway.
-        if let problem = Self.firmwareUnitProblem(state) { return try reject(problem) }
+        if let problem = firmwareUnitProblem(state) { return try reject(problem) }
         guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
-            return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
+            return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
         // A fresh list: the start must be based on what MELCloud offers right now.
         var status = try await firmwareStatus(force: true, liftRefusal: source == .app)
         guard let at = status.fetchedAt, now().timeIntervalSince(at) < Self.firmwareActionMaxAge else {
-            return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
+            return try reject(status.message ?? staleFirmwareListMessage)
         }
-        if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
-        guard var updateId = status.current?.id else { return try reject(L10n.tr("MELCloud gave no id for the update.")) }
+        if let problem = firmwareListProblem(status) { return try reject(problem) }
+        guard var updateId = status.current?.id else { return try reject(missingUpdateIdMessage) }
         if let approver {
             let decision = await approver.requestApproval(
-                ApprovalRequest(summaries: Self.firmwareApprovalSummaries(version: state?.firmware.version), reason: reason))
+                ApprovalRequest(summaries: Self.firmwareApprovalSummaries(version: state?.firmware.version, serviceName: serviceName), reason: reason))
             guard decision == .approved else { return try reject(decision.rejectionText) }
             // The dialog may have been open for minutes and the update cannot be undone: check
             // everything again against the newest state before sending.
             let after = try store.latestSnapshot()?.state
-            if let problem = Self.firmwareUnitProblem(after) { return try reject(problem) }
+            if let problem = firmwareUnitProblem(after) { return try reject(problem) }
             if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
             if let block = try store.blockStatus(now: now()) {
-                return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
+                return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
             }
             status = try await firmwareStatus(force: true, liftRefusal: false)
             guard let again = status.fetchedAt, now().timeIntervalSince(again) < Self.firmwareActionMaxAge else {
-                return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
+                return try reject(status.message ?? staleFirmwareListMessage)
             }
-            if let problem = Self.firmwareListProblem(status) { return try reject(problem) }
-            guard let id = status.current?.id else { return try reject(L10n.tr("MELCloud gave no id for the update.")) }
+            if let problem = firmwareListProblem(status) { return try reject(problem) }
+            guard let id = status.current?.id else { return try reject(missingUpdateIdMessage) }
             updateId = id
         }
         return try await sendFirmwareAction(
@@ -209,15 +222,15 @@ extension HeatPumpService {
         guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
-            return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
+            return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
         var status = try await firmwareStatus(force: true)
         guard let at = status.fetchedAt, now().timeIntervalSince(at) < Self.firmwareActionMaxAge else {
-            return try reject(status.message ?? L10n.tr("Did not get a fresh firmware status from MELCloud. Try again in a little while."))
+            return try reject(status.message ?? staleFirmwareListMessage)
         }
         guard let current = status.current, current.phase.canCancel, let updateId = current.id else {
             return try reject(
-                status.current.map { L10n.format("There is no update that can be cancelled now: %@", $0.displayText) }
+                status.current.map { L10n.format("There is no update that can be cancelled now: %@", $0.displayText(serviceName: serviceName)) }
                     ?? L10n.tr("There is no update that can be cancelled now."))
         }
         return try await sendFirmwareAction(
@@ -227,7 +240,7 @@ extension HeatPumpService {
                 status.startedAt = nil
                 status.fetchedAt = nil
                 try? self.store.saveSetting(status, key: Self.firmwareStatusKey)
-                return L10n.tr("The cancellation has been sent to MELCloud. The status is updated in a little while.")
+                return L10n.format("The cancellation has been sent to %@. The status is updated in a little while.", serviceName)
             })
     }
 

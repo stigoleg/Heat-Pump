@@ -22,14 +22,16 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 
 - **One entry point.** `HeatPumpService` (`Packages/HeatPumpKit/Sources/HeatPumpKit/Service`) is the
   only thing that talks to the network. The app and the MCP helper each create one
-  (`HeatPumpService.makeDefault`) and share the SQLite database and keychain, so rate limits,
+  (`IntegrationCatalog.makeService`) and share the SQLite database and keychain, so rate limits,
   blocks and the change budget hold across both processes.
 - **Cache first.** Reads return the stored snapshot unless it is older than the allowed age;
   `HistoryStore.reserveFetch` decides whether a network call may happen.
 - **Writes** go through validation → safety checks → change budget (`reserveChange`) → optional
   approval (Claude) → backend → change log → read back. They return a `ChangeOutcome`.
-- **Backends** implement `HeatPumpBackend` (`Backend/HeatPumpBackend.swift`): `MELCloudClassicBackend`
-  for real use and `MockBackend` for demo mode and tests (`VARMEPUMPE_BACKEND=mock`).
+- **Backends** implement the capability protocols in `Backend/DeviceDrivers.swift`
+  (`DeviceConnection & ThermostatDriver`, plus optional drivers such as `AwayModesDriver`):
+  `MELCloudClassicBackend` for real use and `MockBackend` for demo mode and tests
+  (`VARMEPUMPE_BACKEND=mock`).
 - **Providers** for electricity prices (Tibber, hvakosterstrommen.no), weather (MET Norway) and
   house consumption (Tibber) are injected as closures, which is also how tests and demo mode
   swap them.
@@ -37,16 +39,40 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   read-only, for power, compressor and defrost data.
 - **Localization**: `L10n` resolves the language from the app's `AppleLanguages` (shared with the
   helper, which reads the strings from the app bundle around it).
-- **Knowledge documents** (`Knowledge/{en,nb}/*.md`) are compiled into Swift by
-  `scripts/generate-knowledge.py` so the helper needs no resource bundle; the MCP server exposes
-  them as resources.
+- **Knowledge documents** (`Sources/<Target>/Knowledge/{en,nb}/*.md`, today only
+  `MELCloudIntegration`) are compiled into each target's `KnowledgeContent.generated.swift` by
+  `scripts/generate-knowledge.py` so the helper needs no resource bundle; `Knowledge` combines the
+  core's (none yet) with the active integration's, and the MCP server exposes them as resources.
+
+### Module map (`Packages/HeatPumpKit/Sources`)
+
+| Target | What |
+|---|---|
+| `HeatPumpKit` | The vendor-neutral core: service, store, models, health engine, pricing, weather, L10n. Names no vendor outside comments (`BoundaryTests`). |
+| `MELCloudIntegration` | `MELCloudIntegration: Integration`, the MELCloud Classic backend and parsers, the local adapter client (CN105), `ErrorCatalog`, `MELCloudHealthChecks` and the knowledge documents. |
+| `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents. |
+| `Integrations` | `IntegrationCatalog`: the list of integrations, `current(environment:)` and `makeService`. |
+| `varmepumpe-mcp` | The MCP helper. |
+
+### What an integration supplies (`Integration`)
+
+- **Texts**: `displayName` is the service name in every text (`HeatPumpService.serviceName`,
+  `AppModel.serviceName`; keys carry it as `%@`), `brandName` ("the … app"), `modelName`
+  (`get_device_info`) and `unitDescription` (first line of the MCP instructions). Error texts
+  (`HeatPumpError`) are created far from the service, so they read `HeatPumpError.serviceName`,
+  which `HeatPumpService.init` sets for the process.
+- **Error codes**: `errorCodes: ErrorCodeExplaining` (lookup, `hasExplanation`, caveat).
+- **Health**: `healthChecks: HealthCheckProviding` for rules on the integration's own signals,
+  and `maintenanceKinds` for the maintenance tasks the unit has. `HealthEngine` runs the generic
+  rules and asks the integration at fixed points, so findings keep their order.
+- **Knowledge**: `knowledge: KnowledgeSource`.
+- **Persisted identifiers**: `sourceTag` is stored with error-log entries and away settings.
 
 ### Known couplings (what the platform work removes)
 
 Device models use MELCloud wire values and air-to-air fields; the service holds one device and
 one backend; storage keys on an integer MELCloud device id; MELCloud's rate limits are global;
-credentials are fixed MELCloud keychain items; `MELCloudClassicParser` is called from the service
-and models; MCP tools name the MSZ-RW25VG; every screen assumes one heat pump.
+credentials are fixed MELCloud keychain items; every screen assumes one heat pump.
 
 ## Direction: an integration platform
 

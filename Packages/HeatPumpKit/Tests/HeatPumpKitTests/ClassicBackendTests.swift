@@ -116,7 +116,7 @@ struct ClassicBackendTests {
     ) -> MELCloudClassicBackend {
         MELCloudClassicBackend(
             credentials: InMemoryCredentialStore(
-                credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: contextKey),
+                credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: contextKey),
             transport: transport, timeZone: .gmt, rawCache: cache, now: { Date(timeIntervalSince1970: 1_793_872_800) })
     }
 
@@ -248,7 +248,7 @@ struct ClassicBackendTests {
     @Test func environmentCredentialsTakePrecedence() throws {
         let store = KeychainCredentialStore(
             service: "com.stigole.varmepumpe.tests-unused",
-            environment: ["MELCLOUD_EMAIL": "dev@example.com", "MELCLOUD_PASSWORD": "pw"])
-        #expect(try store.loadCredentials() == MELCloudCredentials(email: "dev@example.com", password: "pw"))
+            environment: ["MELCLOUD_EMAIL": "dev@example.com", "MELCLOUD_PASSWORD": "pw"], serviceName: "MELCloud")
+        #expect(try store.loadCredentials() == AccountCredentials(email: "dev@example.com", password: "pw"))
     }
 }

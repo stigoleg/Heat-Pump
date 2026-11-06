@@ -108,7 +108,8 @@ struct StatusView: Encodable {
     var weeklyTimerEnabled: Bool?
     var nextTimerEvent: String?
 
-    init(_ result: StateResult) {
+    /// `serviceName` names the service in the summary.
+    init(_ result: StateResult, serviceName: String) {
         refreshed = result.refreshed
         stale = result.stale
         refreshError = result.error
@@ -143,7 +144,7 @@ struct StatusView: Encodable {
         if let set = s.setTemperature { parts.append(L10n.format("Target: %.1f °C.", set)) }
         if let out = s.outdoorTemperature { parts.append(L10n.format("Outdoor: %.1f °C.", out)) }
         if s.hasActiveError { parts.append(L10n.format("Reports an error (code %@).", s.errorCode.map(String.init) ?? L10n.tr("unknown"))) }
-        if s.offline { parts.append(L10n.tr("Not connected to MELCloud.")) }
+        if s.offline { parts.append(L10n.format("Not connected to %@.", serviceName)) }
         if result.stale { parts.append(L10n.tr("Note: the data may be out of date.")) }
         summary = parts.joined(separator: " ")
     }
@@ -154,7 +155,7 @@ struct DeviceInfoView: Encodable {
     var name: String
     var deviceId: Int
     var buildingId: Int
-    var model: String
+    var model: String?
     var firmware: FirmwareView
     var lastServiceDate: Date?
     var numberOfFanSpeeds: Int
@@ -216,13 +217,13 @@ struct FirmwareStatusView: Encodable {
     var message: String?
     var warnings: [String]
 
-    init(_ status: FirmwareStatus, now: Date = Date()) {
+    init(_ status: FirmwareStatus, serviceName: String, now: Date = Date()) {
         currentVersion = status.currentVersion
         updateAvailable = status.updateAvailable
         isOwner = status.isOwner
         update = status.current.map {
             Update(
-                phase: $0.phase.rawValue, status: $0.displayText, filesDownloaded: $0.filesDownloaded, filesToDownload: $0.filesToDownload,
+                phase: $0.phase.rawValue, status: $0.displayText(serviceName: serviceName), filesDownloaded: $0.filesDownloaded, filesToDownload: $0.filesToDownload,
                 retries: $0.retries, minutesOffline: $0.minutesOffline, currentPhase: $0.currentPhase, approvalStatus: $0.approvalStatus,
                 dateApproved: $0.dateApproved, dateCreated: $0.dateCreated)
         }
@@ -232,6 +233,6 @@ struct FirmwareStatusView: Encodable {
         startedAt = status.startedAt
         fetchedAt = status.fetchedAt
         message = status.message
-        warnings = FirmwareStatus.warnings
+        warnings = FirmwareStatus.warnings(serviceName: serviceName)
     }
 }

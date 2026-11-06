@@ -310,7 +310,7 @@ package enum MELCloudClassicParser {
                 end: WireDate.parse(entry["EndDate"]?.string, timeZone: timeZone),
                 message: message,
                 code: entry["ErrorCode"]?.string,
-                source: "melcloud")
+                source: MELCloudIntegration.sourceTag)
         }
     }
 

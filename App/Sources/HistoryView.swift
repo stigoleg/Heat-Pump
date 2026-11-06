@@ -177,7 +177,7 @@ struct HistoryView: View {
                 if points.isEmpty {
                     EmptyChart(
                         title: "No temperature data yet",
-                        message: "The history builds up while the app is open, and older data is fetched from MELCloud (at most once an hour).")
+                        message: "The history builds up while the app is open, and older data is fetched from \(model.serviceName) (at most once an hour).")
                 } else {
                     temperatureChart(points).frame(height: 300)
                 }
@@ -186,9 +186,9 @@ struct HistoryView: View {
                 Text("The dashed line after “now” is the outdoor weather forecast. \(WeatherForecast.attribution).")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            if !data.fromMELCloud && !points.isEmpty {
+            if !data.fromService && !points.isEmpty {
                 Label(
-                    "The temperature log from MELCloud is not available. The chart shows the readings the app has fetched itself, and builds up while the app is open.",
+                    "The temperature log from \(model.serviceName) is not available. The chart shows the readings the app has fetched itself, and builds up while the app is open.",
                     systemImage: "info.circle")
                 .font(.callout).foregroundStyle(.secondary)
             }
@@ -323,7 +323,7 @@ struct HistoryView: View {
                         title: "No energy data yet",
                         message: range == .day
                             ? "Consumption per hour is calculated from the pump’s power meter while the app is open."
-                            : "MELCloud updates energy figures with a delay of a few hours.")
+                            : "\(model.serviceName) updates energy figures with a delay of a few hours.")
                 } else {
                     energyChart(bars, previous: previousBars).frame(height: 260)
                 }
@@ -358,7 +358,7 @@ struct HistoryView: View {
                     HStack {
                         Text("Breakdown by mode").font(.headline)
                         Spacer()
-                        Text("From MELCloud").font(.caption).foregroundStyle(.secondary)
+                        Text("From \(model.serviceName)").font(.caption).foregroundStyle(.secondary)
                     }
                     GeometryReader { geo in
                         HStack(spacing: 2) {
@@ -429,8 +429,8 @@ struct HistoryView: View {
             let days = house.days.filter { $0.start >= Calendar.current.startOfDay(for: periodStart) }
             let tibberCost = days.compactMap(\.houseCostNok).reduce(0, +)
             (tibberCost > 0
-                ? Text("The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light). The house cost \(Format.kroner(tibberCost)) in the period according to Tibber (electricity, without grid tariff).")
-                : Text("The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from MELCloud (light)."))
+                ? Text("The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from \(model.serviceName) (light). The house cost \(Format.kroner(tibberCost)) in the period according to Tibber (electricity, without grid tariff).")
+                : Text("The household consumption comes from Tibber (a few hours’ delay). The heat pump’s part is measured locally where possible (dark), otherwise estimated from \(model.serviceName) (light)."))
                 .font(.callout).foregroundStyle(.secondary)
         }
     }

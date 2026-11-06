@@ -81,7 +81,7 @@ extension HeatPumpService {
         }
         guard !missing.isEmpty else { return PriceSync(status: .upToDate) }
 
-        switch try store.reserveFetch(key: "prices.\(key.source).\(key.area)", minInterval: Self.priceInterval, now: t, melcloud: false) {
+        switch try store.reserveFetch(key: "prices.\(key.source).\(key.area)", minInterval: Self.priceInterval, now: t, countsTowardServiceBlock: false) {
         case .throttled(let next):
             return PriceSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:
@@ -107,7 +107,7 @@ extension HeatPumpService {
     public func testTibberToken(_ token: String, transport: any HTTPTransport = URLSessionTransport()) async -> String {
         guard !token.trimmingCharacters(in: .whitespaces).isEmpty else { return PriceError.missingToken.errorDescription ?? "" }
         if isDemo { return L10n.tr("Demo: the token was not tested against Tibber.") }
-        guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), melcloud: false)) == .allowed else {
+        guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), countsTowardServiceBlock: false)) == .allowed else {
             return L10n.tr("Wait a few seconds before you test again.")
         }
         do {

@@ -80,7 +80,7 @@ struct HealthView: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(Array(model.errorLog.enumerated()), id: \.offset) { index, entry in
-                        let explanation = ErrorCatalog.lookup(errorCode: entry.code.flatMap(Int.init), message: entry.message)
+                        let explanation = model.errorCodes.lookup(errorCode: entry.code.flatMap(Int.init), message: entry.message)
                         if index > 0 { Divider() }
                         HStack(alignment: .top, spacing: Theme.Space.m) {
                             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Status.caution)
@@ -99,7 +99,7 @@ struct HealthView: View {
                                 }
                                 Text(entry.end.map { String(localized: "Cleared \(Display.dateTime($0))") } ?? String(localized: "Not recorded as cleared"))
                                     .font(.caption).foregroundStyle(.secondary)
-                                if explanation.confidence != .melcloud || ErrorCatalog.hasExplanation(errorCode: entry.code.flatMap(Int.init)) {
+                                if explanation.confidence != .serviceText || model.errorCodes.hasExplanation(errorCode: entry.code.flatMap(Int.init)) {
                                     Text(explanation.explanation).font(.callout)
                                 }
                                 Text(confidenceNote(explanation.confidence)).font(.caption).foregroundStyle(.secondary)
@@ -113,9 +113,9 @@ struct HealthView: View {
 
     private func confidenceNote(_ confidence: CatalogConfidence) -> String {
         switch confidence {
-        case .melcloud: String(localized: "The error text comes from MELCloud.")
+        case .serviceText: String(localized: "The error text comes from \(model.serviceName).")
         case .medium: String(localized: "The explanation comes from a related model and is likely, but not certain.")
-        case .low, .unknown: ErrorCatalog.caveat
+        case .low, .unknown: model.errorCodes.caveat
         }
     }
 
@@ -174,7 +174,7 @@ struct HealthView: View {
     private var knowledge: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SectionHeader("Read more")
-            ForEach(Knowledge.all(), id: \.name) { doc in
+            ForEach(model.knowledge.all(), id: \.name) { doc in
                 Button {
                     document = KnowledgeDocumentItem(document: doc)
                 } label: {

@@ -16,7 +16,7 @@ struct AppSupportTests {
             timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         #expect(await !svc.hasCredentials())
         #expect(try await svc.currentState().needsLogin)
-        let result = try await svc.signIn(MELCloudCredentials(email: "a@b.no", password: "pw"))
+        let result = try await svc.signIn(AccountCredentials(email: "a@b.no", password: "pw"))
         #expect(result.refreshed && !result.needsLogin)
         #expect(await svc.hasCredentials())
         try await svc.signOut()

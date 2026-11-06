@@ -64,7 +64,7 @@ struct ReviewRegressionTests {
     @Test func invalidCredentialsStopNetworkUntilNewCredentials() async throws {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
-        let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "feil"))
+        let creds = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "feil"))
         let svc = try service(clock: clock, backend: backend, credentials: creds)
         await backend.failNext(with: .invalidCredentials("Feil passord"))
         let first = try await svc.currentState()
@@ -78,7 +78,7 @@ struct ReviewRegressionTests {
         #expect(sync.allSatisfy { $0.status == .blocked })
         #expect(await backend.reportCalls == 0)
 
-        try await svc.saveCredentials(MELCloudCredentials(email: "a@b.no", password: "riktig"))
+        try await svc.saveCredentials(AccountCredentials(email: "a@b.no", password: "riktig"))
         let third = try await svc.currentState(force: true)
         #expect(third.refreshed)
         #expect(!third.needsLogin)
@@ -102,7 +102,7 @@ struct ReviewRegressionTests {
         transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
         transport.enqueue("/User/ListDevices", status: 401, body: Data())
         transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
-        let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "pw"), contextKey: "OLD")
+        let creds = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "pw"), contextKey: "OLD")
         let backend = MELCloudClassicBackend(credentials: creds, transport: transport, timeZone: .gmt)
         _ = try await backend.listDevices()  // uses OLD
         try creds.saveContextKey("NEW")  // another process logged in meanwhile
@@ -119,7 +119,7 @@ struct ReviewRegressionTests {
         transport.enqueue("/User/ListDevices", status: 401, body: Data())
         transport.enqueue("/Login/ClientLogin", body: try Fixture.data("login_success"))
         transport.enqueue("/User/ListDevices", body: try Fixture.data("list_devices"))
-        let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "pw"), contextKey: "OLD")
+        let creds = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "pw"), contextKey: "OLD")
         let backend = MELCloudClassicBackend(credentials: creds, transport: transport, timeZone: .gmt)
         _ = try await backend.listDevices()
         #expect(transport.requests.map { $0.url?.lastPathComponent } == ["ListDevices", "ClientLogin", "ListDevices"])

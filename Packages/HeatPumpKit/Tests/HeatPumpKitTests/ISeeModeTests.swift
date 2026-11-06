@@ -66,7 +66,7 @@ struct ISeeModeTests {
         transport.enqueue("Device/Get", body: getData)
         transport.enqueue("Device/SetAta", body: getData)
         let credentials = InMemoryCredentialStore(
-            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, rawCache: store, now: clock.provider)
         let service = HeatPumpService(backend: backend, store: store, credentials: credentials, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)

@@ -154,7 +154,7 @@ struct WeatherTests {
             backend: MELCloudClassicBackend(credentials: InMemoryCredentialStore(), transport: StubTransport()), store: store,
             timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         let resolved = try #require(try await service.weatherLocation())
-        #expect(resolved.source == .melcloud)
+        #expect(resolved.source == .service)
         #expect(resolved.latitude == 59.91)
         #expect(resolved.longitude == 10.75)
         // Typed coordinates win.

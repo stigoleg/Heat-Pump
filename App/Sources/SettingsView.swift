@@ -87,7 +87,7 @@ struct AccountSettings: View {
     var body: some View {
         Form {
             if model.isDemo {
-                Section("MELCloud account") {
+                Section("\(model.serviceName) account") {
                     Label("Demo mode: the app shows simulated data, and sign-in is not used.", systemImage: "play.rectangle")
                         .foregroundStyle(.secondary)
                 }
@@ -101,7 +101,7 @@ struct AccountSettings: View {
         }
         .formStyle(.grouped)
         .task(id: model.hasCredentials) { email = await model.accountEmail() }
-        .confirmationDialog("Sign out of MELCloud?", isPresented: $confirmingSignOut) {
+        .confirmationDialog("Sign out of \(model.serviceName)?", isPresented: $confirmingSignOut) {
             Button("Sign Out", role: .destructive) {
                 Task {
                     await model.signOut()
@@ -114,13 +114,13 @@ struct AccountSettings: View {
     }
 
     private var accountSection: some View {
-        Section("MELCloud account") {
+        Section("\(model.serviceName) account") {
             HStack(spacing: 14) {
                 Image(systemName: "person.crop.circle.fill")
                     .font(.system(size: 40))
                     .foregroundStyle(.blue.gradient)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(email ?? String(localized: "MELCloud account")).font(.headline)
+                    Text(email ?? String(localized: "\(model.serviceName) account")).font(.headline)
                     Label("Signed in", systemImage: "checkmark.circle.fill")
                         .font(.subheadline)
                         .foregroundStyle(.green)
@@ -177,7 +177,7 @@ struct AccountSettings: View {
     private var loginSection: some View {
         Section {
             if model.hasCredentials && model.stateResult?.needsLogin == true && !switchingAccount {
-                Label("MELCloud rejected the sign-in. Enter the password again.", systemImage: "exclamationmark.triangle.fill")
+                Label("\(model.serviceName) rejected the sign-in. Enter the password again.", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
             LoginForm(email: email ?? "") { switchingAccount = false }
@@ -185,9 +185,9 @@ struct AccountSettings: View {
                 Button("Cancel") { switchingAccount = false }
             }
         } header: {
-            Text(switchingAccount ? "Switch MELCloud account" : "Sign in to MELCloud")
+            Text(switchingAccount ? "Switch \(model.serviceName) account" : "Sign in to \(model.serviceName)")
         } footer: {
-            Text("Use the same email and password as in the MELCloud app. They are stored in the keychain on the Mac. The first time Claude uses them, macOS asks for access: choose “Always Allow”.")
+            Text("Use the same email and password as in the \(model.serviceName) app. They are stored in the keychain on the Mac. The first time Claude uses them, macOS asks for access: choose “Always Allow”.")
         }
     }
 }
@@ -264,7 +264,7 @@ struct DataSettings: View {
                     }
                 }
             } header: {
-                Text("Fetching from MELCloud")
+                Text("Fetching from \(model.serviceName)")
             } footer: {
                 Text("Status is fetched at most once a minute and otherwise from the cache (10 minutes). History is fetched at most once an hour.")
             }
@@ -276,7 +276,7 @@ struct DataSettings: View {
     private func label(_ key: String) -> String {
         switch key {
         case "state": String(localized: "Status")
-        case "global": String(localized: "MELCloud block")
+        case "global": String(localized: "\(model.serviceName) block")
         case "report.errorLog": String(localized: "Error log")
         case "report.temperatureLog": String(localized: "Temperature log")
         case "report.energy": String(localized: "Energy")

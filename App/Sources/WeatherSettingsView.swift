@@ -20,7 +20,7 @@ struct WeatherSettingsView: View {
                 LabeledContent("Current place") {
                     if let location = model.weatherLocation {
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(location.displayName)
+                            Text(location.displayName(serviceName: model.serviceName))
                             Text(sourceText(location.source)).font(.caption).foregroundStyle(.secondary)
                         }
                     } else {
@@ -30,11 +30,11 @@ struct WeatherSettingsView: View {
                 if loaded {
                     LocationPicker(
                         coordinate: chosen, placeName: $placeName, fallback: fallback,
-                        fallbackTitle: model.weatherLocation?.source == .demo ? String(localized: "Demo") : String(localized: "From MELCloud"))
+                        fallbackTitle: model.weatherLocation?.source == .demo ? String(localized: "Demo") : String(localized: "From \(model.serviceName)"))
                 }
                 TextField("Name of the place (optional)", text: $placeName, prompt: Text("for example Home or Lillehammer"))
                 if chosen.wrappedValue != nil {
-                    Button("Use the Location from MELCloud Instead") {
+                    Button("Use the Location from \(model.serviceName) Instead") {
                         latitude = ""
                         longitude = ""
                     }
@@ -53,7 +53,7 @@ struct WeatherSettingsView: View {
                 Text("Place for the weather forecast")
             } footer: {
                 Text(
-                    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in MELCloud is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save."
+                    "Search for the address or place, or click in the map. The search goes through Apple Maps. Without a chosen place, the location of the building in \(model.serviceName) is used. The location is rounded to about one kilometer before it is sent to MET, and Claude only sees the place name. Remember to click Save."
                 )
             }
 
@@ -121,7 +121,7 @@ struct WeatherSettingsView: View {
     private func sourceText(_ source: WeatherLocation.Source) -> String {
         switch source {
         case .manual: String(localized: "Chosen here")
-        case .melcloud: String(localized: "From the building in MELCloud")
+        case .service: String(localized: "From the building in \(model.serviceName)")
         case .demo: String(localized: "Demo")
         }
     }

@@ -32,7 +32,7 @@ struct ScheduleView: View {
                 } else if let timer = model.weeklyTimer, !timer.decoded {
                     InsightCard(
                         title: timer.eventCount == 0 ? "The weekly schedule could not be read" : "The schedule has \(timer.eventCount) events in an unknown format",
-                        detail: "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the MELCloud app, or click “Fetch Now”.",
+                        detail: "The app only shows and changes schedules it can read completely, so it does not delete events it does not understand. View and change the schedule in the \(model.serviceName) app, or click “Fetch Now”.",
                         systemImage: "questionmark.circle.fill", tint: Theme.Status.caution)
                 }
                 footer
@@ -79,7 +79,7 @@ struct ScheduleView: View {
             Button("Discard Changes and Fetch Schedule", role: .destructive) { Task { await reload() } }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("The changes you have made here will be lost. The schedule is fetched from MELCloud, and you can make the changes again.")
+            Text("The changes you have made here will be lost. The schedule is fetched from \(model.serviceName), and you can make the changes again.")
         }
         .confirmationDialog(
             "Use the template “\(template?.title ?? "")”?", isPresented: Binding(get: { template != nil }, set: { if !$0 { template = nil } }),
@@ -89,7 +89,7 @@ struct ScheduleView: View {
             Button("Add to Schedule") { applyTemplate(template, replace: false) }
             Button("Cancel", role: .cancel) {}
         } message: { template in
-            Text("\(template.detail) Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to MELCloud”.")
+            Text("\(template.detail) Heat mode. You can change the temperatures afterwards. Nothing is saved until you click “Save to \(model.serviceName)”.")
         }
     }
 
@@ -163,13 +163,13 @@ struct ScheduleView: View {
                     if fetching { ProgressView().controlSize(.small) } else { Text("Fetch Now") }
                 }
                 .disabled(fetching || hasChanges)
-                .help(hasChanges ? "Save or discard the changes first." : "Fetches the weekly schedule from MELCloud (at most every 10 minutes; otherwise automatically every 6 hours).")
+                .help(hasChanges ? "Save or discard the changes first." : "Fetches the weekly schedule from \(model.serviceName) (at most every 10 minutes; otherwise automatically every 6 hours).")
             }
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if let until = model.timerRefusedUntil {
                         Label(
-                            "MELCloud did not allow reading the weekly schedule for this account. The app will try again \(Format.relative(until)), or click “Fetch Now”.",
+                            "\(model.serviceName) did not allow reading the weekly schedule for this account. The app will try again \(Format.relative(until)), or click “Fetch Now”.",
                             systemImage: "exclamationmark.triangle"
                         )
                         .foregroundStyle(Theme.Status.caution)
@@ -187,7 +187,7 @@ struct ScheduleView: View {
                         }
                         .font(.body.weight(.medium))
                         .disabled(sending)
-                        Text("MELCloud did not say whether the schedule is on. Choose on or off before you save.")
+                        Text("\(model.serviceName) did not say whether the schedule is on. Choose on or off before you save.")
                             .font(.callout).foregroundStyle(Theme.Status.caution)
                     } else if let draft, draft.decoded {
                         Toggle(
@@ -198,10 +198,10 @@ struct ScheduleView: View {
                         .font(.body.weight(.medium))
                         .disabled(sending)
                     } else if model.weeklyTimer == nil {
-                        Text("Fetching the weekly schedule from MELCloud…").foregroundStyle(.secondary)
+                        Text("Fetching the weekly schedule from \(model.serviceName)…").foregroundStyle(.secondary)
                     }
                     Text(
-                        "The schedule is stored in MELCloud and also runs when the Mac is off, and the same schedule is shown in the MELCloud app. Changes you make in Control last until the next event in the schedule."
+                        "The schedule is stored in \(model.serviceName) and also runs when the Mac is off, and the same schedule is shown in the \(model.serviceName) app. Changes you make in Control last until the next event in the schedule."
                     )
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     if let next = model.weeklyTimer?.nextEvent(after: Date(), timeZone: .current) {
@@ -346,11 +346,11 @@ struct ScheduleView: View {
     // MARK: Saving
 
     @ViewBuilder private func saveBar(_ draft: WeeklyTimer) -> some View {
-        let problem = model.service?.weeklyTimerFormat.flatMap { draft.validationProblem(limits: model.state?.limits, format: $0) }
-        if changedElsewhere || outcome?.message.contains(HeatPumpService.timerChangedMessage) == true {
+        let problem = model.service?.weeklyTimerFormat.flatMap { draft.validationProblem(limits: model.state?.limits, format: $0, serviceName: model.serviceName) }
+        if changedElsewhere || outcome?.message.contains(HeatPumpService.timerChangedMessage(serviceName: model.serviceName)) == true {
             InsightCard(
-                title: "The schedule has changed in MELCloud",
-                detail: "The schedule in MELCloud is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again.",
+                title: "The schedule has changed in \(model.serviceName)",
+                detail: "The schedule in \(model.serviceName) is no longer the one you started editing, so the app does not save over it. Fetch the schedule again and make the changes again.",
                 systemImage: "arrow.triangle.2.circlepath", tint: Theme.Status.caution)
             Button("Fetch Schedule Again…") { confirmingReload = true }
                 .disabled(fetching || sending)
@@ -376,29 +376,29 @@ struct ScheduleView: View {
     @ViewBuilder private func saveButtons(problem: String?) -> some View {
         Button("Discard Changes", role: .destructive) { discard() }
             .disabled(sending)
-        Button("Save to MELCloud…") { confirming = true }
+        Button("Save to \(model.serviceName)…") { confirming = true }
             .buttonStyle(.borderedProminent)
             .disabled(problem != nil || sending)
     }
 
     @ViewBuilder private var footer: some View {
         if sending {
-            ProgressView("Saving to MELCloud…").controlSize(.small)
+            ProgressView("Saving to \(model.serviceName)…").controlSize(.small)
         }
         if let outcome {
             InsightCard(
-                title: outcome.ok ? "Saved to MELCloud" : "Not saved", detail: .verbatim(outcome.message),
+                title: outcome.ok ? "Saved to \(model.serviceName)" : "Not saved", detail: .verbatim(outcome.message),
                 systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                 tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }
-        Text("Saving is new and has not been tried against your account yet. Feel free to check in the MELCloud app that the schedule is correct. Each save counts as one of \(ChangeBudget.maxChangesPerHour) sends per hour.")
+        Text("Saving is new and has not been tried against your account yet. Feel free to check in the \(model.serviceName) app that the schedule is correct. Each save counts as one of \(ChangeBudget.maxChangesPerHour) sends per hour.")
             .font(.caption).foregroundStyle(.secondary)
     }
 
     private var confirmSheet: some View {
         let lines = draft.flatMap { d in base.map { d.differences(from: $0) } } ?? []
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Label("Save the weekly schedule to MELCloud", systemImage: "calendar.badge.clock").font(.title2.bold())
+            Label("Save the weekly schedule to \(model.serviceName)", systemImage: "calendar.badge.clock").font(.title2.bold())
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
@@ -409,14 +409,14 @@ struct ScheduleView: View {
             }
             .frame(maxHeight: 260)
             Text(
-                "The whole schedule is sent (\(draft?.summary.lowercased() ?? "")). It applies from the next event and runs in MELCloud even when the Mac is off."
+                "The whole schedule is sent (\(draft?.summary.lowercased() ?? "")). It applies from the next event and runs in \(model.serviceName) even when the Mac is off."
             )
             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { confirming = false }
                     .keyboardShortcut(.cancelAction)
-                Button("Save to MELCloud") {
+                Button("Save to \(model.serviceName)") {
                     confirming = false
                     guard let draft, let base else { return }
                     sending = true
@@ -458,6 +458,7 @@ struct EventEditorSheet: View {
     let hasAutomaticFan: Bool
     let apply: (TimerEvent, Set<Int>) -> Void
     let delete: (() -> Void)?
+    @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var event: TimerEvent
     @State private var days: Set<Int>
@@ -549,7 +550,7 @@ struct EventEditorSheet: View {
                 }
                 .disabled(event.power == false)
             }
-            Text("The change is saved to MELCloud only when you click “Save to MELCloud” on the page.")
+            Text("The change is saved to \(model.serviceName) only when you click “Save to \(model.serviceName)” on the page.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 if let delete {

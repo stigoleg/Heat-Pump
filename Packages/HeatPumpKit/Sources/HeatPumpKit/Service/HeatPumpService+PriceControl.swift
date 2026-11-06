@@ -182,7 +182,7 @@ extension HeatPumpService {
         if try store.credentialsRejected() {
             blocked = HeatPumpError.credentialsRejected.errorDescription
         } else if let block = try store.blockStatus(now: t) {
-            blocked = block.reason.message(until: block.until)
+            blocked = block.reason.message(until: block.until, serviceName: serviceName)
         }
         let away = try storedAwaySettings()
         let holiday = away?.holiday

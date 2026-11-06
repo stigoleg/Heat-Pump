@@ -22,7 +22,7 @@ struct AwayView: View {
                 StatusBanner()
                 InsightCard(
                     title: "When the house is empty",
-                    detail: "Frost protection keeps the room between a lowest and a highest temperature even when the heat pump is otherwise off. In holiday mode the heat pump can be off for a period you choose, and frost protection is then what keeps the house from getting too cold; that is why frost protection must be on first. Both are stored in MELCloud, so they work even when the Mac is off.",
+                    detail: "Frost protection keeps the room between a lowest and a highest temperature even when the heat pump is otherwise off. In holiday mode the heat pump can be off for a period you choose, and frost protection is then what keeps the house from getting too cold; that is why frost protection must be on first. Both are stored in \(model.serviceName), so they work even when the Mac is off.",
                     systemImage: "house.lodge.fill", tint: Theme.Data.blue)
                 frostCard
                 holidayCard
@@ -72,7 +72,7 @@ struct AwayView: View {
     }
 
     private var frostCard: some View {
-        let problem = frostChange.validationProblem(now: Date()) ?? frostChange.safetyProblem(current: model.away, now: Date())
+        let problem = frostChange.validationProblem(now: Date()) ?? frostChange.safetyProblem(current: model.away, now: Date(), serviceName: model.serviceName)
         let unchanged = model.away?.frost.map { $0.enabled == frostEnabled && $0.minimum == frostMin && $0.maximum == frostMax } ?? false
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             SectionHeader("Frost protection", hint: model.away?.frost.map { "Now: \($0.summary)" })
@@ -120,7 +120,7 @@ struct AwayView: View {
     }
 
     private var holidayCard: some View {
-        let problem = holidayChange.validationProblem(now: Date()) ?? holidayChange.safetyProblem(current: model.away, now: Date())
+        let problem = holidayChange.validationProblem(now: Date()) ?? holidayChange.safetyProblem(current: model.away, now: Date(), serviceName: model.serviceName)
         let unchanged = model.away?.holiday.map {
             $0.enabled == holidayEnabled && (!holidayEnabled || ($0.start == holidayStart && $0.end == holidayEnd))
         } ?? false
@@ -175,9 +175,9 @@ struct AwayView: View {
     private func comparison(sent: String, read: String?, at: Date, matches: Bool) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Sent \(Format.relative(at)): \(sent)")
-            Text("MELCloud shows: \(read ?? String(localized: "not read yet"))")
+            Text("\(model.serviceName) shows: \(read ?? String(localized: "not read yet"))")
             if read != nil && !matches {
-                Label("Not the same. Check in the MELCloud app which applies.", systemImage: "exclamationmark.triangle.fill")
+                Label("Not the same. Check in the \(model.serviceName) app which applies.", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.Status.caution)
             }
         }
@@ -189,7 +189,7 @@ struct AwayView: View {
     @ViewBuilder private var statusFooter: some View {
         if let outcome {
             InsightCard(
-                title: outcome.ok ? "Sent to MELCloud" : "Not sent", detail: .verbatim(outcome.message),
+                title: outcome.ok ? "Sent to \(model.serviceName)" : "Not sent", detail: .verbatim(outcome.message),
                 systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                 tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }
@@ -200,13 +200,13 @@ struct AwayView: View {
                     Button("Try Again") { Task { await model.loadAway(manual: true); sync(force: true) } }
                 }
                 Text(
-                    away.fetchedAt.map { String(localized: "Fetched from MELCloud \(Format.relative($0)).") }
-                        ?? String(localized: "For now from MELCloud’s device list; fetched directly at most once an hour."))
+                    away.fetchedAt.map { String(localized: "Fetched from \(model.serviceName) \(Format.relative($0)).") }
+                        ?? String(localized: "For now from \(model.serviceName)’s device list; fetched directly at most once an hour."))
                 if away.pendingSince != nil { Text("The latest change has been sent and will be confirmed at the next fetch.") }
             } else {
-                Text("Fetching from MELCloud…")
+                Text("Fetching from \(model.serviceName)…")
             }
-            Text("These are new features that have not been tried against your account yet. Feel free to check in the MELCloud app that the change has been registered. Each change counts as one of 12 sends per hour.")
+            Text("These are new features that have not been tried against your account yet. Feel free to check in the \(model.serviceName) app that the change has been registered. Each change counts as one of 12 sends per hour.")
         }
         .font(.caption).foregroundStyle(.secondary)
     }
@@ -222,7 +222,7 @@ struct AwayView: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { confirming = nil }
                     .keyboardShortcut(.cancelAction)
-                Button("Send to MELCloud") {
+                Button("Send to \(model.serviceName)") {
                     let change = change
                     confirming = nil
                     sending = true
@@ -247,7 +247,7 @@ struct AwayView: View {
         case .frostProtection:
             String(localized: "The heat pump no longer keeps the room from freezing when it is off.")
         case .holidayMode(let hm) where hm.enabled:
-            String(localized: "During the period the heat pump may be off, and frost protection makes sure the house does not get too cold. Afterwards it goes back to how it was. The times MELCloud stores are shown on the page afterwards; compare them with what you chose.")
+            String(localized: "During the period the heat pump may be off, and frost protection makes sure the house does not get too cold. Afterwards it goes back to how it was. The times \(model.serviceName) stores are shown on the page afterwards; compare them with what you chose.")
         case .holidayMode:
             String(localized: "The heat pump goes back to the usual settings.")
         }

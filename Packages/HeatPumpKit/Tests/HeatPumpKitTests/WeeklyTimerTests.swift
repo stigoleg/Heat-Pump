@@ -665,7 +665,7 @@ struct WeeklyTimerTests {
         transport.enqueue("/Timer/SetAta2", body: Data(#"{"Data": {"ErrorCode": 2, "MaxEvents": 50}}"#.utf8))
         transport.enqueue("/Timer/SetAta2", status: 403, body: Data())
         let credentials = InMemoryCredentialStore(
-            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, now: clock.provider)
         let timer = try timer()
         try await backend.saveWeeklyTimer(timer, deviceId: 42)

@@ -38,12 +38,12 @@ struct StatusBanner: View {
         guard let result = model.stateResult else { return nil }
         if result.needsLogin {
             return Message(
-                text: result.blockMessage ?? result.error ?? String(localized: "Log in to MELCloud in Settings."),
+                text: result.blockMessage ?? result.error ?? String(localized: "Log in to \(model.serviceName) in Settings."),
                 icon: "person.crop.circle.badge.exclamationmark", color: .orange)
         }
         if let until = result.blockedUntil, until > now {
             // The text comes from the block reason (traffic, login attempts, refused access).
-            let reason = result.blockMessage ?? BlockReason.rateLimited.message(until: until)
+            let reason = result.blockMessage ?? BlockReason.rateLimited.message(until: until, serviceName: model.serviceName)
             return Message(
                 text: String(localized: "\(reason) (in \(Format.countdown(to: until, now: now))). Showing saved data."),
                 icon: "hourglass", color: .orange)

@@ -58,7 +58,7 @@ struct FirmwareSection: View {
             Button("Cancel Update", role: .destructive) { send { await model.cancelFirmwareUpdate() } }
             Button("Continue Update", role: .cancel) {}
         } message: {
-            Text("MELCloud stops the update if it is not installed yet. You can start it again later.")
+            Text("\(model.serviceName) stops the update if it is not installed yet. You can start it again later.")
         }
     }
 
@@ -74,14 +74,14 @@ struct FirmwareSection: View {
     @ViewBuilder private var statusLine: some View {
         if let current = status?.current, status?.updateAvailable == true || running || current.phase == .complete {
             if running, current.phase == .approvalRequired {
-                Label("The update has been sent to MELCloud. Waiting for the unit to accept it.", systemImage: "clock.arrow.circlepath")
+                Label("The update has been sent to \(model.serviceName). Waiting for the unit to accept it.", systemImage: "clock.arrow.circlepath")
             } else {
-                Label(current.displayText, systemImage: icon(current.phase)).foregroundStyle(color(current.phase))
+                Label(current.displayText(serviceName: model.serviceName), systemImage: icon(current.phase)).foregroundStyle(color(current.phase))
             }
         } else if status?.updateAvailable == true || model.state?.firmware.updateAvailable == true {
-            Label("MELCloud has newer firmware ready for the Wi-Fi adapter.", systemImage: "arrow.down.circle")
+            Label("\(model.serviceName) has newer firmware ready for the Wi-Fi adapter.", systemImage: "arrow.down.circle")
         } else {
-            Label("No new firmware is waiting in MELCloud.", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
+            Label("No new firmware is waiting in \(model.serviceName).", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
         }
     }
 
@@ -118,10 +118,10 @@ struct FirmwareSection: View {
     private var confirmSheet: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             Label("Update the firmware?", systemImage: "arrow.down.circle.fill").font(.title2.bold())
-            Text(HeatPumpService.firmwareApprovalSummaries(version: status?.currentVersion).first ?? "")
+            Text(HeatPumpService.firmwareApprovalSummaries(version: status?.currentVersion, serviceName: model.serviceName).first ?? "")
                 .font(.body.weight(.medium))
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ForEach(FirmwareStatus.warnings, id: \.self) { warning in
+                ForEach(FirmwareStatus.warnings(serviceName: model.serviceName), id: \.self) { warning in
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)

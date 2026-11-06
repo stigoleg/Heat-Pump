@@ -9,7 +9,8 @@ public struct ErrorLogEntry: Codable, Sendable, Equatable {
     /// Where the entry came from, e.g. `melcloud` or `state` (derived from an active error flag).
     public var source: String
 
-    public init(deviceId: Int, start: Date, end: Date? = nil, message: String, code: String? = nil, source: String = "melcloud") {
+    /// `source` is the producing integration's `sourceTag`.
+    public init(deviceId: Int, start: Date, end: Date? = nil, message: String, code: String? = nil, source: String) {
         self.deviceId = deviceId
         self.start = start
         self.end = end

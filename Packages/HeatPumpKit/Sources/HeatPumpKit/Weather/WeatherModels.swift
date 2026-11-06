@@ -56,7 +56,9 @@ public struct WeatherSettings: Codable, Sendable, Equatable {
 /// Where the forecast is for. Coordinates are rounded to 2 decimals (about 1 km) and never shown.
 public struct WeatherLocation: Codable, Sendable, Equatable {
     public enum Source: String, Codable, Sendable {
-        case manual, melcloud, demo
+        case manual, demo
+        /// The building's location as the heat pump service stores it. Persisted as "melcloud".
+        case service = "melcloud"
     }
 
     public var latitude: Double
@@ -76,12 +78,12 @@ public struct WeatherLocation: Codable, Sendable, Equatable {
     /// Key that changes when the (rounded) place changes.
     var key: String { String(format: "%.2f,%.2f", locale: Locale(identifier: "en_US_POSIX"), latitude, longitude) }
 
-    /// Description without coordinates.
-    public var displayName: String {
+    /// Description without coordinates; `serviceName` names where a `.service` location comes from.
+    public func displayName(serviceName: String) -> String {
         if let placeName, !placeName.trimmingCharacters(in: .whitespaces).isEmpty { return placeName }
         switch source {
         case .manual: return L10n.tr("Chosen place")
-        case .melcloud: return L10n.tr("The building in MELCloud")
+        case .service: return L10n.format("The building in %@", serviceName)
         case .demo: return L10n.tr("Oslo (demo)")
         }
     }

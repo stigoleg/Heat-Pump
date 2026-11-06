@@ -25,9 +25,10 @@ public struct PlannedNotification: Sendable, Equatable {
 public enum NotificationPlanner {
     public static let filterReminderInterval: TimeInterval = 86_400
 
+    /// `serviceName` names the service in the active-error text.
     public static func plan(
         state: DeviceState?, errorEvents: [ErrorLogEntry], maintenance: [MaintenanceStatus],
-        memory: NotificationMemory, now: Date
+        memory: NotificationMemory, now: Date, serviceName: String
     ) -> (notifications: [PlannedNotification], memory: NotificationMemory) {
         var memory = memory
         var notifications: [PlannedNotification] = []
@@ -57,9 +58,10 @@ public enum NotificationPlanner {
                 let body =
                     state.errorCode.flatMap {
                         DeviceState.noErrorCodes.contains($0)
-                            ? nil : L10n.format("MELCloud is reporting an error now (code %@). Open Health in the app for advice.", String($0))
+                            ? nil
+                            : L10n.format("%@ is reporting an error now (code %@). Open Health in the app for advice.", serviceName, String($0))
                     }
-                    ?? L10n.tr("MELCloud is reporting an error now. Open Health in the app for advice.")
+                    ?? L10n.format("%@ is reporting an error now. Open Health in the app for advice.", serviceName)
                 notifications.append(
                     PlannedNotification(id: "active-error", title: L10n.tr("The heat pump is reporting an error"), body: body))
                 memory.activeErrorNotified = true

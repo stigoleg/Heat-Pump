@@ -23,6 +23,17 @@
         }
       }
     },
+    "%1$@ updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is %1$@'s split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. byMode er %1$@ sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med døgnets snittpris fordi forbruk per time mangler."
+          }
+        }
+      }
+    },
     "%@\n\nReason from Claude: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -45,6 +56,116 @@
         }
       }
     },
+    "%@ answered with HTTP error %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ svarte med HTTP-feil %2$lld."
+          }
+        }
+      }
+    },
+    "%@ did not accept the email or password. Update the login in Settings. The app does not try again until you have done so, so the account is not locked." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
+          }
+        }
+      }
+    },
+    "%@ did not accept the login (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ godtok ikke innloggingen (%2$@)."
+          }
+        }
+      }
+    },
+    "%@ did not accept the login." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ godtok ikke innloggingen."
+          }
+        }
+      }
+    },
+    "%@ did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try Again”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
+          }
+        }
+      }
+    },
+    "%@ did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tillot ikke å lese fastvarestatus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Oppdater status»."
+          }
+        }
+      }
+    },
+    "%@ did not allow reading the weekly schedule (next try %@), and it is not saved without checking that it is unchanged." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ tillot ikke å lese ukeplanen (ny prøve %2$@), og den lagres ikke uten å sjekke at den er uendret."
+          }
+        }
+      }
+    },
+    "%@ did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch Now”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Hent nå»."
+          }
+        }
+      }
+    },
+    "%@ did not allow this request for the account (HTTP %lld)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ tillot ikke denne forespørselen for kontoen (HTTP %2$lld)."
+          }
+        }
+      }
+    },
+    "%@ did not say whether the weekly schedule is on. Choose on or off before you save." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oppga ikke om ukeplanen er på. Velg på eller av før du lagrer."
+          }
+        }
+      }
+    },
     "%@ downloaded." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -52,6 +173,193 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ lastet ned."
+          }
+        }
+      }
+    },
+    "%@ gave no id for the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oppga ingen id for oppdateringen."
+          }
+        }
+      }
+    },
+    "%@ has a newer firmware version ready for the adapter." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ har en nyere fastvareversjon klar for modulen."
+          }
+        }
+      }
+    },
+    "%@ has blocked the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ har sperret oppdateringen."
+          }
+        }
+      }
+    },
+    "%@ has not said whether the account owns the unit. Refresh the status and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ har ikke oppgitt om kontoen eier enheten. Oppdater status og prøv igjen."
+          }
+        }
+      }
+    },
+    "%@ has temporarily blocked updates until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ har midlertidig stengt for oppdateringer til %2$@."
+          }
+        }
+      }
+    },
+    "%@ has temporarily stopped accepting requests (too much traffic) until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ har midlertidig stengt for flere forespørsler (for mye trafikk) til %2$@."
+          }
+        }
+      }
+    },
+    "%@ has temporarily stopped updates because there has been too much traffic. Try again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. %2$@."
+          }
+        }
+      }
+    },
+    "%@ is carrying out a required update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ gjennomfører en påkrevd oppdatering."
+          }
+        }
+      }
+    },
+    "%@ is reporting an error now (code %@). Open Health in the app for advice." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ melder en feil nå (kode %2$@). Åpne Helse i appen for råd."
+          }
+        }
+      }
+    },
+    "%@ is reporting an error now. Open Health in the app for advice." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ melder en feil nå. Åpne Helse i appen for råd."
+          }
+        }
+      }
+    },
+    "%@ is temporarily blocking login (too many attempts) until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ blokkerer innlogging midlertidig (for mange forsøk) til %2$@."
+          }
+        }
+      }
+    },
+    "%@ is temporarily blocking login (too many attempts)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ blokkerer innlogging midlertidig (for mange forsøk)."
+          }
+        }
+      }
+    },
+    "%@ refuses access even after a new login. Fetching is paused for an hour." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ avviser tilgangen selv etter ny innlogging. Henting er satt på pause i en time."
+          }
+        }
+      }
+    },
+    "%@ refuses access even after a new login. The app tries again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ avviser tilgangen selv etter ny innlogging. Appen prøver igjen kl. %2$@."
+          }
+        }
+      }
+    },
+    "%@ rejected the request: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ avviste forespørselen: %2$@"
+          }
+        }
+      }
+    },
+    "%@ reports an error without an error code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ melder en feil uten feilkode"
+          }
+        }
+      }
+    },
+    "%@ reports an unknown status for the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ rapporterer en ukjent status for oppdateringen."
           }
         }
       }
@@ -646,13 +954,13 @@
         }
       }
     },
-    "Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that MELCloud sometimes reports energy figures late or wrong." : {
+    "Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that %@ sometimes reports energy figures late or wrong." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sjekk at luftfilteret er rent, at utedelen ikke er nediset eller dekket av snø, og at dører/vinduer er lukket. Fortsetter det flere dager, ring forhandleren. Merk at MELCloud av og til rapporterer energitall forsinket eller feil."
+            "value" : "Sjekk at luftfilteret er rent, at utedelen ikke er nediset eller dekket av snø, og at dører/vinduer er lukket. Fortsetter det flere dager, ring forhandleren. Merk at %@ av og til rapporterer energitall forsinket eller feil."
           }
         }
       }
@@ -866,13 +1174,13 @@
         }
       }
     },
-    "Could not interpret the answer from MELCloud: %@" : {
+    "Could not interpret the answer from %@: %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke tolke svaret fra MELCloud: %@"
+            "value" : "Kunne ikke tolke svaret fra %1$@: %2$@"
           }
         }
       }
@@ -888,35 +1196,35 @@
         }
       }
     },
-    "Could not read frost protection and holiday mode from MELCloud: %@" : {
+    "Could not read frost protection and holiday mode from %@: %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke lese frostsikring og feriemodus fra MELCloud: %@"
+            "value" : "Kunne ikke lese frostsikring og feriemodus fra %1$@: %2$@"
           }
         }
       }
     },
-    "Could not read the firmware status from MELCloud: %@" : {
+    "Could not read the firmware status from %@: %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke lese fastvarestatus fra MELCloud: %@"
+            "value" : "Kunne ikke lese fastvarestatus fra %1$@: %2$@"
           }
         }
       }
     },
-    "Could not read the weekly schedule from MELCloud before saving, so it was not sent (it may have been changed there): %@" : {
+    "Could not read the weekly schedule from %@ before saving, so it was not sent (it may have been changed there): %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke lese ukeplanen fra MELCloud før lagring, så den ble ikke sendt (den kan være endret der): %@"
+            "value" : "Kunne ikke lese ukeplanen fra %1$@ før lagring, så den ble ikke sendt (den kan være endret der): %2$@"
           }
         }
       }
@@ -1009,35 +1317,35 @@
         }
       }
     },
-    "Did not find the heat pump's hardware address in MELCloud yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)." : {
+    "Did not find the heat pump's hardware address in %@ yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fant ikke maskinvareadressen til varmepumpen i MELCloud ennå. Hent status først, eller skriv inn IP-adressen selv (står i ruterens liste over enheter)."
+            "value" : "Fant ikke maskinvareadressen til varmepumpen i %@ ennå. Hent status først, eller skriv inn IP-adressen selv (står i ruterens liste over enheter)."
           }
         }
       }
     },
-    "Did not get a fresh firmware status from MELCloud. Try again in a little while." : {
+    "Did not get a fresh firmware status from %@. Try again in a little while." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt."
+            "value" : "Fikk ikke fersk fastvarestatus fra %@. Prøv igjen om litt."
           }
         }
       }
     },
-    "Do a health check of the heat pump. Steps:\n1. Call get_status.\n2. Call get_health_report.\n3. Call get_error_log with days=90.\n4. Call get_history for room_temperature and outdoor_temperature for the last 7 days.\n5. Call get_maintenance_status.\n6. Call get_live_status (only returns data if the local connection is turned on; otherwise skip it).\n\nThen write a short, prioritized summary in English for someone who knows nothing about heat pumps:\n- **This is fine**\n- **This should be done now** (with concrete steps, and “call the dealer” when needed)\n- **Keep an eye on this**\nMention how old the data is if it is older than an hour, and whether MELCloud has blocked refreshing.\nDo not change anything on the heat pump. You may suggest changes, but they should only be carried out if the user says yes." : {
+    "Do a health check of the heat pump. Steps:\n1. Call get_status.\n2. Call get_health_report.\n3. Call get_error_log with days=90.\n4. Call get_history for room_temperature and outdoor_temperature for the last 7 days.\n5. Call get_maintenance_status.\n6. Call get_live_status (only returns data if the local connection is turned on; otherwise skip it).\n\nThen write a short, prioritized summary in English for someone who knows nothing about heat pumps:\n- **This is fine**\n- **This should be done now** (with concrete steps, and “call the dealer” when needed)\n- **Keep an eye on this**\nMention how old the data is if it is older than an hour, and whether %@ has blocked refreshing.\nDo not change anything on the heat pump. You may suggest changes, but they should only be carried out if the user says yes." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gjør en helsesjekk av varmepumpen. Steg:\n1. Kall get_status.\n2. Kall get_health_report.\n3. Kall get_error_log med days=90.\n4. Kall get_history for room_temperature og outdoor_temperature for de siste 7 dagene.\n5. Kall get_maintenance_status.\n6. Kall get_live_status (gir bare data hvis lokal tilkobling er slått på; ellers hopp over).\n\nSkriv deretter en kort, prioritert oppsummering på norsk bokmål for en som ikke kan noe om varmepumper:\n- **Dette er i orden**\n- **Dette bør gjøres nå** (med konkrete steg, og «ring forhandleren» når det trengs)\n- **Dette bør du følge med på**\nNevn hvor gamle dataene er hvis de er eldre enn en time, og om MELCloud har blokkert oppdatering.\nIkke endre noe på varmepumpen. Du kan foreslå endringer, men de skal bare utføres hvis brukeren sier ja."
+            "value" : "Gjør en helsesjekk av varmepumpen. Steg:\n1. Kall get_status.\n2. Kall get_health_report.\n3. Kall get_error_log med days=90.\n4. Kall get_history for room_temperature og outdoor_temperature for de siste 7 dagene.\n5. Kall get_maintenance_status.\n6. Kall get_live_status (gir bare data hvis lokal tilkobling er slått på; ellers hopp over).\n\nSkriv deretter en kort, prioritert oppsummering på norsk bokmål for en som ikke kan noe om varmepumper:\n- **Dette er i orden**\n- **Dette bør gjøres nå** (med konkrete steg, og «ring forhandleren» når det trengs)\n- **Dette bør du følge med på**\nNevn hvor gamle dataene er hvis de er eldre enn en time, og om %@ har blokkert oppdatering.\nIkke endre noe på varmepumpen. Du kan foreslå endringer, men de skal bare utføres hvis brukeren sier ja."
           }
         }
       }
@@ -1336,13 +1644,13 @@
         }
       }
     },
-    "Fetched from MELCloud later (at most once an hour)." : {
+    "Fetched from %@ later (at most once an hour)." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hentes fra MELCloud senere (høyst én gang i timen)."
+            "value" : "Hentes fra %@ senere (høyst én gang i timen)."
           }
         }
       }
@@ -1583,13 +1891,13 @@
         }
       }
     },
-    "Has not received the update list from MELCloud yet. Refresh the status and try again." : {
+    "Has not received the update list from %@ yet. Refresh the status and try again." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Har ikke fått oppdateringslisten fra MELCloud ennå. Oppdater status og prøv igjen."
+            "value" : "Har ikke fått oppdateringslisten fra %@ ennå. Oppdater status og prøv igjen."
           }
         }
       }
@@ -1649,24 +1957,24 @@
         }
       }
     },
-    "Heat Pump – MELCloud login" : {
+    "Heat Pump – %@ login" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varmepumpe – MELCloud-innlogging"
+            "value" : "Varmepumpe – %@-innlogging"
           }
         }
       }
     },
-    "Heat Pump – MELCloud session" : {
+    "Heat Pump – %@ session" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varmepumpe – MELCloud-økt"
+            "value" : "Varmepumpe – %@-økt"
           }
         }
       }
@@ -1737,13 +2045,13 @@
         }
       }
     },
-    "Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from MELCloud). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again." : {
+    "Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from %@). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Feriemodus ble ikke slått på fordi appen ikke vet om frostsikring er på (innstillingene kunne ikke leses fra MELCloud). I feriemodus kan varmepumpen stå av. Slå på frostsikring først (for eksempel 8–12 °C), og prøv igjen."
+            "value" : "Feriemodus ble ikke slått på fordi appen ikke vet om frostsikring er på (innstillingene kunne ikke leses fra %@). I feriemodus kan varmepumpen stå av. Slå på frostsikring først (for eksempel 8–12 °C), og prøv igjen."
           }
         }
       }
@@ -2242,270 +2550,6 @@
         }
       }
     },
-    "MELCloud answered with HTTP error %lld." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud svarte med HTTP-feil %lld."
-          }
-        }
-      }
-    },
-    "MELCloud did not accept the email or password. Update the login in Settings. The app does not try again until you have done so, so the account is not locked." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
-          }
-        }
-      }
-    },
-    "MELCloud did not accept the login (%@)." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud godtok ikke innloggingen (%@)."
-          }
-        }
-      }
-    },
-    "MELCloud did not accept the login." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud godtok ikke innloggingen."
-          }
-        }
-      }
-    },
-    "MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try Again”." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
-          }
-        }
-      }
-    },
-    "MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke å lese fastvarestatus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Oppdater status»."
-          }
-        }
-      }
-    },
-    "MELCloud did not allow reading the weekly schedule (next try %@), and it is not saved without checking that it is unchanged." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke å lese ukeplanen (ny prøve %@), og den lagres ikke uten å sjekke at den er uendret."
-          }
-        }
-      }
-    },
-    "MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch Now”." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Hent nå»."
-          }
-        }
-      }
-    },
-    "MELCloud did not allow this request for the account (HTTP %lld)." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud tillot ikke denne forespørselen for kontoen (HTTP %lld)."
-          }
-        }
-      }
-    },
-    "MELCloud did not say whether the weekly schedule is on. Choose on or off before you save." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud oppga ikke om ukeplanen er på. Velg på eller av før du lagrer."
-          }
-        }
-      }
-    },
-    "MELCloud gave no id for the update." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud oppga ingen id for oppdateringen."
-          }
-        }
-      }
-    },
-    "MELCloud has a newer firmware version ready for the adapter." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har en nyere fastvareversjon klar for modulen."
-          }
-        }
-      }
-    },
-    "MELCloud has blocked the update." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har sperret oppdateringen."
-          }
-        }
-      }
-    },
-    "MELCloud has not said whether the account owns the unit. Refresh the status and try again." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har ikke oppgitt om kontoen eier enheten. Oppdater status og prøv igjen."
-          }
-        }
-      }
-    },
-    "MELCloud has temporarily blocked updates until %@." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har midlertidig stengt for oppdateringer til %@."
-          }
-        }
-      }
-    },
-    "MELCloud has temporarily stopped accepting requests (too much traffic) until %@." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har midlertidig stengt for flere forespørsler (for mye trafikk) til %@."
-          }
-        }
-      }
-    },
-    "MELCloud has temporarily stopped updates because there has been too much traffic. Try again at %@." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. %@."
-          }
-        }
-      }
-    },
-    "MELCloud is carrying out a required update." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud gjennomfører en påkrevd oppdatering."
-          }
-        }
-      }
-    },
-    "MELCloud is reporting an error now (code %@). Open Health in the app for advice." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud melder en feil nå (kode %@). Åpne Helse i appen for råd."
-          }
-        }
-      }
-    },
-    "MELCloud is reporting an error now. Open Health in the app for advice." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud melder en feil nå. Åpne Helse i appen for råd."
-          }
-        }
-      }
-    },
-    "MELCloud is temporarily blocking login (too many attempts) until %@." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud blokkerer innlogging midlertidig (for mange forsøk) til %@."
-          }
-        }
-      }
-    },
-    "MELCloud is temporarily blocking login (too many attempts)." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud blokkerer innlogging midlertidig (for mange forsøk)."
-          }
-        }
-      }
-    },
-    "MELCloud refuses access even after a new login. Fetching is paused for an hour." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud avviser tilgangen selv etter ny innlogging. Henting er satt på pause i en time."
-          }
-        }
-      }
-    },
-    "MELCloud refuses access even after a new login. The app tries again at %@." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud avviser tilgangen selv etter ny innlogging. Appen prøver igjen kl. %@."
-          }
-        }
-      }
-    },
     "MELCloud rejected the change." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2513,50 +2557,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MELCloud avviste endringen."
-          }
-        }
-      }
-    },
-    "MELCloud rejected the request: %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud avviste forespørselen: %@"
-          }
-        }
-      }
-    },
-    "MELCloud reports an error without an error code" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud melder en feil uten feilkode"
-          }
-        }
-      }
-    },
-    "MELCloud reports an unknown status for the update." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud rapporterer en ukjent status for oppdateringen."
-          }
-        }
-      }
-    },
-    "MELCloud updates energy figures with a 1.5–3 hour delay; days with 0 kWh may be missing data. byMode is MELCloud's split by mode (heating, cooling, auto, dry, fan, other). Cost = kWh × (electricity price + grid tariff energy charge − electricity subsidy), in NOK incl. VAT. The capacity charge of the grid tariff is not included. isEstimate means that parts of the day are priced at the day's average price because hourly consumption is missing." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MELCloud oppdaterer energitall med 1,5–3 timers forsinkelse; dager med 0 kWh kan være manglende data. byMode er MELCloud sin fordeling på modus (varme, kjøling, auto, avfukting, vifte, annet). Kostnad = kWh × (strømpris + nettleiens energiledd − strømstøtte), i kroner inkl. mva. Kapasitetsleddet i nettleien er ikke med. isEstimate betyr at deler av døgnet er priset med døgnets snittpris fordi forbruk per time mangler."
           }
         }
       }
@@ -2715,13 +2715,13 @@
         }
       }
     },
-    "Network calls are stopped until %@ because MELCloud has limited the traffic." : {
+    "Network calls are stopped until %@ because %@ has limited the traffic." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nettverkskall er stoppet til %@ fordi MELCloud har begrenset trafikken."
+            "value" : "Nettverkskall er stoppet til %1$@ fordi %2$@ har begrenset trafikken."
           }
         }
       }
@@ -2792,6 +2792,17 @@
         }
       }
     },
+    "No %@ login. Enter your email and password in the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mangler innlogging til %@. Legg inn e-post og passord i appen."
+          }
+        }
+      }
+    },
     "No IP address has been entered for the Wi-Fi adapter." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2799,17 +2810,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen IP-adresse er lagt inn for Wi-Fi-modulen."
-          }
-        }
-      }
-    },
-    "No MELCloud login. Enter your email and password in the app." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mangler innlogging til MELCloud. Legg inn e-post og passord i appen."
           }
         }
       }
@@ -3155,13 +3155,13 @@
         }
       }
     },
-    "Not connected to MELCloud." : {
+    "Not connected to %@." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frakoblet MELCloud."
+            "value" : "Frakoblet %@."
           }
         }
       }
@@ -3243,13 +3243,13 @@
         }
       }
     },
-    "Note: the weekly schedule in MELCloud is on, so the heat pump may change by itself according to the schedule." : {
+    "Note: the weekly schedule in %@ is on, so the heat pump may change by itself according to the schedule." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Merk: ukeplanen i MELCloud er på, så varmepumpen kan endre seg selv etter planen."
+            "value" : "Merk: ukeplanen i %@ er på, så varmepumpen kan endre seg selv etter planen."
           }
         }
       }
@@ -3435,13 +3435,13 @@
         }
       }
     },
-    "Only the owner of the unit in MELCloud can start a firmware update." : {
+    "Only the owner of the unit in %@ can start a firmware update." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bare eieren av enheten i MELCloud kan starte en fastvareoppdatering."
+            "value" : "Bare eieren av enheten i %@ kan starte en fastvareoppdatering."
           }
         }
       }
@@ -3941,13 +3941,24 @@
         }
       }
     },
-    "Sent: %@. Check that MELCloud shows the same (shown on the page)." : {
+    "Sent: %@. %@ confirms at the next fetch (at most once an hour)." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sendt: %@. Sjekk at MELCloud viser det samme (vises på siden)."
+            "value" : "Sendt: %1$@. %2$@ bekrefter ved neste henting (høyst én gang i timen)."
+          }
+        }
+      }
+    },
+    "Sent: %@. Check that %@ shows the same (shown on the page)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt: %1$@. Sjekk at %2$@ viser det samme (vises på siden)."
           }
         }
       }
@@ -3970,17 +3981,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendt: %@. Det kan ta opptil et par minutter før varmepumpen bekrefter. %@"
-          }
-        }
-      }
-    },
-    "Sent: %@. MELCloud confirms at the next fetch (at most once an hour)." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sendt: %@. MELCloud bekrefter ved neste henting (høyst én gang i timen)."
           }
         }
       }
@@ -4106,13 +4106,13 @@
         }
       }
     },
-    "Start the update under Health → Firmware in this app (or in the MELCloud app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back." : {
+    "Start the update under Health → Firmware in this app (or in the %@ app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Start oppdateringen under Helse → Fastvare i denne appen (eller i MELCloud-appen) mens varmepumpen står på strøm og har godt Wi-Fi. Ikke slå av strømmen og ikke bruk fjernkontrollen mens den pågår. Fastvare kan ikke rulles tilbake."
+            "value" : "Start oppdateringen under Helse → Fastvare i denne appen (eller i %@-appen) mens varmepumpen står på strøm og har godt Wi-Fi. Ikke slå av strømmen og ikke bruk fjernkontrollen mens den pågår. Fastvare kan ikke rulles tilbake."
           }
         }
       }
@@ -4326,13 +4326,13 @@
         }
       }
     },
-    "The adapter has firmware %@. MELCloud has a newer version ready." : {
+    "The adapter has firmware %@. %@ has a newer version ready." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modulen har fastvare %@. MELCloud har en nyere versjon klar."
+            "value" : "Modulen har fastvare %1$@. %2$@ har en nyere versjon klar."
           }
         }
       }
@@ -4403,24 +4403,24 @@
         }
       }
     },
-    "The app has not reached the adapter locally since %@. Control and status via MELCloud work as before." : {
+    "The app has not reached the adapter locally since %@. Control and status via %@ work as before." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %@. Styring og status via MELCloud virker som før."
+            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %1$@. Styring og status via %2$@ virker som før."
           }
         }
       }
     },
-    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via MELCloud work as before." : {
+    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via %@ work as before." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %@. Sist svar: %@. Styring og status via MELCloud virker som før."
+            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %1$@. Sist svar: %2$@. Styring og status via %3$@ virker som før."
           }
         }
       }
@@ -4436,24 +4436,24 @@
         }
       }
     },
-    "The building in MELCloud" : {
+    "The building in %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bygget i MELCloud"
+            "value" : "Bygget i %@"
           }
         }
       }
     },
-    "The cancellation has been sent to MELCloud. The status is updated in a little while." : {
+    "The cancellation has been sent to %@. The status is updated in a little while." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avbryting er sendt til MELCloud. Statusen oppdateres om litt."
+            "value" : "Avbryting er sendt til %@. Statusen oppdateres om litt."
           }
         }
       }
@@ -4469,13 +4469,13 @@
         }
       }
     },
-    "The change was not sent because the answer from MELCloud lacked a complete status for the heat pump." : {
+    "The change was not sent because the answer from %@ lacked a complete status for the heat pump." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Endringen ble ikke sendt fordi svaret fra MELCloud manglet fullstendig status for varmepumpen."
+            "value" : "Endringen ble ikke sendt fordi svaret fra %@ manglet fullstendig status for varmepumpen."
           }
         }
       }
@@ -4634,13 +4634,13 @@
         }
       }
     },
-    "The current frost protection is unknown (it could not be read from MELCloud). Give both minimum and maximum, so it is clear which range is sent." : {
+    "The current frost protection is unknown (it could not be read from %@). Give both minimum and maximum, so it is clear which range is sent." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nåværende frostsikring er ukjent (kunne ikke leses fra MELCloud). Oppgi både minimum og maximum, så det er tydelig hvilket område som sendes."
+            "value" : "Nåværende frostsikring er ukjent (kunne ikke leses fra %@). Oppgi både minimum og maximum, så det er tydelig hvilket område som sendes."
           }
         }
       }
@@ -4810,13 +4810,13 @@
         }
       }
     },
-    "The heat pump has no contact with MELCloud" : {
+    "The heat pump has no contact with %@" : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varmepumpen har ikke kontakt med MELCloud"
+            "value" : "Varmepumpen har ikke kontakt med %@"
           }
         }
       }
@@ -4832,13 +4832,13 @@
         }
       }
     },
-    "The heat pump has set an error flag, but MELCloud gives no error code. So we do not know what the error is about." : {
+    "The heat pump has set an error flag, but %@ gives no error code. So we do not know what the error is about." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varmepumpen har satt et feilflagg, men MELCloud oppgir ingen feilkode. Vi vet derfor ikke hva feilen gjelder."
+            "value" : "Varmepumpen har satt et feilflagg, men %@ oppgir ingen feilkode. Vi vet derfor ikke hva feilen gjelder."
           }
         }
       }
@@ -5206,13 +5206,13 @@
         }
       }
     },
-    "The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to MELCloud." : {
+    "The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to %@." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Signalstyrken er %lld dBm, som er svakt. Det kan gi brudd i kontakten med MELCloud."
+            "value" : "Signalstyrken er %1$lld dBm, som er svakt. Det kan gi brudd i kontakten med %2$@."
           }
         }
       }
@@ -5283,13 +5283,13 @@
         }
       }
     },
-    "The unit is disconnected from MELCloud. The update can be started when it is connected again." : {
+    "The unit is disconnected from %@. The update can be started when it is connected again." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enheten er frakoblet fra MELCloud. Oppdateringen kan startes når den er tilkoblet igjen."
+            "value" : "Enheten er frakoblet fra %@. Oppdateringen kan startes når den er tilkoblet igjen."
           }
         }
       }
@@ -5305,13 +5305,13 @@
         }
       }
     },
-    "The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or MELCloud." : {
+    "The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or %@." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oppdateringen kan ta en stund. Wi-Fi-modulen starter på nytt underveis, og varmepumpen kan da ikke styres fra appen eller MELCloud."
+            "value" : "Oppdateringen kan ta en stund. Wi-Fi-modulen starter på nytt underveis, og varmepumpen kan da ikke styres fra appen eller %@."
           }
         }
       }
@@ -5448,79 +5448,79 @@
         }
       }
     },
-    "The weekly schedule from MELCloud could not be read completely, so the app does not change it. Fetch the schedule again first." : {
+    "The weekly schedule from %@ could not be read completely, so the app does not change it. Fetch the schedule again first." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen fra MELCloud kunne ikke leses helt, så appen endrer den ikke. Hent planen på nytt først."
+            "value" : "Ukeplanen fra %@ kunne ikke leses helt, så appen endrer den ikke. Hent planen på nytt først."
           }
         }
       }
     },
-    "The weekly schedule has been changed in MELCloud since you started editing. Fetch the schedule again and redo your changes." : {
+    "The weekly schedule has been changed in %@ since you started editing. Fetch the schedule again and redo your changes." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen er endret i MELCloud siden du begynte å redigere. Hent planen på nytt og gjør endringene igjen."
+            "value" : "Ukeplanen er endret i %@ siden du begynte å redigere. Hent planen på nytt og gjør endringene igjen."
           }
         }
       }
     },
-    "The weekly schedule has not been fetched from MELCloud yet." : {
+    "The weekly schedule has not been fetched from %@ yet." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen er ikke hentet fra MELCloud ennå."
+            "value" : "Ukeplanen er ikke hentet fra %@ ennå."
           }
         }
       }
     },
-    "The weekly schedule in MELCloud is on; the heat pump may change by itself according to the schedule." : {
+    "The weekly schedule in %@ is on; the heat pump may change by itself according to the schedule." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen i MELCloud er på; varmepumpen kan endre seg selv etter planen."
+            "value" : "Ukeplanen i %@ er på; varmepumpen kan endre seg selv etter planen."
           }
         }
       }
     },
-    "The weekly schedule is saved in MELCloud (%@). MELCloud confirms at the next fetch." : {
+    "The weekly schedule is saved in %1$@ (%2$@). %1$@ confirms at the next fetch." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud bekrefter ved neste henting."
+            "value" : "Ukeplanen er lagret i %1$@ (%2$@). %1$@ bekrefter ved neste henting."
           }
         }
       }
     },
-    "The weekly schedule is saved in MELCloud (%@). MELCloud shows a different schedule than the one that was sent. Check in the MELCloud app." : {
+    "The weekly schedule is saved in %1$@ (%2$@). %1$@ shows a different schedule than the one that was sent. Check in the %1$@ app." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud viser en annen plan enn den som ble sendt. Sjekk i MELCloud-appen."
+            "value" : "Ukeplanen er lagret i %1$@ (%2$@). %1$@ viser en annen plan enn den som ble sendt. Sjekk i %1$@-appen."
           }
         }
       }
     },
-    "The weekly schedule is saved in MELCloud (%@). MELCloud shows the same schedule." : {
+    "The weekly schedule is saved in %1$@ (%2$@). %1$@ shows the same schedule." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud viser den samme planen."
+            "value" : "Ukeplanen er lagret i %1$@ (%2$@). %1$@ viser den samme planen."
           }
         }
       }
@@ -5547,13 +5547,13 @@
         }
       }
     },
-    "The weekly schedule lives in MELCloud and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page)." : {
+    "The weekly schedule lives in %@ and runs even when the Mac is off. A change with set_* lasts until the next event in the schedule. Claude can only read the schedule; the user creates and changes it in the app (the Weekly schedule page)." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukeplanen ligger i MELCloud og kjører selv om Macen er av. En endring med set_* varer til neste hendelse i planen. Claude kan bare lese planen; brukeren lager og endrer den i appen (siden Ukeplan)."
+            "value" : "Ukeplanen ligger i %@ og kjører selv om Macen er av. En endring med set_* varer til neste hendelse i planen. Claude kan bare lese planen; brukeren lager og endrer den i appen (siden Ukeplan)."
           }
         }
       }
@@ -5679,13 +5679,13 @@
         }
       }
     },
-    "Too many login attempts to MELCloud. Try again at %@." : {
+    "Too many login attempts to %@. Try again at %@." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For mange innloggingsforsøk mot MELCloud. Prøv igjen kl. %@."
+            "value" : "For mange innloggingsforsøk mot %1$@. Prøv igjen kl. %2$@."
           }
         }
       }

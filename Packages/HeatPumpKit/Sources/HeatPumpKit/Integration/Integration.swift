@@ -9,10 +9,40 @@ public protocol Integration: Sendable {
     /// The service name shown in texts, e.g. "MELCloud".
     var displayName: String { get }
     var vendorName: String { get }
+    /// The vendor as texts name it in passing ("the … app", "… support"). Defaults to `vendorName`.
+    var brandName: String { get }
+    /// The unit model as reported to Claude (`get_device_info`); nil when the integration does
+    /// not know it.
+    var modelName: String? { get }
+    /// What Claude is told it controls, in the first line of the MCP server instructions.
+    /// Defaults to "\(displayName) heat pump".
+    var unitDescription: String { get }
+    /// Stored with rows the integration produced (error log, away settings). Persisted, so it
+    /// never changes for an existing integration. Defaults to `id`.
+    var sourceTag: String { get }
     var credentialFields: [CredentialField] { get }
     var rateLimitPolicy: RateLimitPolicy { get }
+    /// Explains the unit's error codes in the health check, the error log and the MCP helper.
+    var errorCodes: any ErrorCodeExplaining { get }
+    /// Health rules that only make sense for this integration's units. Defaults to none.
+    var healthChecks: any HealthCheckProviding { get }
+    /// The maintenance tasks the unit has (health check, maintenance status, reminders).
+    /// Defaults to none.
+    var maintenanceKinds: [MaintenanceKind] { get }
+    /// Knowledge documents about the unit (MCP resources, the Health page). Defaults to none.
+    var knowledge: KnowledgeSource { get }
     /// The connection to the unit. Throws when the context lacks what it needs (e.g. credentials).
     func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver
+}
+
+extension Integration {
+    public var brandName: String { vendorName }
+    public var modelName: String? { nil }
+    public var unitDescription: String { "\(displayName) heat pump" }
+    public var sourceTag: String { id }
+    public var healthChecks: any HealthCheckProviding { NoHealthChecks() }
+    public var maintenanceKinds: [MaintenanceKind] { [] }
+    public var knowledge: KnowledgeSource { KnowledgeSource() }
 }
 
 /// What an integration gets to build its connection.

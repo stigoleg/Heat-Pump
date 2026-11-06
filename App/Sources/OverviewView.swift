@@ -282,7 +282,7 @@ struct OverviewView: View {
         let temps = history.temperatures.filter { $0.timestamp >= start }
         let bars = costBars(from: start)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Last 24 h", hint: history.fromMELCloud ? nil : "Builds up while the app is open") {
+            SectionHeader(title: "Last 24 h", hint: history.fromService ? nil : "Builds up while the app is open") {
                 FlowLayout {
                     LegendDot(label: "Indoor", color: Theme.Data.inside)
                     LegendDot(label: "Outdoor", color: Theme.Data.outside, dashed: true)
@@ -293,7 +293,7 @@ struct OverviewView: View {
                 if temps.isEmpty && bars.values.isEmpty {
                     EmptyChart(
                         title: "No data yet",
-                        message: "Temperatures are shown once the app has fetched the status a few times, and from MELCloud when the log is available.")
+                        message: "Temperatures are shown once the app has fetched the status a few times, and from \(model.serviceName) when the log is available.")
                 } else {
                     VStack(spacing: Theme.Space.s) {
                         temperatureChart(temps, domain: start...now)
@@ -390,7 +390,7 @@ struct OverviewView: View {
     @ViewBuilder private var weather: some View {
         let hours = model.forecast
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Weather next 48 h", hint: model.weatherLocation.map { .verbatim($0.displayName) }) {
+            SectionHeader(title: "Weather next 48 h", hint: model.weatherLocation.map { .verbatim($0.displayName(serviceName: model.serviceName)) }) {
                 Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
             }
             CardSurface {

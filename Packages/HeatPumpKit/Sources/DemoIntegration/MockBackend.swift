@@ -116,7 +116,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
                 entries.append(
                     ErrorLogEntry(
                         deviceId: Self.deviceId, start: start, end: start.addingTimeInterval(240),
-                        message: L10n.tr("Communication error between the indoor and outdoor unit (simulated)"), code: nil, source: "melcloud"))
+                        message: L10n.tr("Communication error between the indoor and outdoor unit (simulated)"), code: nil, source: MELCloudIntegration.sourceTag))
             }
             k += 1
         }
@@ -163,7 +163,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
         guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
         awayReads += 1
-        return AwaySettings(frost: frost, holiday: holiday, fetchedAt: now(), source: "melcloud")
+        return AwaySettings(frost: frost, holiday: holiday, fetchedAt: now(), source: MELCloudIntegration.sourceTag)
     }
 
     public func applyAway(_ change: AwayChange, deviceId: Int) async throws {

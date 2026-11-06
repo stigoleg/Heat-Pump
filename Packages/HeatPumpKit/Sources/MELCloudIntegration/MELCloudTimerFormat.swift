@@ -41,6 +41,6 @@ extension WeeklyTimer {
     }
 
     package func validationProblem(limits: TemperatureLimits?) -> String? {
-        validationProblem(limits: limits, format: MELCloudTimerFormat())
+        validationProblem(limits: limits, format: MELCloudTimerFormat(), serviceName: MELCloudIntegration().displayName)
     }
 }

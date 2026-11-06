@@ -2,7 +2,8 @@ import Foundation
 import Security
 import Synchronization
 
-public struct MELCloudCredentials: Sendable, Equatable {
+/// E-mail and password for the heat pump service account.
+public struct AccountCredentials: Sendable, Equatable {
     public var email: String
     public var password: String
 
@@ -12,14 +13,14 @@ public struct MELCloudCredentials: Sendable, Equatable {
     }
 }
 
-/// Supplies MELCloud credentials and persists the session ContextKey.
+/// Supplies the service account's credentials and persists its session key.
 public protocol CredentialProviding: Sendable {
-    func loadCredentials() throws -> MELCloudCredentials?
+    func loadCredentials() throws -> AccountCredentials?
     /// Whether credentials exist, without reading the secret (no keychain prompt).
     func hasCredentials() -> Bool
     /// E-mail of the stored account, without reading the password where possible.
     func storedEmail() -> String?
-    func saveCredentials(_ credentials: MELCloudCredentials) throws
+    func saveCredentials(_ credentials: AccountCredentials) throws
     func loadContextKey() -> String?
     func saveContextKey(_ key: String?) throws
     func deleteAll() throws
@@ -57,25 +58,31 @@ public struct KeychainCredentialStore: CredentialProviding {
 
     private let environment: [String: String]
     private let service: String
+    /// Names the service in the item labels.
+    private let serviceName: String
     /// The Tibber token is read at most once per process (fetches build a provider hourly).
     private let tibberCache = TokenCache()
 
-    public init(service: String = KeychainCredentialStore.service, environment: [String: String] = ProcessInfo.processInfo.environment) {
+    public init(
+        service: String = KeychainCredentialStore.service, environment: [String: String] = ProcessInfo.processInfo.environment,
+        serviceName: String
+    ) {
         self.service = service
         self.environment = environment
+        self.serviceName = serviceName
     }
 
-    public func loadCredentials() throws -> MELCloudCredentials? {
+    public func loadCredentials() throws -> AccountCredentials? {
         if let email = environment["MELCLOUD_EMAIL"], let password = environment["MELCLOUD_PASSWORD"],
             !email.isEmpty, !password.isEmpty
         {
-            return MELCloudCredentials(email: email, password: password)
+            return AccountCredentials(email: email, password: password)
         }
         guard let data = try read(account: Self.credentialsAccount),
             let object = try? JSONDecoder().decode([String: String].self, from: data),
             let email = object["email"], let password = object["password"]
         else { return nil }
-        return MELCloudCredentials(email: email, password: password)
+        return AccountCredentials(email: email, password: password)
     }
 
     private var environmentCredentials: Bool {
@@ -97,10 +104,10 @@ public struct KeychainCredentialStore: CredentialProviding {
         return (try? loadCredentials())?.email
     }
 
-    public func saveCredentials(_ credentials: MELCloudCredentials) throws {
+    public func saveCredentials(_ credentials: AccountCredentials) throws {
         let data = try JSONEncoder().encode(["email": credentials.email, "password": credentials.password])
         try write(
-            account: Self.credentialsAccount, data: data, label: Self.credentialsLabel,
+            account: Self.credentialsAccount, data: data, label: credentialsLabel,
             generic: Data(credentials.email.utf8))
         // A new account invalidates any cached session.
         try saveContextKey(nil)
@@ -114,7 +121,7 @@ public struct KeychainCredentialStore: CredentialProviding {
     /// nil clears the session by emptying the item; deleting it would drop its ACL.
     public func saveContextKey(_ key: String?) throws {
         if key == nil, attributes(account: Self.contextKeyAccount) == nil { return }
-        try write(account: Self.contextKeyAccount, data: Data((key ?? "").utf8), label: Self.contextKeyLabel)
+        try write(account: Self.contextKeyAccount, data: Data((key ?? "").utf8), label: contextKeyLabel)
     }
 
     public func loadTibberToken() -> String? {
@@ -144,8 +151,8 @@ public struct KeychainCredentialStore: CredentialProviding {
     }
 
     // Labels shown in Keychain Access (the service and account names stay fixed).
-    static let credentialsLabel = L10n.tr("Heat Pump – MELCloud login")
-    static let contextKeyLabel = L10n.tr("Heat Pump – MELCloud session")
+    var credentialsLabel: String { L10n.format("Heat Pump – %@ login", serviceName) }
+    var contextKeyLabel: String { L10n.format("Heat Pump – %@ session", serviceName) }
     static let tibberLabel = L10n.tr("Heat Pump – Tibber token")
 
     /// Moves items created by older versions (ACL trusting only their creator) to the shared
@@ -154,10 +161,10 @@ public struct KeychainCredentialStore: CredentialProviding {
     /// nothing outside an app bundle.
     public func migrateAccessIfNeeded() {
         // Without a shared access there is nothing to migrate to; leave the items alone.
-        guard KeychainAccess.shared(label: Self.credentialsLabel) != nil else { return }
+        guard KeychainAccess.shared(label: credentialsLabel) != nil else { return }
         let items = [
-            (Self.credentialsAccount, Self.credentialsLabel),
-            (Self.contextKeyAccount, Self.contextKeyLabel),
+            (Self.credentialsAccount, credentialsLabel),
+            (Self.contextKeyAccount, contextKeyLabel),
             (Self.tibberTokenAccount, Self.tibberLabel),
         ]
         for (account, label) in items {
@@ -285,7 +292,7 @@ public struct KeychainError: Error, Sendable, LocalizedError {
 /// In-memory store for tests and the mock backend.
 public final class InMemoryCredentialStore: CredentialProviding {
     private struct State {
-        var credentials: MELCloudCredentials?
+        var credentials: AccountCredentials?
         var contextKey: String?
         var tibberToken: String?
         var loadCount = 0
@@ -294,11 +301,11 @@ public final class InMemoryCredentialStore: CredentialProviding {
 
     private let state: Mutex<State>
 
-    public init(credentials: MELCloudCredentials? = nil, contextKey: String? = nil) {
+    public init(credentials: AccountCredentials? = nil, contextKey: String? = nil) {
         state = Mutex(State(credentials: credentials, contextKey: contextKey))
     }
 
-    public func loadCredentials() throws -> MELCloudCredentials? {
+    public func loadCredentials() throws -> AccountCredentials? {
         state.withLock {
             $0.loadCount += 1
             return $0.credentials
@@ -314,7 +321,7 @@ public final class InMemoryCredentialStore: CredentialProviding {
     public var existenceChecks: Int { state.withLock { $0.existenceChecks } }
     /// Number of `loadCredentials` calls (tests check that polling does not read secrets).
     public var loadCount: Int { state.withLock { $0.loadCount } }
-    public func saveCredentials(_ credentials: MELCloudCredentials) throws { state.withLock { $0.credentials = credentials } }
+    public func saveCredentials(_ credentials: AccountCredentials) throws { state.withLock { $0.credentials = credentials } }
     public func loadContextKey() -> String? { state.withLock { $0.contextKey } }
     public func saveContextKey(_ key: String?) throws { state.withLock { $0.contextKey = key } }
     public func loadTibberToken() -> String? { state.withLock { $0.tibberToken } }

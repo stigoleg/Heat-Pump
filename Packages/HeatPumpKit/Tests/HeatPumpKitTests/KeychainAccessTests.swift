@@ -38,7 +38,7 @@ struct KeychainAccessTests {
     }
 
     @Test func storedEmailDefaultsToCredentials() {
-        let store = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "pw"))
+        let store = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "pw"))
         #expect(store.storedEmail() == "a@b.no")
     }
 }

@@ -47,6 +47,10 @@ when format specifiers differ between key and translation.
   settings-tab tags (`generelt`, `konto`, `strompris`, `lokal`, `vaer`, `claude`, `data`),
   keychain names, `VARMEPUMPE_*` variables, log lines, text passed through from MELCloud/Tibber.
 - Do not compare display text in logic (filter on enums or keys instead).
+- The service, vendor and unit are never literals in core, app or MCP texts: pass
+  `serviceName` (or `integration.brandName`, `modelName`) as `%@`, e.g.
+  `L10n.format("%@ did not accept the login.", serviceName)` or
+  `Text("Sent to \(model.serviceName)")`. `BoundaryTests` fails otherwise.
 
 ## Workflow
 
@@ -79,8 +83,9 @@ App keys are the compiler's form: interpolations become `%@` (String and most ty
 `sync` drops keys no longer in the sources (use `--keep-unused` to keep them) and never hand-edit
 the `.xcstrings` files.
 
-Knowledge documents (`Packages/HeatPumpKit/Sources/HeatPumpKit/Knowledge/{en,nb}/*.md`) are
-separate: edit both languages, then `python3 Packages/HeatPumpKit/scripts/generate-knowledge.py`.
+Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.md`, today
+`MELCloudIntegration`) are separate: edit both languages, then
+`python3 Packages/HeatPumpKit/scripts/generate-knowledge.py`.
 
 ## Style
 

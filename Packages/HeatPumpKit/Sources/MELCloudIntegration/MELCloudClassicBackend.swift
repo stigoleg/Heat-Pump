@@ -208,7 +208,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         Self.diagnose("HolidayMode/GetSettings response: \(MELCloudClassicParser.redactedShape(holidayJSON))")
         return AwaySettings(
             frost: try MELCloudClassicParser.frostProtection(frostJSON), holiday: try MELCloudClassicParser.holidayMode(holidayJSON),
-            fetchedAt: now(), source: "melcloud")
+            fetchedAt: now(), source: MELCloudIntegration.sourceTag)
     }
 
     public nonisolated func awaySettings(fromStoredListing listing: JSONValue?) -> AwaySettings? {

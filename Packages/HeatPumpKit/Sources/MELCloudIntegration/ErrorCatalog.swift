@@ -1,34 +1,5 @@
 import Foundation
-
-/// How much we trust an error-code explanation.
-public enum CatalogConfidence: String, Codable, Sendable {
-    /// Text that MELCloud itself returned.
-    case melcloud
-    /// From a Mitsubishi document for a closely related model.
-    case medium
-    /// Generic Mitsubishi code or community knowledge, not confirmed for MSZ-RW.
-    case low
-    /// Nothing known.
-    case unknown
-}
-
-public struct ErrorCatalogEntry: Codable, Sendable, Equatable {
-    public var code: String
-    public var title: String
-    public var explanation: String
-    public var recommendation: String
-    public var confidence: CatalogConfidence
-    public var source: String
-
-    public init(code: String, title: String, explanation: String, recommendation: String, confidence: CatalogConfidence, source: String) {
-        self.code = code
-        self.title = title
-        self.explanation = explanation
-        self.recommendation = recommendation
-        self.confidence = confidence
-        self.source = source
-    }
-}
+import HeatPumpKit
 
 /// Error-code lookups. There is no authoritative MSZ-RW code table available; every
 /// entry carries a `confidence` and the caveat is repeated in the user-facing text.
@@ -99,7 +70,7 @@ public enum ErrorCatalog {
                 explanation: known.map { L10n.format("The text comes directly from MELCloud. Possible interpretation: %@", $0.explanation) }
                     ?? L10n.tr("The text comes directly from MELCloud."),
                 recommendation: known?.recommendation ?? callDealer,
-                confidence: .melcloud, source: "MELCloud")
+                confidence: .serviceText, source: "MELCloud")
         }
         if let errorCode, let entry = numeric[errorCode] { return entry }
         return ErrorCatalogEntry(
@@ -108,4 +79,12 @@ public enum ErrorCatalog {
             explanation: L10n.format("We have no reliable explanation of this code for MSZ-RW. %@", caveat),
             recommendation: callDealer, confidence: .unknown, source: "—")
     }
+}
+
+/// `ErrorCatalog` as the integration's error-code knowledge.
+public struct MELCloudErrorCodes: ErrorCodeExplaining {
+    public init() {}
+    public var caveat: String { ErrorCatalog.caveat }
+    public func hasExplanation(errorCode: Int?) -> Bool { ErrorCatalog.hasExplanation(errorCode: errorCode) }
+    public func lookup(errorCode: Int?, message: String?) -> ErrorCatalogEntry { ErrorCatalog.lookup(errorCode: errorCode, message: message) }
 }

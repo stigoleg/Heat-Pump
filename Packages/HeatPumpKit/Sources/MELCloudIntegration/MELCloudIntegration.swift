@@ -6,9 +6,25 @@ import HeatPumpKit
 public struct MELCloudIntegration: Integration {
     public init() {}
 
+    /// Persisted with error-log entries and away settings; never changes.
+    public static let sourceTag = "melcloud"
+
     public var id: String { "melcloud-classic" }
     public var displayName: String { "MELCloud" }
     public var vendorName: String { "Mitsubishi Electric" }
+    public var brandName: String { "Mitsubishi" }
+    public var modelName: String? { "Mitsubishi Electric MSZ-RW25VG (MSZ-RW25VG-SC1)" }
+    public var unitDescription: String { "Mitsubishi MSZ-RW25VG wall heat pump (MELCloud Classic)" }
+    public var sourceTag: String { Self.sourceTag }
+    public var errorCodes: any ErrorCodeExplaining { MELCloudErrorCodes() }
+    public var healthChecks: any HealthCheckProviding { MELCloudHealthChecks() }
+    /// The MSZ-RW owner manual's filters, plus dealer service and anything else.
+    public var maintenanceKinds: [MaintenanceKind] { MaintenanceKind.allCases }
+    public var knowledge: KnowledgeSource {
+        KnowledgeSource(
+            names: ["unit-profile", "maintenance", "error-codes", "when-to-call-dealer", "safe-operating-guidance"],
+            documents: KnowledgeContent.documents)
+    }
 
     public var credentialFields: [CredentialField] {
         [CredentialField(id: "email", kind: .email, isSecret: false), CredentialField(id: "password", kind: .password, isSecret: true)]

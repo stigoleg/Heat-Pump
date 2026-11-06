@@ -109,8 +109,8 @@ struct SeriesPoint: Identifiable {
 
 struct HistoryData {
     var temperatures: [TemperaturePoint] = []
-    /// False when MELCloud's temperature log is empty and only the app's own readings are shown.
-    var fromMELCloud = true
+    /// False when the service's temperature log is empty and only the app's own readings are shown.
+    var fromService = true
     var power: [HistoryPoint] = []
     var modes: [HistoryPoint] = []
 }
@@ -143,6 +143,14 @@ final class AppModel {
     let service: HeatPumpService?
     let startupError: String?
     let isDemo: Bool
+    /// The integration this process runs (also without a service, e.g. when the database failed).
+    let integration: any Integration
+    /// The service as texts name it, e.g. "MELCloud".
+    var serviceName: String { integration.displayName }
+    /// The integration's error-code explanations.
+    var errorCodes: any ErrorCodeExplaining { integration.errorCodes }
+    /// The integration's knowledge documents.
+    var knowledge: Knowledge { Knowledge(integration: integration) }
 
     var selection: Screen? = .overview
     /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
@@ -206,6 +214,7 @@ final class AppModel {
     private let notifier = Notifier()
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
+        integration = IntegrationCatalog.current(environment: environment)
         do {
             let service = try IntegrationCatalog.makeService(environment: environment)
             self.service = service
@@ -401,7 +410,7 @@ final class AppModel {
 
     private func deliverNotifications() async {
         let planned = NotificationPlanner.plan(
-            state: state, errorEvents: errorLog, maintenance: maintenance, memory: notifier.memory, now: Date())
+            state: state, errorEvents: errorLog, maintenance: maintenance, memory: notifier.memory, now: Date(), serviceName: serviceName)
         notifier.memory = planned.memory
         for notification in planned.notifications {
             await notifier.deliver(notification)
@@ -419,7 +428,7 @@ final class AppModel {
         var data = HistoryData()
         if let history = try? await service.temperatureHistory(from: from, to: end) {
             data.temperatures = history.points
-            data.fromMELCloud = history.fromMELCloud
+            data.fromService = history.fromService
         }
         data.power = (try? await service.history(metric: .power, from: from, to: end)) ?? []
         data.modes = (try? await service.history(metric: .mode, from: from, to: end)) ?? []
@@ -773,7 +782,7 @@ final class AppModel {
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !email.isEmpty, !password.isEmpty else { return (false, String(localized: "Enter both email and password.")) }
         do {
-            let result = try await service.signIn(MELCloudCredentials(email: email, password: password))
+            let result = try await service.signIn(AccountCredentials(email: email, password: password))
             stateResult = result
             hasCredentials = true
             await reloadLocal()

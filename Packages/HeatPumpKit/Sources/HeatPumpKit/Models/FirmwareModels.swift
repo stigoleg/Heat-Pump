@@ -52,7 +52,8 @@ public enum FirmwareUpdatePhase: String, Codable, Sendable, CaseIterable {
     }
 
     /// Status text.
-    public var displayText: String {
+    /// What the phase means for the user; `serviceName` names who blocks or forces an update.
+    public func displayText(serviceName: String) -> String {
         switch self {
         case .approvalRequired: L10n.tr("New firmware is ready and waiting for you to start the update.")
         case .unitOffline: L10n.tr("New firmware is ready, but the unit is offline. The update can be started when it is connected again.")
@@ -63,11 +64,11 @@ public enum FirmwareUpdatePhase: String, Codable, Sendable, CaseIterable {
         case .downloading: L10n.tr("The unit is downloading new firmware.")
         case .retrying: L10n.tr("The download is being retried.")
         case .complete: L10n.tr("The update is complete.")
-        case .blocked: L10n.tr("MELCloud has blocked the update.")
+        case .blocked: L10n.format("%@ has blocked the update.", serviceName)
         case .aborted: L10n.tr("The update was aborted. You can try again.")
         case .abortedOffline: L10n.tr("The update was aborted because the unit was offline.")
-        case .forced: L10n.tr("MELCloud is carrying out a required update.")
-        case .unknown: L10n.tr("MELCloud reports an unknown status for the update.")
+        case .forced: L10n.format("%@ is carrying out a required update.", serviceName)
+        case .unknown: L10n.format("%@ reports an unknown status for the update.", serviceName)
         }
     }
 
@@ -139,8 +140,8 @@ public struct FirmwareUpdateStatus: Codable, Sendable, Equatable {
     }
 
     /// Status text with progress, retries and the raw numbers for an unknown combination.
-    public var displayText: String {
-        var text = phase.displayText
+    public func displayText(serviceName: String) -> String {
+        var text = phase.displayText(serviceName: serviceName)
         switch phase {
         case .downloading, .retrying:
             if let progress = progressText { text += " " + L10n.format("%@ downloaded.", progress) }
@@ -211,11 +212,15 @@ public struct FirmwareStatus: Codable, Sendable, Equatable {
     /// How long a just-started update counts as in progress while MELCloud still lists it as waiting.
     public static let startGrace: TimeInterval = 10 * 60
 
-    /// What the user (and Claude's approval dialog) must know before starting. MELCloud's own
+    /// What the user (and Claude's approval dialog) must know before starting. The service's own
     /// warning (FirmwareUpdateMessageOwner) says not to cut power or use the local controller.
-    public static let warnings = [
-        L10n.tr("Firmware cannot be rolled back once the update has started."),
-        L10n.tr("The heat pump must have power and good Wi-Fi the whole time. Do not disconnect it from power and do not use the remote control (the local controller) while the update runs."),
-        L10n.tr("The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or MELCloud."),
-    ]
+    public static func warnings(serviceName: String) -> [String] {
+        [
+            L10n.tr("Firmware cannot be rolled back once the update has started."),
+            L10n.tr("The heat pump must have power and good Wi-Fi the whole time. Do not disconnect it from power and do not use the remote control (the local controller) while the update runs."),
+            L10n.format(
+                "The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or %@.",
+                serviceName),
+        ]
+    }
 }

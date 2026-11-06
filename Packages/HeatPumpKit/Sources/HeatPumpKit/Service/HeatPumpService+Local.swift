@@ -92,7 +92,7 @@ extension HeatPumpService {
     /// address leaves both the history and the failure state alone.
     func readLocal(host: String, minInterval: TimeInterval, persist: Bool = true) async throws -> LocalRead {
         let t = now()
-        switch try store.reserveFetch(key: Self.localFetchKey, minInterval: minInterval, now: t, melcloud: false) {
+        switch try store.reserveFetch(key: Self.localFetchKey, minInterval: minInterval, now: t, countsTowardServiceBlock: false) {
         case .throttled(let next):
             return .throttled(nextAllowed: next)
         case .blocked, .credentialsRejected:
@@ -120,7 +120,7 @@ extension HeatPumpService {
     }
 
     private func pruneLocalIfDue() throws {
-        guard try store.reserveFetch(key: Self.localPruneKey, minInterval: 86_400, now: now(), melcloud: false) == .allowed
+        guard try store.reserveFetch(key: Self.localPruneKey, minInterval: 86_400, now: now(), countsTowardServiceBlock: false) == .allowed
         else { return }
         try store.pruneLocalSamples(now: now())
     }
@@ -202,7 +202,7 @@ extension HeatPumpService {
     /// "Find automatically": tries the saved address, then looks for the unit's hardware address
     /// (from the MELCloud listing; never shown) on the Mac's own /24. At most once per minute.
     public func discoverLocal() async throws -> LocalDiscoveryResult {
-        guard try store.reserveFetch(key: Self.localDiscoveryKey, minInterval: 60, now: now(), melcloud: false) == .allowed else {
+        guard try store.reserveFetch(key: Self.localDiscoveryKey, minInterval: 60, now: now(), countsTowardServiceBlock: false) == .allowed else {
             return LocalDiscoveryResult(host: nil, message: L10n.tr("The search was just run. Wait a minute before you try again."))
         }
         return try await discover()
@@ -214,7 +214,7 @@ extension HeatPumpService {
         guard let host = try localSettings().host, isOnNetwork(host),
             record.consecutiveFailures >= Self.localRediscoveryAfterFailures,
             try store.reserveFetch(
-                key: Self.localAutoDiscoveryKey, minInterval: Self.localRediscoveryInterval, now: now(), melcloud: false)
+                key: Self.localAutoDiscoveryKey, minInterval: Self.localRediscoveryInterval, now: now(), countsTowardServiceBlock: false)
                 == .allowed
         else { return }
         _ = try await discover(trySaved: false)
@@ -230,7 +230,9 @@ extension HeatPumpService {
         guard let mac = try cloudMAC() else {
             return LocalDiscoveryResult(
                 host: nil,
-                message: L10n.tr("Did not find the heat pump's hardware address in MELCloud yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)."))
+                message: L10n.format(
+                    "Did not find the heat pump's hardware address in %@ yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices).",
+                    serviceName))
         }
         let hosts = try await local.scanner.hosts(matchingMAC: mac)
         guard let host = hosts.first(where: { LocalAccess.validatedHost($0) != nil }) else {

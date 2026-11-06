@@ -55,7 +55,7 @@ extension HeatPumpService {
         if let deviceId = try store.latestSnapshot()?.state.deviceId, let reporter = backend as? any DeviceLocationReporting,
             let location = reporter.location(fromStoredListing: try store.rawDevice(deviceId: deviceId)?.listing)
         {
-            return WeatherLocation(latitude: location.latitude, longitude: location.longitude, placeName: settings.placeName, source: .melcloud)
+            return WeatherLocation(latitude: location.latitude, longitude: location.longitude, placeName: settings.placeName, source: .service)
         }
         if isDemo { return WeatherLocation(latitude: 59.91, longitude: 10.75, placeName: settings.placeName, source: .demo) }
         return nil
@@ -79,7 +79,7 @@ extension HeatPumpService {
             return WeatherSync(status: .upToDate)
         }
         let minInterval = sameLocation ? Self.weatherInterval : Self.weatherNewLocationInterval
-        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, melcloud: false) {
+        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, countsTowardServiceBlock: false) {
         case .throttled(let next):
             return WeatherSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:

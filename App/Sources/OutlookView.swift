@@ -32,7 +32,7 @@ struct OutlookView: View {
     private var weatherSection: some View {
         let hours = Array(model.longForecast.prefix { $0.time < Date().addingTimeInterval(48 * 3600) })
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Weather", hint: (model.weatherLocation?.displayName).map(LocalizedStringKey.verbatim))
+            SectionHeader("Weather", hint: (model.weatherLocation?.displayName(serviceName: model.serviceName)).map(LocalizedStringKey.verbatim))
             TrendCard(title: "Next 48 hours") {
                 FlowLayout {
                     LegendDot(label: "Temperature", color: Theme.Data.outside)

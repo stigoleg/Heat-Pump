@@ -30,7 +30,7 @@ struct ControlView: View {
                     StatusBanner(bottomSpacing: Theme.Space.l)
                     HStack(alignment: .center, spacing: Theme.Space.m) {
                         (model.weeklyTimer?.enabled == true
-                            ? Text("Changes are sent automatically a few seconds after you set them. The weekly schedule in MELCloud is on, so the heat pump can also change by itself.")
+                            ? Text("Changes are sent automatically a few seconds after you set them. The weekly schedule in \(model.serviceName) is on, so the heat pump can also change by itself.")
                             : Text("Changes are sent automatically a few seconds after you set them."))
                             .font(.callout).foregroundStyle(.secondary)
                         Spacer(minLength: Theme.Space.s)
@@ -432,7 +432,7 @@ struct WeeklyTimerStatus: View {
     }
 
     private func text(_ timer: WeeklyTimer?) -> String {
-        guard let timer else { return String(localized: "Fetching the weekly schedule from MELCloud…") }
+        guard let timer else { return String(localized: "Fetching the weekly schedule from \(model.serviceName)…") }
         guard timer.enabled == true else { return timer.enabled == false ? String(localized: "Weekly schedule off") : String(localized: "Unknown whether the weekly schedule is on") }
         guard let next = timer.nextEvent(after: Date(), timeZone: .current) else { return String(localized: "Weekly schedule on") }
         let day = TimerEvent.shortWeekdayNames[next.event.weekday - 1]

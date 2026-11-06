@@ -86,52 +86,32 @@ public enum LocalHealth {
             lastAttempt: lastAttempt, lastSuccess: lastSuccess, failingSince: failingSince)
     }
 
-    public static func evaluate(_ input: LocalHealthInput, cloudErrorShown: Bool, now: Date, timeZone: TimeZone) -> [HealthFinding] {
+    /// The integration's own adapter rules first, then the generic ones.
+    public static func evaluate(
+        _ input: LocalHealthInput, cloudErrorShown: Bool, now: Date, timeZone: TimeZone, integration: any Integration
+    ) -> [HealthFinding] {
         var findings: [HealthFinding] = []
-        findings += activeError(input.latest, cloudErrorShown: cloudErrorShown, now: now)
-        findings += cloudConnectOff(input.latest, now: now)
-        findings += unreachable(input, now: now)
+        findings += integration.healthChecks.localAdapterFindings(input, cloudErrorShown: cloudErrorShown, now: now)
+        findings += unreachable(input, now: now, serviceName: integration.displayName)
         findings += shortCycling(input.recentHours)
         findings += powerVsOutdoor(input.hourly, now: now, timeZone: timeZone)
         findings += frequentDefrost(input.hourly, now: now)
         return findings
     }
 
-    static func activeError(_ latest: LocalSample?, cloudErrorShown: Bool, now: Date) -> [HealthFinding] {
-        guard let latest, latest.hasError, let code = latest.errorCode, !cloudErrorShown,
-            now.timeIntervalSince(latest.timestamp) < Threshold.errorMaxAge
-        else { return [] }
-        return [
-            HealthFinding(
-                code: "active_error_local", severity: .critical, title: L10n.tr("The heat pump is reporting an error now (local)"),
-                detail: L10n.format(
-                    "The Wi-Fi adapter on the home network reports error code %@. The code comes directly from the indoor unit and is not translated; MELCloud has not reported the error yet. %@",
-                    String(format: "0x%04X", code), ErrorCatalog.caveat),
-                recommendation: L10n.tr("Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If the code goes away by itself at the next reading, watch whether it comes back."))
-        ]
-    }
-
-    static func cloudConnectOff(_ latest: LocalSample?, now: Date) -> [HealthFinding] {
-        guard let latest, latest.cloudConnected == false, now.timeIntervalSince(latest.timestamp) < 3600 else { return [] }
-        return [
-            HealthFinding(
-                code: "local_cloud_connect_off", severity: .warning, title: L10n.tr("The MELCloud connection is turned off in the adapter"),
-                detail: L10n.tr("The Wi-Fi adapter itself says the connection to MELCloud is turned off (CONNECT = OFF). Then neither status nor changes from MELCloud get through, and the app can only read locally."),
-                recommendation: L10n.tr("The app never changes this setting. Restart the heat pump via the circuit breaker, and check the MELCloud app. If the connection is still off, contact the dealer or Mitsubishi support."))
-        ]
-    }
-
-    static func unreachable(_ input: LocalHealthInput, now: Date) -> [HealthFinding] {
+    static func unreachable(_ input: LocalHealthInput, now: Date, serviceName: String) -> [HealthFinding] {
         guard input.enabled, input.onHomeNetwork, let since = input.failingSince, now.timeIntervalSince(since) > Threshold.unreachableAfter,
             let attempt = input.lastAttempt, now.timeIntervalSince(attempt) < Threshold.unreachableAfter
         else { return [] }
         let detail =
             input.lastSuccess.map {
                 L10n.format(
-                    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via MELCloud work as before.",
-                    Display.dateTime(since), Display.dateTime($0))
+                    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via %@ work as before.",
+                    Display.dateTime(since), Display.dateTime($0), serviceName)
             }
-            ?? L10n.format("The app has not reached the adapter locally since %@. Control and status via MELCloud work as before.", Display.dateTime(since))
+            ?? L10n.format(
+                "The app has not reached the adapter locally since %@. Control and status via %@ work as before.", Display.dateTime(since),
+                serviceName)
         return [
             HealthFinding(
                 code: "local_unreachable", severity: .info, title: L10n.tr("The Wi-Fi adapter is not responding on the home network"),

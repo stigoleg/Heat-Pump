@@ -129,12 +129,12 @@ public struct MaintenanceStatus: Codable, Sendable, Equatable {
 /// Temperature points for charts and where they come from.
 public struct TemperatureHistory: Sendable, Equatable {
     public var points: [TemperaturePoint]
-    /// False when MELCloud's temperature log had nothing and the points are the app's own snapshots.
-    public var fromMELCloud: Bool
+    /// False when the service's temperature log had nothing and the points are the app's own snapshots.
+    public var fromService: Bool
 
-    public init(points: [TemperaturePoint], fromMELCloud: Bool) {
+    public init(points: [TemperaturePoint], fromService: Bool) {
         self.points = points
-        self.fromMELCloud = fromMELCloud
+        self.fromService = fromService
     }
 }
 

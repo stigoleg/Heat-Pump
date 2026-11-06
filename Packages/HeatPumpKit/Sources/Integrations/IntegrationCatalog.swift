@@ -15,6 +15,11 @@ public enum IntegrationCatalog {
         IntegrationContext.demoRequested(environment: environment)
     }
 
+    /// The integration this process runs: the demo for `VARMEPUMPE_BACKEND=mock`, otherwise MELCloud.
+    public static func current(environment: [String: String] = ProcessInfo.processInfo.environment) -> any Integration {
+        isDemo(environment: environment) ? demo : melcloud
+    }
+
     /// The service for this process: the demo integration with simulated providers for
     /// `VARMEPUMPE_BACKEND=mock`, otherwise MELCloud with keychain credentials, real price, weather
     /// and house providers and the local adapter on the network. The database comes from
@@ -26,15 +31,15 @@ public enum IntegrationCatalog {
         if isDemo(environment: environment) {
             let context = IntegrationContext(environment: environment, store: store)
             return HeatPumpService(
-                backend: try demo.makeConnection(context), store: store, policy: demo.rateLimitPolicy,
+                backend: try demo.makeConnection(context), store: store, integration: demo, policy: demo.rateLimitPolicy,
                 priceProvider: { _ in MockPriceProvider() },
                 local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
                 weatherProvider: { _ in MockWeatherProvider() }, houseProvider: { MockHouseConsumptionProvider() })
         }
-        let credentials = KeychainCredentialStore(environment: environment)
+        let credentials = KeychainCredentialStore(environment: environment, serviceName: melcloud.displayName)
         let context = IntegrationContext(environment: environment, store: store, credentials: credentials)
         return HeatPumpService(
-            backend: try melcloud.makeConnection(context), store: store, credentials: credentials,
+            backend: try melcloud.makeConnection(context), store: store, credentials: credentials, integration: melcloud,
             policy: melcloud.rateLimitPolicy,
             priceProvider: { settings in
                 switch settings.agreement {

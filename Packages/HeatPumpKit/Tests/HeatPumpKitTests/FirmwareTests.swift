@@ -92,7 +92,7 @@ struct FirmwareTests {
 
     func classic(_ transport: StubTransport) -> MELCloudClassicBackend {
         let credentials = InMemoryCredentialStore(
-            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         return MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, now: clock.provider)
     }
 

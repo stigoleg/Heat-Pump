@@ -84,7 +84,7 @@ struct RefreshButton: View {
                 }
             }
             .disabled(wait != nil || model.isRefreshing || model.service == nil)
-            .help("Fetches new status from MELCloud. At most once a minute, so the account is not blocked.")
+            .help("Fetches new status from \(model.serviceName). At most once a minute, so the account is not blocked.")
         }
     }
 
@@ -101,6 +101,8 @@ struct RefreshButton: View {
 }
 
 struct OnboardingView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -110,7 +112,7 @@ struct OnboardingView: View {
                 Text("Welcome")
                     .font(.largeTitle.bold())
                 Text(
-                    "The app fetches status from the heat pump through MELCloud, the same service the Mitsubishi app uses. Sign in with the email and password for your MELCloud account. The password is stored securely in the keychain on the Mac."
+                    "The app fetches status from the heat pump through \(model.serviceName), the same service the \(model.integration.brandName) app uses. Sign in with the email and password for your \(model.serviceName) account. The password is stored securely in the keychain on the Mac."
                 )
                 .fixedSize(horizontal: false, vertical: true)
                 LoginForm()

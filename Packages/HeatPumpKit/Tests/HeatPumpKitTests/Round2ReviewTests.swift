@@ -101,7 +101,7 @@ struct Round2ReviewTests {
         #expect(await backend.fetchStateCalls == 0)
         #expect(try HistoryStore(path: path).fetchState(key: "state") == nil)
         clock.advance(5)
-        let signedIn = try await svc.signIn(MELCloudCredentials(email: "a@b.no", password: "pw"))
+        let signedIn = try await svc.signIn(AccountCredentials(email: "a@b.no", password: "pw"))
         #expect(signedIn.refreshed)
         #expect(await backend.fetchStateCalls == 1)
     }
@@ -111,7 +111,7 @@ struct Round2ReviewTests {
         let backend = CountingBackend(now: clock.provider)
         let path = temporaryDatabasePath()
         let svc = try makeService(clock: clock, backend: backend, credentials: InMemoryCredentialStore(), path: path)
-        let creds = MELCloudCredentials(email: "a@b.no", password: "pw")
+        let creds = AccountCredentials(email: "a@b.no", password: "pw")
         _ = try await svc.signIn(creds)
         clock.advance(3)
         let again = try await svc.signIn(creds)  // within 10 s: no second login
@@ -147,7 +147,7 @@ struct Round2ReviewTests {
     @Test func invalidCredentialsGetTheirOwnMessage() async throws {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
-        let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "feil"))
+        let creds = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "feil"))
         let svc = try makeService(clock: clock, backend: backend, credentials: creds)
         await backend.failNext(with: .invalidCredentials(nil))
         let result = try await svc.currentState()
@@ -159,7 +159,7 @@ struct Round2ReviewTests {
     @Test func credentialPresenceIsCached() async throws {
         let clock = TestClock()
         let backend = CountingBackend(now: clock.provider)
-        let creds = InMemoryCredentialStore(credentials: MELCloudCredentials(email: "a@b.no", password: "pw"))
+        let creds = InMemoryCredentialStore(credentials: AccountCredentials(email: "a@b.no", password: "pw"))
         let svc = try makeService(clock: clock, backend: backend, credentials: creds)
         for _ in 0..<5 {
             _ = try await svc.currentState(force: true)
@@ -171,7 +171,7 @@ struct Round2ReviewTests {
         try await svc.signOut()
         #expect(await !svc.hasCredentials())
         #expect(creds.existenceChecks == 1)
-        try await svc.saveCredentials(MELCloudCredentials(email: "a@b.no", password: "pw"))
+        try await svc.saveCredentials(AccountCredentials(email: "a@b.no", password: "pw"))
         #expect(await svc.hasCredentials())
     }
 

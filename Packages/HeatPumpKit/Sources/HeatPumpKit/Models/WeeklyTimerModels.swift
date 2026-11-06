@@ -433,13 +433,13 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// Reason the plan cannot be saved, or nil. `limits` are the unit's setpoint limits.
     /// New and edited events are checked strictly; events exactly as read from MELCloud pass
     /// through unchanged (MELCloud accepted them, and the app must not make a plan unsavable).
-    /// `format` (the driver's) says which events are as read.
-    public func validationProblem(limits: TemperatureLimits?, format: any WeeklyTimerFormat) -> String? {
+    /// `format` (the driver's) says which events are as read; `serviceName` names where the plan lives.
+    public func validationProblem(limits: TemperatureLimits?, format: any WeeklyTimerFormat, serviceName: String) -> String? {
         guard decoded else {
             return L10n.tr("The weekly schedule could not be read completely, so the app does not change it (that could delete events the app does not understand).")
         }
         guard enabled != nil else {
-            return L10n.tr("MELCloud did not say whether the weekly schedule is on. Choose on or off before you save.")
+            return L10n.format("%@ did not say whether the weekly schedule is on. Choose on or off before you save.", serviceName)
         }
         for season in seasons {
             var seen: [Int: Bool] = [:]

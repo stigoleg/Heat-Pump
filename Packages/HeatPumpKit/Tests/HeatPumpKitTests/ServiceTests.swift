@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import HeatPumpKit
 @testable import DemoIntegration
+@testable import MELCloudIntegration
 
 @Suite("Setpoint validation")
 struct ValidationTests {
@@ -287,27 +288,42 @@ struct KnowledgeTests {
         #expect(unknown.confidence == .unknown)
         #expect(unknown.explanation.contains("no reliable explanation"))
         let fromMessage = ErrorCatalog.lookup(errorCode: nil, message: "Feil på føler")
-        #expect(fromMessage.confidence == .melcloud)
+        #expect(fromMessage.confidence == .serviceText)
         #expect(ErrorCatalog.blinkCodes[2]?.source.contains("MSZ-LN") == true)
     }
 }
 
 @Suite("Compiled knowledge")
 struct CompiledKnowledgeTests {
+    /// The compiled documents of every target with a `Knowledge` folder. A new target with
+    /// documents must be added here.
+    static let compiled: [String: KnowledgeSource] = ["MELCloudIntegration": MELCloudIntegration().knowledge]
+
+    static let sources = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "Sources")
+
+    @Test func everyKnowledgeFolderIsCompiled() throws {
+        let targets = try FileManager.default.contentsOfDirectory(at: Self.sources, includingPropertiesForKeys: nil)
+            .filter { FileManager.default.fileExists(atPath: $0.appending(path: "Knowledge").path) }
+            .map(\.lastPathComponent)
+        #expect(Set(targets) == Set(Self.compiled.keys))
+    }
+
     /// Fails when Knowledge/<lang>/*.md changed without running scripts/generate-knowledge.py.
     @Test(arguments: L10n.Language.allCases)
     func compiledContentMatchesMarkdownFiles(language: L10n.Language) throws {
-        let directory = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Sources/HeatPumpKit/Knowledge/\(language.rawValue)")
-        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "md" }
-        #expect(Set(files.map { $0.deletingPathExtension().lastPathComponent }) == Set(Knowledge.names))
-        for file in files {
-            let name = file.deletingPathExtension().lastPathComponent
-            let onDisk = try String(contentsOf: file, encoding: .utf8)
-            let compiled = try #require(Knowledge.document(named: name, language: language)).markdown
-            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(language.rawValue)/\(name) is out of date")
+        for (target, source) in Self.compiled {
+            let directory = Self.sources.appending(path: "\(target)/Knowledge/\(language.rawValue)")
+            let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "md" }
+            #expect(Set(files.map { $0.deletingPathExtension().lastPathComponent }) == Set(source.names), "\(target)")
+            for file in files {
+                let name = file.deletingPathExtension().lastPathComponent
+                let onDisk = try String(contentsOf: file, encoding: .utf8)
+                let compiled = try #require(source.documents[language.rawValue]?[name], "\(target)/\(language.rawValue)/\(name)")
+                #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(target)/\(language.rawValue)/\(name) is out of date")
+            }
         }
     }
 }

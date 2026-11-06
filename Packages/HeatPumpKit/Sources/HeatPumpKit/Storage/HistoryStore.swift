@@ -19,7 +19,7 @@ public enum ChangeReservation: Sendable, Equatable {
     case tooSoon(nextAllowed: Date)
 }
 
-/// Why MELCloud requests are stopped. Drives the user-facing message.
+/// Why requests to the heat pump service are stopped. Drives the user-facing message.
 public enum BlockReason: String, Codable, Sendable {
     /// HTTP 429, too much traffic.
     case rateLimited
@@ -28,16 +28,17 @@ public enum BlockReason: String, Codable, Sendable {
     /// HTTP 401 even after a fresh login.
     case unauthorized
 
-    /// Explanation including when it ends.
-    public func message(until: Date) -> String {
+    /// Explanation including when it ends, naming the service.
+    public func message(until: Date, serviceName: String) -> String {
         let time = Display.time(until)
         switch self {
         case .rateLimited:
-            return L10n.format("MELCloud has temporarily stopped updates because there has been too much traffic. Try again at %@.", time)
+            return L10n.format(
+                "%@ has temporarily stopped updates because there has been too much traffic. Try again at %@.", serviceName, time)
         case .loginThrottled:
-            return L10n.format("Too many login attempts to MELCloud. Try again at %@.", time)
+            return L10n.format("Too many login attempts to %@. Try again at %@.", serviceName, time)
         case .unauthorized:
-            return L10n.format("MELCloud refuses access even after a new login. The app tries again at %@.", time)
+            return L10n.format("%@ refuses access even after a new login. The app tries again at %@.", serviceName, time)
         }
     }
 }
@@ -800,15 +801,18 @@ public final class HistoryStore: Sendable {
     /// Atomically decides whether this process may call the network for `key`.
     /// Honours the global block first, then the per-key minimum interval; on `.allowed` the
     /// attempt is recorded so other processes see it immediately.
-    /// `melcloud` false for third-party sources (prices), which MELCloud blocks do not stop.
-    public func reserveFetch(key: String, minInterval: TimeInterval, now: Date, melcloud: Bool = true) throws -> FetchDecision {
+    /// `countsTowardServiceBlock` false for third-party sources (prices), which the heat pump
+    /// service's blocks do not stop.
+    public func reserveFetch(
+        key: String, minInterval: TimeInterval, now: Date, countsTowardServiceBlock: Bool = true
+    ) throws -> FetchDecision {
         try immediate { db in
-            if melcloud, try Date.fetchOne(
+            if countsTowardServiceBlock, try Date.fetchOne(
                 db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
             {
                 return .credentialsRejected
             }
-            if melcloud, let blocked = try Date.fetchOne(
+            if countsTowardServiceBlock, let blocked = try Date.fetchOne(
                 db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
                 blocked > now
             {
