@@ -382,7 +382,7 @@ struct ToolHandler: Sendable {
                 day: $0.day, houseKWh: $0.houseKWh, heatPumpKWh: $0.heatPumpKWh, heatPumpShare: $0.share.map { ($0 * 1000).rounded() / 1000 },
                 hoursWithBoth: $0.hoursWithBoth, heatPumpMeasured: $0.heatPumpMeasured, houseCostNokFromTibber: $0.houseCostNok)
         }
-        let yesterday = summary.yesterday?.share.map { Norwegian.format("Varmepumpen sto for %.0f %% av strømmen i går.", $0 * 100) }
+        let yesterday = summary.yesterday?.share.map { Display.format("Varmepumpen sto for %.0f %% av strømmen i går.", $0 * 100) }
         return try await output(
             View(
                 sync: sync, yesterdayText: yesterday, days: days,

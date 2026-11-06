@@ -32,7 +32,7 @@ struct OutlookView: View {
     private var weatherSection: some View {
         let hours = Array(model.longForecast.prefix { $0.time < Date().addingTimeInterval(48 * 3600) })
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Vær", hint: model.weatherLocation?.displayName)
+            SectionHeader("Vær", hint: (model.weatherLocation?.displayName).map(LocalizedStringKey.verbatim))
             TrendCard(title: "Neste 48 timer") {
                 FlowLayout {
                     LegendDot(label: "Temperatur", color: Theme.Data.outside)
@@ -41,7 +41,7 @@ struct OutlookView: View {
             } chart: {
                 if hours.isEmpty {
                     EmptyChart(
-                        title: "Ingen værvarsel ennå", message: model.weatherMessage ?? "Varselet hentes fra MET Norway.",
+                        title: "Ingen værvarsel ennå", message: model.weatherMessage.map { .verbatim($0) } ?? "Varselet hentes fra MET Norway.",
                         systemImage: "cloud.sun")
                 } else {
                     weatherChart(hours).frame(height: 200)
@@ -87,14 +87,14 @@ struct OutlookView: View {
                             title: Format.weekdayHour(h.time),
                             rows: [
                                 ("Ute", Format.temperature(h.temperature), Theme.Data.outside),
-                                ("Nedbør", h.precipitation.map { Norwegian.format("%.1f mm", $0) } ?? "–", Theme.Data.blue),
-                                ("Vind", h.windSpeed.map { Norwegian.format("%.0f m/s", $0) } ?? "–", .secondary),
+                                ("Nedbør", h.precipitation.map { Display.format("%.1f mm", $0) } ?? "–", Theme.Data.blue),
+                                ("Vind", h.windSpeed.map { Display.format("%.0f m/s", $0) } ?? "–", .secondary),
                             ])
                     }
             }
         }
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmYAxis { Display.format("%.0f°", $0) }
         .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
         .chartXSelection(value: $selectedWeather)
         .accessibilityLabel("Temperatur og nedbør neste 48 timer")
@@ -109,15 +109,15 @@ struct OutlookView: View {
         let now = Date()
         let current = known.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Strømpris", hint: outlook.map { $0.agreement == .norgespris ? "Norgespris" : $0.agreement.displayName })
+            SectionHeader("Strømpris", hint: outlook.map { .verbatim($0.agreement.displayName) })
             TrendCard(
                 title: "Neste 7 dager",
-                value: current.map { Norwegian.format("Nå %.2f kr/kWh", $0.totalOre / 100) }
+                value: current.map { Display.format("Nå %.2f kr/kWh", $0.totalOre / 100) }
             ) {
                 FlowLayout {
                     if known.contains(where: { $0.level != nil }) {
                         ForEach([PriceLevel.veryCheap, .cheap, .normal, .expensive, .veryExpensive], id: \.self) {
-                            LegendDot(label: $0.displayName, color: $0.color)
+                            LegendDot(label: .verbatim($0.displayName), color: $0.color)
                         }
                     } else {
                         LegendDot(label: "Kjent pris", color: Theme.Data.purple)
@@ -127,7 +127,7 @@ struct OutlookView: View {
             } chart: {
                 if known.isEmpty && estimate.isEmpty {
                     EmptyChart(
-                        title: "Ingen priser ennå", message: model.priceMessage ?? "Velg strømavtale under Innstillinger → Strømpris.",
+                        title: "Ingen priser ennå", message: model.priceMessage.map { .verbatim($0) } ?? "Velg strømavtale under Innstillinger → Strømpris.",
                         systemImage: "bolt.horizontal")
                 } else {
                     priceChart(known: known, estimate: estimate).frame(height: 220)
@@ -140,7 +140,7 @@ struct OutlookView: View {
     private func priceExplanation(_ outlook: PriceOutlook?) -> String {
         guard let outlook else { return "" }
         if outlook.agreement == .norgespris {
-            return Norwegian.format("Norgespris er %.0f øre/kWh hele døgnet; søylene viser den pluss nettleien, som er lavere om natten og i helgene. Ingen anslag trengs.", model.priceSettings.norgesprisOre)
+            return Display.format("Norgespris er %.0f øre/kWh hele døgnet; søylene viser den pluss nettleien, som er lavere om natten og i helgene. Ingen anslag trengs.", model.priceSettings.norgesprisOre)
         }
         var text = "Søylene er publiserte priser (strøm, nettleie og strømstøtte). "
         if !outlook.estimate.isEmpty {
@@ -193,9 +193,9 @@ struct OutlookView: View {
                         .foregroundStyle(Color.secondary.opacity(0.25))
                         .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                             ChartTooltip(
-                                title: Norwegian.dateTime(p.hour),
+                                title: Display.dateTime(p.hour),
                                 rows: [
-                                    ("Totalt", Norwegian.format("%.2f kr", p.totalOre / 100), .primary),
+                                    ("Totalt", Display.format("%.2f kr", p.totalOre / 100), .primary),
                                     ("Nivå", p.level?.displayName ?? "–", p.level?.color ?? .secondary),
                                 ])
                         }
@@ -204,16 +204,16 @@ struct OutlookView: View {
                         .foregroundStyle(Color.secondary.opacity(0.25))
                         .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                             ChartTooltip(
-                                title: Norwegian.dateTime(e.hour),
+                                title: Display.dateTime(e.hour),
                                 rows: [
-                                    ("Anslag", Norwegian.format("%.2f kr", e.totalOre / 100), .secondary),
-                                    ("Trolig", Norwegian.format("%.2f–%.2f kr", e.lowOre / 100, e.highOre / 100), .secondary),
+                                    ("Anslag", Display.format("%.2f kr", e.totalOre / 100), .secondary),
+                                    ("Trolig", Display.format("%.2f–%.2f kr", e.lowOre / 100, e.highOre / 100), .secondary),
                                 ])
                         }
                 }
             }
         }
-        .calmYAxis { Norwegian.format("%.1f", $0) }
+        .calmYAxis { Display.format("%.1f", $0) }
         .calmXAxis(Date.FormatStyle().weekday(.abbreviated).day(), count: 8)
         .chartXSelection(value: $selectedPrice)
         .accessibilityLabel("Strømpris neste 7 dager, kjente priser og anslag")
@@ -315,11 +315,11 @@ struct WeatherDayCard: View {
                     .frame(height: 30)
                     .help(day.symbol ?? "")
                 // Rounded first so −0,3 shows as 0°, not −0°.
-                Text(Norwegian.format("%.0f° / %.0f°", day.maxTemperature.rounded() + 0, day.minTemperature.rounded() + 0))
+                Text(Display.format("%.0f° / %.0f°", day.maxTemperature.rounded() + 0, day.minTemperature.rounded() + 0))
                     .font(.body.weight(.medium)).monospacedDigit()
-                Text(day.precipitation.map { Norwegian.format("%.1f mm", $0) } ?? "– mm")
+                Text(day.precipitation.map { Display.format("%.1f mm", $0) } ?? "– mm")
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                Text(day.maxWind.map { Norwegian.format("%.0f m/s", $0) } ?? "– m/s")
+                Text(day.maxWind.map { Display.format("%.0f m/s", $0) } ?? "– m/s")
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
         }
@@ -328,7 +328,7 @@ struct WeatherDayCard: View {
 
     private var title: String {
         if Calendar.current.isDateInToday(day.date) { return "I dag" }
-        return day.date.formatted(Date.FormatStyle().weekday(.abbreviated).day().locale(Norwegian.locale))
+        return day.date.formatted(Date.FormatStyle().weekday(.abbreviated).day().locale(Display.locale))
     }
 }
 
@@ -338,16 +338,16 @@ struct DayOutlookCard: View {
     var body: some View {
         CardSurface(padding: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text(day.date.formatted(Date.FormatStyle().weekday(.wide).day().month(.abbreviated).locale(Norwegian.locale)))
+                Text(day.date.formatted(Date.FormatStyle().weekday(.wide).day().month(.abbreviated).locale(Display.locale)))
                     .font(.callout.weight(.semibold))
-                Text("~" + Norwegian.format("%.0f kWh", day.kWh))
+                Text("~" + Display.format("%.0f kWh", day.kWh))
                     .font(.system(.title3, design: .rounded).weight(.semibold)).monospacedDigit()
                 if day.kWhLow.rounded() != day.kWhHigh.rounded() {
-                    Text(Norwegian.format("ca. %.0f–%.0f kWh", day.kWhLow, day.kWhHigh)).font(.caption).foregroundStyle(.secondary)
+                    Text(Display.format("ca. %.0f–%.0f kWh", day.kWhLow, day.kWhHigh)).font(.caption).foregroundStyle(.secondary)
                 }
-                Text(day.costNok.map { "~" + Norwegian.format("%.0f kr", $0) } ?? "kostnad ukjent")
+                Text(day.costNok.map { "~" + Display.format("%.0f kr", $0) } ?? "kostnad ukjent")
                     .font(.body.weight(.medium)).monospacedDigit()
-                Text(Norwegian.format("%.0f° i snitt · ", day.meanOutdoor) + (day.usesEstimatedPrices ? "prisanslag" : "kjente priser"))
+                Text(Display.format("%.0f° i snitt · ", day.meanOutdoor) + (day.usesEstimatedPrices ? "prisanslag" : "kjente priser"))
                     .font(.caption).foregroundStyle(day.usesEstimatedPrices ? .secondary : .primary)
             }
         }
@@ -426,13 +426,13 @@ struct PriceControlSection: View {
     private var settings: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Stepper(value: binding(\.reduceExpensive), in: PriceControlSettings.reductionRange, step: 0.5) {
-                Text("Senk i dyre timer: ") + Text(Norwegian.format("%.1f °C", draft.reduceExpensive)).monospacedDigit()
+                Text("Senk i dyre timer: ") + Text(Display.format("%.1f °C", draft.reduceExpensive)).monospacedDigit()
             }
             Stepper(value: binding(\.reduceVeryExpensive), in: PriceControlSettings.reductionRange, step: 0.5) {
-                Text("Senk i svært dyre timer: ") + Text(Norwegian.format("%.1f °C", draft.reduceVeryExpensive)).monospacedDigit()
+                Text("Senk i svært dyre timer: ") + Text(Display.format("%.1f °C", draft.reduceVeryExpensive)).monospacedDigit()
             }
             Stepper(value: binding(\.minimumTemperature), in: PriceControlSettings.minimumRange, step: 0.5) {
-                Text("Aldri lavere enn: ") + Text(Norwegian.format("%.1f °C", draft.minimumTemperature)).monospacedDigit()
+                Text("Aldri lavere enn: ") + Text(Display.format("%.1f °C", draft.minimumTemperature)).monospacedDigit()
             }
             Stepper(value: binding(\.maxReducedHoursPerDay), in: PriceControlSettings.reducedHoursRange) {
                 Text("Senk høyst \(Text(String(draft.maxReducedHoursPerDay)).monospacedDigit()) \(draft.maxReducedHoursPerDay == 1 ? "time" : "timer") per døgn")
@@ -510,7 +510,7 @@ struct PriceControlSection: View {
 /// Temperature text as in the weekly plan ("21 °C", "20,5 °C").
 enum TimerEventText {
     static func temperature(_ value: Double) -> String {
-        value == value.rounded() ? Norwegian.format("%.0f °C", value) : Norwegian.format("%.1f °C", value)
+        value == value.rounded() ? Display.format("%.0f °C", value) : Display.format("%.1f °C", value)
     }
 }
 
@@ -548,7 +548,7 @@ struct PriceControlMenu: View {
         let now = Date()
         let current = model.todayPrices.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }
         Text(
-            current.map { Norwegian.format("Strøm nå: %.2f kr/kWh", $0.totalOre / 100) + ($0.level.map { " · " + $0.displayName } ?? "") }
+            current.map { Display.format("Strøm nå: %.2f kr/kWh", $0.totalOre / 100) + ($0.level.map { " · " + $0.displayName } ?? "") }
                 ?? "Strøm nå: –")
         if let state = model.state {
             Text("Inne " + Format.temperature(state.roomTemperature) + " · ønsket " + Format.temperature(state.setTemperature))

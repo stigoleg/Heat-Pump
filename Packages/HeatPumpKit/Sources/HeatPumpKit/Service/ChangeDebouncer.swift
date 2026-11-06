@@ -210,7 +210,7 @@ public final class ChangeDebouncer {
             if let next = b.nextAllowed, next > now() {
                 let reason =
                     b.remaining <= 0
-                    ? "maks \(ChangeBudget.maxChangesPerHour) endringer per time er brukt. Sendes kl. \(Norwegian.time(next))."
+                    ? "maks \(ChangeBudget.maxChangesPerHour) endringer per time er brukt. Sendes kl. \(Display.time(next))."
                     : "sendes om noen sekunder."
                 status = .waiting(reason, retryAt: next)
                 schedule(after: next.timeIntervalSince(now()) + 0.2)
@@ -239,7 +239,7 @@ public final class ChangeDebouncer {
                 // Not allowed yet (budget or spacing): keep the draft; newer edits win.
                 inFlight = ControlEdits()
                 edits = draft.merging(edits)
-                status = .waiting("sendes kl. \(Norwegian.time(retry)).", retryAt: retry)
+                status = .waiting("sendes kl. \(Display.time(retry)).", retryAt: retry)
                 schedule(after: max(0.2, retry.timeIntervalSince(now()) + 0.2))
             } else {
                 inFlight = ControlEdits()

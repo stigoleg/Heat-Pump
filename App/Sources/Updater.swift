@@ -145,17 +145,8 @@ final class Updater {
             return
         }
         installed = true
-        // Waits for this process to end (price control may restore first), then opens the new
-        // version and removes the old one.
-        let relaunch = Process()
-        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
-        relaunch.arguments = [
-            "-c",
-            "i=0; while kill -0 \"$1\" 2>/dev/null && [ $i -lt 600 ]; do sleep 0.1; i=$((i+1)); done; /usr/bin/open \"$2\"; /bin/rm -rf \"$3\"",
-            "sh", String(ProcessInfo.processInfo.processIdentifier), target.path, staged.folder.path,
-        ]
-        try? relaunch.run()
-        NSApp.terminate(nil)
+        // Opens the new version once this process has ended and removes the old one.
+        AppRelauncher.relaunch(target, removing: staged.folder)
     }
 
     /// From `applicationWillTerminate`: in automatic mode a downloaded update replaces the app now,

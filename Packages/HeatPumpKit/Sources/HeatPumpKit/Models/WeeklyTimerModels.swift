@@ -69,7 +69,7 @@ public struct TimerEvent: Codable, Sendable, Equatable {
     }
 
     static func temperatureText(_ value: Double) -> String {
-        value == value.rounded() ? Norwegian.format("%.0f °C", value) : Norwegian.format("%.1f °C", value)
+        value == value.rounded() ? Display.format("%.0f °C", value) : Display.format("%.1f °C", value)
     }
 
     /// "06:30"

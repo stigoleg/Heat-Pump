@@ -79,7 +79,7 @@ struct OverviewView: View {
                 // Chips wrap to more lines when the window is narrow.
                 FlowLayout(spacing: Theme.Space.s) {
                     SettingChip(
-                        title: mode?.displayName ?? "Modus ukjent – velg modus",
+                        title: mode.map { .verbatim($0.displayName) } ?? "Modus ukjent – velg modus",
                         systemImage: mode?.systemImage ?? "questionmark.circle", tint: mode?.tint ?? Theme.Status.caution
                     ) {
                         model.selection = .control
@@ -104,7 +104,7 @@ struct OverviewView: View {
 
     @ViewBuilder private var priceChip: some View {
         if let level = model.currentPriceLevel {
-            SettingChip(title: level.nowText, systemImage: "bolt.horizontal.fill", tint: level.color) {
+            SettingChip(title: .verbatim(level.nowText), systemImage: "bolt.horizontal.fill", tint: level.color) {
                 model.initialHistoryTab = "energy"
                 model.selection = .history
             }
@@ -202,7 +202,7 @@ struct OverviewView: View {
     private var currentPriceText: String {
         let hour = Calendar.current.dateInterval(of: .hour, for: Date())?.start
         guard let price = model.todayPrices.first(where: { $0.hour == hour }) else { return "—" }
-        return Norwegian.format("%.2f kr/kWh", price.totalOre / 100)
+        return Display.format("%.2f kr/kWh", price.totalOre / 100)
     }
 
     /// "Målt lokalt for 12 s siden", ticking every second.
@@ -334,7 +334,7 @@ struct OverviewView: View {
         }
         .chartXScale(domain: domain)
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmYAxis { Display.format("%.0f°", $0) }
         .chartXAxis(.hidden)
         .chartXSelection(value: $selected)
     }
@@ -362,7 +362,7 @@ struct OverviewView: View {
                 RuleMark(x: .value("Valgt", bar.hour))
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
-                        Text(Norwegian.format(bars.isCost ? "%.2f kr" : "%.2f kr/kWh", bar.value))
+                        Text(Display.format(bars.isCost ? "%.2f kr" : "%.2f kr/kWh", bar.value))
                             .font(.caption2).monospacedDigit()
                             .padding(4)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
@@ -370,7 +370,7 @@ struct OverviewView: View {
             }
         }
         .chartXScale(domain: domain)
-        .calmYAxis { Norwegian.format("%.1f", $0) }
+        .calmYAxis { Display.format("%.1f", $0) }
         .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
         .chartXSelection(value: $selected)
     }
@@ -380,14 +380,14 @@ struct OverviewView: View {
     @ViewBuilder private var weather: some View {
         let hours = model.forecast
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader(title: "Vær neste 48 t", hint: model.weatherLocation?.displayName) {
+            SectionHeader(title: "Vær neste 48 t", hint: model.weatherLocation.map { .verbatim($0.displayName) }) {
                 Text(WeatherForecast.attribution).font(.caption).foregroundStyle(.secondary)
             }
             CardSurface {
                 if hours.count < 2 {
                     EmptyChart(
                         title: "Ingen værvarsel ennå",
-                        message: model.weatherMessage ?? "Værvarselet hentes fra MET Norway høyst én gang i timen.",
+                        message: model.weatherMessage.map { .verbatim($0) } ?? "Værvarselet hentes fra MET Norway høyst én gang i timen.",
                         systemImage: "cloud.sun")
                 } else {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -416,7 +416,7 @@ struct OverviewView: View {
             let high = hours.max(by: { $0.temperature < $1.temperature })
         {
             Label(
-                Norwegian.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
+                Display.format("Kaldest %.0f° %@ · varmest %.0f° %@", low.temperature, Format.weekdayHour(low.time), high.temperature, Format.weekdayHour(high.time)),
                 systemImage: "thermometer.medium"
             )
             .foregroundStyle(.secondary)
@@ -439,8 +439,8 @@ struct OverviewView: View {
         if t.kWhLow.rounded() == t.kWhHigh.rounded() {
             text = "Grovt anslag fra \(t.basisDays) dager med egne målinger"
         } else {
-            text = Norwegian.format("Usikkert: ca. %.0f–%.0f kWh", t.kWhLow, t.kWhHigh)
-            if let low = t.costLowNok, let high = t.costHighNok { text += Norwegian.format(" · %.0f–%.0f kr", low, high) }
+            text = Display.format("Usikkert: ca. %.0f–%.0f kWh", t.kWhLow, t.kWhHigh)
+            if let low = t.costLowNok, let high = t.costHighNok { text += Display.format(" · %.0f–%.0f kr", low, high) }
         }
         if t.pricesFromToday { text += " · dagens priser brukt" }
         return text
@@ -469,13 +469,13 @@ struct OverviewView: View {
                             title: Format.weekdayHour(h.time),
                             rows: [
                                 ("Ute", Format.temperature(h.temperature), Theme.Data.outside),
-                                ("Vind", h.windSpeed.map { Norwegian.format("%.0f m/s", $0) } ?? "–", .secondary),
+                                ("Vind", h.windSpeed.map { Display.format("%.0f m/s", $0) } ?? "–", .secondary),
                             ])
                     }
             }
         }
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmYAxis { Display.format("%.0f°", $0) }
         .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
         .chartXSelection(value: $selectedForecast)
         .accessibilityLabel("Temperatur ute neste 48 timer")
@@ -486,11 +486,11 @@ struct OverviewView: View {
     @ViewBuilder private var insight: some View {
         if let finding = model.health?.findings.first(where: { $0.severity != .ok }) {
             InsightCard(
-                title: finding.title, detail: finding.recommendation, systemImage: finding.severity.systemImage,
+                title: .verbatim(finding.title), detail: .verbatim(finding.recommendation), systemImage: finding.severity.systemImage,
                 tint: finding.severity.color
             ) { model.selection = .health }
         } else if let message = model.priceMessage {
-            InsightCard(title: "Strømpris", detail: message, systemImage: "exclamationmark.triangle.fill", tint: Theme.Status.caution)
+            InsightCard(title: "Strømpris", detail: .verbatim(message), systemImage: "exclamationmark.triangle.fill", tint: Theme.Status.caution)
         }
     }
 }

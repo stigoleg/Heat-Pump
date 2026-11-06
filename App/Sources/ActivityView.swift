@@ -103,7 +103,7 @@ struct ActivityRow: View {
                         resultLabel(record)
                     }
                 }
-                Text("\(record.source.displayName) · \(Norwegian.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
+                Text("\(record.source.displayName) · \(Display.dateTime(record.timestamp)) · \(record.oldDisplayValue) → \(record.newDisplayValue)")
                     .font(.callout).foregroundStyle(.secondary)
                 if let reason = record.reason, !reason.isEmpty {
                     Text("Begrunnelse: \(reason)").font(.callout)

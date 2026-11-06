@@ -31,7 +31,7 @@ extension DeviceChange {
         switch self {
         case .power(let on): on ? "På" : "Av"
         case .mode(let mode): mode.displayName
-        case .temperature(let celsius): Norwegian.format("%.1f °C", celsius)
+        case .temperature(let celsius): Display.format("%.1f °C", celsius)
         case .fanSpeed(let speed): speed == 0 ? "Auto" : String(speed)
         case .vaneVertical(let vane): vane.displayName
         case .vaneHorizontal(let vane): vane.displayName

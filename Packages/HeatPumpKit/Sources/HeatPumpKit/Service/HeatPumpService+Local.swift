@@ -181,7 +181,7 @@ extension HeatPumpService {
         case .throttled(let next):
             return LocalTestResult(
                 ok: false,
-                message: "Modulen ble nettopp spurt. Prøv igjen" + (next.map { " etter \(Norwegian.time($0))" } ?? " om litt") + ".",
+                message: "Modulen ble nettopp spurt. Prøv igjen" + (next.map { " etter \(Display.time($0))" } ?? " om litt") + ".",
                 sample: nil)
         case .failed(let text):
             return LocalTestResult(ok: false, message: text, sample: nil)
@@ -193,8 +193,8 @@ extension HeatPumpService {
         if let version = s.adapterVersion { parts.append("Fastvare \(version).") }
         if let rssi = s.rssi { parts.append("Signal \(rssi) dBm.") }
         if let watts = s.powerW { parts.append("Effekt \(watts) W.") }
-        if let room = s.roomTemperature { parts.append(Norwegian.format("Inne %.1f °C.", room)) }
-        if let outdoor = s.outdoorTemperature { parts.append(Norwegian.format("Ute %.1f °C.", outdoor)) }
+        if let room = s.roomTemperature { parts.append(Display.format("Inne %.1f °C.", room)) }
+        if let outdoor = s.outdoorTemperature { parts.append(Display.format("Ute %.1f °C.", outdoor)) }
         return parts.joined(separator: " ")
     }
 

@@ -82,6 +82,11 @@ public enum ErrorCatalog {
             confidence: .medium, source: "MSZ-LN servicehåndbok OBH766H §10-4 (beslektet modell)")
     }
 
+    /// Whether the catalog has its own explanation for a numeric code.
+    public static func hasExplanation(errorCode: Int?) -> Bool {
+        errorCode.map { numeric[$0] != nil } ?? false
+    }
+
     /// Looks up an error. MELCloud's own `message` text wins when present.
     public static func lookup(errorCode: Int?, message: String? = nil) -> ErrorCatalogEntry {
         if let message, !message.isEmpty {

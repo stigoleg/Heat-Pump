@@ -380,11 +380,11 @@ extension HeatPumpService {
         let t = now()
         if let until = try endpointRefusedUntil(Self.timerFetchKey) {
             throw HeatPumpError.validation(
-                "MELCloud tillot ikke å lese ukeplanen (ny prøve \(Norwegian.time(until))), og den lagres ikke uten å sjekke at den er uendret.")
+                "MELCloud tillot ikke å lese ukeplanen (ny prøve \(Display.time(until))), og den lagres ikke uten å sjekke at den er uendret.")
         }
         switch try store.reserveFetch(key: Self.timerPresaveKey, minInterval: Self.timerPresaveInterval, now: t) {
         case .throttled(let next):
-            throw HeatPumpError.validation("Ukeplanen ble nettopp hentet. Prøv igjen etter \(Norwegian.time(next)).")
+            throw HeatPumpError.validation("Ukeplanen ble nettopp hentet. Prøv igjen etter \(Display.time(next)).")
         case .blocked(let until): throw HeatPumpError.blocked(until: until)
         case .credentialsRejected: throw HeatPumpError.credentialsRejected
         case .allowed: break

@@ -39,19 +39,19 @@ struct HealthView: View {
             }
             ForEach(model.maintenance.filter { $0.recommendedIntervalDays != nil }, id: \.kind) { item in
                 KPITile(
-                    label: item.displayName,
+                    label: .verbatim(item.displayName),
                     value: item.nextDue.map { Format.dayMonth($0) } ?? "Ikke registrert",
                     detail: item.nextDue == nil ? "Registrer når du har gjort det" : "neste gang",
                     systemImage: icon(item.status), tint: color(item.status))
             }
             if let hours = model.live?.sample?.runtimeHours {
                 KPITile(
-                    label: "Driftstid totalt", value: Norwegian.format("%d t", hours), detail: "ifølge innedelen (trolig siden montering)",
+                    label: "Driftstid totalt", value: Display.format("%d t", hours), detail: "ifølge innedelen (trolig siden montering)",
                     systemImage: "hourglass", tint: Theme.Data.orange)
             }
             KPITile(
                 label: "Feil siste 90 dager", value: "\(model.errorLog.count)",
-                detail: model.errorLog.first.map { "Siste: \(Norwegian.date($0.start))" }, systemImage: "list.bullet.rectangle",
+                detail: model.errorLog.first.map { "Siste: \(Display.date($0.start))" }, systemImage: "list.bullet.rectangle",
                 tint: model.errorLog.isEmpty ? Theme.Status.good : Theme.Status.caution)
         }
     }
@@ -62,7 +62,7 @@ struct HealthView: View {
                 SectionHeader("Funn", hint: "Viktigst først")
                 ForEach(report.findings) { finding in
                     InsightCard(
-                        title: finding.title, detail: finding.detail + "\nRåd: " + finding.recommendation,
+                        title: .verbatim(finding.title), detail: "\(finding.detail)\nRåd: \(finding.recommendation)",
                         systemImage: finding.severity.systemImage, tint: finding.severity.color)
                     .textSelection(.enabled)
                 }
@@ -90,16 +90,16 @@ struct HealthView: View {
                                     HStack(alignment: .firstTextBaseline) {
                                         Text(entry.message).font(.body.weight(.medium))
                                         Spacer()
-                                        Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                        Text(Display.dateTime(entry.start)).foregroundStyle(.secondary)
                                     }
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(entry.message).font(.body.weight(.medium)).fixedSize(horizontal: false, vertical: true)
-                                        Text(Norwegian.dateTime(entry.start)).foregroundStyle(.secondary)
+                                        Text(Display.dateTime(entry.start)).foregroundStyle(.secondary)
                                     }
                                 }
-                                Text(entry.end.map { "Gikk over \(Norwegian.dateTime($0))" } ?? "Ikke registrert som avsluttet")
+                                Text(entry.end.map { "Gikk over \(Display.dateTime($0))" } ?? "Ikke registrert som avsluttet")
                                     .font(.caption).foregroundStyle(.secondary)
-                                if explanation.confidence != .melcloud || explanation.explanation.contains("Mulig tolkning") {
+                                if explanation.confidence != .melcloud || ErrorCatalog.hasExplanation(errorCode: entry.code.flatMap(Int.init)) {
                                     Text(explanation.explanation).font(.callout)
                                 }
                                 Text(confidenceNote(explanation.confidence)).font(.caption).foregroundStyle(.secondary)
@@ -144,11 +144,11 @@ struct HealthView: View {
     private func detail(_ item: MaintenanceStatus) -> String {
         var parts: [String] = []
         if let last = item.lastDone {
-            parts.append("Sist: \(Norwegian.date(last))")
+            parts.append("Sist: \(Display.date(last))")
         } else if item.recommendedIntervalDays != nil {
             parts.append("Ikke registrert")
         }
-        if let next = item.nextDue { parts.append("Neste: \(Norwegian.date(next))") }
+        if let next = item.nextDue { parts.append("Neste: \(Display.date(next))") }
         if let days = item.recommendedIntervalDays { parts.append("hver \(days). dag") }
         return parts.joined(separator: " · ")
     }

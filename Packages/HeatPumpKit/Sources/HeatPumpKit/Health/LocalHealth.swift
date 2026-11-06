@@ -125,11 +125,11 @@ public enum LocalHealth {
         guard input.enabled, input.onHomeNetwork, let since = input.failingSince, now.timeIntervalSince(since) > Threshold.unreachableAfter,
             let attempt = input.lastAttempt, now.timeIntervalSince(attempt) < Threshold.unreachableAfter
         else { return [] }
-        let last = input.lastSuccess.map { " Sist svar: \(Norwegian.dateTime($0))." } ?? ""
+        let last = input.lastSuccess.map { " Sist svar: \(Display.dateTime($0))." } ?? ""
         return [
             HealthFinding(
                 code: "local_unreachable", severity: .info, title: "Wi-Fi-modulen svarer ikke på hjemmenettet",
-                detail: "Appen har ikke fått kontakt med modulen lokalt siden \(Norwegian.dateTime(since)).\(last) Styring og status via MELCloud virker som før.",
+                detail: "Appen har ikke fått kontakt med modulen lokalt siden \(Display.dateTime(since)).\(last) Styring og status via MELCloud virker som før.",
                 recommendation: "Ofte har ruteren gitt varmepumpen en ny IP-adresse. Trykk «Finn automatisk» under Innstillinger → Lokal tilkobling, eller skriv inn adressen fra ruterens enhetsliste. Gi gjerne varmepumpen fast IP i ruteren.")
         ]
     }
@@ -153,7 +153,7 @@ public enum LocalHealth {
             return [
                 HealthFinding(
                     code: "short_cycling_strong", severity: .warning, title: "Kompressoren starter og stopper svært ofte",
-                    detail: Norwegian.format(
+                    detail: Display.format(
                         "Kompressoren har startet %d ganger de siste 3 timene, med %d eller flere starter i %d av timene. Så korte runder sliter på kompressoren og gir dårligere virkningsgrad.",
                         starts, Threshold.strongStartsPerHour, busyHours),
                     recommendation: advice)
@@ -162,7 +162,7 @@ public enum LocalHealth {
         return [
             HealthFinding(
                 code: "short_cycling", severity: .warning, title: "Kompressoren starter og stopper ofte",
-                detail: Norwegian.format(
+                detail: Display.format(
                     "Kompressoren har startet i snitt %.1f ganger i timen de siste 3 timene mens den varmet. Mer enn 3–4 starter i timen over tid regnes som korte runder.",
                     perHour),
                 recommendation: advice)
@@ -207,7 +207,7 @@ public enum LocalHealth {
             return [
                 HealthFinding(
                     code: "frequent_defrost", severity: .warning, title: "Utedelen avriser uvanlig ofte",
-                    detail: Norwegian.format(
+                    detail: Display.format(
                         "Varmepumpen har avrist mer enn %d ganger i timen i %d timer på rad siste døgn. Normalt avriser den hvert 40.–90. driftsminutt i fuktig kulde. Grensen er en tommelfingerregel.",
                         Threshold.defrostsPerHour, longest),
                     recommendation: advice)
@@ -221,7 +221,7 @@ public enum LocalHealth {
         return [
             HealthFinding(
                 code: "defrost_share", severity: .info, title: "Utedelen bruker mye tid på avriming",
-                detail: Norwegian.format(
+                detail: Display.format(
                     "Siste døgn har varmepumpen avrist %.0f %% av tiden (%d timer med målinger, ute mildere enn −5 °C). Over 20 %% er mye; grensen er en tommelfingerregel.",
                     share * 100, mild.count),
                 recommendation: advice)
@@ -251,7 +251,7 @@ public enum LocalHealth {
             HealthFinding(
                 code: "power_vs_outdoor", severity: factor > Threshold.powerWarningFactor ? .warning : .info,
                 title: "Varmepumpen bruker mer strøm enn vanlig for temperaturen",
-                detail: Norwegian.format(
+                detail: Display.format(
                     "Siste døgn har den brukt i snitt %.0f W per grad forskjell mellom inne og ute (%.0f grader, stopp medregnet), %.1f ganger det vanlige ved tilsvarende forskjell (median %.0f W per grad, %d dager).",
                     ratio, recentDelta, factor, median, baseline.count),
                 recommendation: "Sjekk at luftfilteret er rent og at utedelen ikke er nediset, dekket av snø eller blokkert. Mye avriming i fuktig kuldegrader kan også gi høyere forbruk en periode. Vedvarer det i flere dager, ring forhandleren.")

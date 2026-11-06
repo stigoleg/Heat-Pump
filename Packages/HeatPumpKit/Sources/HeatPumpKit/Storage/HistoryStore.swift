@@ -30,7 +30,7 @@ public enum BlockReason: String, Codable, Sendable {
 
     /// Norwegian explanation including when it ends.
     public func message(until: Date) -> String {
-        let time = Norwegian.time(until)
+        let time = Display.time(until)
         switch self {
         case .rateLimited:
             return "MELCloud har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. \(time)."

@@ -167,7 +167,7 @@ extension HeatPumpService {
                 status.kind = .skipped
                 status.text = memory.failures < PriceControlEngine.maxAttemptsPerStep
                     ? "Kunne ikke endre temperaturen. Prøver igjen senere i denne perioden."
-                    : "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
+                    : "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Display.time(step.end))."
                 status.problem = outcome.message
             }
         }

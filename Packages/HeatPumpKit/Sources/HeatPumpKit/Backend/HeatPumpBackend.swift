@@ -32,9 +32,9 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
             "MELCloud godtok ikke innloggingen" + (detail.map { " (\($0))" } ?? "") + "."
         case .loginThrottled(let until):
             "MELCloud blokkerer innlogging midlertidig (for mange forsøk)"
-                + (until.map { " til \(Norwegian.time($0))" } ?? "") + "."
+                + (until.map { " til \(Display.time($0))" } ?? "") + "."
         case .rateLimited(let until):
-            "MELCloud har midlertidig stengt for flere forespørsler (for mye trafikk) til \(Norwegian.dateTime(until))."
+            "MELCloud har midlertidig stengt for flere forespørsler (for mye trafikk) til \(Display.dateTime(until))."
         case .http(let status):
             "MELCloud svarte med HTTP-feil \(status)."
         case .network(let detail):
@@ -48,9 +48,9 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
         case .validation(let detail):
             detail
         case .changeBudgetExceeded(let next):
-            "For mange endringer siste time (maks \(ChangeBudget.maxChangesPerHour)). Neste endring tillatt etter \(Norwegian.time(next))."
+            "For mange endringer siste time (maks \(ChangeBudget.maxChangesPerHour)). Neste endring tillatt etter \(Display.time(next))."
         case .blocked(let until):
-            "Nettverkskall er stoppet til \(Norwegian.dateTime(until)) fordi MELCloud har begrenset trafikken."
+            "Nettverkskall er stoppet til \(Display.dateTime(until)) fordi MELCloud har begrenset trafikken."
         case .rejectedByUser:
             "Endringen ble avvist av brukeren."
         case .unauthorized:
@@ -58,7 +58,7 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
         case .credentialsRejected:
             "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
         case .writeTooSoon(let next):
-            "En annen endring ble nettopp sendt. Prøv igjen etter \(Norwegian.time(next))."
+            "En annen endring ble nettopp sendt. Prøv igjen etter \(Display.time(next))."
         case .endpointRefused(let status):
             "MELCloud tillot ikke denne forespørselen for kontoen (HTTP \(status))."
         }

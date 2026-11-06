@@ -54,7 +54,7 @@ public struct TomorrowEstimate: Codable, Sendable, Equatable {
 
     /// "Anslag i morgen: ~12 kWh · ~14 kr"
     public var shortText: String {
-        "Anslag i morgen: ~" + Norwegian.format("%.0f kWh", kWh) + (costNok.map { Norwegian.format(" · ~%.0f kr", $0) } ?? "")
+        "Anslag i morgen: ~" + Display.format("%.0f kWh", kWh) + (costNok.map { Display.format(" · ~%.0f kr", $0) } ?? "")
     }
 }
 

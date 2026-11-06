@@ -130,9 +130,9 @@ struct ControlView: View {
                 Slider(value: binding, in: range, step: step) {
                     Text("Ønsket temperatur")
                 } minimumValueLabel: {
-                    Text(Norwegian.format("%.0f°", range.lowerBound)).font(.caption)
+                    Text(Display.format("%.0f°", range.lowerBound)).font(.caption)
                 } maximumValueLabel: {
-                    Text(Norwegian.format("%.0f°", range.upperBound)).font(.caption)
+                    Text(Display.format("%.0f°", range.upperBound)).font(.caption)
                 } onEditingChanged: { editing in
                     sliderEditing = editing
                     if !editing { debouncer.commit() }
@@ -140,7 +140,7 @@ struct ControlView: View {
                 .labelsHidden()
                 .tint(tint)
                 Text(
-                    Norwegian.format(
+                    Display.format(
                         "Tillatt i %@: %.0f–%.0f °C. Små justeringer (1–2 grader) er nok.",
                         (mode?.displayName ?? "varme").lowercased(), range.lowerBound, range.upperBound)
                 )

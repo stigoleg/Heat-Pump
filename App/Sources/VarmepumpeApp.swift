@@ -50,11 +50,16 @@ struct VarmepumpeApp: App {
 
     private var model: AppModel { appDelegate.model }
 
+    init() {
+        // Before any localized string is looked up (dev VARMEPUMPE_LANGUAGE=en|nb).
+        AppLanguage.applyEnvironmentOverride()
+    }
+
     var body: some Scene {
         WindowGroup("Varmepumpe", id: "main") {
             RootView()
                 .environment(model)
-                .environment(\.locale, Norwegian.locale)
+                .environment(\.locale, L10n.locale)
                 .frame(minWidth: 620, minHeight: 580)
                 .task { model.start() }
                 .onDisappear { if !model.keepsRunningInBackground { model.stop() } }
@@ -85,7 +90,7 @@ struct VarmepumpeApp: App {
         Settings {
             SettingsView()
                 .environment(model)
-                .environment(\.locale, Norwegian.locale)
+                .environment(\.locale, L10n.locale)
         }
         .defaultSize(width: 700, height: 600)
         .windowResizability(.contentMinSize)
@@ -94,7 +99,7 @@ struct VarmepumpeApp: App {
         MenuBarExtra(isInserted: Binding(get: { model.priceControl.enabled }, set: { _ in })) {
             PriceControlMenu()
                 .environment(model)
-                .environment(\.locale, Norwegian.locale)
+                .environment(\.locale, L10n.locale)
         } label: {
             Label("Varmepumpe – prisstyring", systemImage: "bolt.badge.clock")
         }

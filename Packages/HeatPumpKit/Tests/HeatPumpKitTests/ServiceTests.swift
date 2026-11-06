@@ -293,19 +293,20 @@ struct KnowledgeTests {
 
 @Suite("Compiled knowledge")
 struct CompiledKnowledgeTests {
-    /// Fails when Knowledge/*.md changed without running scripts/generate-knowledge.py.
-    @Test func compiledContentMatchesMarkdownFiles() throws {
+    /// Fails when Knowledge/<lang>/*.md changed without running scripts/generate-knowledge.py.
+    @Test(arguments: L10n.Language.allCases)
+    func compiledContentMatchesMarkdownFiles(language: L10n.Language) throws {
         let directory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Sources/HeatPumpKit/Knowledge")
+            .appending(path: "Sources/HeatPumpKit/Knowledge/\(language.rawValue)")
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
             .filter { $0.pathExtension == "md" }
         #expect(Set(files.map { $0.deletingPathExtension().lastPathComponent }) == Set(Knowledge.names))
         for file in files {
             let name = file.deletingPathExtension().lastPathComponent
             let onDisk = try String(contentsOf: file, encoding: .utf8)
-            let compiled = try #require(Knowledge.document(named: name)).markdown
-            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(name) is out of date")
+            let compiled = try #require(Knowledge.document(named: name, language: language)).markdown
+            #expect(compiled == onDisk.trimmingCharacters(in: .newlines), "\(language.rawValue)/\(name) is out of date")
         }
     }
 }

@@ -108,7 +108,7 @@ struct LocalSettingsView: View {
                 Text(error).font(.caption).foregroundStyle(.secondary)
             }
             if let next = reach?.nextAttemptAllowed, (reach?.consecutiveFailures ?? 0) > 0 {
-                LabeledContent("Neste forsøk", value: Norwegian.time(next))
+                LabeledContent("Neste forsøk", value: Display.time(next))
             }
         }
         if let sample = model.live?.sample {

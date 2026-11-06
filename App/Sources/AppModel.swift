@@ -778,7 +778,7 @@ final class AppModel {
                 return (false, message)
             }
             if let next = result.nextRefreshAllowed {
-                return (false, "Innloggingen er lagret. Vent litt før du tester igjen (tidligst kl. \(Norwegian.time(next))).")
+                return (false, "Innloggingen er lagret. Vent litt før du tester igjen (tidligst kl. \(Display.time(next))).")
             }
             return (false, result.error ?? "Ukjent feil ved innlogging.")
         } catch {

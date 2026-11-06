@@ -139,9 +139,9 @@ struct StatusView: Encodable {
         } else {
             parts.append("Varmepumpen er AV.")
         }
-        if let room = s.roomTemperature { parts.append(Norwegian.format("Inne: %.1f °C.", room)) }
-        if let set = s.setTemperature { parts.append(Norwegian.format("Ønsket: %.1f °C.", set)) }
-        if let out = s.outdoorTemperature { parts.append(Norwegian.format("Ute: %.1f °C.", out)) }
+        if let room = s.roomTemperature { parts.append(Display.format("Inne: %.1f °C.", room)) }
+        if let set = s.setTemperature { parts.append(Display.format("Ønsket: %.1f °C.", set)) }
+        if let out = s.outdoorTemperature { parts.append(Display.format("Ute: %.1f °C.", out)) }
         if s.hasActiveError { parts.append("Melder feil (kode \(s.errorCode.map(String.init) ?? "ukjent")).") }
         if s.offline { parts.append("Frakoblet MELCloud.") }
         if result.stale { parts.append("Merk: dataene kan være utdaterte.") }

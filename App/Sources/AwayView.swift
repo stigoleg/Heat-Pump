@@ -106,10 +106,10 @@ struct AwayView: View {
 
     @ViewBuilder private var frostSteppers: some View {
         Stepper(value: $frostMin, in: FrostProtection.minimumRange, step: 1) {
-            Text("Laveste: \(Text(Norwegian.format("%.0f °C", frostMin)).monospacedDigit().bold())")
+            Text("Laveste: \(Text(Display.format("%.0f °C", frostMin)).monospacedDigit().bold())")
         }
         Stepper(value: $frostMax, in: FrostProtection.maximumRange, step: 1) {
-            Text("Høyeste: \(Text(Norwegian.format("%.0f °C", frostMax)).monospacedDigit().bold())")
+            Text("Høyeste: \(Text(Display.format("%.0f °C", frostMax)).monospacedDigit().bold())")
         }
     }
 
@@ -136,7 +136,7 @@ struct AwayView: View {
                     .disabled(!holidayEnabled)
                     Text(
                         "I feriemodus kan varmepumpen stå av; da er det frostsikringen som holder huset varmt nok"
-                            + (model.away?.frost.map { $0.enabled ? Norwegian.format(" (nå %.0f–%.0f °C)", $0.minimum, $0.maximum) : " – den er av nå, så slå den på først" } ?? " – appen vet ikke om den er på")
+                            + (model.away?.frost.map { $0.enabled ? Display.format(" (nå %.0f–%.0f °C)", $0.minimum, $0.maximum) : " – den er av nå, så slå den på først" } ?? " – appen vet ikke om den er på")
                             + ". Tidene er norsk tid.")
                         .font(.caption).foregroundStyle(.secondary)
                     if let problem, !unchanged {
@@ -181,7 +181,7 @@ struct AwayView: View {
     @ViewBuilder private var statusFooter: some View {
         if let outcome {
             InsightCard(
-                title: outcome.ok ? "Sendt til MELCloud" : "Ikke sendt", detail: outcome.message,
+                title: outcome.ok ? "Sendt til MELCloud" : "Ikke sendt", detail: .verbatim(outcome.message),
                 systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                 tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }
@@ -234,7 +234,7 @@ struct AwayView: View {
     private func explanation(_ change: AwayChange) -> String {
         switch change {
         case .frostProtection(let fp) where fp.enabled:
-            Norwegian.format(
+            Display.format(
                 "Når varmepumpen ellers står av, starter den av seg selv hvis rommet blir kaldere enn %.0f °C, og stopper rundt %.0f °C.",
                 fp.minimum, fp.maximum)
         case .frostProtection:

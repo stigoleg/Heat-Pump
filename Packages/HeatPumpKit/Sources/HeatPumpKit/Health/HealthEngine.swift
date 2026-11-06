@@ -117,18 +117,18 @@ public enum HealthEngine {
         let dataAge = now.timeIntervalSince(state.fetchedAt)
         if dataAge > Threshold.staleDataAfter {
             let why =
-                blockedUntil.map { "MELCloud har midlertidig stengt for oppdateringer til \(Norwegian.dateTime($0))." }
+                blockedUntil.map { "MELCloud har midlertidig stengt for oppdateringer til \(Display.dateTime($0))." }
                 ?? "Det har ikke lyktes å hente ny status (for eksempel uten internett)."
             return [
                 HealthFinding(
                     code: "stale_data", severity: .info, title: "Dataene er gamle",
-                    detail: "Siste status er fra \(Norwegian.dateTime(state.fetchedAt)). \(why) Vurderingene under gjelder det tidspunktet.",
+                    detail: "Siste status er fra \(Display.dateTime(state.fetchedAt)). \(why) Vurderingene under gjelder det tidspunktet.",
                     recommendation: "Ingen tiltak på varmepumpen. Appen henter ny status automatisk når det er mulig.")
             ]
         }
         let silentFor = state.lastCommunication.map { state.fetchedAt.timeIntervalSince($0) }
         guard state.offline || (silentFor ?? 0) > Threshold.offlineAfter else { return [] }
-        let since = state.lastCommunication.map { "Siste kontakt: \(Norwegian.dateTime($0))." } ?? ""
+        let since = state.lastCommunication.map { "Siste kontakt: \(Display.dateTime($0))." } ?? ""
         return [
             HealthFinding(
                 code: "offline", severity: .warning, title: "Varmepumpen har ikke kontakt med MELCloud",
@@ -175,11 +175,11 @@ public enum HealthEngine {
             input.now.timeIntervalSince(last.fetchedAt) < 3 * 3600
         else { return [] }
         let hours = Int(last.fetchedAt.timeIntervalSince(first.fetchedAt) / 3600)
-        let outdoor = last.outdoorTemperature.map { Norwegian.format(" Ute er det %.0f °C.", $0) } ?? ""
+        let outdoor = last.outdoorTemperature.map { Display.format(" Ute er det %.0f °C.", $0) } ?? ""
         return [
             HealthFinding(
                 code: "setpoint_not_reached", severity: .warning, title: "Rommet når ikke ønsket temperatur",
-                detail: Norwegian.format(
+                detail: Display.format(
                     "I minst %d timer har romtemperaturen ligget %.1f °C eller mer under ønsket temperatur (nå %.1f °C mot %.1f °C).",
                     hours, Threshold.setpointGap, last.roomTemperature ?? 0, last.setTemperature ?? 0) + outdoor,
                 recommendation: "Det kan være helt normalt når det er veldig kaldt ute, eller rett etter at temperaturen er skrudd opp. Sjekk at luftfilteret er rent, at ingenting blokkerer luftstrømmen, og at utedelen ikke er dekket av snø eller is. Vedvarer det i milde perioder, ring forhandleren.")
@@ -220,7 +220,7 @@ public enum HealthEngine {
                 HealthFinding(
                     code: "recent_error_log", severity: .warning,
                     title: "Feil registrert siste \(Threshold.recentErrorDays) dager",
-                    detail: "\(recent.count) feil i feilloggen. Siste: «\(latest.message)» \(Norwegian.dateTime(latest.start)).",
+                    detail: "\(recent.count) feil i feilloggen. Siste: «\(latest.message)» \(Display.dateTime(latest.start)).",
                     recommendation: "Gjentar feilen seg, eller blinker driftslampen, bør du ringe forhandleren. "
                         + "Én enkelt kort feil som har gått over av seg selv er ofte ufarlig. " + (entry.confidence == .melcloud ? "" : ErrorCatalog.caveat))
             ]
@@ -229,7 +229,7 @@ public enum HealthEngine {
         return [
             HealthFinding(
                 code: "old_error_log", severity: .info, title: "Eldre feil i feilloggen",
-                detail: "\(input.errorEvents.count) eldre feil. Siste: «\(latest.message)» \(Norwegian.date(latest.start)).",
+                detail: "\(input.errorEvents.count) eldre feil. Siste: «\(latest.message)» \(Display.date(latest.start)).",
                 recommendation: "Ingen tiltak nå. Nevn dem for forhandleren ved neste service.")
         ]
     }
@@ -269,7 +269,7 @@ public enum HealthEngine {
         return [
             HealthFinding(
                 code: "energy_anomaly", severity: severity, title: "Uvanlig høyt strømforbruk",
-                detail: Norwegian.format(
+                detail: Display.format(
                     "%@ brukte varmepumpen %.2f kWh per graddag, %.1f ganger mer enn vanlig (median %.2f siste dager). Graddager er justert for utetemperatur.",
                     latest.day, latest.ratio, factor, median),
                 recommendation: "Sjekk at luftfilteret er rent, at utedelen ikke er nediset eller dekket av snø, og at dører/vinduer er lukket. Fortsetter det flere dager, ring forhandleren. Merk at MELCloud av og til rapporterer energitall forsinket eller feil.")

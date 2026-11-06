@@ -44,7 +44,7 @@ public struct FrostProtection: Codable, Sendable, Equatable {
 
     /// "på, 8–12 °C" or "av" (change log and dialogs).
     public var summary: String {
-        enabled ? Norwegian.format("på, %.0f–%.0f °C", minimum, maximum) : "av"
+        enabled ? Display.format("på, %.0f–%.0f °C", minimum, maximum) : "av"
     }
 }
 
@@ -79,7 +79,7 @@ public struct HolidayMode: Codable, Sendable, Equatable {
     /// "på, 20. des. 2026, 10:00 → 27. des. 2026, 18:30" or "av".
     public var summary: String {
         guard enabled else { return "av" }
-        return "på, " + (start.map(Norwegian.dateTime) ?? "?") + " → " + (end.map(Norwegian.dateTime) ?? "?")
+        return "på, " + (start.map(Display.dateTime) ?? "?") + " → " + (end.map(Display.dateTime) ?? "?")
     }
 }
 
@@ -146,11 +146,11 @@ public enum AwayChange: Sendable, Equatable {
         switch self {
         case .frostProtection(let fp):
             fp.enabled
-                ? Norwegian.format("Slå på frostsikring: holder %.0f–%.0f °C når varmepumpen ellers er av", fp.minimum, fp.maximum)
-                : Norwegian.format("Slå av frostsikring (området %.0f–%.0f °C lagres uendret)", fp.minimum, fp.maximum)
+                ? Display.format("Slå på frostsikring: holder %.0f–%.0f °C når varmepumpen ellers er av", fp.minimum, fp.maximum)
+                : Display.format("Slå av frostsikring (området %.0f–%.0f °C lagres uendret)", fp.minimum, fp.maximum)
         case .holidayMode(let hm):
             hm.enabled
-                ? "Slå på feriemodus fra " + (hm.start.map(Norwegian.dateTime) ?? "?") + " til " + (hm.end.map(Norwegian.dateTime) ?? "?")
+                ? "Slå på feriemodus fra " + (hm.start.map(Display.dateTime) ?? "?") + " til " + (hm.end.map(Display.dateTime) ?? "?")
                 : "Slå av feriemodus"
         }
     }
@@ -163,10 +163,10 @@ public enum AwayChange: Sendable, Equatable {
     public func displaySummary(frost: FrostProtection?) -> String {
         guard case .holidayMode(let hm) = self, hm.enabled else { return displaySummary }
         guard let frost, frost.enabled else { return displaySummary + " – frostsikring er IKKE på" }
-        var text = displaySummary + Norwegian.format(
+        var text = displaySummary + Display.format(
             " – i perioden holder varmepumpen frostsikringens område %.0f–%.0f °C", frost.minimum, frost.maximum)
         if frost.minimum < Self.recommendedFrostMinimum {
-            text += Norwegian.format(" (laveste %.0f °C er lavt; 8 °C eller mer anbefales)", frost.minimum)
+            text += Display.format(" (laveste %.0f °C er lavt; 8 °C eller mer anbefales)", frost.minimum)
         }
         return text
     }

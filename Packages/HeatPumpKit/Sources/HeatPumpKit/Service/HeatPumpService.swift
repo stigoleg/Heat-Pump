@@ -607,7 +607,7 @@ public actor HeatPumpService {
             // Another process may have just fetched and stored the device object.
             if await isFresh() { return nil }
             return "Endringen ble ikke sendt fordi appen først må hente fersk status fra varmepumpen, "
-                + "og det er hentet nylig. Prøv igjen etter \(Norwegian.time(next))."
+                + "og det er hentet nylig. Prøv igjen etter \(Display.time(next))."
         case .allowed:
             do {
                 let state = try await backend.fetchState(deviceId: deviceId)
@@ -684,7 +684,7 @@ public actor HeatPumpService {
             guard range.contains(snapped) else {
                 return .failure(
                     ValidationFailure(
-                        Norwegian.format(
+                        Display.format(
                             "%.1f °C er utenfor det tillatte området %.0f–%.0f °C for modus %@.",
                             celsius, range.lowerBound, range.upperBound, mode.displayName)))
             }

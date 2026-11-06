@@ -235,7 +235,7 @@ public enum PriceControlPlanner {
     static func rank(_ level: PriceLevel) -> Int { PriceLevel.allCases.firstIndex(of: level) ?? 0 }
 
     static func reason(kind: PlannedStep.Kind, level: PriceLevel?, priceOre: Double) -> String {
-        let price = Norwegian.format("%.2f kr/kWh", priceOre / 100)
+        let price = Display.format("%.2f kr/kWh", priceOre / 100)
         switch kind {
         case .reduce: return "\(level?.adjective ?? "Dyrt") (\(price))"
         case .preheat: return "Forvarming før dyre timer (\(price))"
@@ -482,7 +482,7 @@ public enum PriceControlEngine {
                     memory.pausedUntil = max(paused, step.end)
                 }
                 decision.kind = .paused
-                decision.text = "Pause – du endret temperaturen. Fortsetter kl. \(Norwegian.time(memory.pausedUntil ?? paused))."
+                decision.text = "Pause – du endret temperaturen. Fortsetter kl. \(Display.time(memory.pausedUntil ?? paused))."
                 return decision
             }
             memory.pausedUntil = nil
@@ -495,13 +495,13 @@ public enum PriceControlEngine {
         let failedHere = isSameStep(memory.failedStep, step)
         if !failedHere { memory.clearFailure() }
         if failedHere, memory.failures >= maxAttemptsPerStep {
-            decision.text = "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Norwegian.time(step.end))."
+            decision.text = "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. \(Display.time(step.end))."
             decision.problem = memory.problem
             return decision
         }
         if let near = c.timerEventNear {
             decision.kind = .waiting
-            decision.text = "Venter til ukeplanen har endret temperaturen kl. \(Norwegian.time(near))."
+            decision.text = "Venter til ukeplanen har endret temperaturen kl. \(Display.time(near))."
             return decision
         }
         guard let setpoint = state.setTemperature else {
@@ -521,11 +521,11 @@ public enum PriceControlEngine {
         if let last = memory.writes.max(), hour(last) == hour(c.now) {
             let next = Date(timeIntervalSince1970: Double(hour(c.now) + 1) * 3600)
             if failedHere {
-                decision.text = "Kunne ikke endre temperaturen. Prøver igjen kl. \(Norwegian.time(next))."
+                decision.text = "Kunne ikke endre temperaturen. Prøver igjen kl. \(Display.time(next))."
                 decision.problem = memory.problem
             } else {
                 decision.kind = .waiting
-                decision.text = "Venter: høyst én endring i timen. Neste kl. \(Norwegian.time(next))."
+                decision.text = "Venter: høyst én endring i timen. Neste kl. \(Display.time(next))."
             }
             return decision
         }

@@ -148,44 +148,44 @@ extension HealthSeverity {
 enum Format {
     static func temperature(_ value: Double?) -> String {
         guard let value else { return "–" }
-        return Norwegian.format("%.1f °C", value)
+        return Display.format("%.1f °C", value)
     }
 
     static func degrees(_ value: Double?) -> String {
         guard let value else { return "–" }
-        return Norwegian.format("%.1f°", value)
+        return Display.format("%.1f°", value)
     }
 
-    static func kWh(_ value: Double) -> String { Norwegian.format("%.1f kWh", value) }
+    static func kWh(_ value: Double) -> String { Display.format("%.1f kWh", value) }
 
     static func kroner(_ value: Double?) -> String {
         guard let value else { return "–" }
-        return Norwegian.format("%.2f kr", value)
+        return Display.format("%.2f kr", value)
     }
 
     static func ore(_ value: Double?) -> String {
         guard let value else { return "–" }
-        return Norwegian.format("%.0f øre", value)
+        return Display.format("%.0f øre", value)
     }
 
     static func watts(_ value: Double?) -> String {
         guard let value else { return "—" }
-        return Norwegian.format("%.0f W", value)
+        return Display.format("%.0f W", value)
     }
 
     /// 0…1 as "42 %".
     static func percentShare(_ value: Double) -> String {
-        Norwegian.format("%.0f %%", value * 100)
+        Display.format("%.0f %%", value * 100)
     }
 
     static func percent(_ value: Double) -> String {
-        Norwegian.format("%+.0f %%", value)
+        Display.format("%+.0f %%", value)
     }
 
     static func relative(_ date: Date?, now: Date = Date()) -> String {
         guard let date else { return "ukjent" }
         if abs(now.timeIntervalSince(date)) < 45 { return "akkurat nå" }
-        return date.formatted(Date.RelativeFormatStyle(presentation: .named, unitsStyle: .wide).locale(Norwegian.locale))
+        return date.formatted(Date.RelativeFormatStyle(presentation: .named, unitsStyle: .wide).locale(Display.locale))
     }
 
     static func countdown(to date: Date, now: Date) -> String {
@@ -195,15 +195,15 @@ enum Format {
     }
 
     static func hour(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute().locale(Norwegian.locale))
+        date.formatted(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute().locale(Display.locale))
     }
 
     /// "tor. 14" (weekday and hour).
     static func weekdayHour(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)).locale(Norwegian.locale))
+        date.formatted(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)).locale(Display.locale))
     }
 
     static func dayMonth(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle().day().month(.abbreviated).locale(Norwegian.locale))
+        date.formatted(Date.FormatStyle().day().month(.abbreviated).locale(Display.locale))
     }
 }

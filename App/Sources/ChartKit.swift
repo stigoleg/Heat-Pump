@@ -14,7 +14,7 @@ enum ChartKit {
 
 extension View {
     /// Y axis: horizontal grid lines and labels only.
-    func calmYAxis(_ format: @escaping (Double) -> String = { Norwegian.format("%.0f", $0) }) -> some View {
+    func calmYAxis(_ format: @escaping (Double) -> String = { Display.format("%.0f", $0) }) -> some View {
         chartYAxis {
             AxisMarks(position: .leading) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
@@ -34,7 +34,7 @@ extension View {
             AxisMarks(values: .automatic(desiredCount: count)) { value in
                 AxisValueLabel(collisionResolution: .greedy(minimumSpacing: 6)) {
                     if let d = value.as(Date.self) {
-                        Text(d.formatted(format.locale(Norwegian.locale))).font(.caption2).foregroundStyle(.secondary)
+                        Text(d.formatted(format.locale(Display.locale))).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -45,7 +45,7 @@ extension View {
 /// Small card shown at the hovered position.
 struct ChartTooltip: View {
     let title: String
-    let rows: [(label: String, value: String, color: Color)]
+    let rows: [(label: LocalizedStringKey, value: String, color: Color)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

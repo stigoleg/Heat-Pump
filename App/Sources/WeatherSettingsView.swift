@@ -91,8 +91,8 @@ struct WeatherSettingsView: View {
         .task {
             guard !loaded else { return }
             let s = await model.loadWeatherSettings()
-            latitude = s.latitude.map { Norwegian.format("%.4f", $0) } ?? ""
-            longitude = s.longitude.map { Norwegian.format("%.4f", $0) } ?? ""
+            latitude = s.latitude.map { Display.format("%.4f", $0) } ?? ""
+            longitude = s.longitude.map { Display.format("%.4f", $0) } ?? ""
             placeName = s.placeName ?? ""
             email = s.contactEmail ?? ""
             showCoordinates = s.latitude != nil
@@ -106,8 +106,8 @@ struct WeatherSettingsView: View {
             guard let lat = number(latitude), let lon = number(longitude) else { return nil }
             return CLLocationCoordinate2D(latitude: lat, longitude: lon)
         } set: { new in
-            latitude = new.map { Norwegian.format("%.4f", $0.latitude) } ?? ""
-            longitude = new.map { Norwegian.format("%.4f", $0.longitude) } ?? ""
+            latitude = new.map { Display.format("%.4f", $0.latitude) } ?? ""
+            longitude = new.map { Display.format("%.4f", $0.longitude) } ?? ""
             message = nil
         }
     }

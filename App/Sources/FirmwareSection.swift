@@ -19,7 +19,7 @@ struct FirmwareSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            SectionHeader("Fastvare", hint: "Wi-Fi-modul " + (model.state?.firmware.version ?? status?.currentVersion ?? "ukjent versjon"))
+            SectionHeader("Fastvare", hint: (model.state?.firmware.version ?? status?.currentVersion).map { "Wi-Fi-modul \($0)" } ?? "Wi-Fi-modul, ukjent versjon")
             CardSurface {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     statusLine

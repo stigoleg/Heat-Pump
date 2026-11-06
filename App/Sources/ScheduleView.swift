@@ -387,7 +387,7 @@ struct ScheduleView: View {
         }
         if let outcome {
             InsightCard(
-                title: outcome.ok ? "Lagret i MELCloud" : "Ikke lagret", detail: outcome.message,
+                title: outcome.ok ? "Lagret i MELCloud" : "Ikke lagret", detail: .verbatim(outcome.message),
                 systemImage: outcome.ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
                 tint: outcome.ok ? Theme.Status.good : Theme.Status.caution)
         }

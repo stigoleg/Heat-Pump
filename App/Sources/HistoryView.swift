@@ -156,7 +156,7 @@ struct HistoryView: View {
                     tint: Theme.Data.inside)
                 KPITile(
                     label: "Lavest / høyest inne",
-                    value: inside.isEmpty ? "–" : Norwegian.format("%.1f / %.1f°", inside.min() ?? 0, inside.max() ?? 0),
+                    value: inside.isEmpty ? "–" : Display.format("%.1f / %.1f°", inside.min() ?? 0, inside.max() ?? 0),
                     detail: "i perioden", systemImage: "arrow.up.arrow.down", tint: Theme.Data.inside)
                 KPITile(
                     label: "Snitt ute", value: Format.temperature(outside.average),
@@ -241,7 +241,7 @@ struct HistoryView: View {
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
-                            title: Norwegian.dateTime(h.time) + " (varsel)",
+                            title: Display.dateTime(h.time) + " (varsel)",
                             rows: [("Ute", Format.temperature(h.temperature), Theme.Data.outside)])
                     }
             } else if let p = nearest(points, to: selected, by: \.timestamp) {
@@ -249,7 +249,7 @@ struct HistoryView: View {
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
-                            title: Norwegian.dateTime(p.timestamp),
+                            title: Display.dateTime(p.timestamp),
                             rows: [
                                 ("Inne", Format.temperature(p.room), Theme.Data.inside),
                                 ("Ute", Format.temperature(p.outdoor), Theme.Data.outside),
@@ -261,7 +261,7 @@ struct HistoryView: View {
         .chartXScale(domain: periodStart...temperatureEnd)
         .padding(.top, forecast.isEmpty ? 0 : Theme.Space.m)
         .chartYScale(domain: low...high)
-        .calmYAxis { Norwegian.format("%.0f°", $0) }
+        .calmYAxis { Display.format("%.0f°", $0) }
         .calmXAxis(range.axisFormat)
         .chartXSelection(value: $selected)
     }
@@ -286,7 +286,7 @@ struct HistoryView: View {
                     systemImage: "creditcard.fill", tint: Theme.Data.purple)
                 KPITile(
                     label: "Snitt per døgn", value: Format.kWh(totalKWh / days),
-                    detail: energy.totalCost.map { Format.kroner($0 / days) + " per døgn" }, systemImage: "calendar",
+                    detail: energy.totalCost.map { "\(Format.kroner($0 / days)) per døgn" }, systemImage: "calendar",
                     tint: Theme.Data.energy)
                 KPITile(
                     label: "Strømstøtte", value: Format.kroner(abs(support)),
@@ -373,7 +373,7 @@ struct HistoryView: View {
                     FlowLayout(spacing: Theme.Space.l) {
                         ForEach(shares, id: \.name) { share in
                             LegendDot(
-                                label: share.name + " " + Format.percentShare(share.share) + " · " + Format.kWh(share.kWh),
+                                label: "\(share.name) \(Format.percentShare(share.share)) · \(Format.kWh(share.kWh))",
                                 color: share.mode?.tint ?? .gray)
                         }
                     }
@@ -387,7 +387,7 @@ struct HistoryView: View {
             let perHour = range == .day
             let items = houseBars(house, perHour: perHour)
             TrendCard(title: "Varmepumpens andel av husets strøm", value: house.yesterday?.share.map {
-                Norwegian.format("Varmepumpen sto for %.0f %% av strømmen i går", $0 * 100)
+                Display.format("Varmepumpen sto for %.0f %% av strømmen i går", $0 * 100)
             }) {
                 FlowLayout {
                     LegendDot(label: "Varmepumpen", color: Theme.Data.energy)
@@ -409,10 +409,10 @@ struct HistoryView: View {
                                 .foregroundStyle(Color.secondary.opacity(0.25))
                                 .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                                     ChartTooltip(
-                                        title: perHour ? Norwegian.dateTime(item.date) : Norwegian.date(item.date),
+                                        title: perHour ? Display.dateTime(item.date) : Display.date(item.date),
                                         rows: [
                                             ("Huset", Format.kWh(item.house), .secondary),
-                                            ("Varmepumpen" + (item.measured ? "" : " (anslag)"), Format.kWh(item.pump), Theme.Data.energy),
+                                            (item.measured ? "Varmepumpen" : "Varmepumpen (anslag)", Format.kWh(item.pump), Theme.Data.energy),
                                             ("Andel", item.house > 0 ? Format.percentShare(item.pump / item.house) : "–", .primary),
                                         ])
                                 }
@@ -420,7 +420,7 @@ struct HistoryView: View {
                     }
                     // Day bars reach to the end of today (and hour bars to the end of this hour).
                     .chartXScale(domain: periodStart...houseDomainEnd(perHour: perHour))
-                    .calmYAxis { Norwegian.format("%.0f", $0) }
+                    .calmYAxis { Display.format("%.0f", $0) }
                     .calmXAxis(perHour ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat)
                     .chartXSelection(value: $selected)
                     .frame(height: 200)
@@ -500,15 +500,15 @@ struct HistoryView: View {
                     let net = electricity + cost.gridNok
                     BarMark(
                         x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", 0), yEnd: .value("kr", electricity))
-                        .foregroundStyle(by: .value("Del", "Strøm etter støtte"))
+                        .foregroundStyle(by: .value("Del", CostPart.electricity.title))
                     BarMark(
                         x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", electricity), yEnd: .value("kr", net))
-                        .foregroundStyle(by: .value("Del", "Nettleie"))
+                        .foregroundStyle(by: .value("Del", CostPart.grid.title))
                     if cost.supportNok < 0 {
                         BarMark(
                             x: .value("Tid", bar.date, unit: unit), yStart: .value("kr", net),
                             yEnd: .value("kr", net - cost.supportNok))
-                            .foregroundStyle(by: .value("Del", "Støtte (trukket fra)"))
+                            .foregroundStyle(by: .value("Del", CostPart.support.title))
                     }
                 } else if !showCost {
                     BarMark(x: .value("Tid", bar.date, unit: unit), y: .value("kWh", bar.kWh))
@@ -533,30 +533,30 @@ struct HistoryView: View {
             }
         }
         .chartForegroundStyleScale([
-            "Strøm etter støtte": Theme.Data.electricity, "Nettleie": Theme.Data.gridTariff,
-            "Støtte (trukket fra)": Theme.Data.support.opacity(0.3),
+            CostPart.electricity.title: Theme.Data.electricity, CostPart.grid.title: Theme.Data.gridTariff,
+            CostPart.support.title: Theme.Data.support.opacity(0.3),
         ])
         .chartLegend(.hidden)
-        .calmYAxis { Norwegian.format(showCost ? "%.0f kr" : "%.0f", $0) }
+        .calmYAxis { Display.format(showCost ? "%.0f kr" : "%.0f", $0) }
         .calmXAxis(range.axisFormat)
         .chartXSelection(value: $selected)
     }
 
     private func title(for bar: EnergyBar) -> String {
         switch bar.unit {
-        case .hour: Norwegian.dateTime(bar.date)
-        case .month: bar.date.formatted(Date.FormatStyle().month(.wide).year().locale(Norwegian.locale))
-        default: Norwegian.date(bar.date)
+        case .hour: Display.dateTime(bar.date)
+        case .month: bar.date.formatted(Date.FormatStyle().month(.wide).year().locale(Display.locale))
+        default: Display.date(bar.date)
         }
     }
 
-    private func tooltipRows(_ bar: EnergyBar) -> [(label: String, value: String, color: Color)] {
-        var rows: [(label: String, value: String, color: Color)] = [("Forbruk", Format.kWh(bar.kWh), Theme.Data.energy)]
+    private func tooltipRows(_ bar: EnergyBar) -> [(label: LocalizedStringKey, value: String, color: Color)] {
+        var rows: [(label: LocalizedStringKey, value: String, color: Color)] = [("Forbruk", Format.kWh(bar.kWh), Theme.Data.energy)]
         if let cost = bar.cost {
             rows.append(("Strøm", Format.kroner(cost.energyNok), Theme.Data.electricity))
             rows.append(("Nettleie", Format.kroner(cost.gridNok), Theme.Data.gridTariff))
             if cost.supportNok < 0 { rows.append(("Støtte", Format.kroner(cost.supportNok), Theme.Data.support)) }
-            rows.append(("Å betale" + (bar.isEstimate ? " (anslag)" : ""), Format.kroner(cost.totalNok), .primary))
+            rows.append((bar.isEstimate ? "Å betale (anslag)" : "Å betale", Format.kroner(cost.totalNok), .primary))
         }
         return rows
     }
@@ -569,13 +569,13 @@ struct HistoryView: View {
         return TrendCard(
             title: "Strømpris per time",
             value: all.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }.map {
-                Norwegian.format("Nå %.2f kr/kWh", $0.totalOre / 100)
+                Display.format("Nå %.2f kr/kWh", $0.totalOre / 100)
             }
         ) {
             FlowLayout {
                 if all.contains(where: { $0.level != nil }) {
                     ForEach([PriceLevel.veryCheap, .cheap, .normal, .expensive, .veryExpensive], id: \.self) {
-                        LegendDot(label: $0.displayName, color: $0.color)
+                        LegendDot(label: .verbatim($0.displayName), color: $0.color)
                     }
                 } else {
                     LegendDot(label: "I dag", color: Theme.Data.purple)
@@ -585,7 +585,7 @@ struct HistoryView: View {
         } chart: {
             if all.isEmpty {
                 EmptyChart(
-                    title: "Ingen priser ennå", message: model.priceMessage ?? "Velg strømavtale under Innstillinger → Strømpris.",
+                    title: "Ingen priser ennå", message: model.priceMessage.map { .verbatim($0) } ?? "Velg strømavtale under Innstillinger → Strømpris.",
                     systemImage: "bolt.horizontal")
             } else {
                 Chart {
@@ -605,18 +605,18 @@ struct HistoryView: View {
                             .foregroundStyle(Color.secondary.opacity(0.25))
                             .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                                 ChartTooltip(
-                                    title: Norwegian.dateTime(p.hour),
+                                    title: Display.dateTime(p.hour),
                                     rows: [
-                                        ("Strøm", Norwegian.format("%.0f øre", p.energyOre), Theme.Data.electricity),
-                                        ("Nettleie", Norwegian.format("%.0f øre", p.gridOre), Theme.Data.gridTariff),
-                                        ("Støtte", Norwegian.format("%.0f øre", p.supportOre), Theme.Data.support),
-                                        ("Totalt", Norwegian.format("%.2f kr", p.totalOre / 100), .primary),
+                                        ("Strøm", Display.format("%.0f øre", p.energyOre), Theme.Data.electricity),
+                                        ("Nettleie", Display.format("%.0f øre", p.gridOre), Theme.Data.gridTariff),
+                                        ("Støtte", Display.format("%.0f øre", p.supportOre), Theme.Data.support),
+                                        ("Totalt", Display.format("%.2f kr", p.totalOre / 100), .primary),
                                         ("Nivå", p.level.map { $0.displayName + (p.levelFromTibber ? " (Tibber)" : "") } ?? "–", p.level?.color ?? .secondary),
                                     ])
                             }
                     }
                 }
-                .calmYAxis { Norwegian.format("%.1f", $0) }
+                .calmYAxis { Display.format("%.1f", $0) }
                 .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
                 .chartXSelection(value: $selectedPrice)
                 .padding(.top, Theme.Space.l)
@@ -629,15 +629,15 @@ struct HistoryView: View {
 
     private var operationTab: some View {
         let bands = OperationBands.make(power: data.power, modes: data.modes, end: Date()) + OperationBands.local(phaseSpans)
-        let onSeconds = bands.filter { $0.row == "Av/på" && $0.label == "På" }.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
-        let covered = bands.filter { $0.row == "Av/på" }.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
-        let modeSeconds = Dictionary(grouping: bands.filter { $0.row == "Modus" }, by: \.label)
+        let onSeconds = bands.filter { $0.row == .power && $0.isOn }.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
+        let covered = bands.filter { $0.row == .power }.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) }
+        let modeSeconds = Dictionary(grouping: bands.filter { $0.row == .mode }, by: \.label)
             .mapValues { $0.reduce(0) { $0 + $1.end.timeIntervalSince($1.start) } }
         let mainMode = modeSeconds.max { $0.value < $1.value }?.key
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             KPIRow {
                 KPITile(
-                    label: "Andel på", value: covered > 0 ? Norwegian.format("%.0f %%", onSeconds / covered * 100) : "–",
+                    label: "Andel på", value: covered > 0 ? Display.format("%.0f %%", onSeconds / covered * 100) : "–",
                     detail: "av tiden med data", systemImage: "power", tint: Theme.Status.good)
                 KPITile(label: "Mest brukt modus", value: mainMode ?? "–", systemImage: "dial.medium", tint: Theme.Data.orange)
                 KPITile(
@@ -650,11 +650,11 @@ struct HistoryView: View {
             TrendCard(title: "Drift") {
                 FlowLayout {
                     ForEach([OperationMode.heat, .cool, .dry, .fan, .auto], id: \.self) {
-                        LegendDot(label: $0.displayName, color: $0.tint)
+                        LegendDot(label: .verbatim($0.displayName), color: $0.tint)
                     }
                     if !phaseSpans.isEmpty {
                         ForEach([LocalPhaseSpan.Kind.running, .rest, .defrost], id: \.self) {
-                            LegendDot(label: $0.displayName, color: $0.color)
+                            LegendDot(label: .verbatim($0.displayName), color: $0.color)
                         }
                     }
                 }
@@ -664,7 +664,7 @@ struct HistoryView: View {
                 } else {
                     Chart(bands) { band in
                         RectangleMark(
-                            xStart: .value("Fra", band.start), xEnd: .value("Til", band.end), y: .value("Rad", band.row), height: 22)
+                            xStart: .value("Fra", band.start), xEnd: .value("Til", band.end), y: .value("Rad", band.row.title), height: 22)
                         .foregroundStyle(band.color)
                         .cornerRadius(3)
                     }
@@ -728,7 +728,7 @@ struct HistoryView: View {
                 KPITile(
                     label: "Driftstid", value: durationText(totals?.runningSeconds ?? 0),
                     detail: (totals?.observedSeconds ?? 0) > 0
-                        ? Norwegian.format("%.0f %% av tiden", (totals?.runningSeconds ?? 0) / (totals?.observedSeconds ?? 1) * 100) : nil,
+                        ? "\(Format.percentShare((totals?.runningSeconds ?? 0) / (totals?.observedSeconds ?? 1))) av tiden" : nil,
                     systemImage: "timer", tint: Theme.Data.orange)
             }
             TrendCard(title: "Effekt", value: model.liveSample?.powerW.map { "Nå " + Format.watts(Double($0)) }) {
@@ -794,7 +794,7 @@ struct HistoryView: View {
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
-                            title: Norwegian.dateTime(b.start),
+                            title: Display.dateTime(b.start),
                             rows: [
                                 ("Snitt", Format.watts(b.averageW), .yellow), ("Maks", Format.watts(b.maxW), .yellow),
                                 ("Kompressor på", Format.percentShare(b.runningShare), Theme.Data.orange),
@@ -803,7 +803,7 @@ struct HistoryView: View {
             }
         }
         .chartXScale(domain: periodStart...Date())
-        .calmYAxis { Norwegian.format("%.0f W", $0) }
+        .calmYAxis { Display.format("%.0f W", $0) }
         .calmXAxis(powerAxis)
         .chartXSelection(value: $selected)
     }
@@ -820,10 +820,10 @@ struct HistoryView: View {
                     .foregroundStyle(Color.secondary.opacity(0.4))
                     .annotation(position: .top, overflowResolution: .init(x: .fit, y: .disabled)) {
                         ChartTooltip(
-                            title: Norwegian.dateTime(b.start),
+                            title: Display.dateTime(b.start),
                             rows: [
-                                ("Snitt når den går", b.averageRunningHz.map { Norwegian.format("%.0f Hz", $0) } ?? "står", Theme.Data.orange),
-                                ("Maks", Norwegian.format("%.0f Hz", b.maxHz ?? 0), Theme.Data.orange),
+                                ("Snitt når den går", b.averageRunningHz.map { Display.format("%.0f Hz", $0) } ?? "står", Theme.Data.orange),
+                                ("Maks", Display.format("%.0f Hz", b.maxHz ?? 0), Theme.Data.orange),
                                 ("Går", Format.percentShare(b.runningShare), Theme.Data.orange),
                             ])
                     }
@@ -831,7 +831,7 @@ struct HistoryView: View {
         }
         .chartXScale(domain: periodStart...Date())
         .chartYScale(domain: 0...max(60, (buckets.compactMap(\.maxHz).max() ?? 60) + 5))
-        .calmYAxis { Norwegian.format("%.0f Hz", $0) }
+        .calmYAxis { Display.format("%.0f Hz", $0) }
         .calmXAxis(powerAxis)
         .chartXSelection(value: $selected)
     }
@@ -855,7 +855,7 @@ struct HistoryView: View {
             }
         }
         .chartXScale(domain: periodStart...Date())
-        .calmYAxis { Norwegian.format("%.0f", $0) }
+        .calmYAxis { Display.format("%.0f", $0) }
         .calmXAxis(powerAxis)
         .chartXSelection(value: $selected)
     }
@@ -915,25 +915,53 @@ enum Downsample {
 }
 
 struct OperationBand: Identifiable {
+    /// Chart row. Logic keys on this, never on the displayed text.
+    enum Row {
+        case power, mode, local
+
+        var title: String {
+            switch self {
+            case .power: "Av/på"
+            case .mode: "Modus"
+            case .local: "Lokalt"
+            }
+        }
+    }
+
     let id = UUID()
-    let row: String
+    let row: Row
     let label: String
+    /// Power row: the unit was on.
+    var isOn = false
     let start: Date
     let end: Date
     let color: Color
+}
+
+/// Stacked cost bar parts. Series values and the colour scale both use `title`.
+enum CostPart {
+    case electricity, grid, support
+
+    var title: String {
+        switch self {
+        case .electricity: "Strøm etter støtte"
+        case .grid: "Nettleie"
+        case .support: "Støtte (trukket fra)"
+        }
+    }
 }
 
 enum OperationBands {
     /// Third row from local readings: running, rest, defrost, start-up and off.
     static func local(_ spans: [LocalPhaseSpan]) -> [OperationBand] {
         spans.filter { $0.kind != .unknown && $0.end > $0.start }.map {
-            OperationBand(row: "Lokalt", label: $0.kind.displayName, start: $0.start, end: $0.end, color: $0.kind.color)
+            OperationBand(row: .local, label: $0.kind.displayName, start: $0.start, end: $0.end, color: $0.kind.color)
         }
     }
 
     /// Bands between consecutive readings; a gap over 2 h ends a band.
     static func make(power: [HistoryPoint], modes: [HistoryPoint], end: Date) -> [OperationBand] {
-        func bands(_ points: [HistoryPoint], row: String, label: (HistoryPoint) -> (String, Color)) -> [OperationBand] {
+        func bands(_ points: [HistoryPoint], row: OperationBand.Row, label: (HistoryPoint) -> (String, Color)) -> [OperationBand] {
             let sorted = points.sorted { $0.timestamp < $1.timestamp }
             var result: [OperationBand] = []
             for (index, point) in sorted.enumerated() {
@@ -942,17 +970,17 @@ enum OperationBands {
                 guard stop > point.timestamp else { continue }
                 let (text, color) = label(point)
                 if let last = result.last, last.label == text, last.end == point.timestamp {
-                    result[result.count - 1] = OperationBand(row: row, label: text, start: last.start, end: stop, color: color)
+                    result[result.count - 1] = OperationBand(row: row, label: text, isOn: last.isOn, start: last.start, end: stop, color: color)
                 } else {
-                    result.append(OperationBand(row: row, label: text, start: point.timestamp, end: stop, color: color))
+                    result.append(OperationBand(row: row, label: text, isOn: row == .power && point.value == 1, start: point.timestamp, end: stop, color: color))
                 }
             }
             return result
         }
-        let powerBands = bands(power, row: "Av/på") { p in
+        let powerBands = bands(power, row: .power) { p in
             (p.value == 1 ? "På" : "Av", p.value == 1 ? Theme.Status.good.opacity(0.75) : Color.gray.opacity(0.35))
         }
-        let modeBands = bands(modes, row: "Modus") { p in
+        let modeBands = bands(modes, row: .mode) { p in
             let mode = p.text.flatMap(OperationMode.init(key:))
             return (mode?.displayName ?? "Ukjent", mode?.tint.opacity(0.8) ?? Color.gray.opacity(0.35))
         }

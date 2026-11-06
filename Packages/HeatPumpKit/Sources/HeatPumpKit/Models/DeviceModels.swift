@@ -409,7 +409,7 @@ public enum DeviceChange: Sendable, Equatable {
         switch self {
         case .power(let on): on ? "Slå varmepumpen PÅ" : "Slå varmepumpen AV"
         case .mode(let mode): "Endre modus til \(mode.displayName)"
-        case .temperature(let celsius): Norwegian.format("Endre ønsket temperatur til %.1f °C", celsius)
+        case .temperature(let celsius): Display.format("Endre ønsket temperatur til %.1f °C", celsius)
         case .fanSpeed(let speed): speed == 0 ? "Sett viftehastighet til auto" : "Sett viftehastighet til \(speed)"
         case .vaneVertical(let vane): "Sett vertikalt spjeld til \(vane.displayName)"
         case .vaneHorizontal(let vane): "Sett horisontalt spjeld til \(vane.displayName)"

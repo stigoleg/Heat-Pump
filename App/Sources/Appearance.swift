@@ -85,6 +85,7 @@ struct AppearancePicker: View {
 struct GeneralSettings: View {
     var body: some View {
         Form {
+            LanguageSection()
             Section {
                 AppearancePicker(segmented: true)
             } header: {

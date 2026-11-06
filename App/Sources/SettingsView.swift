@@ -159,7 +159,7 @@ struct AccountSettings: View {
                 if let hours = model.live?.sample?.runtimeHours {
                     LabeledContent("Driftstid totalt (ifølge innedelen)") {
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(Norwegian.format("%d timer", hours)).monospacedDigit()
+                            Text(Display.format("%d timer", hours)).monospacedDigit()
                             Text("Innedelens egen teller, lest lokalt. Trolig tid siden montering.").font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -246,15 +246,15 @@ struct DataSettings: View {
             }
             Section {
                 if let until = model.stateResult?.blockedUntil {
-                    LabeledContent("Blokkert til", value: Norwegian.dateTime(until))
+                    LabeledContent("Blokkert til", value: Display.dateTime(until))
                 } else {
                     LabeledContent("Blokkering", value: "Ingen")
                 }
                 ForEach(model.fetchStatus, id: \.key) { row in
                     LabeledContent(label(row.key)) {
                         VStack(alignment: .trailing) {
-                            Text("Sist forsøkt: \(row.lastAttempt.map(Norwegian.dateTime) ?? "–")")
-                            Text("Sist vellykket: \(row.lastSuccess.map(Norwegian.dateTime) ?? "–")")
+                            Text("Sist forsøkt: \(row.lastAttempt.map(Display.dateTime) ?? "–")")
+                            Text("Sist vellykket: \(row.lastSuccess.map(Display.dateTime) ?? "–")")
                         }
                         .font(.caption)
                     }

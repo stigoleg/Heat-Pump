@@ -25,7 +25,7 @@ struct PriceControlTests {
         #expect(steps[2].start == clock.now.addingTimeInterval(2 * 3600))
         #expect(steps[2].end == clock.now.addingTimeInterval(4 * 3600))
         #expect(steps[2].priceOre == 245)
-        #expect(steps[2].reason == "Svært dyrt (" + Norwegian.format("%.2f", 2.45) + " kr/kWh)")
+        #expect(steps[2].reason == "Svært dyrt (" + Display.format("%.2f", 2.45) + " kr/kWh)")
         #expect(steps[3].end == clock.now.addingTimeInterval(6 * 3600))
         #expect(steps[1].summary(now: clock.now, timeZone: .gmt).hasPrefix("11–12: senkes til 20 °C"))
     }

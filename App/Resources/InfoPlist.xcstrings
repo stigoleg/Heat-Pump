@@ -1,0 +1,27 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heat Pump" } },
+        "nb" : { "stringUnit" : { "state" : "translated", "value" : "Varmepumpe" } }
+      }
+    },
+    "CFBundleName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heat Pump" } },
+        "nb" : { "stringUnit" : { "state" : "translated", "value" : "Varmepumpe" } }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Heat Pump reads status (power and temperatures) directly from the heat pump's Wi-Fi adapter on your home network. The app changes nothing over the home network." } },
+        "nb" : { "stringUnit" : { "state" : "translated", "value" : "Varmepumpe leser status (effekt og temperaturer) direkte fra varmepumpens Wi-Fi-modul på hjemmenettet. Appen endrer ingenting via hjemmenettet." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
