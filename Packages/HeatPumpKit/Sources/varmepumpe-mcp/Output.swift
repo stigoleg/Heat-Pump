@@ -24,18 +24,18 @@ struct Meta: Encodable {
     static func current(service: HeatPumpService, state: StateResult? = nil) async -> Meta {
         let store = service.store
         let now = Date()
-        let snapshot = try? store.latestSnapshot()
+        let snapshot = try? await service.latestSnapshot()
         let fetchedAt = state?.fetchedAt ?? snapshot?.state.fetchedAt
         var synced: [String: Date] = [:]
         for kind in ReportKind.allCases {
-            if let date = (try? store.fetchState(key: "report.\(kind.rawValue)"))??.lastSuccess {
+            if let date = (try? store.fetchState(key: service.fetchKey("report.\(kind.rawValue)")))??.lastSuccess {
                 synced[kind.rawValue] = date
             }
         }
         return Meta(
             fetchedAt: fetchedAt,
             dataAgeSeconds: fetchedAt.map { max(0, Int(now.timeIntervalSince($0))) },
-            blockedUntil: state?.blockedUntil ?? (try? store.blockedUntil(now: now)) ?? nil,
+            blockedUntil: state?.blockedUntil ?? (try? store.blockedUntil(now: now, integration: service.integration.id)) ?? nil,
             nextRefreshAllowed: state?.nextRefreshAllowed,
             historyLastSynced: synced,
             backend: service.backend.identifier)
@@ -109,7 +109,7 @@ struct StatusView: Encodable {
     var nextTimerEvent: String?
 
     /// `serviceName` names the service in the summary.
-    init(_ result: StateResult, serviceName: String) {
+    init(_ result: StateResult, serviceName: String, noErrorCodes: Set<Int>) {
         refreshed = result.refreshed
         stale = result.stale
         refreshError = result.error
@@ -128,7 +128,7 @@ struct StatusView: Encodable {
         actualFanSpeed = s.actualFanSpeed
         vaneVertical = s.vaneVertical?.key
         vaneHorizontal = s.vaneHorizontal?.key
-        hasError = s.hasActiveError
+        hasError = s.hasActiveError(noErrorCodes: noErrorCodes)
         errorCode = s.errorCode
         offline = s.offline
         lastCommunication = s.lastCommunication
@@ -143,7 +143,7 @@ struct StatusView: Encodable {
         if let room = s.roomTemperature { parts.append(L10n.format("Indoor: %.1f °C.", room)) }
         if let set = s.setTemperature { parts.append(L10n.format("Target: %.1f °C.", set)) }
         if let out = s.outdoorTemperature { parts.append(L10n.format("Outdoor: %.1f °C.", out)) }
-        if s.hasActiveError { parts.append(L10n.format("Reports an error (code %@).", s.errorCode.map(String.init) ?? L10n.tr("unknown"))) }
+        if hasError == true { parts.append(L10n.format("Reports an error (code %@).", s.errorCode.map(String.init) ?? L10n.tr("unknown"))) }
         if s.offline { parts.append(L10n.format("Not connected to %@.", serviceName)) }
         if result.stale { parts.append(L10n.tr("Note: the data may be out of date.")) }
         summary = parts.joined(separator: " ")
@@ -151,6 +151,8 @@ struct StatusView: Encodable {
 }
 
 /// Device information for Claude. Serial number and MAC address are deliberately left out.
+/// `deviceId` and `buildingId` are the integration's numbers as before device keys: the key's
+/// native id and the registry's `buildingId` metadata (0 when unknown).
 struct DeviceInfoView: Encodable {
     var name: String
     var deviceId: Int
@@ -167,6 +169,26 @@ struct DeviceInfoView: Encodable {
     /// The indoor unit's own minutes counter in hours (local adapter; likely total running time).
     var runtimeHoursIndoorUnit: Int?
     var knowledge: [String]
+}
+
+/// An error-log entry as `get_error_log` has always shown it: `deviceId` is the integration's
+/// number (the key's native id).
+struct ErrorLogEntryView: Encodable {
+    var deviceId: Int
+    var start: Date
+    var end: Date?
+    var message: String
+    var code: String?
+    var source: String
+
+    init(_ entry: ErrorLogEntry) {
+        deviceId = Int(entry.device.nativeId) ?? 0
+        start = entry.start
+        end = entry.end
+        message = entry.message
+        code = entry.code
+        source = entry.source
+    }
 }
 
 /// Adapter firmware for `get_device_info` (MELCloud's internal deployment id is left out).

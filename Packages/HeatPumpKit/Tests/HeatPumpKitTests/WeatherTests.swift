@@ -148,7 +148,7 @@ struct WeatherTests {
         #expect(location.latitude == 59.9139)
         let store = try HistoryStore(path: temporaryDatabasePath())
         try store.insertSnapshot(makeState(at: clock.now))
-        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: clock.now, json: .object([:]), listing: wrappers.first))
+        try store.saveRawDevice(RawDevice(device: testDevice, fetchedAt: clock.now, json: .object([:]), listing: wrappers.first))
         // The stored listing is MELCloud's, so only the MELCloud connection reads it.
         let service = HeatPumpService(
             backend: MELCloudClassicBackend(credentials: InMemoryCredentialStore(), transport: StubTransport()), store: store,
@@ -198,10 +198,10 @@ struct WeatherTests {
             let mean = -2 + Double(i % 14)
             try store.upsertTemperaturePoints(
                 (0..<24).map { TemperaturePoint(timestamp: day.addingTimeInterval(Double($0) * 3600), room: 21, set: 21, outdoor: mean) },
-                deviceId: 1)
+                device: testDevice)
             days.append(EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 0.42 * (17 - mean), heatingKWh: 0.42 * (17 - mean)))
         }
-        try store.upsertEnergyDays(days, deviceId: 1, now: clock.now)
+        try store.upsertEnergyDays(days, device: testDevice, now: clock.now)
         // Tomorrow: −3 °C all day → 20 degree-days → 8.4 kWh.
         let tomorrow = today.addingTimeInterval(86_400)
         try store.replaceForecast(

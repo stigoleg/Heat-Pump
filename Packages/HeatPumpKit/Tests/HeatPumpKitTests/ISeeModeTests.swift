@@ -36,15 +36,15 @@ struct ISeeModeTests {
 
     @Test func rawISeeModeIsKeptWhenModeIsNotChanged() throws {
         let body = try MELCloudClassicParser.setAtaPayload(
-            ChangeSet(deviceId: 1, buildingId: 1, setTemperature: 22), raw: try raw(mode: 9))
+            ChangeSet(device: .melcloud(1), setTemperature: 22), raw: try raw(mode: 9))
         #expect(body["OperationMode"] == .number(9))
         #expect(body["EffectiveFlags"] == .number(0x04))
-        let power = try MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 1, buildingId: 1, power: false), raw: try raw(mode: 11))
+        let power = try MELCloudClassicParser.setAtaPayload(ChangeSet(device: .melcloud(1), power: false), raw: try raw(mode: 11))
         #expect(power["OperationMode"] == .number(11))
     }
 
     @Test func choosingAModeSendsThePlainValue() throws {
-        let body = try MELCloudClassicParser.setAtaPayload(ChangeSet(deviceId: 1, buildingId: 1, mode: .cool), raw: try raw(mode: 9))
+        let body = try MELCloudClassicParser.setAtaPayload(ChangeSet(device: .melcloud(1), mode: .cool), raw: try raw(mode: 9))
         #expect(body["OperationMode"] == .number(3))
         #expect(body["EffectiveFlags"] == .number(0x02))
     }
@@ -66,7 +66,7 @@ struct ISeeModeTests {
         transport.enqueue("Device/Get", body: getData)
         transport.enqueue("Device/SetAta", body: getData)
         let credentials = InMemoryCredentialStore(
-            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let store = try HistoryStore(path: temporaryDatabasePath())
         let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, rawCache: store, now: clock.provider)
         let service = HeatPumpService(backend: backend, store: store, credentials: credentials, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)

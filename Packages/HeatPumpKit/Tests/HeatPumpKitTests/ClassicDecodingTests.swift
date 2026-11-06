@@ -30,8 +30,8 @@ struct ClassicDecodingTests {
         #expect(devices.count == 1)
         #expect(devices.first?["DeviceName"]?.string == "Stue")
         let summaries = devices.compactMap(MELCloudClassicParser.summary)
-        #expect(summaries.map(\.deviceId) == [100001])
-        #expect(summaries.first?.buildingId == 200001)
+        #expect(summaries.map(\.key) == [.melcloud(100001)])
+        #expect(summaries.first?.metadata["buildingId"] == "200001")
     }
 
     @Test func firmwareVersionAndAdapterStatus() throws {
@@ -59,8 +59,7 @@ struct ClassicDecodingTests {
         #expect(state.energy.counterAt == listedAt)
         // Without the listing time the counter is left out rather than stamped wrongly.
         #expect(try MELCloudClassicParser.state(listing: listing, get: nil, fetchedAt: now).energy.currentConsumedKWh == nil)
-        #expect(state.deviceId == 100001)
-        #expect(state.buildingId == 200001)
+        #expect(state.key == .melcloud(100001))
         #expect(state.name == "Stue")
         #expect(state.power)
         #expect(state.mode == .heat)
@@ -114,7 +113,7 @@ struct ClassicDecodingTests {
     }
 
     @Test func errorLog() throws {
-        let entries = try MELCloudClassicParser.errorLog(try Fixture.json("error_log"), timeZone: utc)
+        let entries = try MELCloudClassicParser.errorLog(try Fixture.json("error_log"), device: .melcloud(100001), timeZone: utc)
         #expect(entries.count == 2)
         #expect(entries[0].message == "Kommunikasjonsfeil mellom innedel og utedel")
         #expect(entries[0].start == WireDate.parse("2026-10-20T03:12:00", timeZone: utc))
@@ -125,7 +124,7 @@ struct ClassicDecodingTests {
 
     @Test func errorLogFailure() throws {
         #expect(throws: HeatPumpError.server("FromDate: Ugyldig dato")) {
-            try MELCloudClassicParser.errorLog(try Fixture.json("error_log_failure"), timeZone: utc)
+            try MELCloudClassicParser.errorLog(try Fixture.json("error_log_failure"), device: .melcloud(100001), timeZone: utc)
         }
     }
 

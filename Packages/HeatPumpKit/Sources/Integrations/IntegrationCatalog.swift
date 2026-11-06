@@ -23,11 +23,13 @@ public enum IntegrationCatalog {
     /// The service for this process: the demo integration with simulated providers for
     /// `VARMEPUMPE_BACKEND=mock`, otherwise MELCloud with keychain credentials, real price, weather
     /// and house providers and the local adapter on the network. The database comes from
-    /// `VARMEPUMPE_DB_PATH` or Application Support.
+    /// `VARMEPUMPE_DB_PATH` or Application Support. The store is opened with this process's
+    /// integration, which owns the rows from before device keys.
     public static func makeService(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> HeatPumpService {
-        let store = try HistoryStore(path: HistoryStore.defaultPath(environment: environment))
+        let store = try HistoryStore(
+            path: HistoryStore.defaultPath(environment: environment), legacyIntegration: current(environment: environment).id)
         if isDemo(environment: environment) {
             let context = IntegrationContext(environment: environment, store: store)
             return HeatPumpService(
@@ -36,7 +38,7 @@ public enum IntegrationCatalog {
                 local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
                 weatherProvider: { _ in MockWeatherProvider() }, houseProvider: { MockHouseConsumptionProvider() })
         }
-        let credentials = KeychainCredentialStore(environment: environment, serviceName: melcloud.displayName)
+        let credentials = KeychainCredentialStore(environment: environment, mappings: all.map(\.credentialMapping))
         let context = IntegrationContext(environment: environment, store: store, credentials: credentials)
         return HeatPumpService(
             backend: try melcloud.makeConnection(context), store: store, credentials: credentials, integration: melcloud,

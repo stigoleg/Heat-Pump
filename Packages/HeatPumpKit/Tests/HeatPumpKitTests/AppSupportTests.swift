@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import MELCloudIntegration
 @testable import DemoIntegration
 
 @Suite("App support")
@@ -16,7 +17,7 @@ struct AppSupportTests {
             timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         #expect(await !svc.hasCredentials())
         #expect(try await svc.currentState().needsLogin)
-        let result = try await svc.signIn(AccountCredentials(email: "a@b.no", password: "pw"))
+        let result = try await svc.signIn(MELCloudCredentials(email: "a@b.no", password: "pw"))
         #expect(result.refreshed && !result.needsLogin)
         #expect(await svc.hasCredentials())
         try await svc.signOut()
@@ -52,14 +53,14 @@ struct AppSupportTests {
     }
 
     @Test func notificationPlanner() {
-        let old = ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-10 * 86_400), message: "Gammel")
+        let old = ErrorLogEntry(device: testDevice, start: now.addingTimeInterval(-10 * 86_400), message: "Gammel")
         // First run: baseline only.
         var (planned, memory) = NotificationPlanner.plan(
             state: makeState(at: now), errorEvents: [old], maintenance: [], memory: NotificationMemory(), now: now)
         #expect(planned.isEmpty)
         #expect(memory.lastErrorEventStart == old.start)
 
-        let fresh = ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-60), message: "Ny feil")
+        let fresh = ErrorLogEntry(device: testDevice, start: now.addingTimeInterval(-60), message: "Ny feil")
         (planned, memory) = NotificationPlanner.plan(
             state: makeState(at: now), errorEvents: [old, fresh], maintenance: [], memory: memory, now: now)
         #expect(planned.map(\.title) == ["New error in the error log"])

@@ -52,8 +52,8 @@ extension HeatPumpService {
         if let lat = settings.latitude, let lon = settings.longitude {
             return WeatherLocation(latitude: lat, longitude: lon, placeName: settings.placeName, source: .manual)
         }
-        if let deviceId = try store.latestSnapshot()?.state.deviceId, let reporter = backend as? any DeviceLocationReporting,
-            let location = reporter.location(fromStoredListing: try store.rawDevice(deviceId: deviceId)?.listing)
+        if let device = try currentDevice(), let reporter = backend as? any DeviceLocationReporting,
+            let location = reporter.location(fromStoredListing: try store.rawDevice(device)?.listing)
         {
             return WeatherLocation(latitude: location.latitude, longitude: location.longitude, placeName: settings.placeName, source: .service)
         }
@@ -79,7 +79,7 @@ extension HeatPumpService {
             return WeatherSync(status: .upToDate)
         }
         let minInterval = sameLocation ? Self.weatherInterval : Self.weatherNewLocationInterval
-        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, countsTowardServiceBlock: false) {
+        switch try store.reserveFetch(key: Self.weatherFetchKey, minInterval: minInterval, now: t, blockingIntegration: nil) {
         case .throttled(let next):
             return WeatherSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:
@@ -127,8 +127,8 @@ extension HeatPumpService {
 
     /// Daily mean outdoor temperature (`yyyy-MM-dd`) for local days with at least 12 hours of data.
     func dailyOutdoorMeans(from: Date, to: Date) throws -> [String: Double] {
-        let deviceId = try store.latestSnapshot()?.state.deviceId
-        let hourly = try store.hourlyOutdoorMeans(deviceId: deviceId, from: from, to: to)
+        let device = try currentDevice()
+        let hourly = try store.hourlyOutdoorMeans(device: device, from: from, to: to)
         let calendar = WireDate.calendar(timeZone)
         let byDay = Dictionary(grouping: hourly) { WireDate.day(calendar.startOfDay(for: $0.key), timeZone: timeZone) }
         return byDay.compactMapValues { hours in

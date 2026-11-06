@@ -19,3 +19,5 @@ xcuserdata/
 *.sqlite-shm
 .env
 .DS_Store
+
+!Packages/HeatPumpKit/Tests/HeatPumpKitTests/Fixtures/*.sqlite

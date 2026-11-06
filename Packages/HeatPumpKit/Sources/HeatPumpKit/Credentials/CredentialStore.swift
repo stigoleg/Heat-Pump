@@ -2,28 +2,91 @@ import Foundation
 import Security
 import Synchronization
 
-/// E-mail and password for the heat pump service account.
-public struct AccountCredentials: Sendable, Equatable {
-    public var email: String
-    public var password: String
+/// The values of an integration's sign-in fields, keyed by `CredentialField.id` (e.g. `email`).
+public struct CredentialValues: Sendable, Equatable {
+    public var fields: [String: String]
 
-    public init(email: String, password: String) {
-        self.email = email
-        self.password = password
+    public init(_ fields: [String: String] = [:]) {
+        self.fields = fields
+    }
+
+    public subscript(field: String) -> String? {
+        get { fields[field] }
+        set { fields[field] = newValue }
     }
 }
 
-/// Supplies the service account's credentials and persists its session key.
+/// Where an integration's sign-in values and session live in the keychain (generic-password
+/// items under one service, addressed by account). Persisted: an integration never moves its
+/// existing items, because a new item would lose the access shared by the app and the helper.
+public struct CredentialMapping: Sendable, Equatable {
+    /// One keychain item and the fields it holds: one field is stored as the value itself,
+    /// several as a JSON object of field → value.
+    public struct Item: Sendable, Equatable {
+        public var account: String
+        public var fields: [String]
+
+        public init(account: String, fields: [String]) {
+            self.account = account
+            self.fields = fields
+        }
+    }
+
+    /// `Integration.id`.
+    public var integrationId: String
+    /// Names the service in the item labels shown in Keychain Access.
+    public var serviceName: String
+    public var items: [Item]
+    /// Field also kept in its item's non-secret attribute, so it can be shown without reading
+    /// the secret (e.g. the e-mail address).
+    public var identityField: String?
+    /// The item holding the service's session token, nil when there is none.
+    public var sessionAccount: String?
+    /// Dev only: environment variables (field → variable) that replace the keychain values when
+    /// all of them are set.
+    public var environment: [String: String]
+
+    public init(
+        integrationId: String, serviceName: String, items: [Item], identityField: String? = nil, sessionAccount: String? = nil,
+        environment: [String: String] = [:]
+    ) {
+        self.integrationId = integrationId
+        self.serviceName = serviceName
+        self.items = items
+        self.identityField = identityField
+        self.sessionAccount = sessionAccount
+        self.environment = environment
+    }
+
+    /// One item per field named `<integration id>/<field>`, the session in
+    /// `<integration id>/session`, and the first non-secret field as the identity.
+    public static func standard(integrationId: String, serviceName: String, fields: [CredentialField]) -> CredentialMapping {
+        CredentialMapping(
+            integrationId: integrationId, serviceName: serviceName,
+            items: fields.map { Item(account: "\(integrationId)/\($0.id)", fields: [$0.id]) },
+            identityField: fields.first { !$0.isSecret }?.id, sessionAccount: "\(integrationId)/session")
+    }
+
+    /// Every field the items hold.
+    public var fields: [String] { items.flatMap(\.fields) }
+}
+
+/// Supplies an integration's sign-in values and persists its session. Values are addressed by
+/// the integration's mapping (integration id and fields).
 public protocol CredentialProviding: Sendable {
-    func loadCredentials() throws -> AccountCredentials?
-    /// Whether credentials exist, without reading the secret (no keychain prompt).
-    func hasCredentials() -> Bool
-    /// E-mail of the stored account, without reading the password where possible.
-    func storedEmail() -> String?
-    func saveCredentials(_ credentials: AccountCredentials) throws
-    func loadContextKey() -> String?
-    func saveContextKey(_ key: String?) throws
-    func deleteAll() throws
+    /// All of the integration's fields, or nil when any is missing.
+    func loadValues(for mapping: CredentialMapping) throws -> CredentialValues?
+    /// Whether values are stored, without reading a secret (no keychain prompt).
+    func hasValues(for mapping: CredentialMapping) -> Bool
+    /// The identity field's value (e.g. the account's e-mail), without reading a secret where possible.
+    func storedIdentity(for mapping: CredentialMapping) -> String?
+    /// Saves the values and clears the session (a new account invalidates it).
+    func saveValues(_ values: CredentialValues, for mapping: CredentialMapping) throws
+    func loadSessionKey(for mapping: CredentialMapping) -> String?
+    /// nil clears the session.
+    func saveSessionKey(_ key: String?, for mapping: CredentialMapping) throws
+    /// Removes the values and the session.
+    func deleteValues(for mapping: CredentialMapping) throws
     /// Tibber personal access token (developer.tibber.com), nil when not set.
     func loadTibberToken() -> String?
     /// Whether a Tibber token is stored, without reading it (no keychain prompt).
@@ -33,7 +96,9 @@ public protocol CredentialProviding: Sendable {
 }
 
 extension CredentialProviding {
-    public func storedEmail() -> String? { (try? loadCredentials())?.email }
+    public func storedIdentity(for mapping: CredentialMapping) -> String? {
+        mapping.identityField.flatMap { (try? loadValues(for: mapping))?[$0] }
+    }
     public func hasTibberToken() -> Bool { loadTibberToken() != nil }
 }
 
@@ -44,91 +109,124 @@ extension CredentialProviding {
 /// provisioning profile or keychain-access-group entitlement. New items trust both the app
 /// and the helper (`KeychainAccess`), so neither gets a prompt; items are updated in place,
 /// never deleted and re-created, so the ACL survives new logins. Items from older versions
-/// are moved to the shared ACL once by `migrateAccessIfNeeded()`. The e-mail address is kept
-/// in a non-secret attribute so showing it needs no secret read. No secrets are written to
-/// disk in plain text.
-///
-/// Dev only: `MELCLOUD_EMAIL` / `MELCLOUD_PASSWORD` environment variables take precedence
-/// over the keychain when both are set.
+/// are moved to the shared ACL once by `migrateAccessIfNeeded()`. The identity field (e-mail) is
+/// kept in a non-secret attribute so showing it needs no secret read. No secrets are written to
+/// disk in plain text. Which items an integration uses is its `CredentialMapping`.
 public struct KeychainCredentialStore: CredentialProviding {
     public static let service = "com.stigole.varmepumpe"
-    static let credentialsAccount = "melcloud-credentials"
-    static let contextKeyAccount = "melcloud-context-key"
     static let tibberTokenAccount = "tibber-token"
 
     private let environment: [String: String]
-    private let service: String
-    /// Names the service in the item labels.
-    private let serviceName: String
+    private let items: any KeychainItems
+    /// The integrations whose items `migrateAccessIfNeeded()` looks after.
+    private let mappings: [CredentialMapping]
     /// The Tibber token is read at most once per process (fetches build a provider hourly).
     private let tibberCache = TokenCache()
 
     public init(
         service: String = KeychainCredentialStore.service, environment: [String: String] = ProcessInfo.processInfo.environment,
-        serviceName: String
+        mappings: [CredentialMapping]
     ) {
-        self.service = service
+        self.init(items: SecKeychainItems(service: service), environment: environment, mappings: mappings)
+    }
+
+    init(items: any KeychainItems, environment: [String: String] = [:], mappings: [CredentialMapping]) {
+        self.items = items
         self.environment = environment
-        self.serviceName = serviceName
+        self.mappings = mappings
     }
 
-    public func loadCredentials() throws -> AccountCredentials? {
-        if let email = environment["MELCLOUD_EMAIL"], let password = environment["MELCLOUD_PASSWORD"],
-            !email.isEmpty, !password.isEmpty
-        {
-            return AccountCredentials(email: email, password: password)
+    // MARK: Values
+
+    /// The values from the dev environment variables, when the mapping has them and all are set.
+    private func environmentValues(_ mapping: CredentialMapping) -> CredentialValues? {
+        guard !mapping.environment.isEmpty else { return nil }
+        var values = CredentialValues()
+        for (field, variable) in mapping.environment {
+            guard let value = environment[variable], !value.isEmpty else { return nil }
+            values[field] = value
         }
-        guard let data = try read(account: Self.credentialsAccount),
-            let object = try? JSONDecoder().decode([String: String].self, from: data),
-            let email = object["email"], let password = object["password"]
+        return values
+    }
+
+    public func loadValues(for mapping: CredentialMapping) throws -> CredentialValues? {
+        if let values = environmentValues(mapping) { return values }
+        var values = CredentialValues()
+        for item in mapping.items {
+            guard let data = try items.read(account: item.account) else { return nil }
+            guard let decoded = Self.decode(data, item: item) else { return nil }
+            values.fields.merge(decoded.fields) { _, new in new }
+        }
+        return mapping.fields.allSatisfy({ values[$0] != nil }) && !mapping.items.isEmpty ? values : nil
+    }
+
+    public func hasValues(for mapping: CredentialMapping) -> Bool {
+        if environmentValues(mapping) != nil { return true }
+        return !mapping.items.isEmpty && mapping.items.allSatisfy { items.attributes(account: $0.account) != nil }
+    }
+
+    public func storedIdentity(for mapping: CredentialMapping) -> String? {
+        guard let field = mapping.identityField else { return nil }
+        if let values = environmentValues(mapping) { return values[field] }
+        guard let item = mapping.items.first(where: { $0.fields.contains(field) }),
+            let attributes = items.attributes(account: item.account)
         else { return nil }
-        return AccountCredentials(email: email, password: password)
-    }
-
-    private var environmentCredentials: Bool {
-        guard let email = environment["MELCLOUD_EMAIL"], let password = environment["MELCLOUD_PASSWORD"] else { return false }
-        return !email.isEmpty && !password.isEmpty
-    }
-
-    public func hasCredentials() -> Bool {
-        environmentCredentials || attributes(account: Self.credentialsAccount) != nil
-    }
-
-    public func storedEmail() -> String? {
-        if environmentCredentials { return environment["MELCLOUD_EMAIL"] }
-        guard let attributes = attributes(account: Self.credentialsAccount) else { return nil }
-        if let data = attributes[kSecAttrGeneric as String] as? Data, let email = String(data: data, encoding: .utf8) {
-            return email
-        }
+        if let generic = attributes.generic, let identity = String(data: generic, encoding: .utf8) { return identity }
         // Item from an older version without the attribute.
-        return (try? loadCredentials())?.email
+        return (try? loadValues(for: mapping))?[field]
     }
 
-    public func saveCredentials(_ credentials: AccountCredentials) throws {
-        let data = try JSONEncoder().encode(["email": credentials.email, "password": credentials.password])
-        try write(
-            account: Self.credentialsAccount, data: data, label: credentialsLabel,
-            generic: Data(credentials.email.utf8))
+    public func saveValues(_ values: CredentialValues, for mapping: CredentialMapping) throws {
+        for item in mapping.items {
+            let identity = mapping.identityField.flatMap { item.fields.contains($0) ? values[$0] : nil }
+            try write(
+                account: item.account, data: try Self.encode(values, item: item), label: Self.loginLabel(mapping),
+                generic: identity.map { Data($0.utf8) })
+        }
         // A new account invalidates any cached session.
-        try saveContextKey(nil)
+        try saveSessionKey(nil, for: mapping)
     }
 
-    public func loadContextKey() -> String? {
-        guard let data = try? read(account: Self.contextKeyAccount), !data.isEmpty else { return nil }
+    public func loadSessionKey(for mapping: CredentialMapping) -> String? {
+        guard let account = mapping.sessionAccount, let data = try? items.read(account: account), !data.isEmpty else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
     /// nil clears the session by emptying the item; deleting it would drop its ACL.
-    public func saveContextKey(_ key: String?) throws {
-        if key == nil, attributes(account: Self.contextKeyAccount) == nil { return }
-        try write(account: Self.contextKeyAccount, data: Data((key ?? "").utf8), label: contextKeyLabel)
+    public func saveSessionKey(_ key: String?, for mapping: CredentialMapping) throws {
+        guard let account = mapping.sessionAccount else { return }
+        if key == nil, items.attributes(account: account) == nil { return }
+        try write(account: account, data: Data((key ?? "").utf8), label: Self.sessionLabel(mapping))
     }
+
+    public func deleteValues(for mapping: CredentialMapping) throws {
+        for item in mapping.items { try items.delete(account: item.account) }
+        if let account = mapping.sessionAccount { try items.delete(account: account) }
+    }
+
+    /// One field: the value; several: a JSON object of field → value.
+    static func encode(_ values: CredentialValues, item: CredentialMapping.Item) throws -> Data {
+        if item.fields.count == 1, let field = item.fields.first { return Data((values[field] ?? "").utf8) }
+        let object = Dictionary(uniqueKeysWithValues: item.fields.compactMap { field in values[field].map { (field, $0) } })
+        return try JSONEncoder().encode(object)
+    }
+
+    static func decode(_ data: Data, item: CredentialMapping.Item) -> CredentialValues? {
+        if item.fields.count == 1, let field = item.fields.first {
+            let value = String(decoding: data, as: UTF8.self)
+            return value.isEmpty ? nil : CredentialValues([field: value])
+        }
+        guard let object = try? JSONDecoder().decode([String: String].self, from: data) else { return nil }
+        return CredentialValues(object.filter { item.fields.contains($0.key) })
+    }
+
+    // MARK: Tibber token
 
     public func loadTibberToken() -> String? {
         tibberCache.value {
             // A refused or failed read (Deny, locked keychain) is not cached; "not stored" is.
             let stored: Data?
-            do { stored = try read(account: Self.tibberTokenAccount) } catch { return .none }
+            do { stored = try items.read(account: Self.tibberTokenAccount) } catch { return .none }
             guard let data = stored else { return .some(nil) }
             let token = String(decoding: data, as: UTF8.self)
             return .some(token.isEmpty ? nil : token)
@@ -137,7 +235,7 @@ public struct KeychainCredentialStore: CredentialProviding {
 
     public func hasTibberToken() -> Bool {
         if let cached = tibberCache.cached { return cached != nil }
-        return attributes(account: Self.tibberTokenAccount) != nil
+        return items.attributes(account: Self.tibberTokenAccount) != nil
     }
 
     public func saveTibberToken(_ token: String?) throws {
@@ -145,15 +243,17 @@ public struct KeychainCredentialStore: CredentialProviding {
             try write(account: Self.tibberTokenAccount, data: Data(token.utf8), label: Self.tibberLabel)
             tibberCache.set(token)
         } else {
-            try delete(account: Self.tibberTokenAccount)
+            try items.delete(account: Self.tibberTokenAccount)
             tibberCache.set(nil)
         }
     }
 
     // Labels shown in Keychain Access (the service and account names stay fixed).
-    var credentialsLabel: String { L10n.format("Heat Pump – %@ login", serviceName) }
-    var contextKeyLabel: String { L10n.format("Heat Pump – %@ session", serviceName) }
+    static func loginLabel(_ mapping: CredentialMapping) -> String { L10n.format("Heat Pump – %@ login", mapping.serviceName) }
+    static func sessionLabel(_ mapping: CredentialMapping) -> String { L10n.format("Heat Pump – %@ session", mapping.serviceName) }
     static let tibberLabel = L10n.tr("Heat Pump – Tibber token")
+
+    // MARK: Access migration
 
     /// Moves items created by older versions (ACL trusting only their creator) to the shared
     /// ACL: each is read once (at most one prompt per item, once) and written back. Items
@@ -161,41 +261,69 @@ public struct KeychainCredentialStore: CredentialProviding {
     /// nothing outside an app bundle.
     public func migrateAccessIfNeeded() {
         // Without a shared access there is nothing to migrate to; leave the items alone.
-        guard KeychainAccess.shared(label: credentialsLabel) != nil else { return }
-        let items = [
-            (Self.credentialsAccount, credentialsLabel),
-            (Self.contextKeyAccount, contextKeyLabel),
-            (Self.tibberTokenAccount, Self.tibberLabel),
-        ]
-        for (account, label) in items {
-            guard let attributes = attributes(account: account),
-                attributes[kSecAttrComment as String] as? String != KeychainAccess.marker,
-                let data = try? read(account: account)
+        guard KeychainAccess.shared(label: Self.tibberLabel) != nil else { return }
+        var accounts: [(account: String, label: String, identity: (item: CredentialMapping.Item, field: String)?)] = []
+        for mapping in mappings {
+            for item in mapping.items {
+                let identity = mapping.identityField.flatMap { item.fields.contains($0) ? (item, $0) : nil }
+                accounts.append((item.account, Self.loginLabel(mapping), identity))
+            }
+            if let session = mapping.sessionAccount { accounts.append((session, Self.sessionLabel(mapping), nil)) }
+        }
+        accounts.append((Self.tibberTokenAccount, Self.tibberLabel, nil))
+        for (account, label, identity) in accounts {
+            guard let attributes = items.attributes(account: account), attributes.comment != KeychainAccess.marker,
+                let data = try? items.read(account: account)
             else { continue }
-            var generic = attributes[kSecAttrGeneric as String] as? Data
-            if account == Self.credentialsAccount, generic == nil,
-                let object = try? JSONDecoder().decode([String: String].self, from: data), let email = object["email"]
-            {
-                generic = Data(email.utf8)
+            var generic = attributes.generic
+            if generic == nil, let identity, let value = Self.decode(data, item: identity.item)?[identity.field] {
+                generic = Data(value.utf8)
             }
             do {
-                try delete(account: account)
-                try add(account: account, data: data, label: label, generic: generic)
+                try items.delete(account: account)
+                try items.add(account: account, data: data, label: label, generic: generic, shared: true, marked: false)
             } catch {
                 // Put it back with default access rather than lose it, marked so the next launch
                 // does not delete it again (that would drop the helper's "Always Allow" each time).
                 FileHandle.standardError.write(Data("[keychain] migration of \(account) failed: \(error)\n".utf8))
-                try? add(account: account, data: data, label: label, generic: generic, shared: false, marked: true)
+                try? items.add(account: account, data: data, label: label, generic: generic, shared: false, marked: true)
             }
         }
     }
 
-    public func deleteAll() throws {
-        try delete(account: Self.credentialsAccount)
-        try delete(account: Self.contextKeyAccount)
+    /// Updates the item in place (keeping its ACL), or adds it with the shared access.
+    private func write(account: String, data: Data, label: String, generic: Data? = nil) throws {
+        if try !items.update(account: account, data: data, generic: generic) {
+            try items.add(account: account, data: data, label: label, generic: generic, shared: true, marked: false)
+        }
     }
+}
 
-    // MARK: - Keychain primitives
+/// The non-secret attributes of a keychain item.
+struct KeychainItemAttributes: Sendable, Equatable {
+    /// `kSecAttrGeneric` (the identity field, e.g. the e-mail).
+    var generic: Data?
+    /// `kSecAttrComment` (the shared-access marker).
+    var comment: String?
+}
+
+/// Generic-password items under one service, by account. The seam that lets tests check which
+/// accounts an integration reads and writes without touching the real keychain.
+protocol KeychainItems: Sendable {
+    func read(account: String) throws -> Data?
+    /// Attributes only (no secret, no prompt), nil when the item does not exist.
+    func attributes(account: String) -> KeychainItemAttributes?
+    /// Updates data (and the attribute when given) in place; false when the item does not exist.
+    func update(account: String, data: Data, generic: Data?) throws -> Bool
+    /// Adds an item; `shared` gives it the access trusting app and helper (`KeychainAccess`),
+    /// `marked` marks it as migrated without that access.
+    func add(account: String, data: Data, label: String, generic: Data?, shared: Bool, marked: Bool) throws
+    func delete(account: String) throws
+}
+
+/// The login keychain.
+struct SecKeychainItems: KeychainItems {
+    let service: String
 
     private func baseQuery(account: String) -> [String: Any] {
         [
@@ -205,7 +333,7 @@ public struct KeychainCredentialStore: CredentialProviding {
         ]
     }
 
-    private func read(account: String) throws -> Data? {
+    func read(account: String) throws -> Data? {
         var query = baseQuery(account: account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -218,30 +346,27 @@ public struct KeychainCredentialStore: CredentialProviding {
         }
     }
 
-    /// Attributes only (no secret, no prompt), nil when the item does not exist.
-    private func attributes(account: String) -> [String: Any]? {
+    func attributes(account: String) -> KeychainItemAttributes? {
         var query = baseQuery(account: account)
         query[kSecReturnAttributes as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
-        return result as? [String: Any]
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let attributes = result as? [String: Any]
+        else { return nil }
+        return KeychainItemAttributes(
+            generic: attributes[kSecAttrGeneric as String] as? Data, comment: attributes[kSecAttrComment as String] as? String)
     }
 
-    /// Updates the item in place (keeping its ACL), or adds it with the shared access.
-    private func write(account: String, data: Data, label: String, generic: Data? = nil) throws {
-        let query = baseQuery(account: account)
+    func update(account: String, data: Data, generic: Data?) throws -> Bool {
         var update: [String: Any] = [kSecValueData as String: data]
         if let generic { update[kSecAttrGeneric as String] = generic }
-        let status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
-        if status == errSecItemNotFound {
-            try add(account: account, data: data, label: label, generic: generic)
-        } else if status != errSecSuccess {
-            throw KeychainError(status: status)
-        }
+        let status = SecItemUpdate(baseQuery(account: account) as CFDictionary, update as CFDictionary)
+        if status == errSecItemNotFound { return false }
+        guard status == errSecSuccess else { throw KeychainError(status: status) }
+        return true
     }
 
-    private func add(account: String, data: Data, label: String, generic: Data?, shared: Bool = true, marked: Bool = false) throws {
+    func add(account: String, data: Data, label: String, generic: Data?, shared: Bool, marked: Bool) throws {
         var add = baseQuery(account: account)
         add[kSecValueData as String] = data
         add[kSecAttrLabel as String] = label
@@ -257,7 +382,7 @@ public struct KeychainCredentialStore: CredentialProviding {
         guard status == errSecSuccess else { throw KeychainError(status: status) }
     }
 
-    private func delete(account: String) throws {
+    func delete(account: String) throws {
         let status = SecItemDelete(baseQuery(account: account) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError(status: status) }
     }
@@ -289,11 +414,11 @@ public struct KeychainError: Error, Sendable, LocalizedError {
     }
 }
 
-/// In-memory store for tests and the mock backend.
+/// In-memory store for tests and the mock backend, keyed by integration id.
 public final class InMemoryCredentialStore: CredentialProviding {
     private struct State {
-        var credentials: AccountCredentials?
-        var contextKey: String?
+        var values: [String: CredentialValues]
+        var sessions: [String: String]
         var tibberToken: String?
         var loadCount = 0
         var existenceChecks = 0
@@ -301,37 +426,42 @@ public final class InMemoryCredentialStore: CredentialProviding {
 
     private let state: Mutex<State>
 
-    public init(credentials: AccountCredentials? = nil, contextKey: String? = nil) {
-        state = Mutex(State(credentials: credentials, contextKey: contextKey))
+    /// `values` and `sessionKeys` by integration id.
+    public init(values: [String: CredentialValues] = [:], sessionKeys: [String: String] = [:]) {
+        state = Mutex(State(values: values, sessions: sessionKeys))
     }
 
-    public func loadCredentials() throws -> AccountCredentials? {
+    public func loadValues(for mapping: CredentialMapping) throws -> CredentialValues? {
         state.withLock {
             $0.loadCount += 1
-            return $0.credentials
+            return $0.values[mapping.integrationId]
         }
     }
-    public func hasCredentials() -> Bool {
+    public func hasValues(for mapping: CredentialMapping) -> Bool {
         state.withLock {
             $0.existenceChecks += 1
-            return $0.credentials != nil
+            return $0.values[mapping.integrationId] != nil
         }
     }
-    /// Number of `hasCredentials` calls.
+    /// Number of `hasValues` calls.
     public var existenceChecks: Int { state.withLock { $0.existenceChecks } }
-    /// Number of `loadCredentials` calls (tests check that polling does not read secrets).
+    /// Number of `loadValues` calls (tests check that polling does not read secrets).
     public var loadCount: Int { state.withLock { $0.loadCount } }
-    public func saveCredentials(_ credentials: AccountCredentials) throws { state.withLock { $0.credentials = credentials } }
-    public func loadContextKey() -> String? { state.withLock { $0.contextKey } }
-    public func saveContextKey(_ key: String?) throws { state.withLock { $0.contextKey = key } }
+    public func saveValues(_ values: CredentialValues, for mapping: CredentialMapping) throws {
+        state.withLock { $0.values[mapping.integrationId] = values }
+    }
+    public func loadSessionKey(for mapping: CredentialMapping) -> String? { state.withLock { $0.sessions[mapping.integrationId] } }
+    public func saveSessionKey(_ key: String?, for mapping: CredentialMapping) throws {
+        state.withLock { $0.sessions[mapping.integrationId] = key }
+    }
     public func loadTibberToken() -> String? { state.withLock { $0.tibberToken } }
     public func saveTibberToken(_ token: String?) throws {
         state.withLock { $0.tibberToken = token?.isEmpty == true ? nil : token }
     }
-    public func deleteAll() throws {
+    public func deleteValues(for mapping: CredentialMapping) throws {
         state.withLock {
-            $0.credentials = nil
-            $0.contextKey = nil
+            $0.values[mapping.integrationId] = nil
+            $0.sessions[mapping.integrationId] = nil
         }
     }
 }

@@ -25,10 +25,11 @@ public struct PlannedNotification: Sendable, Equatable {
 public enum NotificationPlanner {
     public static let filterReminderInterval: TimeInterval = 86_400
 
-    /// `serviceName` names the service in the active-error text.
+    /// `serviceName` names the service in the active-error text; `noErrorCodes` are the
+    /// integration's "no error" codes.
     public static func plan(
         state: DeviceState?, errorEvents: [ErrorLogEntry], maintenance: [MaintenanceStatus],
-        memory: NotificationMemory, now: Date, serviceName: String
+        memory: NotificationMemory, now: Date, serviceName: String, noErrorCodes: Set<Int>
     ) -> (notifications: [PlannedNotification], memory: NotificationMemory) {
         var memory = memory
         var notifications: [PlannedNotification] = []
@@ -53,11 +54,11 @@ public enum NotificationPlanner {
         }
 
         // Active error: once per occurrence.
-        if let state, state.hasActiveError {
+        if let state, state.hasActiveError(noErrorCodes: noErrorCodes) {
             if !memory.activeErrorNotified {
                 let body =
                     state.errorCode.flatMap {
-                        DeviceState.noErrorCodes.contains($0)
+                        noErrorCodes.contains($0)
                             ? nil
                             : L10n.format("%@ is reporting an error now (code %@). Open Health in the app for advice.", serviceName, String($0))
                     }

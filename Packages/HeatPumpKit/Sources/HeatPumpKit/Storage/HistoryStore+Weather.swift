@@ -49,21 +49,23 @@ extension HistoryStore {
 
     /// Mean outdoor temperature per UTC hour from the MELCloud log, snapshots and local readings
     /// (Norway's offsets are whole hours, so these are also local hours).
-    public func hourlyOutdoorMeans(deviceId: Int?, from: Date, to: Date) throws -> [Date: Double] {
+    public func hourlyOutdoorMeans(device: DeviceKey?, from: Date, to: Date) throws -> [Date: Double] {
         try pool.read { db in
             let rows = try Row.fetchAll(
                 db,
                 sql: """
                     SELECT CAST(strftime('%s', ts) AS INTEGER) / 3600 AS h, AVG(v) AS v FROM (
                         SELECT ts, outdoor AS v FROM temperature_log
-                            WHERE deviceId = ? AND ts >= ? AND ts < ? AND outdoor IS NOT NULL
+                            WHERE deviceKey = ? AND ts >= ? AND ts < ? AND outdoor IS NOT NULL
                         UNION ALL SELECT ts, outdoorTemperature FROM snapshots
-                            WHERE deviceId = ? AND ts >= ? AND ts < ? AND outdoorTemperature IS NOT NULL
+                            WHERE deviceKey = ? AND ts >= ? AND ts < ? AND outdoorTemperature IS NOT NULL
                         UNION ALL SELECT ts, outdoorTemperature FROM local_samples
-                            WHERE ts >= ? AND ts < ? AND outdoorTemperature IS NOT NULL
+                            WHERE ts >= ? AND ts < ? AND outdoorTemperature IS NOT NULL AND \(Self.deviceFilter)
                     ) GROUP BY h
                     """,
-                arguments: [deviceId ?? -1, from, to, deviceId ?? -1, from, to, from, to])
+                arguments: [
+                    device?.rawValue, from, to, device?.rawValue, from, to, from, to, device?.rawValue, device?.rawValue,
+                ])
             var result: [Date: Double] = [:]
             for row in rows {
                 let hour: Int = row["h"]

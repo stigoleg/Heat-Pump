@@ -102,7 +102,7 @@ public struct LocalSample: Codable, Sendable, Equatable {
         fanRaw = fan
         fanSpeed = fan.flatMap(Self.fanSpeed(raw:))
         vaneVerticalRaw = vaneVertical
-        self.vaneVertical = vaneVertical.flatMap(VaneVertical.init(rawValue:))
+        self.vaneVertical = vaneVertical.flatMap(Self.vaneVertical(raw:))
         vaneHorizontalRaw = vaneHorizontal
         self.vaneHorizontal = vaneHorizontal.flatMap(Self.vaneHorizontal(raw:))
     }
@@ -128,9 +128,34 @@ public struct LocalSample: Codable, Sendable, Equatable {
         }
     }
 
-    /// 6, 7 and 9 are vane combinations MELCloud has no value for; 8 is "split" in both.
+    /// CN105 vertical vane: 0 auto, 1–5, 7 swing.
+    static func vaneVertical(raw: Int) -> VaneVertical? {
+        switch raw {
+        case 0: .auto
+        case 1: .position1
+        case 2: .position2
+        case 3: .position3
+        case 4: .position4
+        case 5: .position5
+        case 7: .swing
+        default: nil
+        }
+    }
+
+    /// CN105 horizontal vane: 0 auto, 1–5, 8 split, 12 swing. 6, 7 and 9 are vane combinations
+    /// MELCloud has no value for.
     static func vaneHorizontal(raw: Int) -> VaneHorizontal? {
-        [6, 7, 9].contains(raw) ? nil : VaneHorizontal(rawValue: raw)
+        switch raw {
+        case 0: .auto
+        case 1: .position1
+        case 2: .position2
+        case 3: .position3
+        case 4: .position4
+        case 5: .position5
+        case 8: .split
+        case 12: .swing
+        default: nil
+        }
     }
 }
 

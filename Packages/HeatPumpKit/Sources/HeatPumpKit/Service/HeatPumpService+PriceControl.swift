@@ -179,9 +179,9 @@ extension HeatPumpService {
 
     func priceControlContext(settings: PriceControlSettings, steps: [PlannedStep], now t: Date) throws -> PriceControlContext {
         var blocked: String?
-        if try store.credentialsRejected() {
+        if try credentialsRejected() {
             blocked = HeatPumpError.credentialsRejected.errorDescription
-        } else if let block = try store.blockStatus(now: t) {
+        } else if let block = try blockStatus(now: t) {
             blocked = block.reason.message(until: block.until, serviceName: serviceName)
         }
         let away = try storedAwaySettings()
@@ -197,7 +197,7 @@ extension HeatPumpService {
             near = next.date
         }
         return PriceControlContext(
-            settings: settings, state: try store.latestSnapshot()?.state, steps: steps, blockedReason: blocked,
+            settings: settings, state: try latestSnapshot()?.state, steps: steps, blockedReason: blocked,
             holidayActive: holidayActive, frostProtection: away?.frost?.enabled == true, timerEventNear: near,
             timerFiredAt: inForce?.date, timerSetpoint: inForce?.event.setTemperature, now: t)
     }
@@ -210,7 +210,7 @@ extension HeatPumpService {
     public func enablePriceControl() async throws -> PriceControlStatus {
         var settings = try priceControlSettings()
         var memory = try priceControlRuntime().memory
-        let state = try store.latestSnapshot()?.state
+        let state = try latestSnapshot()?.state
         let leftBehind = memory.lastSent.flatMap { sent in
             state?.setTemperature.map { abs($0 - sent) < (state?.setpointIncrement ?? 0.5) - 0.001 } == true ? sent : nil
         }
@@ -256,7 +256,7 @@ extension HeatPumpService {
         let t = now()
         let (_, base) = try priceControlBase(settings)
         let stepBase = runtime.status?.currentStep.flatMap { $0.contains(t) ? $0.base : nil }
-        let state = try store.latestSnapshot()?.state
+        let state = try latestSnapshot()?.state
         var memory = runtime.memory
         memory.pruneWrites(now: t)
         guard

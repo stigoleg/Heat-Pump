@@ -52,7 +52,7 @@ extension HeatPumpService {
 
     /// When automatic reads of `key` (`away` or `timer`) are paused after a refusal, or nil.
     public func endpointRefusedUntil(_ key: String) throws -> Date? {
-        guard let until = try store.fetchState(key: key)?.blockedUntil, until > now() else { return nil }
+        guard let until = try store.fetchState(key: fetchKey(key))?.blockedUntil, until > now() else { return nil }
         return until
     }
 
@@ -62,7 +62,7 @@ extension HeatPumpService {
         switch error {
         case .endpointRefused(let status):
             // A 401 right after a successful status read is the endpoint, not an expired session.
-            if status == 401, let ok = try store.fetchState(key: Self.stateKey)?.lastSuccess {
+            if status == 401, let ok = try store.fetchState(key: fetchKey(Self.stateKey))?.lastSuccess {
                 return now().timeIntervalSince(ok) < Self.sessionProvenWithin
             }
             return status != 401
@@ -86,10 +86,10 @@ extension HeatPumpService {
     /// Cached settings (or the device listing's copy) without touching the network.
     public func storedAwaySettings() throws -> AwaySettings? {
         if let cached = try store.setting(AwaySettings.self, key: Self.awaySettingsKey) { return cached }
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId,
+        guard let device = try latestSnapshot()?.state.key,
             let driver = backend as? any AwayModesDriver
         else { return nil }
-        return driver.awaySettings(fromStoredListing: try store.rawDevice(deviceId: deviceId)?.listing)
+        return driver.awaySettings(fromStoredListing: try store.rawDevice(device)?.listing)
     }
 
     /// Frost protection and holiday mode, read from MELCloud when the cached copy is older than
@@ -97,7 +97,7 @@ extension HeatPumpService {
     /// allows a read every 10 minutes.
     public func awaySettings(maxAge: TimeInterval = awayInterval, manual: Bool = false) async throws -> AwaySettings {
         let t = now()
-        if manual { try store.clearKeyRefusal(key: Self.awayFetchKey) }
+        if manual { try store.clearKeyRefusal(key: fetchKey(Self.awayFetchKey)) }
         var cached = try storedAwaySettings()
         if let cached, let at = cached.fetchedAt, t.timeIntervalSince(at) < maxAge, cached.pendingSince == nil, !manual {
             return cached
@@ -108,24 +108,24 @@ extension HeatPumpService {
             paused.message = awayRefusedMessage
             return paused
         }
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
+        guard let device = try latestSnapshot()?.state.key else {
             return cached ?? AwaySettings(source: integration.sourceTag, message: L10n.tr("No status from the heat pump yet."))
         }
-        switch try store.reserveFetch(key: Self.awayFetchKey, minInterval: manual ? Self.timerManualInterval : Self.awayInterval, now: t) {
+        switch try reserveFetch(Self.awayFetchKey, minInterval: manual ? Self.timerManualInterval : Self.awayInterval, now: t) {
         case .throttled, .blocked, .credentialsRejected:
             return cached
                 ?? AwaySettings(
                     source: integration.sourceTag, message: L10n.format("Fetched from %@ later (at most once an hour).", serviceName))
         case .allowed:
             do {
-                let fresh = try await readAway(deviceId: deviceId, keeping: cached, at: t)
-                try store.recordFetchSuccess(key: Self.awayFetchKey, now: t)
+                let fresh = try await readAway(device: device, keeping: cached, at: t)
+                try store.recordFetchSuccess(key: fetchKey(Self.awayFetchKey), now: t)
                 return fresh
             } catch {
                 _ = try handleAwayError(error, now: t)
                 if try isRefusal(error) {
                     let until = t.addingTimeInterval(Self.refusalBackoff)
-                    try store.recordKeyRefusal(key: Self.awayFetchKey, until: until)
+                    try store.recordKeyRefusal(key: fetchKey(Self.awayFetchKey), until: until)
                     cached = cached ?? AwaySettings(source: integration.sourceTag)
                     cached?.refusedUntil = until
                     cached?.message = awayRefusedMessage
@@ -141,8 +141,8 @@ extension HeatPumpService {
     }
 
     /// One read of both settings; keeps what was last sent so the page can compare.
-    private func readAway(deviceId: Int, keeping cached: AwaySettings?, at t: Date) async throws -> AwaySettings {
-        var fresh = try await driver((any AwayModesDriver).self).fetchAwaySettings(deviceId: deviceId)
+    private func readAway(device: DeviceKey, keeping cached: AwaySettings?, at t: Date) async throws -> AwaySettings {
+        var fresh = try await driver((any AwayModesDriver).self).fetchAwaySettings(device: device)
         fresh.fetchedAt = fresh.fetchedAt ?? t
         fresh.sentFrost = cached?.sentFrost
         fresh.sentHoliday = cached?.sentHoliday
@@ -166,7 +166,7 @@ extension HeatPumpService {
     /// Weekly schedule page uses 10 minutes, so editing starts from a fresh plan), still at most that often.
     public func weeklyTimer(manual: Bool = false, maxAge: TimeInterval? = nil) async throws -> WeeklyTimer? {
         let t = now()
-        if manual { try store.clearKeyRefusal(key: Self.timerFetchKey) }
+        if manual { try store.clearKeyRefusal(key: fetchKey(Self.timerFetchKey)) }
         let cached = try storedWeeklyTimer()
         // A copy cached before seasons were kept has no `fetchedAt`: read it again as soon as allowed.
         let interval =
@@ -174,7 +174,7 @@ extension HeatPumpService {
         let pending = cached?.pendingSince != nil
         if !pending, let at = cached?.fetchedAt, t.timeIntervalSince(at) < interval { return cached }
         if try endpointRefusedUntil(Self.timerFetchKey) != nil { return cached }
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return cached }
+        guard let device = try latestSnapshot()?.state.key else { return cached }
         // A save that could not be read back right away is read back once the spacing allows
         // (30 s, then 2 and 10 minutes after failures).
         let attempts = cached?.pendingAttempts ?? 0
@@ -182,20 +182,20 @@ extension HeatPumpService {
             pending
             ? (Self.timerVerifyKey, Self.timerReadBackSpacing[min(attempts, Self.timerReadBackSpacing.count - 1)])
             : (Self.timerFetchKey, interval)
-        switch try store.reserveFetch(key: key, minInterval: spacing, now: t) {
+        switch try reserveFetch(key, minInterval: spacing, now: t) {
         case .throttled, .blocked, .credentialsRejected:
             return cached
         case .allowed:
             do {
-                var timer = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(deviceId: deviceId)
+                var timer = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(device: device)
                 timer.fetchedAt = timer.fetchedAt ?? t
                 try store.saveSetting(timer, key: Self.weeklyTimerKey)
-                try store.recordFetchSuccess(key: Self.timerFetchKey, now: t)
+                try store.recordFetchSuccess(key: fetchKey(Self.timerFetchKey), now: t)
                 return timer
             } catch {
                 _ = try handleAwayError(error, now: t)
                 if try isRefusal(error) {
-                    try store.recordKeyRefusal(key: Self.timerFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
+                    try store.recordKeyRefusal(key: fetchKey(Self.timerFetchKey), until: t.addingTimeInterval(Self.refusalBackoff))
                 }
                 if pending, var failed = cached {
                     failed.pendingAttempts = attempts + 1
@@ -224,22 +224,23 @@ extension HeatPumpService {
             try store.logChange(
                 ChangeRecord(
                     timestamp: now(), source: source, field: change.field, oldValue: change.currentValue(in: current),
-                    newValue: change.valueDescription, reason: reason, result: .rejected, error: message))
+                    newValue: change.valueDescription, reason: reason, result: .rejected, error: message),
+                device: try currentDevice())
             return ChangeOutcome(
                 result: .rejected, message: L10n.format("Not sent: %@", message), field: change.field, oldValue: change.currentValue(in: current),
                 newValue: change.valueDescription, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         // Dry run first: nothing is counted or asked for a change that would be refused anyway.
         if let problem = change.validationProblem(now: t) { return try reject(problem) }
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId else {
+        guard let device = try latestSnapshot()?.state.key else {
             return try reject(L10n.tr("No status from the heat pump yet."))
         }
         // Holiday mode may leave the unit off: it needs frost protection known to be on (read at
         // most hourly), and frost protection is not switched off during a holiday.
         current = try await awaySettings()
         if let problem = change.safetyProblem(current: current, now: t, serviceName: serviceName) { return try reject(problem) }
-        if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
-        if let block = try store.blockStatus(now: t) {
+        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
         if let approver {
@@ -253,7 +254,7 @@ extension HeatPumpService {
             let record = ChangeRecord(
                 timestamp: at, source: source, field: change.field, oldValue: change.currentValue(in: current),
                 newValue: change.valueDescription, reason: reason, result: .pending)
-            switch try store.reserveChange([record], budget: policy.changeBudget) {
+            switch try store.reserveChange([record], device: device, budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
                 if waited + wait > policy.maxWriteWait {
@@ -265,7 +266,7 @@ extension HeatPumpService {
                 return try reject(HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
             case .reserved(let ids):
                 do {
-                    try await driver((any AwayModesDriver).self).applyAway(change, deviceId: deviceId)
+                    try await driver((any AwayModesDriver).self).applyAway(change, device: device)
                     try store.finishChange(ids: ids, result: .ok)
                     var updated = change.applied(to: current ?? AwaySettings(source: integration.sourceTag))
                     updated.pendingSince = at
@@ -273,8 +274,8 @@ extension HeatPumpService {
                     try store.saveSetting(updated, key: Self.awaySettingsKey)
                     // Read back once so the page can show what MELCloud stored next to what was sent.
                     var readBack = false
-                    if try store.reserveFetch(key: Self.awayVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed {
-                        readBack = (try? await readAway(deviceId: deviceId, keeping: updated, at: now())) != nil
+                    if try reserveFetch(Self.awayVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed {
+                        readBack = (try? await readAway(device: device, keeping: updated, at: now())) != nil
                     }
                     return ChangeOutcome(
                         result: .ok,
@@ -317,7 +318,8 @@ extension HeatPumpService {
             try store.logChange(
                 ChangeRecord(
                     timestamp: now(), source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason,
-                    result: .rejected, error: message))
+                    result: .rejected, error: message),
+                device: try currentDevice())
             return ChangeOutcome(
                 result: .rejected, message: L10n.format("Not sent: %@", message), field: field, oldValue: oldValue, newValue: newValue,
                 nextAllowed: nextAllowed, blockedUntil: blockedUntil)
@@ -327,7 +329,7 @@ extension HeatPumpService {
             return try reject(HeatPumpError.notSupported.errorDescription ?? "")
         }
         let format = schedule.weeklyTimerFormat
-        guard let snapshot = try store.latestSnapshot() else { return try reject(L10n.tr("No status from the heat pump yet.")) }
+        guard let snapshot = try latestSnapshot() else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if !base.decoded {
             return try reject(
                 L10n.format(
@@ -337,13 +339,13 @@ extension HeatPumpService {
         if let problem = timer.validationProblem(limits: snapshot.state.limits, format: format, serviceName: serviceName) {
             return try reject(problem)
         }
-        if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
-        if let block = try store.blockStatus(now: t) {
+        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
-        let deviceId = snapshot.state.deviceId
+        let device = snapshot.state.key
         do {
-            let fresh = try await readTimerBeforeSave(deviceId: deviceId)
+            let fresh = try await readTimerBeforeSave(device: device)
             if !fresh.hasSameContent(as: base, format: format) { return try reject(timerChangedMessage) }
         } catch let error as HeatPumpError {
             if case .blocked(let until) = error { return try reject(error.errorDescription ?? "", blockedUntil: until) }
@@ -354,7 +356,7 @@ extension HeatPumpService {
             let at = now()
             let record = ChangeRecord(
                 timestamp: at, source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason, result: .pending)
-            switch try store.reserveChange([record], budget: policy.changeBudget) {
+            switch try store.reserveChange([record], device: device, budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
                 if waited + wait > policy.maxWriteWait {
@@ -366,7 +368,7 @@ extension HeatPumpService {
                 return try reject(HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
             case .reserved(let ids):
                 do {
-                    try await schedule.saveWeeklyTimer(timer, deviceId: deviceId)
+                    try await schedule.saveWeeklyTimer(timer, device: device)
                     try store.finishChange(ids: ids, result: .ok)
                 } catch {
                     let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -377,19 +379,19 @@ extension HeatPumpService {
                         newValue: newValue, blockedUntil: blocked)
                 }
                 // Until it is read back, the cache holds what was sent (as the unit would return it).
-                var sent = format.savedForm(of: timer, deviceId: deviceId)
+                var sent = format.savedForm(of: timer, device: device)
                 sent.fetchedAt = at
                 sent.maxEvents = timer.maxEvents
                 sent.pendingSince = at
                 try store.saveSetting(sent, key: Self.weeklyTimerKey)
                 var readBack: WeeklyTimer?
-                if try store.reserveFetch(key: Self.timerVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed,
-                    var fresh = try? await schedule.fetchWeeklyTimer(deviceId: deviceId)
+                if try reserveFetch(Self.timerVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed,
+                    var fresh = try? await schedule.fetchWeeklyTimer(device: device)
                 {
                     fresh.fetchedAt = fresh.fetchedAt ?? now()
                     fresh.maxEvents = fresh.maxEvents ?? timer.maxEvents
                     try store.saveSetting(fresh, key: Self.weeklyTimerKey)
-                    try store.recordFetchSuccess(key: Self.timerFetchKey, now: now())
+                    try store.recordFetchSuccess(key: fetchKey(Self.timerFetchKey), now: now())
                     readBack = fresh
                 }
                 let confirmed = readBack.map { $0.hasSameContent(as: sent, format: format) }
@@ -412,7 +414,7 @@ extension HeatPumpService {
 
     /// Reads the plan right before a save (bypassing the 6-hour interval, but not blocks, the
     /// credential stop, a refusal pause or the 15 s spacing). Every failure is a reason not to send.
-    private func readTimerBeforeSave(deviceId: Int) async throws -> WeeklyTimer {
+    private func readTimerBeforeSave(device: DeviceKey) async throws -> WeeklyTimer {
         let t = now()
         if let until = try endpointRefusedUntil(Self.timerFetchKey) {
             throw HeatPumpError.validation(
@@ -420,7 +422,7 @@ extension HeatPumpService {
                     "%@ did not allow reading the weekly schedule (next try %@), and it is not saved without checking that it is unchanged.",
                     serviceName, Display.time(until)))
         }
-        switch try store.reserveFetch(key: Self.timerPresaveKey, minInterval: Self.timerPresaveInterval, now: t) {
+        switch try reserveFetch(Self.timerPresaveKey, minInterval: Self.timerPresaveInterval, now: t) {
         case .throttled(let next):
             throw HeatPumpError.validation(L10n.format("The weekly schedule was just fetched. Try again after %@.", Display.time(next)))
         case .blocked(let until): throw HeatPumpError.blocked(until: until)
@@ -428,15 +430,15 @@ extension HeatPumpService {
         case .allowed: break
         }
         do {
-            var fresh = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(deviceId: deviceId)
+            var fresh = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(device: device)
             fresh.fetchedAt = fresh.fetchedAt ?? t
             try store.saveSetting(fresh, key: Self.weeklyTimerKey)
-            try store.recordFetchSuccess(key: Self.timerFetchKey, now: t)
+            try store.recordFetchSuccess(key: fetchKey(Self.timerFetchKey), now: t)
             return fresh
         } catch {
             _ = try handleAwayError(error, now: t)
             if try isRefusal(error) {
-                try store.recordKeyRefusal(key: Self.timerFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
+                try store.recordKeyRefusal(key: fetchKey(Self.timerFetchKey), until: t.addingTimeInterval(Self.refusalBackoff))
             }
             throw HeatPumpError.validation(
                 L10n.format(

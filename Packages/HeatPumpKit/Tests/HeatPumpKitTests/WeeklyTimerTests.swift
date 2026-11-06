@@ -665,10 +665,10 @@ struct WeeklyTimerTests {
         transport.enqueue("/Timer/SetAta2", body: Data(#"{"Data": {"ErrorCode": 2, "MaxEvents": 50}}"#.utf8))
         transport.enqueue("/Timer/SetAta2", status: 403, body: Data())
         let credentials = InMemoryCredentialStore(
-            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, now: clock.provider)
         let timer = try timer()
-        try await backend.saveWeeklyTimer(timer, deviceId: 42)
+        try await backend.saveWeeklyTimer(timer, device: .melcloud(42))
         let request = try #require(transport.requests.first)
         #expect(request.httpMethod == "POST")
         #expect(request.url?.path.hasSuffix("/Timer/SetAta2") == true)
@@ -676,9 +676,9 @@ struct WeeklyTimerTests {
         let body = try JSONValue.parse(try #require(request.httpBody))
         #expect(body == MELCloudClassicParser.timerSetBody(timer: timer, deviceId: 42))
         await #expect(throws: HeatPumpError.server(MELCloudClassicParser.timerSaveError(.object(["Data": .object(["ErrorCode": .number(2), "MaxEvents": .number(50)])]))!)) {
-            try await backend.saveWeeklyTimer(timer, deviceId: 42)
+            try await backend.saveWeeklyTimer(timer, device: .melcloud(42))
         }
-        await #expect(throws: HeatPumpError.endpointRefused(status: 403)) { try await backend.saveWeeklyTimer(timer, deviceId: 42) }
+        await #expect(throws: HeatPumpError.endpointRefused(status: 403)) { try await backend.saveWeeklyTimer(timer, device: .melcloud(42)) }
         #expect(!transport.requests.contains { $0.url?.path.hasSuffix("ClientLogin") == true })
     }
 }

@@ -35,6 +35,8 @@ public struct ErrorCatalogEntry: Codable, Sendable, Equatable {
 public protocol ErrorCodeExplaining: Sendable {
     /// Repeated in user-facing text whenever an explanation is uncertain.
     var caveat: String { get }
+    /// Codes the unit reports when there is no error. Defaults to none.
+    var noErrorCodes: Set<Int> { get }
     /// Whether there is an own explanation for a numeric code.
     func hasExplanation(errorCode: Int?) -> Bool
     /// Explains an error. The service's own `message` text wins when present.
@@ -42,5 +44,7 @@ public protocol ErrorCodeExplaining: Sendable {
 }
 
 extension ErrorCodeExplaining {
+    public var noErrorCodes: Set<Int> { [] }
+
     public func lookup(errorCode: Int?) -> ErrorCatalogEntry { lookup(errorCode: errorCode, message: nil) }
 }

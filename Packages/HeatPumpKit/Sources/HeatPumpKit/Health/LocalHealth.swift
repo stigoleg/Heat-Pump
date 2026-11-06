@@ -74,15 +74,15 @@ public enum LocalHealth {
 
     /// Builds the input from stored readings (two small GROUP BY queries).
     public static func input(
-        store: HistoryStore, now: Date, enabled: Bool, onHomeNetwork: Bool = true, latest: LocalSample?,
+        store: HistoryStore, device: DeviceKey? = nil, now: Date, enabled: Bool, onHomeNetwork: Bool = true, latest: LocalSample?,
         lastAttempt: Date? = nil, lastSuccess: Date? = nil, failingSince: Date? = nil
     ) throws -> LocalHealthInput {
         let windowStart = now.addingTimeInterval(-Threshold.shortCyclingWindow)
         return LocalHealthInput(
             enabled: enabled, onHomeNetwork: onHomeNetwork, latest: latest,
-            recentHours: try store.localPowerBuckets(from: windowStart, to: now, bucketSeconds: 3600, origin: windowStart),
+            recentHours: try store.localPowerBuckets(device: device, from: windowStart, to: now, bucketSeconds: 3600, origin: windowStart),
             hourly: try store.localPowerBuckets(
-                from: now.addingTimeInterval(-Double(Threshold.powerBaselineDays + 2) * 86_400), to: now, bucketSeconds: 3600),
+                device: device, from: now.addingTimeInterval(-Double(Threshold.powerBaselineDays + 2) * 86_400), to: now, bucketSeconds: 3600),
             lastAttempt: lastAttempt, lastSuccess: lastSuccess, failingSince: failingSince)
     }
 

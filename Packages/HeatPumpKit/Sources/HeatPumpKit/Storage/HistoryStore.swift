@@ -58,16 +58,17 @@ public enum ChangeBudget {
     public static var minSpacing: TimeInterval { ChangeBudgetPolicy.standard.minSpacing }
 }
 
-/// The full MELCloud device object as last seen (from `Device/Get` or a `SetAta` response).
+/// The driver's full device object as last seen (MELCloud: `Device/Get` or a `SetAta` response).
+/// Opaque to the core; only the driver that wrote it interprets it.
 public struct RawDevice: Sendable, Equatable {
-    public var deviceId: Int
+    public var device: DeviceKey
     public var fetchedAt: Date
     public var json: JSONValue
-    /// `User/ListDevices` wrapper (name, limits, Wi-Fi, firmware), when known.
+    /// The driver's listing entry for the device (MELCloud: the `User/ListDevices` wrapper), when known.
     public var listing: JSONValue?
 
-    public init(deviceId: Int, fetchedAt: Date, json: JSONValue, listing: JSONValue? = nil) {
-        self.deviceId = deviceId
+    public init(device: DeviceKey, fetchedAt: Date, json: JSONValue, listing: JSONValue? = nil) {
+        self.device = device
         self.fetchedAt = fetchedAt
         self.json = json
         self.listing = listing
@@ -77,7 +78,7 @@ public struct RawDevice: Sendable, Equatable {
 /// Persists the raw device object so every process can build a full `SetAta` body.
 public protocol RawDeviceCache: Sendable {
     func saveRawDevice(_ raw: RawDevice) throws
-    func rawDevice(deviceId: Int) throws -> RawDevice?
+    func rawDevice(_ device: DeviceKey) throws -> RawDevice?
 }
 
 extension HistoryStore: RawDeviceCache {}
@@ -93,19 +94,31 @@ public struct FetchStateRow: Sendable, Equatable {
 /// all cross-process coordination goes through `fetch_state` and `change_log` inside
 /// `BEGIN IMMEDIATE` transactions.
 public final class HistoryStore: Sendable {
-    /// `fetch_state` key holding the global MELCloud block (HTTP 429 / login throttle).
+    // `fetch_state` keys are namespaced per integration (`fetchKey(_:integration:)`), so each
+    // integration's blocks and spacing are its own; third-party sources (prices, weather, house)
+    // keep plain keys.
+
+    /// `fetch_state` name of an integration's global block (HTTP 429 / login throttle).
     public static let globalKey = "global"
-    /// `fetch_state` key set while MELCloud refuses the stored credentials.
+    /// `fetch_state` name set while the integration's service refuses the stored credentials.
     public static let credentialsKey = "credentials"
-    /// `fetch_state` key whose `lastAttempt` is the last write request.
+    /// `fetch_state` name whose `lastAttempt` is the integration's last write request.
     public static let writeKey = "write"
     /// Stored as `blockedUntil` for blocks that only end on user action.
     static let indefinite = Date(timeIntervalSince1970: 253_402_300_799)  // 9999-12-31
 
+    /// The `fetch_state` key of `name` for `integration`, e.g. `melcloud-classic/state`.
+    public static func fetchKey(_ name: String, integration: String) -> String { "\(integration)/\(name)" }
+
     public let path: String
     let pool: DatabasePool
 
-    public init(path: String) throws {
+    /// `legacyIntegration` is the integration that opened the store (`Integration.id`). Rows from
+    /// before device keys (v12) carry only the integration's own numeric device id; the
+    /// migration builds their keys and namespaces their `fetch_state` keys with it. Opening a file
+    /// that has such rows without it fails rather than guess. Before that migration runs on an
+    /// existing file, a copy is kept next to it (`backupPath(for:)`).
+    public init(path: String, legacyIntegration: String? = nil) throws {
         self.path = path
         let directory = URL(fileURLWithPath: path).deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -113,7 +126,9 @@ public final class HistoryStore: Sendable {
         config.busyMode = .timeout(10)
         config.label = "HeatPumpKit.HistoryStore"
         pool = try DatabasePool(path: path, configuration: config)
-        try Self.migrator.migrate(pool)
+        let migrator = Self.migrator(legacyIntegration: legacyIntegration)
+        try backUpBeforeDeviceKeysIfNeeded(migrator)
+        try migrator.migrate(pool)
     }
 
     /// `VARMEPUMPE_DB_PATH`, or `~/Library/Application Support/Varmepumpe/varmepumpe.sqlite`.
@@ -126,7 +141,7 @@ public final class HistoryStore: Sendable {
 
     // MARK: Migrations
 
-    static var migrator: DatabaseMigrator {
+    static func migrator(legacyIntegration: String?) -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1") { db in
             try db.execute(
@@ -334,6 +349,10 @@ public final class HistoryStore: Sendable {
             // MET's precipitation for the next 6 hours (the only amount beyond the hourly part).
             try db.execute(sql: "ALTER TABLE weather_forecast ADD COLUMN precipitation6h DOUBLE")
         }
+        migrator.registerMigration(Self.deviceKeyMigration) { db in
+            // Device keys, the device registry, string modes and per-integration fetch keys.
+            try Self.migrateToDeviceKeys(db, legacyIntegration: legacyIntegration)
+        }
         return migrator
     }
 
@@ -364,20 +383,23 @@ public final class HistoryStore: Sendable {
         return try? decoder.decode(DeviceState.self, from: Data(json.utf8))
     }
 
+    /// Stores the state and keeps the device registry in step (adds the device when it is new,
+    /// updates its name and when it was last seen).
     public func insertSnapshot(_ state: DeviceState) throws {
         let json = String(decoding: try Self.encoder.encode(state), as: UTF8.self)
         try pool.write { db in
             try db.execute(
                 sql: """
-                    INSERT INTO snapshots (ts, deviceId, power, mode, setTemperature, roomTemperature,
+                    INSERT INTO snapshots (ts, deviceKey, power, mode, setTemperature, roomTemperature,
                         outdoorTemperature, hasError, errorCode, offline, wifiSignal, stateJSON)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                 arguments: [
-                    state.fetchedAt, state.deviceId, state.power, state.mode?.rawValue, state.setTemperature,
+                    state.fetchedAt, state.key.rawValue, state.power, state.mode?.rawValue, state.setTemperature,
                     state.roomTemperature, state.outdoorTemperature, state.hasError, state.errorCode,
                     state.offline, state.wifiSignal, json,
                 ])
+            try Self.upsertDevice(DeviceSummary(key: state.key, name: state.name), seen: state.fetchedAt, full: false, db: db)
         }
     }
 
@@ -386,38 +408,34 @@ public final class HistoryStore: Sendable {
         public var stale: Bool
     }
 
-    public func latestSnapshot(deviceId: Int? = nil) throws -> Snapshot? {
+    public func latestSnapshot(device: DeviceKey) throws -> Snapshot? {
         try pool.read { db in
-            let row: Row?
-            if let deviceId {
-                row = try Row.fetchOne(
-                    db, sql: "SELECT stateJSON, stale FROM snapshots WHERE deviceId = ? ORDER BY ts DESC, id DESC LIMIT 1",
-                    arguments: [deviceId])
-            } else {
-                row = try Row.fetchOne(db, sql: "SELECT stateJSON, stale FROM snapshots ORDER BY ts DESC, id DESC LIMIT 1")
-            }
-            guard let row, let state = Self.decodeState(row["stateJSON"]) else { return nil }
+            guard let row = try Row.fetchOne(
+                db, sql: "SELECT stateJSON, stale FROM snapshots WHERE deviceKey = ? ORDER BY ts DESC, id DESC LIMIT 1",
+                arguments: [device.rawValue]),
+                let state = Self.decodeState(row["stateJSON"])
+            else { return nil }
             return Snapshot(state: state, stale: row["stale"])
         }
     }
 
-    public func snapshots(deviceId: Int, from: Date, to: Date) throws -> [DeviceState] {
+    public func snapshots(device: DeviceKey, from: Date, to: Date) throws -> [DeviceState] {
         try pool.read { db in
             try String.fetchAll(
-                db, sql: "SELECT stateJSON FROM snapshots WHERE deviceId = ? AND ts >= ? AND ts <= ? ORDER BY ts",
-                arguments: [deviceId, from, to]
+                db, sql: "SELECT stateJSON FROM snapshots WHERE deviceKey = ? AND ts >= ? AND ts <= ? ORDER BY ts",
+                arguments: [device.rawValue, from, to]
             ).compactMap(Self.decodeState)
         }
     }
 
-    public func markLatestSnapshotStale(deviceId: Int) throws {
+    public func markLatestSnapshotStale(device: DeviceKey) throws {
         try pool.write { db in
             try db.execute(
                 sql: """
                     UPDATE snapshots SET stale = 1 WHERE id =
-                        (SELECT id FROM snapshots WHERE deviceId = ? ORDER BY ts DESC, id DESC LIMIT 1)
+                        (SELECT id FROM snapshots WHERE deviceKey = ? ORDER BY ts DESC, id DESC LIMIT 1)
                     """,
-                arguments: [deviceId])
+                arguments: [device.rawValue])
         }
     }
 
@@ -430,17 +448,17 @@ public final class HistoryStore: Sendable {
         try pool.write { db in
             try db.execute(
                 sql: """
-                    INSERT INTO expected_state (deviceId, ts, stateJSON) VALUES (?, ?, ?)
-                    ON CONFLICT(deviceId) DO UPDATE SET ts = excluded.ts, stateJSON = excluded.stateJSON
+                    INSERT INTO expected_state (deviceKey, ts, stateJSON) VALUES (?, ?, ?)
+                    ON CONFLICT(deviceKey) DO UPDATE SET ts = excluded.ts, stateJSON = excluded.stateJSON
                     """,
-                arguments: [state.deviceId, at, json])
+                arguments: [state.key.rawValue, at, json])
         }
     }
 
-    public func expectedState(deviceId: Int) throws -> (state: DeviceState, at: Date)? {
+    public func expectedState(device: DeviceKey) throws -> (state: DeviceState, at: Date)? {
         try pool.read { db in
             guard let row = try Row.fetchOne(
-                db, sql: "SELECT ts, stateJSON FROM expected_state WHERE deviceId = ?", arguments: [deviceId]),
+                db, sql: "SELECT ts, stateJSON FROM expected_state WHERE deviceKey = ?", arguments: [device.rawValue]),
                 let state = Self.decodeState(row["stateJSON"])
             else { return nil }
             return (state, row["ts"])
@@ -457,23 +475,23 @@ public final class HistoryStore: Sendable {
         try pool.write { db in
             try db.execute(
                 sql: """
-                    INSERT INTO device_raw (deviceId, ts, json, listingJSON) VALUES (?, ?, ?, ?)
-                    ON CONFLICT(deviceId) DO UPDATE SET ts = excluded.ts, json = excluded.json,
+                    INSERT INTO device_raw (deviceKey, ts, json, listingJSON) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(deviceKey) DO UPDATE SET ts = excluded.ts, json = excluded.json,
                         listingJSON = COALESCE(excluded.listingJSON, listingJSON)
                     WHERE excluded.ts >= device_raw.ts
                     """,
-                arguments: [raw.deviceId, raw.fetchedAt, json, listing])
+                arguments: [raw.device.rawValue, raw.fetchedAt, json, listing])
         }
     }
 
-    public func rawDevice(deviceId: Int) throws -> RawDevice? {
+    public func rawDevice(_ device: DeviceKey) throws -> RawDevice? {
         try pool.read { db in
             guard let row = try Row.fetchOne(
-                db, sql: "SELECT ts, json, listingJSON FROM device_raw WHERE deviceId = ?", arguments: [deviceId]),
+                db, sql: "SELECT ts, json, listingJSON FROM device_raw WHERE deviceKey = ?", arguments: [device.rawValue]),
                 let json = try? JSONValue.parse(Data((row["json"] as String).utf8))
             else { return nil }
             let listing = (row["listingJSON"] as String?).flatMap { try? JSONValue.parse(Data($0.utf8)) }
-            return RawDevice(deviceId: deviceId, fetchedAt: row["ts"], json: json, listing: listing)
+            return RawDevice(device: device, fetchedAt: row["ts"], json: json, listing: listing)
         }
     }
 
@@ -541,28 +559,28 @@ public final class HistoryStore: Sendable {
             for entry in entries {
                 try db.execute(
                     sql: """
-                        INSERT INTO error_events (deviceId, start, "end", message, code, source) VALUES (?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(deviceId, start, message) DO UPDATE SET "end" = excluded."end",
+                        INSERT INTO error_events (deviceKey, start, "end", message, code, source) VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(deviceKey, start, message) DO UPDATE SET "end" = excluded."end",
                             code = COALESCE(excluded.code, code)
                         """,
-                    arguments: [entry.deviceId, entry.start, entry.end, entry.message, entry.code, entry.source])
+                    arguments: [entry.device.rawValue, entry.start, entry.end, entry.message, entry.code, entry.source])
             }
             return (try Int.fetchOne(db, sql: countSQL) ?? 0) - before
         }
     }
 
-    public func errorEvents(deviceId: Int? = nil, since: Date) throws -> [ErrorLogEntry] {
+    public func errorEvents(device: DeviceKey, since: Date) throws -> [ErrorLogEntry] {
         try pool.read { db in
-            var sql = #"SELECT deviceId, start, "end", message, code, source FROM error_events WHERE start >= ?"#
-            var arguments: StatementArguments = [since]
-            if let deviceId {
-                sql += " AND deviceId = ?"
-                arguments += [deviceId]
-            }
-            sql += " ORDER BY start DESC"
-            return try Row.fetchAll(db, sql: sql, arguments: arguments).map { row in
+            try Row.fetchAll(
+                db,
+                sql: #"""
+                    SELECT start, "end", message, code, source FROM error_events
+                    WHERE deviceKey = ? AND start >= ? ORDER BY start DESC
+                    """#,
+                arguments: [device.rawValue, since]
+            ).map { row in
                 ErrorLogEntry(
-                    deviceId: row["deviceId"], start: row["start"], end: row["end"], message: row["message"],
+                    device: device, start: row["start"], end: row["end"], message: row["message"],
                     code: row["code"], source: row["source"])
             }
         }
@@ -570,67 +588,67 @@ public final class HistoryStore: Sendable {
 
     // MARK: Temperature log
 
-    public func upsertTemperaturePoints(_ points: [TemperaturePoint], deviceId: Int) throws {
+    public func upsertTemperaturePoints(_ points: [TemperaturePoint], device: DeviceKey) throws {
         try pool.write { db in
             for p in points {
                 try db.execute(
                     sql: """
-                        INSERT INTO temperature_log (deviceId, ts, room, "set", outdoor) VALUES (?, ?, ?, ?, ?)
-                        ON CONFLICT(deviceId, ts) DO UPDATE SET room = excluded.room, "set" = excluded."set",
+                        INSERT INTO temperature_log (deviceKey, ts, room, "set", outdoor) VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(deviceKey, ts) DO UPDATE SET room = excluded.room, "set" = excluded."set",
                             outdoor = excluded.outdoor
                         """,
-                    arguments: [deviceId, p.timestamp, p.room, p.set, p.outdoor])
+                    arguments: [device.rawValue, p.timestamp, p.room, p.set, p.outdoor])
             }
         }
     }
 
-    public func temperaturePoints(deviceId: Int, from: Date, to: Date) throws -> [TemperaturePoint] {
+    public func temperaturePoints(device: DeviceKey, from: Date, to: Date) throws -> [TemperaturePoint] {
         try pool.read { db in
             try Row.fetchAll(
                 db,
-                sql: #"SELECT ts, room, "set", outdoor FROM temperature_log WHERE deviceId = ? AND ts >= ? AND ts <= ? ORDER BY ts"#,
-                arguments: [deviceId, from, to]
+                sql: #"SELECT ts, room, "set", outdoor FROM temperature_log WHERE deviceKey = ? AND ts >= ? AND ts <= ? ORDER BY ts"#,
+                arguments: [device.rawValue, from, to]
             ).map { TemperaturePoint(timestamp: $0["ts"], room: $0["room"], set: $0["set"], outdoor: $0["outdoor"]) }
         }
     }
 
-    public func latestTemperaturePointDate(deviceId: Int) throws -> Date? {
+    public func latestTemperaturePointDate(device: DeviceKey) throws -> Date? {
         try pool.read { db in
-            try Date.fetchOne(db, sql: "SELECT MAX(ts) FROM temperature_log WHERE deviceId = ?", arguments: [deviceId])
+            try Date.fetchOne(db, sql: "SELECT MAX(ts) FROM temperature_log WHERE deviceKey = ?", arguments: [device.rawValue])
         }
     }
 
     // MARK: Energy
 
-    public func upsertEnergyDays(_ days: [EnergyDay], deviceId: Int, now: Date) throws {
+    public func upsertEnergyDays(_ days: [EnergyDay], device: DeviceKey, now: Date) throws {
         try pool.write { db in
             for d in days {
                 try db.execute(
                     sql: """
-                        INSERT INTO energy_daily (deviceId, day, totalKWh, heatingKWh, coolingKWh, autoKWh, dryKWh, fanKWh,
+                        INSERT INTO energy_daily (deviceKey, day, totalKWh, heatingKWh, coolingKWh, autoKWh, dryKWh, fanKWh,
                             otherKWh, updatedAt)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(deviceId, day) DO UPDATE SET totalKWh = excluded.totalKWh,
+                        ON CONFLICT(deviceKey, day) DO UPDATE SET totalKWh = excluded.totalKWh,
                             heatingKWh = excluded.heatingKWh, coolingKWh = excluded.coolingKWh, autoKWh = excluded.autoKWh,
                             dryKWh = excluded.dryKWh, fanKWh = excluded.fanKWh, otherKWh = excluded.otherKWh,
                             updatedAt = excluded.updatedAt
                         """,
                     arguments: [
-                        deviceId, d.day, d.totalKWh, d.heatingKWh, d.coolingKWh, d.autoKWh, d.dryKWh, d.fanKWh, d.otherKWh, now,
+                        device.rawValue, d.day, d.totalKWh, d.heatingKWh, d.coolingKWh, d.autoKWh, d.dryKWh, d.fanKWh, d.otherKWh, now,
                     ])
             }
         }
     }
 
-    public func energyDays(deviceId: Int, fromDay: String, toDay: String) throws -> [EnergyDay] {
+    public func energyDays(device: DeviceKey, fromDay: String, toDay: String) throws -> [EnergyDay] {
         try pool.read { db in
             try Row.fetchAll(
                 db,
                 sql: """
                     SELECT day, totalKWh, heatingKWh, coolingKWh, autoKWh, dryKWh, fanKWh, otherKWh FROM energy_daily
-                    WHERE deviceId = ? AND day >= ? AND day <= ? ORDER BY day
+                    WHERE deviceKey = ? AND day >= ? AND day <= ? ORDER BY day
                     """,
-                arguments: [deviceId, fromDay, toDay]
+                arguments: [device.rawValue, fromDay, toDay]
             ).map {
                 EnergyDay(
                     day: $0["day"], totalKWh: $0["totalKWh"], heatingKWh: $0["heatingKWh"], coolingKWh: $0["coolingKWh"],
@@ -639,32 +657,34 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    public func latestEnergyDay(deviceId: Int) throws -> String? {
+    public func latestEnergyDay(device: DeviceKey) throws -> String? {
         try pool.read { db in
-            try String.fetchOne(db, sql: "SELECT MAX(day) FROM energy_daily WHERE deviceId = ?", arguments: [deviceId])
+            try String.fetchOne(db, sql: "SELECT MAX(day) FROM energy_daily WHERE deviceKey = ?", arguments: [device.rawValue])
         }
     }
 
     // MARK: Maintenance
 
+    /// `device` nil when no device is known yet (the record then counts for every device).
     @discardableResult
-    public func insertMaintenance(_ record: MaintenanceRecord) throws -> MaintenanceRecord {
+    public func insertMaintenance(_ record: MaintenanceRecord, device: DeviceKey?) throws -> MaintenanceRecord {
         try pool.write { db in
             try db.execute(
-                sql: "INSERT INTO maintenance_log (kind, ts, note) VALUES (?, ?, ?)",
-                arguments: [record.kind.rawValue, record.timestamp, record.note])
+                sql: "INSERT INTO maintenance_log (kind, ts, note, deviceKey) VALUES (?, ?, ?, ?)",
+                arguments: [record.kind.rawValue, record.timestamp, record.note, device?.rawValue])
             var saved = record
             saved.id = db.lastInsertedRowID
             return saved
         }
     }
 
-    public func maintenanceRecords(kind: MaintenanceKind? = nil, limit: Int = 100) throws -> [MaintenanceRecord] {
+    /// Records for `device` (plus those tied to no device), or all with `device` nil.
+    public func maintenanceRecords(device: DeviceKey?, kind: MaintenanceKind? = nil, limit: Int = 100) throws -> [MaintenanceRecord] {
         try pool.read { db in
-            var sql = "SELECT id, kind, ts, note FROM maintenance_log"
-            var arguments: StatementArguments = []
+            var sql = "SELECT id, kind, ts, note FROM maintenance_log WHERE \(Self.deviceFilter)"
+            var arguments: StatementArguments = [device?.rawValue, device?.rawValue]
             if let kind {
-                sql += " WHERE kind = ?"
+                sql += " AND kind = ?"
                 arguments += [kind.rawValue]
             }
             sql += " ORDER BY ts DESC LIMIT ?"
@@ -678,53 +698,65 @@ public final class HistoryStore: Sendable {
 
     // MARK: Change log
 
+    /// Logs a change for `device` (nil when no device is known yet).
     @discardableResult
-    public func logChange(_ record: ChangeRecord) throws -> Int64 {
+    public func logChange(_ record: ChangeRecord, device: DeviceKey?) throws -> Int64 {
         try pool.write { db in
-            try Self.insertChange(record, db: db)
+            try Self.insertChange(record, device: device, db: db)
             return db.lastInsertedRowID
         }
     }
 
-    private static func insertChange(_ record: ChangeRecord, batchId: Int64? = nil, db: Database) throws {
+    private static func insertChange(_ record: ChangeRecord, device: DeviceKey?, batchId: Int64? = nil, db: Database) throws {
         try db.execute(
-            sql: "INSERT INTO change_log (ts, source, field, old, new, reason, result, error, batchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            sql: """
+                INSERT INTO change_log (ts, source, field, old, new, reason, result, error, batchId, deviceKey)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
             arguments: [
                 record.timestamp, record.source.rawValue, record.field, record.oldValue, record.newValue,
-                record.reason, record.result.rawValue, record.error, batchId,
+                record.reason, record.result.rawValue, record.error, batchId, device?.rawValue,
             ])
     }
 
     /// `reserveChange` with the limits of `budget`.
-    public func reserveChange(_ records: [ChangeRecord], budget: ChangeBudgetPolicy) throws -> ChangeReservation {
-        try reserveChange(records, limit: budget.maxChangesPerHour, window: budget.window, minSpacing: budget.minSpacing)
+    public func reserveChange(_ records: [ChangeRecord], device: DeviceKey, budget: ChangeBudgetPolicy) throws -> ChangeReservation {
+        try reserveChange(records, device: device, limit: budget.maxChangesPerHour, window: budget.window, minSpacing: budget.minSpacing)
     }
 
-    /// Atomically checks write spacing and the rolling budget and, if both allow, inserts
-    /// `records` as `pending` rows sharing one batch (= one write request).
-    /// The budget counts batches with pending, ok or failed rows (they reached or may have
-    /// reached MELCloud); rejected rows do not count.
+    /// Batches of write requests the integration used since `since`, oldest first: rows of its
+    /// devices (and rows tied to no device) that reached or may have reached the service.
+    private static func usedWrites(integration: String, since: Date, db: Database) throws -> [Date] {
+        try Date.fetchAll(
+            db,
+            sql: """
+                SELECT MIN(ts) AS ts FROM change_log
+                WHERE ts > ? AND result IN ('pending', 'ok', 'failed')
+                    AND (deviceKey IS NULL OR substr(deviceKey, 1, ?) = ?)
+                GROUP BY COALESCE(batchId, id) ORDER BY ts
+                """,
+            arguments: [since, integration.count + 1, integration + ":"])
+    }
+
+    /// Atomically checks write spacing and the rolling budget of the integration `device` belongs
+    /// to (the account's limits) and, if both allow, inserts `records` as `pending` rows sharing
+    /// one batch (= one write request). The budget counts batches with pending, ok or failed rows
+    /// (they reached or may have reached the service); rejected rows do not count.
     public func reserveChange(
-        _ records: [ChangeRecord], limit: Int = ChangeBudget.maxChangesPerHour, window: TimeInterval = ChangeBudget.window,
-        minSpacing: TimeInterval = ChangeBudget.minSpacing
+        _ records: [ChangeRecord], device: DeviceKey, limit: Int = ChangeBudget.maxChangesPerHour,
+        window: TimeInterval = ChangeBudget.window, minSpacing: TimeInterval = ChangeBudget.minSpacing
     ) throws -> ChangeReservation {
         guard let first = records.first else { return .reserved(ids: []) }
         let now = first.timestamp
+        let writeKey = Self.fetchKey(Self.writeKey, integration: device.integration)
         return try immediate { db in
             if let last = try Date.fetchOne(
-                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [Self.writeKey]),
+                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [writeKey]),
                 now.timeIntervalSince(last) < minSpacing
             {
                 return .tooSoon(nextAllowed: last.addingTimeInterval(minSpacing))
             }
-            let used = try Date.fetchAll(
-                db,
-                sql: """
-                    SELECT MIN(ts) AS ts FROM change_log
-                    WHERE ts > ? AND result IN ('pending', 'ok', 'failed')
-                    GROUP BY COALESCE(batchId, id) ORDER BY ts
-                    """,
-                arguments: [now.addingTimeInterval(-window)])
+            let used = try Self.usedWrites(integration: device.integration, since: now.addingTimeInterval(-window), db: db)
             if used.count >= limit {
                 return .exceeded(nextAllowed: used[used.count - limit].addingTimeInterval(window))
             }
@@ -733,7 +765,7 @@ public final class HistoryStore: Sendable {
             for record in records {
                 var pending = record
                 pending.result = .pending
-                try Self.insertChange(pending, batchId: batchId, db: db)
+                try Self.insertChange(pending, device: device, batchId: batchId, db: db)
                 let id = db.lastInsertedRowID
                 if batchId == nil {
                     batchId = id
@@ -746,24 +778,21 @@ public final class HistoryStore: Sendable {
                     INSERT INTO fetch_state (key, lastAttempt) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt
                     """,
-                arguments: [Self.writeKey, now])
+                arguments: [writeKey, now])
             return .reserved(ids: ids)
         }
     }
 
-    /// Write requests used in the rolling window, when the oldest of them leaves the window,
-    /// and when the last write went out.
-    public func writeUsage(now: Date, window: TimeInterval = ChangeBudget.window) throws -> (used: [Date], lastWrite: Date?) {
+    /// The integration's write requests used in the rolling window, when the oldest of them
+    /// leaves the window, and when its last write went out.
+    public func writeUsage(
+        integration: String, now: Date, window: TimeInterval = ChangeBudget.window
+    ) throws -> (used: [Date], lastWrite: Date?) {
         try pool.read { db in
-            let used = try Date.fetchAll(
-                db,
-                sql: """
-                    SELECT MIN(ts) AS ts FROM change_log
-                    WHERE ts > ? AND result IN ('pending', 'ok', 'failed')
-                    GROUP BY COALESCE(batchId, id) ORDER BY ts
-                    """,
-                arguments: [now.addingTimeInterval(-window)])
-            let last = try Date.fetchOne(db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?", arguments: [Self.writeKey])
+            let used = try Self.usedWrites(integration: integration, since: now.addingTimeInterval(-window), db: db)
+            let last = try Date.fetchOne(
+                db, sql: "SELECT lastAttempt FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.writeKey, integration: integration)])
             return (used, last)
         }
     }
@@ -777,12 +806,13 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    public func changes(limit: Int = 50, source: ChangeSource? = nil) throws -> [ChangeRecord] {
+    /// The newest changes for `device` (plus those tied to no device), or all with `device` nil.
+    public func changes(device: DeviceKey?, limit: Int = 50, source: ChangeSource? = nil) throws -> [ChangeRecord] {
         try pool.read { db in
-            var sql = "SELECT * FROM change_log"
-            var arguments: StatementArguments = []
+            var sql = "SELECT * FROM change_log WHERE \(Self.deviceFilter)"
+            var arguments: StatementArguments = [device?.rawValue, device?.rawValue]
             if let source {
-                sql += " WHERE source = ?"
+                sql += " AND source = ?"
                 arguments += [source.rawValue]
             }
             sql += " ORDER BY ts DESC, id DESC LIMIT ?"
@@ -796,24 +826,30 @@ public final class HistoryStore: Sendable {
         }
     }
 
+    /// Matches rows of the device bound twice (rows tied to no device always match; a nil device
+    /// matches every row).
+    static let deviceFilter = "(? IS NULL OR deviceKey IS NULL OR deviceKey = ?)"
+
     // MARK: Fetch coordination
 
     /// Atomically decides whether this process may call the network for `key`.
-    /// Honours the global block first, then the per-key minimum interval; on `.allowed` the
-    /// attempt is recorded so other processes see it immediately.
-    /// `countsTowardServiceBlock` false for third-party sources (prices), which the heat pump
-    /// service's blocks do not stop.
+    /// Honours `blockingIntegration`'s stops first (credentials refused, global block), then the
+    /// per-key minimum interval; on `.allowed` the attempt is recorded so other processes see it
+    /// immediately. `blockingIntegration` is nil for third-party sources (prices, weather), which
+    /// no integration's blocks stop.
     public func reserveFetch(
-        key: String, minInterval: TimeInterval, now: Date, countsTowardServiceBlock: Bool = true
+        key: String, minInterval: TimeInterval, now: Date, blockingIntegration: String?
     ) throws -> FetchDecision {
         try immediate { db in
-            if countsTowardServiceBlock, try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
+            if let integration = blockingIntegration, try Date.fetchOne(
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)]) != nil
             {
                 return .credentialsRejected
             }
-            if countsTowardServiceBlock, let blocked = try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
+            if let integration = blockingIntegration, let blocked = try Date.fetchOne(
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.globalKey, integration: integration)]),
                 blocked > now
             {
                 return .blocked(until: blocked)
@@ -844,9 +880,9 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    /// Blocks every network call from every process until `until` (keeps the later of two
-    /// blocks, together with its reason).
-    public func recordBlock(until: Date, reason: BlockReason) throws {
+    /// Blocks every network call to `integration` from every process until `until` (keeps the
+    /// later of two blocks, together with its reason).
+    public func recordBlock(until: Date, reason: BlockReason, integration: String) throws {
         try immediate { db in
             try db.execute(
                 sql: """
@@ -857,15 +893,16 @@ public final class HistoryStore: Sendable {
                         blockedUntil = CASE WHEN blockedUntil IS NULL OR blockedUntil < excluded.blockedUntil
                              THEN excluded.blockedUntil ELSE blockedUntil END
                     """,
-                arguments: [Self.globalKey, until, reason.rawValue])
+                arguments: [Self.fetchKey(Self.globalKey, integration: integration), until, reason.rawValue])
         }
     }
 
-    /// The active block with its reason (rows from before v3 count as rate limiting).
-    public func blockStatus(now: Date) throws -> BlockStatus? {
+    /// The integration's active block with its reason (rows from before v3 count as rate limiting).
+    public func blockStatus(now: Date, integration: String) throws -> BlockStatus? {
         try pool.read { db in
             guard let row = try Row.fetchOne(
-                db, sql: "SELECT blockedUntil, reason FROM fetch_state WHERE key = ?", arguments: [Self.globalKey]),
+                db, sql: "SELECT blockedUntil, reason FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.globalKey, integration: integration)]),
                 let until: Date = row["blockedUntil"], until > now
             else { return nil }
             let reason = (row["reason"] as String?).flatMap(BlockReason.init(rawValue:)) ?? .rateLimited
@@ -873,20 +910,21 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    /// Stops all network calls until `clearCredentialsRejected()` (new credentials saved).
-    public func recordCredentialsRejected(now: Date) throws {
+    /// Stops all network calls to `integration` until `clearCredentialsRejected(integration:)`
+    /// (new credentials saved).
+    public func recordCredentialsRejected(now: Date, integration: String) throws {
         try pool.write { db in
             try db.execute(
                 sql: """
                     INSERT INTO fetch_state (key, lastAttempt, blockedUntil) VALUES (?, ?, ?)
                     ON CONFLICT(key) DO UPDATE SET lastAttempt = excluded.lastAttempt, blockedUntil = excluded.blockedUntil
                     """,
-                arguments: [Self.credentialsKey, now, Self.indefinite])
+                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration), now, Self.indefinite])
         }
     }
 
     /// Stops automatic requests for one key (an endpoint refused this account) until `until`.
-    /// Only the service's own check honours it; the global MELCloud block is not touched.
+    /// Only the service's own check honours it; the integration's global block is not touched.
     public func recordKeyRefusal(key: String, until: Date) throws {
         try pool.write { db in
             try db.execute(
@@ -904,23 +942,26 @@ public final class HistoryStore: Sendable {
         }
     }
 
-    public func clearCredentialsRejected() throws {
+    public func clearCredentialsRejected(integration: String) throws {
         try pool.write { db in
-            try db.execute(sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey])
+            try db.execute(
+                sql: "DELETE FROM fetch_state WHERE key = ?", arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)])
         }
     }
 
-    public func credentialsRejected() throws -> Bool {
+    public func credentialsRejected(integration: String) throws -> Bool {
         try pool.read { db in
             try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.credentialsKey]) != nil
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.credentialsKey, integration: integration)]) != nil
         }
     }
 
-    public func blockedUntil(now: Date) throws -> Date? {
+    public func blockedUntil(now: Date, integration: String) throws -> Date? {
         try pool.read { db in
             guard let until = try Date.fetchOne(
-                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?", arguments: [Self.globalKey])
+                db, sql: "SELECT blockedUntil FROM fetch_state WHERE key = ?",
+                arguments: [Self.fetchKey(Self.globalKey, integration: integration)])
             else { return nil }
             return until > now ? until : nil
         }

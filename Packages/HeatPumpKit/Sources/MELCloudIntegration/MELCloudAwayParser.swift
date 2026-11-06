@@ -130,8 +130,8 @@ extension MELCloudClassicParser {
             weekday: day == 0 ? 7 : day, minuteOfDay: minute, power: value("Power")?.bool,
             mode: value("OperationMode")?.int.flatMap { CloudOperationMode(raw: $0)?.mode },
             setTemperature: value("SetTemperature")?.double, fanSpeed: value("FanSpeed")?.int,
-            vaneHorizontal: value("VaneHorizontal")?.int.flatMap(VaneHorizontal.init(rawValue:)),
-            vaneVertical: value("VaneVertical")?.int.flatMap(VaneVertical.init(rawValue:)), raw: json)
+            vaneHorizontal: value("VaneHorizontal")?.int.flatMap(VaneHorizontal.init(melcloudValue:)),
+            vaneVertical: value("VaneVertical")?.int.flatMap(VaneVertical.init(melcloudValue:)), raw: json)
     }
 
     /// `Timer/SetAta2` body: every season with its events. All fields of untouched events and
@@ -171,18 +171,18 @@ extension MELCloudClassicParser {
         if let power = event.power { object["Power"] = .bool(power) } else if isNew { object["Power"] = .bool(true) }
         if let mode = event.mode {
             if object["OperationMode"]?.int.flatMap(CloudOperationMode.init(raw:))?.mode != mode {
-                object["OperationMode"] = .number(Double(mode.rawValue))
+                object["OperationMode"] = .number(Double(mode.melcloudValue))
             }
         }
         if let value = event.setTemperature { object["SetTemperature"] = .number(value) }
         if let value = event.fanSpeed { object["FanSpeed"] = .number(Double(value)) } else if isNew { object["FanSpeed"] = .number(0) }
         if let value = event.vaneHorizontal {
-            object["VaneHorizontal"] = .number(Double(value.rawValue))
+            object["VaneHorizontal"] = .number(Double(value.melcloudValue))
         } else if isNew {
             object["VaneHorizontal"] = .number(0)
         }
         if let value = event.vaneVertical {
-            object["VaneVertical"] = .number(Double(value.rawValue))
+            object["VaneVertical"] = .number(Double(value.melcloudValue))
         } else if isNew {
             object["VaneVertical"] = .number(0)
         }

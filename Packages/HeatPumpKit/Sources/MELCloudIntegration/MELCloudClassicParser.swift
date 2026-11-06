@@ -34,7 +34,7 @@ struct CloudOperationMode: Equatable {
         case 10: self.init(mode: .dry, iSee: true, raw: raw)
         case 11: self.init(mode: .cool, iSee: true, raw: raw)
         default:
-            guard let mode = OperationMode(rawValue: raw) else { return nil }
+            guard let mode = OperationMode(melcloudValue: raw) else { return nil }
             self.init(mode: mode, iSee: false, raw: raw)
         }
     }
@@ -121,8 +121,8 @@ package enum MELCloudClassicParser {
     static func summary(_ wrapper: JSONValue) -> DeviceSummary? {
         guard let id = wrapper["DeviceID"]?.int else { return nil }
         return DeviceSummary(
-            deviceId: id, buildingId: wrapper["BuildingID"]?.int ?? 0,
-            name: wrapper["DeviceName"]?.string ?? "Varmepumpe")
+            key: .melcloud(id), name: wrapper["DeviceName"]?.string ?? "Varmepumpe",
+            metadata: [DeviceSummary.buildingIdKey: String(wrapper["BuildingID"]?.int ?? 0)])
     }
 
     /// Builds a state from a `ListDevices` wrapper and/or a `Device/Get` payload.
@@ -162,8 +162,7 @@ package enum MELCloudClassicParser {
             WireDate.parse(value("LastCommunication")?.string, timeZone: utc)
             ?? WireDate.parse(value("LastTimeStamp")?.string, timeZone: .current)
         return DeviceState(
-            deviceId: deviceId,
-            buildingId: value("BuildingID")?.int ?? 0,
+            key: .melcloud(deviceId),
             name: listing?["DeviceName"]?.string ?? "Varmepumpe",
             serialNumber: value("SerialNumber")?.string,
             macAddress: value("MacAddress")?.string,
@@ -177,8 +176,8 @@ package enum MELCloudClassicParser {
             actualFanSpeed: value("ActualFanSpeed")?.int,
             numberOfFanSpeeds: value("NumberOfFanSpeeds")?.int ?? 5,
             hasAutomaticFanSpeed: value("HasAutomaticFanSpeed")?.bool ?? true,
-            vaneVertical: value("VaneVertical", "VaneVerticalDirection")?.int.flatMap(VaneVertical.init(rawValue:)),
-            vaneHorizontal: value("VaneHorizontal", "VaneHorizontalDirection")?.int.flatMap(VaneHorizontal.init(rawValue:)),
+            vaneVertical: value("VaneVertical", "VaneVerticalDirection")?.int.flatMap(VaneVertical.init(melcloudValue:)),
+            vaneHorizontal: value("VaneHorizontal", "VaneHorizontalDirection")?.int.flatMap(VaneHorizontal.init(melcloudValue:)),
             hasError: value("HasError")?.bool ?? false,
             errorCode: value("ErrorCode")?.int,
             offline: value("Offline")?.bool ?? false,
@@ -237,13 +236,14 @@ package enum MELCloudClassicParser {
     static func setAtaPayload(_ changes: ChangeSet, raw: JSONValue) throws -> [String: JSONValue] {
         guard var body = raw.object else { throw HeatPumpError.validation(missingObjectMessage) }
         var flags = ClassicEffectiveFlags()
-        body["DeviceID"] = .number(Double(changes.deviceId))
+        guard let deviceId = changes.device.melcloudDeviceId else { throw HeatPumpError.deviceNotFound }
+        body["DeviceID"] = .number(Double(deviceId))
         if let power = changes.power {
             body["Power"] = .bool(power)
             flags.insert(.power)
         }
         if let mode = changes.mode {
-            body["OperationMode"] = .number(Double(mode.rawValue))
+            body["OperationMode"] = .number(Double(mode.melcloudValue))
             flags.insert(.operationMode)
         }
         if let temperature = changes.setTemperature {
@@ -255,11 +255,11 @@ package enum MELCloudClassicParser {
             flags.insert(.setFanSpeed)
         }
         if let vane = changes.vaneVertical {
-            body["VaneVertical"] = .number(Double(vane.rawValue))
+            body["VaneVertical"] = .number(Double(vane.melcloudValue))
             flags.insert(.vaneVertical)
         }
         if let vane = changes.vaneHorizontal {
-            body["VaneHorizontal"] = .number(Double(vane.rawValue))
+            body["VaneHorizontal"] = .number(Double(vane.melcloudValue))
             flags.insert(.vaneHorizontal)
         }
         body["EffectiveFlags"] = .number(Double(flags.rawValue))
@@ -293,7 +293,8 @@ package enum MELCloudClassicParser {
     // MARK: Reports
 
     /// `Report/GetUnitErrorLog2`: an array of entries, or `{ AttributeErrors: … }` on failure.
-    static func errorLog(_ json: JSONValue, timeZone: TimeZone) throws -> [ErrorLogEntry] {
+    /// The entries of `device` (the one the request asked for).
+    static func errorLog(_ json: JSONValue, device: DeviceKey, timeZone: TimeZone) throws -> [ErrorLogEntry] {
         if let attributeErrors = json["AttributeErrors"]?.object {
             let text = attributeErrors.map { key, value in
                 "\(key): " + (value.array?.compactMap(\.string).joined(separator: ", ") ?? "")
@@ -305,7 +306,7 @@ package enum MELCloudClassicParser {
             let message = entry["ErrorMessage"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             guard !message.isEmpty else { return nil }
             return ErrorLogEntry(
-                deviceId: entry["DeviceId"]?.int ?? entry["DeviceID"]?.int ?? 0,
+                device: device,
                 start: start,
                 end: WireDate.parse(entry["EndDate"]?.string, timeZone: timeZone),
                 message: message,

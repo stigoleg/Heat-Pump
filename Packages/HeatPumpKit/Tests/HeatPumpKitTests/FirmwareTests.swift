@@ -60,7 +60,7 @@ struct FirmwareTests {
         let updates = MELCloudClassicParser.firmwareUpdates(json, timeZone: .gmt)
         #expect(updates.count == 2)
         #expect(updates[0].id == 77)
-        #expect(updates[0].deviceId == 1)
+        #expect(updates[0].device == .melcloud(1))
         #expect(updates[0].phase == .downloading)
         #expect(updates[0].progressText == "1 of 3 files")
         #expect(updates[0].dateApproved == Date(timeIntervalSince1970: 1_793_876_400))
@@ -92,7 +92,7 @@ struct FirmwareTests {
 
     func classic(_ transport: StubTransport) -> MELCloudClassicBackend {
         let credentials = InMemoryCredentialStore(
-            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         return MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, now: clock.provider)
     }
 
@@ -106,10 +106,10 @@ struct FirmwareTests {
         transport.enqueue("/FirmwareUpdate/Approve2", body: Data("{}".utf8))
         transport.enqueue("/FirmwareUpdate/Cancel2", body: Data())
         let backend = classic(transport)
-        let updates = try await backend.firmwareUpdates(deviceId: 12345)
+        let updates = try await backend.firmwareUpdates(device: .melcloud(12345))
         #expect(updates.map(\.id) == [77])
-        try await backend.approveFirmwareUpdate(id: 77, deviceId: 12345)
-        try await backend.cancelFirmwareUpdate(id: 77, deviceId: 12345)
+        try await backend.approveFirmwareUpdate(id: 77, device: .melcloud(12345))
+        try await backend.cancelFirmwareUpdate(id: 77, device: .melcloud(12345))
         let requests = transport.requests
         #expect(requests.map { $0.url?.path ?? "" } == [
             "/Mitsubishi.Wifi.Client/FirmwareUpdate/List2", "/Mitsubishi.Wifi.Client/FirmwareUpdate/Approve2",
@@ -126,8 +126,8 @@ struct FirmwareTests {
         transport.enqueue("/FirmwareUpdate/Approve2", status: 403, body: Data())
         transport.enqueue("/FirmwareUpdate/Cancel2", body: Data(#"{"Success": false}"#.utf8))
         let backend = classic(transport)
-        await #expect(throws: HeatPumpError.endpointRefused(status: 403)) { try await backend.approveFirmwareUpdate(id: 1, deviceId: 2) }
-        await #expect(throws: HeatPumpError.self) { try await backend.cancelFirmwareUpdate(id: 1, deviceId: 2) }
+        await #expect(throws: HeatPumpError.endpointRefused(status: 403)) { try await backend.approveFirmwareUpdate(id: 1, device: .melcloud(2)) }
+        await #expect(throws: HeatPumpError.self) { try await backend.cancelFirmwareUpdate(id: 1, device: .melcloud(2)) }
         #expect(!transport.requests.contains { $0.url?.path.hasSuffix("ClientLogin") == true })
     }
 
@@ -136,7 +136,7 @@ struct FirmwareTests {
     func waitingState(owner: Int? = 4, offline: Bool = false, deployment: String? = "4711") -> DeviceState {
         var state = makeState(at: clock.now, offline: offline, firmware: FirmwareInfo(
             deployment: deployment, appVersion: 34000, accessLevel: owner))
-        state.deviceId = MockBackend.deviceId
+        state.key = MockBackend.device
         return state
     }
 
@@ -179,7 +179,7 @@ struct FirmwareTests {
             transport.enqueue("/FirmwareUpdate/List2", body: Data(entry.utf8))
             let store = try HistoryStore(path: temporaryDatabasePath())
             var state = waitingState()
-            state.deviceId = 1
+            state.key = testDevice
             try store.insertSnapshot(state)
             let outcome = try await service(classic(transport), store: store).startFirmwareUpdate(source: .app, reason: "x")
             #expect(outcome.result == .rejected)
@@ -243,7 +243,7 @@ struct FirmwareTests {
         let backend = MockBackend(timeZone: .gmt, now: clock.provider)
         let svc = service(backend, store: store)
         _ = try await svc.currentState()
-        try store.recordKeyRefusal(key: HeatPumpService.firmwareFetchKey, until: clock.now.addingTimeInterval(86_400))
+        try store.recordKeyRefusal(key: HistoryStore.fetchKey(HeatPumpService.firmwareFetchKey, integration: testIntegration.id), until: clock.now.addingTimeInterval(86_400))
         let outcome = try await svc.startFirmwareUpdate(source: .claude, reason: "x", approver: RecordingApprover(.approved))
         #expect(outcome.result == .rejected)
         #expect(await backend.firmwareReads == 0)

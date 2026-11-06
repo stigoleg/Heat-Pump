@@ -64,31 +64,31 @@ actor CountingBackend: HeatPumpBackend {
 
     func login() async throws {}
     func listDevices() async throws -> [DeviceSummary] { try await inner.listDevices() }
-    func fetchState(deviceId: Int) async throws -> DeviceState {
+    func fetchState(device: DeviceKey) async throws -> DeviceState {
         fetchStateCalls += 1
         try maybeThrow()
-        return try await inner.fetchState(deviceId: deviceId)
+        return try await inner.fetchState(device: device)
     }
     func apply(_ changes: ChangeSet) async throws -> DeviceState? {
         applyCalls += 1
         try maybeThrow()
         return try await inner.apply(changes)
     }
-    func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {
+    func fetchErrorLog(device: DeviceKey, range: DateInterval) async throws -> [ErrorLogEntry] {
         reportCalls += 1
         try maybeThrow()
-        return try await inner.fetchErrorLog(deviceId: deviceId, range: range)
+        return try await inner.fetchErrorLog(device: device, range: range)
     }
-    func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] {
+    func fetchTemperatureLog(device: DeviceKey, range: DateInterval) async throws -> [TemperaturePoint] {
         reportCalls += 1
-        return try await inner.fetchTemperatureLog(deviceId: deviceId, range: range)
+        return try await inner.fetchTemperatureLog(device: device, range: range)
     }
-    func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] {
+    func fetchEnergy(device: DeviceKey, range: DateInterval) async throws -> [EnergyDay] {
         reportCalls += 1
         energyRanges.append(range)
-        return try await inner.fetchEnergy(deviceId: deviceId, range: range)
+        return try await inner.fetchEnergy(device: device, range: range)
     }
-    func fetchSignalStrength(deviceId: Int) async throws -> Int? { -62 }
+    func fetchSignalStrength(device: DeviceKey) async throws -> Int? { -62 }
 }
 
 /// Canned HTTP responses keyed by path suffix; records requests.
@@ -123,13 +123,16 @@ final class StubTransport: HTTPTransport {
     }
 }
 
+/// The device `makeState` describes (device id 1 before device keys).
+let testDevice = DeviceKey(integration: DemoIntegration.id, nativeId: "1")
+
 func makeState(
     at date: Date, power: Bool = true, mode: OperationMode = .heat, set: Double = 21, room: Double = 20.5,
     outdoor: Double? = -5, hasError: Bool = false, errorCode: Int? = 8000, offline: Bool = false,
     lastCommunication: Date? = nil, wifi: Int? = -60, firmware: FirmwareInfo = FirmwareInfo()
 ) -> DeviceState {
     DeviceState(
-        deviceId: 1, buildingId: 2, name: "Test", power: power, mode: mode, setTemperature: set,
+        key: testDevice, name: "Test", power: power, mode: mode, setTemperature: set,
         roomTemperature: room, outdoorTemperature: outdoor, fanSpeed: 0, numberOfFanSpeeds: 5,
         hasError: hasError, errorCode: errorCode, offline: offline,
         lastCommunication: lastCommunication ?? date, wifiSignal: wifi, firmware: firmware, fetchedAt: date)
@@ -163,6 +166,62 @@ extension HeatPumpService {
     }
 
     static var timerChangedMessage: String { timerChangedMessage(serviceName: testIntegration.displayName) }
+
+    func signIn(_ new: MELCloudCredentials) async throws -> StateResult { try await signIn(new.values) }
+    func saveCredentials(_ new: MELCloudCredentials) throws { try saveCredentials(new.values) }
+}
+
+extension InMemoryCredentialStore {
+    /// A store holding a MELCloud account (and its session key).
+    convenience init(credentials: MELCloudCredentials?, contextKey: String? = nil) {
+        self.init(
+            values: credentials.map { [MELCloudIntegration.id: $0.values] } ?? [:],
+            sessionKeys: contextKey.map { [MELCloudIntegration.id: $0] } ?? [:])
+    }
+}
+
+extension DeviceState {
+    var hasActiveError: Bool { hasActiveError(noErrorCodes: testIntegration.errorCodes.noErrorCodes) }
+}
+
+// MARK: Store calls as before device keys
+//
+// Blocks and credential stops are the test integration's (the service under test runs as it);
+// rows the tests write directly belong to no device; reads see every device.
+
+extension HistoryStore {
+    /// The newest snapshot of any device.
+    func latestSnapshot() throws -> Snapshot? {
+        try devices().compactMap { try latestSnapshot(device: $0.key) }.max { $0.state.fetchedAt < $1.state.fetchedAt }
+    }
+
+    func changes(limit: Int = 50, source: ChangeSource? = nil) throws -> [ChangeRecord] {
+        try changes(device: nil, limit: limit, source: source)
+    }
+
+    @discardableResult
+    func logChange(_ record: ChangeRecord) throws -> Int64 { try logChange(record, device: nil) }
+
+    /// Budget of the simulated unit (the service's device in the suites).
+    func reserveChange(_ records: [ChangeRecord]) throws -> ChangeReservation {
+        try reserveChange(records, device: MockBackend.device)
+    }
+
+    func reserveFetch(key: String, minInterval: TimeInterval, now: Date) throws -> FetchDecision {
+        try reserveFetch(key: key, minInterval: minInterval, now: now, blockingIntegration: testIntegration.id)
+    }
+
+    func recordBlock(until: Date, reason: BlockReason) throws {
+        try recordBlock(until: until, reason: reason, integration: testIntegration.id)
+    }
+
+    func blockStatus(now: Date) throws -> BlockStatus? { try blockStatus(now: now, integration: testIntegration.id) }
+
+    func blockedUntil(now: Date) throws -> Date? { try blockedUntil(now: now, integration: testIntegration.id) }
+
+    func insertLocalSample(_ sample: LocalSample) throws { try insertLocalSample(sample, device: nil) }
+
+    func insertLocalSamples(_ samples: [LocalSample]) throws { try insertLocalSamples(samples, device: nil) }
 }
 
 extension HealthInput {
@@ -191,7 +250,7 @@ extension NotificationPlanner {
     ) -> (notifications: [PlannedNotification], memory: NotificationMemory) {
         plan(
             state: state, errorEvents: errorEvents, maintenance: maintenance, memory: memory, now: now,
-            serviceName: testIntegration.displayName)
+            serviceName: testIntegration.displayName, noErrorCodes: testIntegration.errorCodes.noErrorCodes)
     }
 }
 
@@ -212,8 +271,8 @@ extension WeatherLocation {
 }
 
 extension ErrorLogEntry {
-    init(deviceId: Int, start: Date, end: Date? = nil, message: String, code: String? = nil) {
-        self.init(deviceId: deviceId, start: start, end: end, message: message, code: code, source: testIntegration.sourceTag)
+    init(device: DeviceKey, start: Date, end: Date? = nil, message: String, code: String? = nil) {
+        self.init(device: device, start: start, end: end, message: message, code: code, source: testIntegration.sourceTag)
     }
 }
 

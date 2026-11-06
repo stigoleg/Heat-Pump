@@ -1,12 +1,13 @@
 import Foundation
 
-/// Air-to-air operation mode (MELCloud Classic numeric values).
-public enum OperationMode: Int, Codable, Sendable, CaseIterable {
-    case heat = 1
-    case dry = 2
-    case cool = 3
-    case fan = 7
-    case auto = 8
+/// Air-to-air operation mode. The raw value is the stable `key`; integrations map their wire
+/// values in their own module.
+public enum OperationMode: String, Sendable, CaseIterable {
+    case heat
+    case dry
+    case cool
+    case fan
+    case auto
 
     /// Display name ("Heat").
     public var displayName: String {
@@ -31,42 +32,67 @@ public enum OperationMode: Int, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Stable machine name used by the MCP tools.
-    public var key: String {
-        switch self {
-        case .heat: "heat"
-        case .dry: "dry"
-        case .cool: "cool"
-        case .fan: "fan"
-        case .auto: "auto"
-        }
-    }
+    /// Stable machine name used by the MCP tools (and the persisted raw value).
+    public var key: String { rawValue }
 
     public init?(key: String) {
         guard let mode = Self.allCases.first(where: { $0.key == key.lowercased() }) else { return nil }
         self = mode
     }
+
+    /// The integer stored before v12 (snapshots, settings JSON). Also the number the history
+    /// chart and the MCP tools (`get_history`, `get_energy`) have always shown for a mode.
+    public var legacyCode: Int {
+        switch self {
+        case .heat: 1
+        case .dry: 2
+        case .cool: 3
+        case .fan: 7
+        case .auto: 8
+        }
+    }
 }
 
-/// Vertical vane position (MELCloud Classic `VaneVertical`).
-public enum VaneVertical: Int, Codable, Sendable, CaseIterable {
-    case auto = 0
-    case position1 = 1
-    case position2 = 2
-    case position3 = 3
-    case position4 = 4
-    case position5 = 5
-    case swing = 7
+extension OperationMode: Codable {
+    public init(from decoder: any Decoder) throws {
+        self = try decodeDeviceEnum(decoder)
+    }
+}
 
-    public var key: String {
+/// Vertical vane position. The raw value is the stable `key`.
+public enum VaneVertical: String, Sendable, CaseIterable {
+    case auto
+    case position1 = "1_up"
+    case position2 = "2"
+    case position3 = "3"
+    case position4 = "4"
+    case position5 = "5_down"
+    case swing
+
+    public var key: String { rawValue }
+
+    /// 1 (top) … 5 (bottom) for a fixed position, nil for auto and swing.
+    public var position: Int? {
         switch self {
-        case .auto: "auto"
-        case .position1: "1_up"
-        case .position2: "2"
-        case .position3: "3"
-        case .position4: "4"
-        case .position5: "5_down"
-        case .swing: "swing"
+        case .position1: 1
+        case .position2: 2
+        case .position3: 3
+        case .position4: 4
+        case .position5: 5
+        case .auto, .swing: nil
+        }
+    }
+
+    /// The integer stored before v12.
+    public var legacyCode: Int {
+        switch self {
+        case .auto: 0
+        case .position1: 1
+        case .position2: 2
+        case .position3: 3
+        case .position4: 4
+        case .position5: 5
+        case .swing: 7
         }
     }
 
@@ -88,27 +114,48 @@ public enum VaneVertical: Int, Codable, Sendable, CaseIterable {
     }
 }
 
-/// Horizontal vane position (MELCloud Classic `VaneHorizontal`).
-public enum VaneHorizontal: Int, Codable, Sendable, CaseIterable {
-    case auto = 0
-    case position1 = 1
-    case position2 = 2
-    case position3 = 3
-    case position4 = 4
-    case position5 = 5
-    case split = 8
-    case swing = 12
+extension VaneVertical: Codable {
+    public init(from decoder: any Decoder) throws {
+        self = try decodeDeviceEnum(decoder)
+    }
+}
 
-    public var key: String {
+/// Horizontal vane position. The raw value is the stable `key`.
+public enum VaneHorizontal: String, Sendable, CaseIterable {
+    case auto
+    case position1 = "1_left"
+    case position2 = "2"
+    case position3 = "3"
+    case position4 = "4"
+    case position5 = "5_right"
+    case split
+    case swing
+
+    public var key: String { rawValue }
+
+    /// 1 (left) … 5 (right) for a fixed position, nil for auto, split and swing.
+    public var position: Int? {
         switch self {
-        case .auto: "auto"
-        case .position1: "1_left"
-        case .position2: "2"
-        case .position3: "3"
-        case .position4: "4"
-        case .position5: "5_right"
-        case .split: "split"
-        case .swing: "swing"
+        case .position1: 1
+        case .position2: 2
+        case .position3: 3
+        case .position4: 4
+        case .position5: 5
+        case .auto, .split, .swing: nil
+        }
+    }
+
+    /// The integer stored before v12.
+    public var legacyCode: Int {
+        switch self {
+        case .auto: 0
+        case .position1: 1
+        case .position2: 2
+        case .position3: 3
+        case .position4: 4
+        case .position5: 5
+        case .split: 8
+        case .swing: 12
         }
     }
 
@@ -129,6 +176,32 @@ public enum VaneHorizontal: Int, Codable, Sendable, CaseIterable {
         guard let value = Self.allCases.first(where: { $0.key == key.lowercased() }) else { return nil }
         self = value
     }
+}
+
+extension VaneHorizontal: Codable {
+    public init(from decoder: any Decoder) throws {
+        self = try decodeDeviceEnum(decoder)
+    }
+}
+
+/// A device enum stored by its key since v12, and as an integer before.
+protocol LegacyCodedEnum: RawRepresentable<String>, CaseIterable {
+    var legacyCode: Int { get }
+}
+
+extension OperationMode: LegacyCodedEnum {}
+extension VaneVertical: LegacyCodedEnum {}
+extension VaneHorizontal: LegacyCodedEnum {}
+
+/// Decodes the key, or the integer that settings JSON, snapshots and caches written before v12
+/// hold, so they keep decoding.
+private func decodeDeviceEnum<T: LegacyCodedEnum>(_ decoder: any Decoder) throws -> T {
+    let container = try decoder.singleValueContainer()
+    if let key = try? container.decode(String.self), let value = T(rawValue: key) { return value }
+    if let code = try? container.decode(Int.self), let value = T.allCases.first(where: { $0.legacyCode == code }) {
+        return value
+    }
+    throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown \(T.self) value")
 }
 
 /// Setpoint limits per mode, as reported by the device.
@@ -243,8 +316,7 @@ public struct EnergyCounters: Codable, Sendable, Equatable {
 
 /// Backend-neutral snapshot of one indoor unit.
 public struct DeviceState: Codable, Sendable, Equatable {
-    public var deviceId: Int
-    public var buildingId: Int
+    public var key: DeviceKey
     public var name: String
     public var serialNumber: String?
     public var macAddress: String?
@@ -283,7 +355,7 @@ public struct DeviceState: Codable, Sendable, Equatable {
     public var fetchedAt: Date
 
     public init(
-        deviceId: Int, buildingId: Int, name: String, serialNumber: String? = nil, macAddress: String? = nil,
+        key: DeviceKey, name: String, serialNumber: String? = nil, macAddress: String? = nil,
         power: Bool, mode: OperationMode?, iSee: Bool? = nil, setTemperature: Double?, roomTemperature: Double?,
         outdoorTemperature: Double? = nil, fanSpeed: Int? = nil, actualFanSpeed: Int? = nil,
         numberOfFanSpeeds: Int = 5, hasAutomaticFanSpeed: Bool = true,
@@ -294,8 +366,7 @@ public struct DeviceState: Codable, Sendable, Equatable {
         energy: EnergyCounters = EnergyCounters(), limits: TemperatureLimits = TemperatureLimits(),
         temperatureIncrement: Double = 0.5, fetchedAt: Date
     ) {
-        self.deviceId = deviceId
-        self.buildingId = buildingId
+        self.key = key
         self.name = name
         self.serialNumber = serialNumber
         self.macAddress = macAddress
@@ -326,12 +397,11 @@ public struct DeviceState: Codable, Sendable, Equatable {
         self.fetchedAt = fetchedAt
     }
 
-    /// Codes MELCloud uses for "no error".
-    public static let noErrorCodes: Set<Int> = [0, 8000]
-
-    public var hasActiveError: Bool {
+    /// True when the unit reports an error: the error flag, or a code outside `noErrorCodes`
+    /// (the integration's "no error" codes, `ErrorCodeExplaining.noErrorCodes`).
+    public func hasActiveError(noErrorCodes: Set<Int>) -> Bool {
         if hasError { return true }
-        if let errorCode, !Self.noErrorCodes.contains(errorCode) { return true }
+        if let errorCode, !noErrorCodes.contains(errorCode) { return true }
         return false
     }
 
@@ -346,21 +416,24 @@ public struct DeviceState: Codable, Sendable, Equatable {
 
 /// Minimal identity of a device, as listed by a backend.
 public struct DeviceSummary: Codable, Sendable, Equatable {
-    public var deviceId: Int
-    public var buildingId: Int
+    public var key: DeviceKey
     public var name: String
+    public var kind: DeviceKind
+    /// Integration-defined attributes kept in the device registry (`devices.metadata`), e.g. the
+    /// building a cloud account files the unit under. Only the integration interprets them.
+    public var metadata: [String: String]
 
-    public init(deviceId: Int, buildingId: Int, name: String) {
-        self.deviceId = deviceId
-        self.buildingId = buildingId
+    public init(key: DeviceKey, name: String, kind: DeviceKind = .airToAirHeatPump, metadata: [String: String] = [:]) {
+        self.key = key
         self.name = name
+        self.kind = kind
+        self.metadata = metadata
     }
 }
 
 /// A requested change. Only non-nil fields are sent.
 public struct ChangeSet: Sendable, Equatable {
-    public var deviceId: Int
-    public var buildingId: Int
+    public var device: DeviceKey
     public var power: Bool?
     public var mode: OperationMode?
     public var setTemperature: Double?
@@ -369,12 +442,11 @@ public struct ChangeSet: Sendable, Equatable {
     public var vaneHorizontal: VaneHorizontal?
 
     public init(
-        deviceId: Int, buildingId: Int, power: Bool? = nil, mode: OperationMode? = nil,
+        device: DeviceKey, power: Bool? = nil, mode: OperationMode? = nil,
         setTemperature: Double? = nil, fanSpeed: Int? = nil,
         vaneVertical: VaneVertical? = nil, vaneHorizontal: VaneHorizontal? = nil
     ) {
-        self.deviceId = deviceId
-        self.buildingId = buildingId
+        self.device = device
         self.power = power
         self.mode = mode
         self.setTemperature = setTemperature

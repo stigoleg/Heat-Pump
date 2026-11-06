@@ -34,8 +34,8 @@ extension HeatPumpService {
     /// in `message`.
     public func firmwareStatus(force: Bool = false, liftRefusal: Bool? = nil) async throws -> FirmwareStatus {
         let t = now()
-        if liftRefusal ?? force { try store.clearKeyRefusal(key: Self.firmwareFetchKey) }
-        let state = try store.latestSnapshot()?.state
+        if liftRefusal ?? force { try store.clearKeyRefusal(key: fetchKey(Self.firmwareFetchKey)) }
+        let state = try latestSnapshot()?.state
         let cached = try storedFirmwareStatus()
         var status = Self.firmwareBase(state, cached: cached)
         func done(_ status: FirmwareStatus) -> FirmwareStatus { decorated(status, state: state) }
@@ -52,28 +52,28 @@ extension HeatPumpService {
             status.message = firmwareRefusedMessage
             return done(status)
         }
-        switch try store.reserveFetch(key: Self.firmwareFetchKey, minInterval: interval, now: t) {
+        switch try reserveFetch(Self.firmwareFetchKey, minInterval: interval, now: t) {
         case .throttled:
             break
         case .credentialsRejected:
             status.message = HeatPumpError.credentialsRejected.errorDescription
         case .blocked(let until):
-            status.message = try store.blockStatus(now: t)?.reason.message(until: until, serviceName: serviceName)
+            status.message = try blockStatus(now: t)?.reason.message(until: until, serviceName: serviceName)
                 ?? HeatPumpError.blocked(until: until).errorDescription
         case .allowed:
             do {
-                status.updates = try await driver((any FirmwareDriver).self).firmwareUpdates(deviceId: state.deviceId)
+                status.updates = try await driver((any FirmwareDriver).self).firmwareUpdates(device: state.key)
                 status.fetchedAt = t
                 try store.saveSetting(status, key: Self.firmwareStatusKey)
-                try store.recordFetchSuccess(key: Self.firmwareFetchKey, now: t)
+                try store.recordFetchSuccess(key: fetchKey(Self.firmwareFetchKey), now: t)
                 // Finished: the next status read should show the new version.
                 if status.phase == .complete, cached?.isInProgress(now: t) == true {
-                    try store.markLatestSnapshotStale(deviceId: state.deviceId)
+                    try store.markLatestSnapshotStale(device: state.key)
                 }
             } catch {
                 _ = try handleAwayError(error, now: t)
                 if try isRefusal(error) {
-                    try store.recordKeyRefusal(key: Self.firmwareFetchKey, until: t.addingTimeInterval(Self.refusalBackoff))
+                    try store.recordKeyRefusal(key: fetchKey(Self.firmwareFetchKey), until: t.addingTimeInterval(Self.refusalBackoff))
                     status.message = firmwareRefusedMessage
                 } else {
                     status.message = L10n.format(
@@ -159,7 +159,7 @@ extension HeatPumpService {
         source: ChangeSource, reason: String, approver: (any ChangeApprover)? = nil
     ) async throws -> ChangeOutcome {
         let t = now()
-        let state = try store.latestSnapshot()?.state
+        let state = try latestSnapshot()?.state
         let oldValue = state?.firmware.version ?? L10n.tr("unknown version")
         let newValue = L10n.tr("update started")
         func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
@@ -167,9 +167,9 @@ extension HeatPumpService {
         }
         // Nothing is read, counted or asked for a start that would be refused anyway.
         if let problem = firmwareUnitProblem(state) { return try reject(problem) }
-        guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
-        if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
-        if let block = try store.blockStatus(now: t) {
+        guard let device = state?.key else { return try reject(L10n.tr("No status from the heat pump yet.")) }
+        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
         // A fresh list: the start must be based on what MELCloud offers right now.
@@ -185,10 +185,10 @@ extension HeatPumpService {
             guard decision == .approved else { return try reject(decision.rejectionText) }
             // The dialog may have been open for minutes and the update cannot be undone: check
             // everything again against the newest state before sending.
-            let after = try store.latestSnapshot()?.state
+            let after = try latestSnapshot()?.state
             if let problem = firmwareUnitProblem(after) { return try reject(problem) }
-            if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
-            if let block = try store.blockStatus(now: now()) {
+            if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+            if let block = try blockStatus(now: now()) {
                 return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
             }
             status = try await firmwareStatus(force: true, liftRefusal: false)
@@ -200,8 +200,8 @@ extension HeatPumpService {
             updateId = id
         }
         return try await sendFirmwareAction(
-            source: source, reason: reason, old: oldValue, new: newValue,
-            send: { try await self.driver((any FirmwareDriver).self).approveFirmwareUpdate(id: updateId, deviceId: deviceId) },
+            device: device, source: source, reason: reason, old: oldValue, new: newValue,
+            send: { try await self.driver((any FirmwareDriver).self).approveFirmwareUpdate(id: updateId, device: device) },
             succeeded: { at in
                 status.startedAt = at
                 status.fetchedAt = nil  // read again on the next poll
@@ -213,15 +213,15 @@ extension HeatPumpService {
     /// Cancels a running update while MELCloud still allows it (app only). Logged and budgeted like a start.
     public func cancelFirmwareUpdate(source: ChangeSource, reason: String) async throws -> ChangeOutcome {
         let t = now()
-        let state = try store.latestSnapshot()?.state
+        let state = try latestSnapshot()?.state
         let oldValue = state?.firmware.version ?? L10n.tr("unknown version")
         let newValue = L10n.tr("update cancelled")
         func reject(_ message: String, nextAllowed: Date? = nil, blockedUntil: Date? = nil) throws -> ChangeOutcome {
             try firmwareReject(message, source: source, reason: reason, old: oldValue, new: newValue, nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
-        guard let deviceId = state?.deviceId else { return try reject(L10n.tr("No status from the heat pump yet.")) }
-        if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
-        if let block = try store.blockStatus(now: t) {
+        guard let device = state?.key else { return try reject(L10n.tr("No status from the heat pump yet.")) }
+        if try credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
+        if let block = try blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until, serviceName: serviceName), blockedUntil: block.until)
         }
         var status = try await firmwareStatus(force: true)
@@ -234,8 +234,8 @@ extension HeatPumpService {
                     ?? L10n.tr("There is no update that can be cancelled now."))
         }
         return try await sendFirmwareAction(
-            source: source, reason: reason, old: oldValue, new: newValue,
-            send: { try await self.driver((any FirmwareDriver).self).cancelFirmwareUpdate(id: updateId, deviceId: deviceId) },
+            device: device, source: source, reason: reason, old: oldValue, new: newValue,
+            send: { try await self.driver((any FirmwareDriver).self).cancelFirmwareUpdate(id: updateId, device: device) },
             succeeded: { _ in
                 status.startedAt = nil
                 status.fetchedAt = nil
@@ -250,7 +250,8 @@ extension HeatPumpService {
         try store.logChange(
             ChangeRecord(
                 timestamp: now(), source: source, field: Self.firmwareField, oldValue: old, newValue: new, reason: reason,
-                result: .rejected, error: message))
+                result: .rejected, error: message),
+            device: try currentDevice())
         return ChangeOutcome(
             result: .rejected, message: L10n.format("Not sent: %@", message), field: Self.firmwareField, oldValue: old, newValue: new,
             nextAllowed: nextAllowed, blockedUntil: blockedUntil)
@@ -258,7 +259,7 @@ extension HeatPumpService {
 
     /// Reserves a slot (waiting briefly for the 5 s spacing), sends and logs the result.
     private func sendFirmwareAction(
-        source: ChangeSource, reason: String, old: String, new: String,
+        device: DeviceKey, source: ChangeSource, reason: String, old: String, new: String,
         send: () async throws -> Void, succeeded: (Date) -> String
     ) async throws -> ChangeOutcome {
         var waited: TimeInterval = 0
@@ -266,7 +267,7 @@ extension HeatPumpService {
             let at = now()
             let record = ChangeRecord(
                 timestamp: at, source: source, field: Self.firmwareField, oldValue: old, newValue: new, reason: reason, result: .pending)
-            switch try store.reserveChange([record], budget: policy.changeBudget) {
+            switch try store.reserveChange([record], device: device, budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
                 if waited + wait > policy.maxWriteWait {

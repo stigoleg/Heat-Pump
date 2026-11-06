@@ -85,6 +85,8 @@ public enum ErrorCatalog {
 public struct MELCloudErrorCodes: ErrorCodeExplaining {
     public init() {}
     public var caveat: String { ErrorCatalog.caveat }
+    /// MELCloud reports 8000 (and sometimes 0) for "no error".
+    public var noErrorCodes: Set<Int> { [0, 8000] }
     public func hasExplanation(errorCode: Int?) -> Bool { ErrorCatalog.hasExplanation(errorCode: errorCode) }
     public func lookup(errorCode: Int?, message: String?) -> ErrorCatalogEntry { ErrorCatalog.lookup(errorCode: errorCode, message: message) }
 }

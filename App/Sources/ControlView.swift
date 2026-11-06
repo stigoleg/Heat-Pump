@@ -365,7 +365,7 @@ extension VaneVertical {
         switch self {
         case .auto: String(localized: "Auto")
         case .swing: String(localized: "Swing")
-        default: "\(rawValue)"
+        default: "\(position ?? 0)"
         }
     }
 
@@ -374,7 +374,7 @@ extension VaneVertical {
         case .auto: .auto
         case .swing: .swing(vertical: true)
         // 1 = top (nearly horizontal) … 5 = bottom (pointing down).
-        default: .direction(Double(rawValue - 1) * 17 - 5, vertical: true)
+        default: .direction(Double((position ?? 1) - 1) * 17 - 5, vertical: true)
         }
     }
 }
@@ -385,7 +385,7 @@ extension VaneHorizontal {
         case .auto: String(localized: "Auto")
         case .swing: String(localized: "Swing")
         case .split: String(localized: "Split")
-        default: "\(rawValue)"
+        default: "\(position ?? 0)"
         }
     }
 
@@ -395,7 +395,7 @@ extension VaneHorizontal {
         case .swing: .swing(vertical: false)
         case .split: .split
         // 1 = left … 5 = right.
-        default: .direction(Double(rawValue - 3) * 25, vertical: false)
+        default: .direction(Double((position ?? 3) - 3) * 25, vertical: false)
         }
     }
 }

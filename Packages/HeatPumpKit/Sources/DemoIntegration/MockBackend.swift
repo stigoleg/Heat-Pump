@@ -8,8 +8,10 @@ import MELCloudIntegration
 public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver, FirmwareDriver, DemoDataSeeding {
     public nonisolated let identifier = "mock"
 
+    /// The simulated unit's MELCloud-style ids; its key is `demo:100001`.
     public static let deviceId = 100_001
     public static let buildingId = 200_001
+    public static let device = DeviceKey(integration: DemoIntegration.id, nativeId: String(deviceId))
 
     private let now: @Sendable () -> Date
     private let timeZone: TimeZone
@@ -47,7 +49,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     // MARK: DemoDataSeeding
 
-    public nonisolated var demoDeviceId: Int { Self.deviceId }
+    public nonisolated var demoDevice: DeviceKey { Self.device }
     public func demoState(at date: Date) -> DeviceState { state(at: date) }
     public nonisolated var demoLocalHost: String { MockLocalSimulation.host }
 
@@ -58,11 +60,14 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     public func login() async throws {}
 
     public func listDevices() async throws -> [DeviceSummary] {
-        [DeviceSummary(deviceId: Self.deviceId, buildingId: Self.buildingId, name: L10n.tr("Living room (simulated)"))]
+        [
+            DeviceSummary(
+                key: Self.device, name: L10n.tr("Living room (simulated)"), metadata: ["buildingId": String(Self.buildingId)])
+        ]
     }
 
-    public func fetchState(deviceId: Int) async throws -> DeviceState {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+    public func fetchState(device: DeviceKey) async throws -> DeviceState {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
         return state(at: now())
     }
 
@@ -70,7 +75,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     public func state(at t: Date) -> DeviceState {
         let outdoor = Self.outdoorTemperature(at: t)
         return DeviceState(
-            deviceId: Self.deviceId, buildingId: Self.buildingId, name: L10n.tr("Living room (simulated)"),
+            key: Self.device, name: L10n.tr("Living room (simulated)"),
             serialNumber: "MOCK0000000", macAddress: "00:00:5e:00:53:01",
             power: power, mode: mode, setTemperature: setTemperature,
             roomTemperature: roomTemperature(at: t, outdoor: outdoor),
@@ -90,7 +95,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
 
     @discardableResult
     public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
-        guard changes.deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+        guard changes.device == Self.device else { throw HeatPumpError.deviceNotFound }
         appliedChanges.append(changes)
         if let value = changes.power { power = value }
         if let value = changes.mode { mode = value }
@@ -98,13 +103,13 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         if let value = changes.fanSpeed { fanSpeed = value }
         if let value = changes.vaneVertical { vaneVertical = value }
         if let value = changes.vaneHorizontal { vaneHorizontal = value }
-        var state = try await fetchState(deviceId: changes.deviceId)
+        var state = try await fetchState(device: changes.device)
         state.hasPendingCommand = true
         return state
     }
 
     /// One simulated error every 17 days at 03:12 UTC, anchored to a fixed epoch so entries are stable.
-    public func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {
+    public func fetchErrorLog(device: DeviceKey, range: DateInterval) async throws -> [ErrorLogEntry] {
         let anchor = Date(timeIntervalSince1970: 1_767_236_000)  // 2026-01-01T03:13:20Z
         let period: TimeInterval = 17 * 86_400
         var entries: [ErrorLogEntry] = []
@@ -115,7 +120,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
             if start >= range.start {
                 entries.append(
                     ErrorLogEntry(
-                        deviceId: Self.deviceId, start: start, end: start.addingTimeInterval(240),
+                        device: Self.device, start: start, end: start.addingTimeInterval(240),
                         message: L10n.tr("Communication error between the indoor and outdoor unit (simulated)"), code: nil, source: MELCloudIntegration.sourceTag))
             }
             k += 1
@@ -123,7 +128,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         return entries
     }
 
-    public func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] {
+    public func fetchTemperatureLog(device: DeviceKey, range: DateInterval) async throws -> [TemperaturePoint] {
         var points: [TemperaturePoint] = []
         let step: TimeInterval = 3600
         var t = (range.start.timeIntervalSince1970 / step).rounded(.up) * step
@@ -140,7 +145,7 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         return points
     }
 
-    public func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] {
+    public func fetchEnergy(device: DeviceKey, range: DateInterval) async throws -> [EnergyDay] {
         let calendar = WireDate.calendar(timeZone)
         var day = calendar.startOfDay(for: range.start)
         let last = calendar.startOfDay(for: min(range.end, now()))
@@ -158,16 +163,16 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
         return days
     }
 
-    public func fetchSignalStrength(deviceId: Int) async throws -> Int? { -62 }
+    public func fetchSignalStrength(device: DeviceKey) async throws -> Int? { -62 }
 
-    public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+    public func fetchAwaySettings(device: DeviceKey) async throws -> AwaySettings {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
         awayReads += 1
         return AwaySettings(frost: frost, holiday: holiday, fetchedAt: now(), source: MELCloudIntegration.sourceTag)
     }
 
-    public func applyAway(_ change: AwayChange, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+    public func applyAway(_ change: AwayChange, device: DeviceKey) async throws {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
         awayWrites += 1
         switch change {
         case .frostProtection(let value): frost = value
@@ -194,8 +199,8 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     /// Replaces the plan as if it had been changed in the MELCloud app (tests).
     public func replaceTimer(_ json: JSONValue) { timerJSON = json }
 
-    public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+    public func fetchWeeklyTimer(device: DeviceKey) async throws -> WeeklyTimer {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
         timerReads += 1
         if let error = timerReadError, timerReadFailures > 0 {
             timerReadFailures -= 1
@@ -207,9 +212,9 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     }
 
     /// Stores what `Timer/SetAta2` would receive, built by the same code as the real body.
-    public func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
-        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, device: DeviceKey) async throws {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: Self.deviceId)
         let count = body["Seasons"]?.array?.reduce(0) { $0 + ($1["Events"]?.array?.count ?? 0) } ?? 0
         if count > Self.timerMaxEvents {
             let response: JSONValue = .object(["Data": .object(["ErrorCode": .number(2), "MaxEvents": .number(Double(Self.timerMaxEvents))])])
@@ -271,28 +276,28 @@ public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver
     static let firmwareUpdateId = 9_001
     static let firmwareFiles = 4
 
-    public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] {
-        guard deviceId == Self.deviceId else { throw HeatPumpError.deviceNotFound }
+    public func firmwareUpdates(device: DeviceKey) async throws -> [FirmwareUpdateStatus] {
+        guard device == Self.device else { throw HeatPumpError.deviceNotFound }
         firmwareReads += 1
         let (phase, approval, files) = firmwareProgress(at: now())
         return [
             FirmwareUpdateStatus(
-                id: Self.firmwareUpdateId, deviceId: Self.deviceId, currentPhase: phase, approvalStatus: approval, minutesOffline: 0,
+                id: Self.firmwareUpdateId, device: Self.device, currentPhase: phase, approvalStatus: approval, minutesOffline: 0,
                 filesDownloaded: files, filesToDownload: Self.firmwareFiles, retries: 0, dateApproved: firmwareApprovedAt,
                 dateCreated: Date(timeIntervalSince1970: 1_767_236_000), lastCommunication: now().addingTimeInterval(-40))
         ]
     }
 
-    public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
+    public func approveFirmwareUpdate(id: Int, device: DeviceKey) async throws {
+        guard device == Self.device, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
         let current = firmwareProgress(at: now())
         guard FirmwareUpdatePhase.from(phase: current.phase, approval: current.approval, minutesOffline: 0).canApprove else { throw HeatPumpError.server(L10n.tr("The update cannot be approved now")) }
         firmwareApprovals += 1
         firmwareApprovedAt = now()
     }
 
-    public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        guard deviceId == Self.deviceId, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
+    public func cancelFirmwareUpdate(id: Int, device: DeviceKey) async throws {
+        guard device == Self.device, id == Self.firmwareUpdateId else { throw HeatPumpError.server(L10n.tr("Unknown update")) }
         firmwareCancels += 1
         firmwareApprovedAt = nil
     }

@@ -7,6 +7,13 @@ public protocol HealthCheckProviding: Sendable {
     /// come first among the local findings. `cloudErrorShown` is true when the service already
     /// reports an active error.
     func localAdapterFindings(_ input: LocalHealthInput, cloudErrorShown: Bool, now: Date) -> [HealthFinding]
+    /// Reminders from the unit's maintenance schedule (`records` are what was recorded). They come
+    /// last. Defaults to none.
+    func maintenanceFindings(_ records: [MaintenanceRecord], now: Date) -> [HealthFinding]
+}
+
+extension HealthCheckProviding {
+    public func maintenanceFindings(_ records: [MaintenanceRecord], now: Date) -> [HealthFinding] { [] }
 }
 
 /// For integrations without rules of their own.

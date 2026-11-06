@@ -410,7 +410,8 @@ final class AppModel {
 
     private func deliverNotifications() async {
         let planned = NotificationPlanner.plan(
-            state: state, errorEvents: errorLog, maintenance: maintenance, memory: notifier.memory, now: Date(), serviceName: serviceName)
+            state: state, errorEvents: errorLog, maintenance: maintenance, memory: notifier.memory, now: Date(), serviceName: serviceName,
+            noErrorCodes: errorCodes.noErrorCodes)
         notifier.memory = planned.memory
         for notification in planned.notifications {
             await notifier.deliver(notification)
@@ -782,7 +783,8 @@ final class AppModel {
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !email.isEmpty, !password.isEmpty else { return (false, String(localized: "Enter both email and password.")) }
         do {
-            let result = try await service.signIn(AccountCredentials(email: email, password: password))
+            // The sign-in form's fields (`CredentialField.id`); a form per integration comes later.
+            let result = try await service.signIn(CredentialValues(["email": email, "password": password]))
             stateResult = result
             hasCredentials = true
             await reloadLocal()

@@ -81,8 +81,8 @@ struct PriceLevelAndModeTests {
         #expect(first.dryKWh == 0)
         #expect(first.otherKWh == 0)
         let store = try HistoryStore(path: temporaryDatabasePath())
-        try store.upsertEnergyDays(days, deviceId: 1, now: end)
-        let back = try store.energyDays(deviceId: 1, fromDay: "2026-11-01", toDay: "2026-11-30")
+        try store.upsertEnergyDays(days, device: testDevice, now: end)
+        let back = try store.energyDays(device: testDevice, fromDay: "2026-11-01", toDay: "2026-11-30")
         #expect(back.first?.autoKWh == 0.2)
         #expect(back.first?.fanKWh == 0.1)
     }
@@ -95,7 +95,7 @@ struct PriceLevelAndModeTests {
             [
                 EnergyDay(day: "2026-11-03", totalKWh: 10, heatingKWh: 9, coolingKWh: 0, autoKWh: 0.5, dryKWh: 0, fanKWh: 0.5, otherKWh: 0),
                 EnergyDay(day: "2026-11-04", totalKWh: 5, heatingKWh: 5, coolingKWh: 0),
-            ], deviceId: 1, now: clock.now)
+            ], device: testDevice, now: clock.now)
         let service = HeatPumpService(
             backend: CountingBackend(now: clock.provider), store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         let buckets = try await service.energy(

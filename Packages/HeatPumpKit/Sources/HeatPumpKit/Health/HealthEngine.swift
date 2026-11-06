@@ -55,9 +55,6 @@ public enum HealthEngine {
         public static let energyWarningFactor = 2.0
         public static let energyMinBaselineDays = 7
         public static let energyBaselineDays = 14
-        public static let airFilterInfoDays = 14
-        public static let airFilterWarningDays = 30
-        public static let deodorizingFilterDays = 90
     }
 
     public static func evaluate(_ input: HealthInput) -> HealthReport {
@@ -96,8 +93,8 @@ public enum HealthEngine {
     // MARK: Rules
 
     static func activeError(_ state: DeviceState, errorCodes: any ErrorCodeExplaining, serviceName: String) -> [HealthFinding] {
-        guard state.hasActiveError else { return [] }
-        guard let code = state.errorCode, !DeviceState.noErrorCodes.contains(code) else {
+        guard state.hasActiveError(noErrorCodes: errorCodes.noErrorCodes) else { return [] }
+        guard let code = state.errorCode, !errorCodes.noErrorCodes.contains(code) else {
             // HasError without a real code: real but unspecific, so not critical.
             return [
                 HealthFinding(
@@ -307,67 +304,9 @@ public enum HealthEngine {
         ]
     }
 
-    /// Only for the maintenance kinds the integration's unit has.
+    /// The integration's maintenance reminders, for the tasks its unit has.
     static func maintenance(_ input: HealthInput) -> [HealthFinding] {
-        var findings: [HealthFinding] = []
-        let kinds = Set(input.integration.maintenanceKinds)
-        func latest(_ kind: MaintenanceKind) -> MaintenanceRecord? {
-            input.maintenance.filter { $0.kind == kind }.max { $0.timestamp < $1.timestamp }
-        }
-        func days(since date: Date) -> Int { Int(input.now.timeIntervalSince(date) / 86_400) }
-
-        if kinds.contains(.airFilter) {
-            if let record = latest(.airFilter) {
-                let age = days(since: record.timestamp)
-                if age > Threshold.airFilterWarningDays {
-                    findings.append(
-                        HealthFinding(
-                            code: "air_filter_overdue", severity: .warning, title: L10n.tr("The air filter should be cleaned now"),
-                            detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
-                            recommendation: L10n.tr("Turn off the heat pump, take out the air filter, vacuum or rinse it, and let it dry in the shade before putting it back. Record the cleaning afterwards.")))
-                } else if age > Threshold.airFilterInfoDays {
-                    findings.append(
-                        HealthFinding(
-                            code: "air_filter_due", severity: .info, title: L10n.tr("Time to clean the air filter soon"),
-                            detail: L10n.format("It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks.", age),
-                            recommendation: L10n.tr("Clean the air filter within the next few days and record it.")))
-                }
-            } else {
-                findings.append(
-                    HealthFinding(
-                        code: "air_filter_unknown", severity: .info, title: L10n.tr("No filter cleaning recorded"),
-                        detail: L10n.tr("We do not know when the air filter was last cleaned. The manual recommends every 2 weeks."),
-                        recommendation: L10n.tr("Clean the air filter and record it, so the app can remind you next time.")))
-            }
-        }
-
-        if kinds.contains(.deodorizingFilter) {
-            if let record = latest(.deodorizingFilter) {
-                let age = days(since: record.timestamp)
-                if age > Threshold.deodorizingFilterDays {
-                    findings.append(
-                        HealthFinding(
-                            code: "deodorizing_filter_due", severity: .info, title: L10n.tr("The air purifying and deodorizing filters should be cleaned"),
-                            detail: L10n.format("It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months.", age),
-                            recommendation: L10n.tr("Vacuum the filters (the deodorizing filter can be soaked in lukewarm water at 30–40 °C for about 15 minutes) and dry them in the shade. Spare part if needed: MAC-3010FT-E.")))
-                }
-            } else {
-                findings.append(
-                    HealthFinding(
-                        code: "deodorizing_filter_unknown", severity: .info, title: L10n.tr("Unknown when the deodorizing filter was last cleaned"),
-                        detail: L10n.tr("The air purifying filter and the black deodorizing filter should be cleaned every 3 months."),
-                        recommendation: L10n.tr("Clean them at the next filter cleaning and record it.")))
-            }
-        }
-
-        if kinds.contains(.vBlockingFilter), let record = latest(.vBlockingFilter), days(since: record.timestamp) > Threshold.deodorizingFilterDays {
-            findings.append(
-                HealthFinding(
-                    code: "v_blocking_filter_due", severity: .info, title: L10n.tr("The green V-blocking filter should be cleaned"),
-                    detail: L10n.format("It has been %lld days since it was cleaned. The recommendation is every 3 months, with a new filter every year.", days(since: record.timestamp)),
-                    recommendation: L10n.tr("Vacuum the filter, or rinse it in lukewarm water and dry it in the shade. Spare part: MAC-2490FT-E.")))
-        }
-        return findings
+        input.integration.healthChecks.maintenanceFindings(input.maintenance, now: input.now)
     }
 
     static func median(_ values: [Double]) -> Double {

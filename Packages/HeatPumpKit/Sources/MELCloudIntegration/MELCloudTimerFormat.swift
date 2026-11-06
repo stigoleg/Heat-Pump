@@ -22,8 +22,8 @@ public struct MELCloudTimerFormat: WeeklyTimerFormat {
     }
 
     /// The `Timer/SetAta2` body read back as `Timer/Get2` would return it.
-    public func savedForm(of timer: WeeklyTimer, deviceId: Int) -> WeeklyTimer {
-        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)
+    public func savedForm(of timer: WeeklyTimer, device: DeviceKey) -> WeeklyTimer {
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: device.melcloudDeviceId ?? 0)
         return MELCloudClassicParser.weeklyTimer(
             .object(["Enabled": body["TimerEnabled"] ?? .null, "Seasons": body["Seasons"] ?? .array([])]))
     }

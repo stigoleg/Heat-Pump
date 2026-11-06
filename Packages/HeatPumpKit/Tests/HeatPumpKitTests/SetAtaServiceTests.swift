@@ -11,7 +11,7 @@ struct SetAtaServiceTests {
     private func makeService(_ transport: StubTransport, clock: TestClock) throws -> (HeatPumpService, HistoryStore) {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let credentials = InMemoryCredentialStore(
-            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let backend = MELCloudClassicBackend(
             credentials: credentials, transport: transport, timeZone: .gmt, rawCache: store, now: clock.provider)
         let service = HeatPumpService(
@@ -106,7 +106,7 @@ struct SetAtaServiceTests {
         #expect(!empty.fromService)
         #expect(empty.points.map(\.room) == [20, 21, 22])
 
-        try store.upsertTemperaturePoints([TemperaturePoint(timestamp: clock.now.addingTimeInterval(300), room: 19)], deviceId: 1)
+        try store.upsertTemperaturePoints([TemperaturePoint(timestamp: clock.now.addingTimeInterval(300), room: 19)], device: testDevice)
         let mixed = try await service.temperatureHistory(from: clock.now.addingTimeInterval(-3600), to: clock.now.addingTimeInterval(3600))
         #expect(mixed.fromService)
         #expect(mixed.points.map(\.room) == [19, 21, 22])

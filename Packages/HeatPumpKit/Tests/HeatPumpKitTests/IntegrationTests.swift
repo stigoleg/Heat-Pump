@@ -16,7 +16,7 @@ struct IntegrationTests {
         init(now: @escaping @Sendable () -> Date) { inner = MockBackend(timeZone: .gmt, now: now) }
         func login() async throws {}
         func listDevices() async throws -> [DeviceSummary] { try await inner.listDevices() }
-        func fetchState(deviceId: Int) async throws -> DeviceState { try await inner.fetchState(deviceId: deviceId) }
+        func fetchState(device: DeviceKey) async throws -> DeviceState { try await inner.fetchState(device: device) }
         func apply(_ changes: ChangeSet) async throws -> DeviceState? { try await inner.apply(changes) }
     }
 
@@ -149,10 +149,10 @@ struct IntegrationTests {
         let body = MELCloudClassicParser.timerSetBody(timer: edited, deviceId: 7)
         let expected = MELCloudClassicParser.weeklyTimer(
             .object(["Enabled": body["TimerEnabled"] ?? .null, "Seasons": body["Seasons"] ?? .array([])]))
-        #expect(format.savedForm(of: edited, deviceId: 7) == expected)
+        #expect(format.savedForm(of: edited, device: .melcloud(7)) == expected)
         #expect(timer.events.allSatisfy(format.isAsRead))
         #expect(!format.isAsRead(edited.seasons[0].events[0]))
-        #expect(edited.hasSameContent(as: format.savedForm(of: edited, deviceId: 7), format: format))
+        #expect(edited.hasSameContent(as: format.savedForm(of: edited, device: .melcloud(7)), format: format))
         #expect(!edited.hasSameContent(as: timer, format: format))
     }
 }

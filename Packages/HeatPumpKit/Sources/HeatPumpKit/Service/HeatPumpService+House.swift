@@ -26,7 +26,7 @@ extension HeatPumpService {
     /// stored one (plus two, which Tibber may complete late). At most once an hour.
     public func syncHouseConsumption() async throws -> HouseSync {
         let t = now()
-        switch try store.reserveFetch(key: Self.houseFetchKey, minInterval: Self.houseInterval, now: t, countsTowardServiceBlock: false) {
+        switch try store.reserveFetch(key: Self.houseFetchKey, minInterval: Self.houseInterval, now: t, blockingIntegration: nil) {
         case .throttled(let next):
             return HouseSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:

@@ -11,7 +11,10 @@ public struct DemoIntegration: Integration {
     /// knowledge are MELCloud's.
     private var simulated: MELCloudIntegration { MELCloudIntegration() }
 
-    public var id: String { "demo" }
+    /// `Integration.id`; the integration part of the simulated unit's `DeviceKey`. Persisted.
+    public static let id = "demo"
+
+    public var id: String { Self.id }
     public var displayName: String { simulated.displayName }
     public var vendorName: String { "Simulated" }
     public var brandName: String { simulated.brandName }
@@ -23,7 +26,7 @@ public struct DemoIntegration: Integration {
     public var rateLimitPolicy: RateLimitPolicy { .standard }
     public var errorCodes: any ErrorCodeExplaining { simulated.errorCodes }
     public var healthChecks: any HealthCheckProviding { simulated.healthChecks }
-    public var maintenanceKinds: [MaintenanceKind] { simulated.maintenanceKinds }
+    public var maintenanceTasks: [MaintenanceTask] { simulated.maintenanceTasks }
     public var knowledge: KnowledgeSource { simulated.knowledge }
 
     public func makeConnection(_ context: IntegrationContext) throws -> any DeviceConnection & ThermostatDriver {

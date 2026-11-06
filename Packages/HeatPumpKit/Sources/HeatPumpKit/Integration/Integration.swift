@@ -26,9 +26,12 @@ public protocol Integration: Sendable {
     var errorCodes: any ErrorCodeExplaining { get }
     /// Health rules that only make sense for this integration's units. Defaults to none.
     var healthChecks: any HealthCheckProviding { get }
-    /// The maintenance tasks the unit has (health check, maintenance status, reminders).
-    /// Defaults to none.
-    var maintenanceKinds: [MaintenanceKind] { get }
+    /// The maintenance tasks the unit has and their intervals (health check, maintenance status,
+    /// reminders). Defaults to none.
+    var maintenanceTasks: [MaintenanceTask] { get }
+    /// Where the sign-in values live in the keychain. Defaults to one item per field named
+    /// `<id>/<field>` and a session item `<id>/session`.
+    var credentialMapping: CredentialMapping { get }
     /// Knowledge documents about the unit (MCP resources, the Health page). Defaults to none.
     var knowledge: KnowledgeSource { get }
     /// The connection to the unit. Throws when the context lacks what it needs (e.g. credentials).
@@ -41,7 +44,11 @@ extension Integration {
     public var unitDescription: String { "\(displayName) heat pump" }
     public var sourceTag: String { id }
     public var healthChecks: any HealthCheckProviding { NoHealthChecks() }
-    public var maintenanceKinds: [MaintenanceKind] { [] }
+    public var maintenanceTasks: [MaintenanceTask] { [] }
+    public var credentialMapping: CredentialMapping { .standard(integrationId: id, serviceName: displayName, fields: credentialFields) }
+
+    /// The kinds of `maintenanceTasks`, in order.
+    public var maintenanceKinds: [MaintenanceKind] { maintenanceTasks.map(\.kind) }
     public var knowledge: KnowledgeSource { KnowledgeSource() }
 }
 

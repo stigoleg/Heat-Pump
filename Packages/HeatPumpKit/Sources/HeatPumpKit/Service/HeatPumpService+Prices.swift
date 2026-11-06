@@ -81,7 +81,9 @@ extension HeatPumpService {
         }
         guard !missing.isEmpty else { return PriceSync(status: .upToDate) }
 
-        switch try store.reserveFetch(key: "prices.\(key.source).\(key.area)", minInterval: Self.priceInterval, now: t, countsTowardServiceBlock: false) {
+        switch try store.reserveFetch(
+            key: "prices.\(key.source).\(key.area)", minInterval: Self.priceInterval, now: t, blockingIntegration: nil)
+        {
         case .throttled(let next):
             return PriceSync(status: .skipped, nextAllowed: next)
         case .blocked, .credentialsRejected:
@@ -107,7 +109,7 @@ extension HeatPumpService {
     public func testTibberToken(_ token: String, transport: any HTTPTransport = URLSessionTransport()) async -> String {
         guard !token.trimmingCharacters(in: .whitespaces).isEmpty else { return PriceError.missingToken.errorDescription ?? "" }
         if isDemo { return L10n.tr("Demo: the token was not tested against Tibber.") }
-        guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), countsTowardServiceBlock: false)) == .allowed else {
+        guard (try? store.reserveFetch(key: "prices.tibber.test", minInterval: 10, now: now(), blockingIntegration: nil)) == .allowed else {
             return L10n.tr("Wait a few seconds before you test again.")
         }
         do {
@@ -178,10 +180,10 @@ extension HeatPumpService {
     // MARK: Consumption
 
     func counterSamples(from: Date, to: Date) throws -> [(at: Date, kWh: Double)] {
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return [] }
+        guard let device = try currentDevice() else { return [] }
         // Stamped with when the counter was read; repeats of the same reading are dropped.
         var seen = Set<Date>()
-        return try store.snapshots(deviceId: deviceId, from: from, to: to).compactMap { s in
+        return try store.snapshots(device: device, from: from, to: to).compactMap { s in
             guard let kWh = s.energy.currentConsumedKWh else { return nil }
             let at = s.energy.counterAt ?? s.fetchedAt
             guard seen.insert(at).inserted else { return nil }
@@ -259,12 +261,12 @@ extension HeatPumpService {
         try seedDemoLocalIfNeeded(demo, now: t)
         // Older outdoor temperatures (the temperature log only goes 7 days back per request), so the
         // degree-day model behind "Estimate tomorrow" has enough days.
-        let deviceId = demo.demoDeviceId
+        let device = demo.demoDevice
         let older = DateInterval(start: t.addingTimeInterval(-45 * 86_400), end: t.addingTimeInterval(-7 * 86_400))
-        if try store.temperaturePoints(deviceId: deviceId, from: older.start, to: older.end).isEmpty {
-            try store.upsertTemperaturePoints(try await demo.fetchTemperatureLog(deviceId: deviceId, range: older), deviceId: deviceId)
+        if try store.temperaturePoints(device: device, from: older.start, to: older.end).isEmpty {
+            try store.upsertTemperaturePoints(try await demo.fetchTemperatureLog(device: device, range: older), device: device)
         }
-        let existing = try store.snapshots(deviceId: deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
+        let existing = try store.snapshots(device: device, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
         guard existing.isEmpty else { return }
         var at = t.addingTimeInterval(-48 * 3600)
         while at < t.addingTimeInterval(-60) {
@@ -280,9 +282,11 @@ extension HeatPumpService {
             try saveLocalSettings(LocalSettings(enabled: true, host: demo.demoLocalHost))
         }
         let from = t.addingTimeInterval(-7 * 86_400)
-        guard try localSettings().enabled, try store.localSamples(from: from, to: t.addingTimeInterval(-3600)).isEmpty
+        guard try localSettings().enabled,
+            try store.localSamples(device: demo.demoDevice, from: from, to: t.addingTimeInterval(-3600)).isEmpty
         else { return }
         try store.insertLocalSamples(
-            demo.demoLocalSamples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling))
+            demo.demoLocalSamples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling),
+            device: demo.demoDevice)
     }
 }

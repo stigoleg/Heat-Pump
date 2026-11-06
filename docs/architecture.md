@@ -32,6 +32,21 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   (`DeviceConnection & ThermostatDriver`, plus optional drivers such as `AwayModesDriver`):
   `MELCloudClassicBackend` for real use and `MockBackend` for demo mode and tests
   (`VARMEPUMPE_BACKEND=mock`).
+- **Devices** are named by `DeviceKey` (`"<integration id>:<native id>"`, e.g.
+  `melcloud-classic:12345`, `demo:100001`) everywhere above the drivers; a driver maps the key to
+  its own ids. The store's `devices` table registers every device it holds data for; the service
+  serves the first enabled one. Device enums (`OperationMode`, vanes) are stored by their keys;
+  each integration maps its wire numbers in its own module.
+- **Storage** (`Storage/HistoryStore*.swift`): device-scoped tables carry `deviceKey`;
+  `fetch_state` keys of an integration are namespaced (`melcloud-classic/state`,
+  `melcloud-classic/global`, …), so blocks, spacing and the change budget are per integration and
+  still shared across processes. Migration v12 converted older files (rows keyed by the
+  integration that opened the store, `IntegrationCatalog.makeService`) after copying the file to
+  `<name>-pre-v12.sqlite` with SQLite's backup API.
+- **Credentials** (`CredentialStore`) are `CredentialValues` addressed through each integration's
+  `CredentialMapping`. MELCloud keeps its original keychain items (`melcloud-credentials`,
+  `melcloud-context-key`) so the access shared by app and helper survives; new integrations get
+  `<integration id>/<field>` items.
 - **Providers** for electricity prices (Tibber, hvakosterstrommen.no), weather (MET Norway) and
   house consumption (Tibber) are injected as closures, which is also how tests and demo mode
   swap them.
@@ -61,18 +76,22 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   (`get_device_info`) and `unitDescription` (first line of the MCP instructions). Error texts
   (`HeatPumpError`) are created far from the service, so they read `HeatPumpError.serviceName`,
   which `HeatPumpService.init` sets for the process.
-- **Error codes**: `errorCodes: ErrorCodeExplaining` (lookup, `hasExplanation`, caveat).
-- **Health**: `healthChecks: HealthCheckProviding` for rules on the integration's own signals,
-  and `maintenanceKinds` for the maintenance tasks the unit has. `HealthEngine` runs the generic
+- **Error codes**: `errorCodes: ErrorCodeExplaining` (lookup, `hasExplanation`, caveat, the
+  codes that mean "no error").
+- **Health**: `healthChecks: HealthCheckProviding` for rules on the integration's own signals
+  (including maintenance reminders), and `maintenanceTasks` for the maintenance tasks the unit has
+  and their intervals.
+- **Credentials**: `credentialFields` and `credentialMapping` (keychain items, session item,
+  dev environment variables). `HealthEngine` runs the generic
   rules and asks the integration at fixed points, so findings keep their order.
 - **Knowledge**: `knowledge: KnowledgeSource`.
 - **Persisted identifiers**: `sourceTag` is stored with error-log entries and away settings.
 
 ### Known couplings (what the platform work removes)
 
-Device models use MELCloud wire values and air-to-air fields; the service holds one device and
-one backend; storage keys on an integer MELCloud device id; MELCloud's rate limits are global;
-credentials are fixed MELCloud keychain items; every screen assumes one heat pump.
+Device models have air-to-air fields; the service holds one device and one backend;
+`HeatPumpError` names the service process-wide; local-adapter settings are global; every screen
+assumes one heat pump.
 
 ## Direction: an integration platform
 

@@ -257,15 +257,15 @@ struct AwayTests {
         init(now: @escaping @Sendable () -> Date) { inner = MockBackend(timeZone: .gmt, now: now) }
         func login() async throws {}
         func listDevices() async throws -> [DeviceSummary] { try await inner.listDevices() }
-        func fetchState(deviceId: Int) async throws -> DeviceState { try await inner.fetchState(deviceId: deviceId) }
+        func fetchState(device: DeviceKey) async throws -> DeviceState { try await inner.fetchState(device: device) }
         func apply(_ changes: ChangeSet) async throws -> DeviceState? { try await inner.apply(changes) }
-        func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] { [] }
-        func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] { [] }
-        func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] { [] }
-        func fetchSignalStrength(deviceId: Int) async throws -> Int? { nil }
-        func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings { throw HeatPumpError.unauthorized }
-        func applyAway(_ change: AwayChange, deviceId: Int) async throws { throw HeatPumpError.unauthorized }
-        func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer { throw HeatPumpError.unauthorized }
+        func fetchErrorLog(device: DeviceKey, range: DateInterval) async throws -> [ErrorLogEntry] { [] }
+        func fetchTemperatureLog(device: DeviceKey, range: DateInterval) async throws -> [TemperaturePoint] { [] }
+        func fetchEnergy(device: DeviceKey, range: DateInterval) async throws -> [EnergyDay] { [] }
+        func fetchSignalStrength(device: DeviceKey) async throws -> Int? { nil }
+        func fetchAwaySettings(device: DeviceKey) async throws -> AwaySettings { throw HeatPumpError.unauthorized }
+        func applyAway(_ change: AwayChange, device: DeviceKey) async throws { throw HeatPumpError.unauthorized }
+        func fetchWeeklyTimer(device: DeviceKey) async throws -> WeeklyTimer { throw HeatPumpError.unauthorized }
     }
 
     @Test func refusalsFromTheseEndpointsDoNotBlockMELCloud() async throws {
@@ -356,7 +356,7 @@ struct AwayTests {
         }
         let store = try HistoryStore(path: temporaryDatabasePath())
         let credentials = InMemoryCredentialStore(
-            credentials: AccountCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
+            credentials: MELCloudCredentials(email: "user@example.com", password: "secret"), contextKey: "KEY")
         let backend = MELCloudClassicBackend(credentials: credentials, transport: transport, timeZone: .gmt, rawCache: store, now: clock.provider)
         let service = HeatPumpService(backend: backend, store: store, credentials: credentials, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()

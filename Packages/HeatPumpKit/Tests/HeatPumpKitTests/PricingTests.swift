@@ -84,11 +84,11 @@ struct PricingTests {
     @Test func rawDeviceIsOnlyReplacedByNewer() throws {
         let store = try HistoryStore(path: temporaryDatabasePath())
         let t = date("2026-11-05T12:00:00")
-        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t, json: .object(["SetTemperature": .number(23)])))
-        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t.addingTimeInterval(-5), json: .object(["SetTemperature": .number(21)])))
-        #expect(try store.rawDevice(deviceId: 1)?.json["SetTemperature"] == .number(23))
-        try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: t.addingTimeInterval(5), json: .object(["SetTemperature": .number(22)])))
-        #expect(try store.rawDevice(deviceId: 1)?.json["SetTemperature"] == .number(22))
+        try store.saveRawDevice(RawDevice(device: testDevice, fetchedAt: t, json: .object(["SetTemperature": .number(23)])))
+        try store.saveRawDevice(RawDevice(device: testDevice, fetchedAt: t.addingTimeInterval(-5), json: .object(["SetTemperature": .number(21)])))
+        #expect(try store.rawDevice(testDevice)?.json["SetTemperature"] == .number(23))
+        try store.saveRawDevice(RawDevice(device: testDevice, fetchedAt: t.addingTimeInterval(5), json: .object(["SetTemperature": .number(22)])))
+        #expect(try store.rawDevice(testDevice)?.json["SetTemperature"] == .number(22))
     }
 
     @Test func stromstotteAboveThreshold() {
@@ -239,7 +239,7 @@ struct PriceServiceTests {
         let service = try makeService(clock: clock, provider: provider)
         _ = try await service.currentState()
         let day = WireDate.day(clock.now.addingTimeInterval(-86_400), timeZone: .gmt)
-        try service.store.upsertEnergyDays([EnergyDay(day: day, totalKWh: 10, heatingKWh: 10, coolingKWh: 0)], deviceId: MockBackend.deviceId, now: clock.now)
+        try service.store.upsertEnergyDays([EnergyDay(day: day, totalKWh: 10, heatingKWh: 10, coolingKWh: 0)], device: MockBackend.device, now: clock.now)
         let buckets = try await service.energy(period: .day, from: clock.now.addingTimeInterval(-2 * 86_400), to: clock.now)
         let bucket = try #require(buckets.first { $0.period == day })
         // Norgespris 50 øre + grid (mix of 46,40 day / 31,40 night) for 10 kWh, priced at the day's average.

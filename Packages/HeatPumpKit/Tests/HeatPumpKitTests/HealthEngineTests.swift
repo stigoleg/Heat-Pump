@@ -57,8 +57,8 @@ struct HealthEngineTests {
     }
 
     @Test func errorLogRecentAndOld() {
-        let recent = ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-5 * 86_400), message: "Feil A")
-        let old = ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-60 * 86_400), message: "Feil B")
+        let recent = ErrorLogEntry(device: testDevice, start: now.addingTimeInterval(-5 * 86_400), message: "Feil A")
+        let old = ErrorLogEntry(device: testDevice, start: now.addingTimeInterval(-60 * 86_400), message: "Feil B")
         #expect(finding("recent_error_log", in: evaluate(state: makeState(at: now), errors: [recent, old]))?.severity == .warning)
         let onlyOld = evaluate(state: makeState(at: now), errors: [old])
         #expect(finding("old_error_log", in: onlyOld)?.severity == .info)
@@ -182,7 +182,7 @@ struct HealthEngineTests {
     @Test func findingsSortedBySeverity() {
         let report = evaluate(
             state: makeState(at: now, hasError: true, errorCode: 9999, wifi: -75),
-            errors: [ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-86_400), message: "x")],
+            errors: [ErrorLogEntry(device: testDevice, start: now.addingTimeInterval(-86_400), message: "x")],
             maintenance: [])
         let severities = report.findings.map(\.severity)
         #expect(severities == severities.sorted(by: >))

@@ -27,7 +27,7 @@ extension MELCloudClassicParser {
             guard entry.object != nil else { return nil }
             func date(_ key: String) -> Date? { WireDate.parse(entry[key]?.string, timeZone: timeZone) }
             return FirmwareUpdateStatus(
-                id: entry["ID"]?.int, deviceId: entry["Device"]?.int ?? entry["DeviceID"]?.int,
+                id: entry["ID"]?.int, device: (entry["Device"]?.int ?? entry["DeviceID"]?.int).map(DeviceKey.melcloud),
                 currentPhase: entry["CurrentPhase"]?.int, approvalStatus: entry["CurrentApprovalStatus"]?.int,
                 minutesOffline: entry["MinutesOffline"]?.int, filesDownloaded: entry["FilesDownloaded"]?.int,
                 filesToDownload: entry["FilesToDownload"]?.int, retries: entry["Retries"]?.int,

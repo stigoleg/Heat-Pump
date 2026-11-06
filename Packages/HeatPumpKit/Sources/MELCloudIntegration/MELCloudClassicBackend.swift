@@ -9,7 +9,7 @@ import HeatPumpKit
 public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver, FirmwareDriver,
     DeviceLocationReporting, HardwareAddressReporting
 {
-    public nonisolated let identifier = "melcloud-classic"
+    public nonisolated let identifier = MELCloudIntegration.id
 
     public static let baseURL = URL(string: "https://app.melcloud.com/Mitsubishi.Wifi.Client")!  // constant literal
     static let appVersion = "1.19.1.1"
@@ -26,7 +26,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
     private var contextKey: String?
     private var listing: (fetchedAt: Date, devices: [JSONValue])?
     /// Last full device object per device (base of every SetAta body).
-    private var raw: [Int: RawDevice] = [:]
+    private var raw: [DeviceKey: RawDevice] = [:]
 
     public init(
         credentials: any CredentialProviding,
@@ -76,7 +76,8 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         try await refreshListing().compactMap(MELCloudClassicParser.summary)
     }
 
-    public func fetchState(deviceId: Int) async throws -> DeviceState {
+    public func fetchState(device: DeviceKey) async throws -> DeviceState {
+        let deviceId = try Self.deviceId(device)
         var devices = listing.flatMap { now().timeIntervalSince($0.fetchedAt) < listingMaxAge ? $0.devices : nil }
         if devices == nil { devices = try await refreshListing() }
         let listingFetchedAt = listing?.fetchedAt
@@ -90,7 +91,7 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         let t = now()
         let state = try MELCloudClassicParser.state(listing: wrapper, get: get, fetchedAt: t, listingFetchedAt: listingFetchedAt)
         if get.object != nil {
-            remember(RawDevice(deviceId: deviceId, fetchedAt: t, json: get, listing: wrapper))
+            remember(RawDevice(device: device, fetchedAt: t, json: get, listing: wrapper))
         }
         return state
     }
@@ -109,14 +110,14 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         Capability.derived(from: self).union([.localTelemetry, .livePower])
     }
 
-    public func writeBaseFetchedAt(deviceId: Int) async -> Date? {
-        currentRaw(deviceId: deviceId)?.fetchedAt
+    public func writeBaseFetchedAt(device: DeviceKey) async -> Date? {
+        currentRaw(device)?.fetchedAt
     }
 
     /// Dry run of `apply`: would the body be refused locally (no object, missing fields,
     /// unknown mode)?
     public func localWriteProblem(_ changes: ChangeSet, requireBase: Bool) async -> String? {
-        guard let base = currentRaw(deviceId: changes.deviceId) else {
+        guard let base = currentRaw(changes.device) else {
             return requireBase ? MELCloudClassicParser.missingObjectMessage : nil
         }
         do {
@@ -131,9 +132,10 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
     /// `MELCloudClassicParser.setAtaPayload`) and returns the state from the response. The
     /// response, laid over what was sent, becomes the new device object.
     public func apply(_ changes: ChangeSet) async throws -> DeviceState? {
-        guard let base = currentRaw(deviceId: changes.deviceId) else {
+        guard let base = currentRaw(changes.device) else {
             throw HeatPumpError.validation(MELCloudClassicParser.missingObjectMessage)
         }
+        let deviceId = try Self.deviceId(changes.device)
         let body = try MELCloudClassicParser.setAtaPayload(changes, raw: base.json)
         let response = try await authorizedJSON("POST", "Device/SetAta", body: .object(body))
         if let attributeErrors = response["AttributeErrors"]?.object, !attributeErrors.isEmpty {
@@ -142,28 +144,29 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         let t = now()
         let isFullObject = response["DeviceID"] != nil
         let merged = MELCloudClassicParser.merged(raw: .object(body), response: response)
-        let wrapper = base.listing ?? listing?.devices.first { $0["DeviceID"]?.int == changes.deviceId }
-        remember(RawDevice(deviceId: changes.deviceId, fetchedAt: isFullObject ? t : base.fetchedAt, json: merged, listing: wrapper))
+        let wrapper = base.listing ?? listing?.devices.first { $0["DeviceID"]?.int == deviceId }
+        remember(RawDevice(device: changes.device, fetchedAt: isFullObject ? t : base.fetchedAt, json: merged, listing: wrapper))
         // Counter: listing time only when this process holds that listing; else dropped.
         let listingAt = listing.flatMap { l in
-            l.devices.contains { $0["DeviceID"]?.int == changes.deviceId } ? l.fetchedAt : nil
+            l.devices.contains { $0["DeviceID"]?.int == deviceId } ? l.fetchedAt : nil
         }
         return try? MELCloudClassicParser.state(listing: wrapper, get: merged, fetchedAt: t, listingFetchedAt: listingAt)
     }
 
-    public func fetchErrorLog(deviceId: Int, range: DateInterval) async throws -> [ErrorLogEntry] {
+    public func fetchErrorLog(device: DeviceKey, range: DateInterval) async throws -> [ErrorLogEntry] {
         let body: JSONValue = .object([
-            "DeviceIDs": .array([.number(Double(deviceId))]),
+            "DeviceIDs": .array([.number(Double(try Self.deviceId(device)))]),
             "FromDate": .string(WireDate.day(range.start, timeZone: timeZone)),
             "ToDate": .string(WireDate.day(range.end, timeZone: timeZone)),
         ])
         let json = try await authorizedJSON("POST", "Report/GetUnitErrorLog2", body: body)
-        return try MELCloudClassicParser.errorLog(json, timeZone: timeZone)
+        return try MELCloudClassicParser.errorLog(json, device: device, timeZone: timeZone)
     }
 
-    public func fetchTemperatureLog(deviceId: Int, range: DateInterval) async throws -> [TemperaturePoint] {
+    public func fetchTemperatureLog(device: DeviceKey, range: DateInterval) async throws -> [TemperaturePoint] {
+        let deviceId = try Self.deviceId(device)
         let location = listing?.devices.first { $0["DeviceID"]?.int == deviceId }?["Location"]?.int
-            ?? currentRaw(deviceId: deviceId)?.listing?["Location"]?.int
+            ?? currentRaw(device)?.listing?["Location"]?.int
         let body = MELCloudClassicParser.temperatureLogBody(
             deviceId: deviceId, range: range, location: location, timeZone: timeZone)
         let json = try await authorizedJSON("POST", "Report/GetTemperatureLog2", body: body)
@@ -173,10 +176,10 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         return points
     }
 
-    public func fetchEnergy(deviceId: Int, range: DateInterval) async throws -> [EnergyDay] {
+    public func fetchEnergy(device: DeviceKey, range: DateInterval) async throws -> [EnergyDay] {
         let calendar = WireDate.calendar(timeZone)
         let body: JSONValue = .object([
-            "DeviceID": .number(Double(deviceId)),
+            "DeviceID": .number(Double(try Self.deviceId(device))),
             "FromDate": .string(WireDate.localTimestamp(calendar.startOfDay(for: range.start), timeZone: timeZone)),
             "ToDate": .string(WireDate.localTimestamp(calendar.startOfDay(for: range.end), timeZone: timeZone)),
             "UseCurrency": .bool(false),
@@ -185,7 +188,8 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         return MELCloudClassicParser.energy(json, range: range, timeZone: timeZone)
     }
 
-    public func fetchSignalStrength(deviceId: Int) async throws -> Int? {
+    public func fetchSignalStrength(device: DeviceKey) async throws -> Int? {
+        let deviceId = try Self.deviceId(device)
         let devices = try await refreshListing()
         return devices.first { $0["DeviceID"]?.int == deviceId }?["Device"]?["WifiSignalStrength"]?.int
     }
@@ -197,14 +201,14 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
 
     // MARK: Frost protection, holiday mode, weekly timer (unverified endpoints; shapes logged)
 
-    private func settingsQuery(_ deviceId: Int) -> [URLQueryItem] {
-        [URLQueryItem(name: "id", value: String(deviceId)), URLQueryItem(name: "tableName", value: "DeviceLocation")]
+    private func settingsQuery(_ device: DeviceKey) throws -> [URLQueryItem] {
+        [URLQueryItem(name: "id", value: String(try Self.deviceId(device))), URLQueryItem(name: "tableName", value: "DeviceLocation")]
     }
 
-    public func fetchAwaySettings(deviceId: Int) async throws -> AwaySettings {
-        let frostJSON = try await authorizedJSON("GET", "FrostProtection/GetSettings", query: settingsQuery(deviceId), relogin: false)
+    public func fetchAwaySettings(device: DeviceKey) async throws -> AwaySettings {
+        let frostJSON = try await authorizedJSON("GET", "FrostProtection/GetSettings", query: try settingsQuery(device), relogin: false)
         Self.diagnose("FrostProtection/GetSettings response: \(MELCloudClassicParser.redactedShape(frostJSON))")
-        let holidayJSON = try await authorizedJSON("GET", "HolidayMode/GetSettings", query: settingsQuery(deviceId), relogin: false)
+        let holidayJSON = try await authorizedJSON("GET", "HolidayMode/GetSettings", query: try settingsQuery(device), relogin: false)
         Self.diagnose("HolidayMode/GetSettings response: \(MELCloudClassicParser.redactedShape(holidayJSON))")
         return AwaySettings(
             frost: try MELCloudClassicParser.frostProtection(frostJSON), holiday: try MELCloudClassicParser.holidayMode(holidayJSON),
@@ -225,7 +229,8 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
 
     public nonisolated var weeklyTimerFormat: any WeeklyTimerFormat { MELCloudTimerFormat() }
 
-    public func applyAway(_ change: AwayChange, deviceId: Int) async throws {
+    public func applyAway(_ change: AwayChange, device: DeviceKey) async throws {
+        let deviceId = try Self.deviceId(device)
         let (path, body): (String, JSONValue) =
             switch change {
             case .frostProtection(let fp): ("FrostProtection/Update", MELCloudClassicParser.frostProtectionBody(fp, deviceId: deviceId))
@@ -236,9 +241,9 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         try MELCloudClassicParser.checkMutation(response)
     }
 
-    public func fetchWeeklyTimer(deviceId: Int) async throws -> WeeklyTimer {
+    public func fetchWeeklyTimer(device: DeviceKey) async throws -> WeeklyTimer {
         let json = try await authorizedJSON(
-            "GET", "Timer/Get2", query: [URLQueryItem(name: "deviceId", value: String(deviceId))], relogin: false)
+            "GET", "Timer/Get2", query: [URLQueryItem(name: "deviceId", value: String(try Self.deviceId(device)))], relogin: false)
         Self.diagnose("Timer/Get2 response: \(MELCloudClassicParser.redactedShape(json))")
         try MELCloudClassicParser.throwIfAttributeErrors(json)
         var timer = MELCloudClassicParser.weeklyTimer(json)
@@ -246,8 +251,8 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
         return timer
     }
 
-    public func saveWeeklyTimer(_ timer: WeeklyTimer, deviceId: Int) async throws {
-        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)
+    public func saveWeeklyTimer(_ timer: WeeklyTimer, device: DeviceKey) async throws {
+        let body = MELCloudClassicParser.timerSetBody(timer: timer, deviceId: try Self.deviceId(device))
         let response = try await authorizedJSON("POST", "Timer/SetAta2", body: body, relogin: false)
         Self.diagnose("Timer/SetAta2 response: \(MELCloudClassicParser.redactedShape(response))")
         try MELCloudClassicParser.throwIfAttributeErrors(response)
@@ -257,20 +262,23 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
 
     // MARK: Firmware updates (unverified endpoints; shapes logged)
 
-    public func firmwareUpdates(deviceId: Int) async throws -> [FirmwareUpdateStatus] {
+    public func firmwareUpdates(device: DeviceKey) async throws -> [FirmwareUpdateStatus] {
+        let deviceId = try Self.deviceId(device)
         let json = try await authorizedJSON(
             "POST", "FirmwareUpdate/List2", body: MELCloudClassicParser.firmwareListBody(deviceId: deviceId), relogin: false)
         Self.diagnose("FirmwareUpdate/List2 response: \(MELCloudClassicParser.redactedShape(json))")
         try MELCloudClassicParser.throwIfAttributeErrors(json)
-        return MELCloudClassicParser.firmwareUpdates(json, timeZone: timeZone).filter { $0.deviceId == nil || $0.deviceId == deviceId }
+        return MELCloudClassicParser.firmwareUpdates(json, timeZone: timeZone).filter {
+            $0.device == nil || $0.device?.melcloudDeviceId == deviceId
+        }
     }
 
-    public func approveFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        try await firmwareAction("FirmwareUpdate/Approve2", id: id, deviceId: deviceId)
+    public func approveFirmwareUpdate(id: Int, device: DeviceKey) async throws {
+        try await firmwareAction("FirmwareUpdate/Approve2", id: id, deviceId: try Self.deviceId(device))
     }
 
-    public func cancelFirmwareUpdate(id: Int, deviceId: Int) async throws {
-        try await firmwareAction("FirmwareUpdate/Cancel2", id: id, deviceId: deviceId)
+    public func cancelFirmwareUpdate(id: Int, device: DeviceKey) async throws {
+        try await firmwareAction("FirmwareUpdate/Cancel2", id: id, deviceId: try Self.deviceId(device))
     }
 
     private func firmwareAction(_ path: String, id: Int, deviceId: Int) async throws {
@@ -282,17 +290,23 @@ public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklySch
 
     // MARK: Internals
 
+    /// MELCloud's `DeviceID` inside a key (keys from this integration have a numeric native id).
+    static func deviceId(_ device: DeviceKey) throws -> Int {
+        guard let id = device.melcloudDeviceId else { throw HeatPumpError.deviceNotFound }
+        return id
+    }
+
     /// Newest device object from memory or the shared cache (another process may be newer).
-    private func currentRaw(deviceId: Int) -> RawDevice? {
-        let cached = (try? rawCache?.rawDevice(deviceId: deviceId)) ?? nil
-        let memory = raw[deviceId]
+    private func currentRaw(_ device: DeviceKey) -> RawDevice? {
+        let cached = (try? rawCache?.rawDevice(device)) ?? nil
+        let memory = raw[device]
         let newest = [memory, cached].compactMap { $0 }.max { $0.fetchedAt < $1.fetchedAt }
-        if let newest { raw[deviceId] = newest }
+        if let newest { raw[device] = newest }
         return newest
     }
 
     private func remember(_ device: RawDevice) {
-        raw[device.deviceId] = device
+        raw[device.device] = device
         try? rawCache?.saveRawDevice(device)
     }
 

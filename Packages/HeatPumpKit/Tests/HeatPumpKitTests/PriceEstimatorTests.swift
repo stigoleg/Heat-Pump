@@ -162,10 +162,10 @@ struct PriceEstimatorTests {
             let mean = -2 + Double(i % 14)
             try store.upsertTemperaturePoints(
                 (0..<24).map { TemperaturePoint(timestamp: day.addingTimeInterval(Double($0) * 3600), room: 21, set: 21, outdoor: mean) },
-                deviceId: 1)
+                device: testDevice)
             days.append(EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 0.42 * (17 - mean), heatingKWh: 0.42 * (17 - mean)))
         }
-        try store.upsertEnergyDays(days, deviceId: 1, now: clock.now)
+        try store.upsertEnergyDays(days, device: testDevice, now: clock.now)
         // Three hourly days at −3 °C, then one day with MET's 6-hourly entries at 7 °C.
         let tomorrow = today.addingTimeInterval(86_400)
         var forecast = (0..<72).map { ForecastHour(time: tomorrow.addingTimeInterval(Double($0) * 3600), temperature: -3) }

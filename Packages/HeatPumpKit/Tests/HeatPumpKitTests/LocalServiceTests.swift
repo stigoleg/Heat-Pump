@@ -247,7 +247,7 @@ struct LocalServiceTests {
         let day = calendar.startOfDay(for: clock.now.addingTimeInterval(-86_400))
         // Cloud says 9 kWh; the local counter says 12.0 kWh over the full day (0.5 kWh per hour).
         try service.store.upsertEnergyDays(
-            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9, heatingKWh: 9)], deviceId: MockBackend.deviceId,
+            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9, heatingKWh: 9)], device: MockBackend.device,
             now: clock.now)
         var samples: [LocalSample] = []
         for minute in stride(from: -5, through: 24 * 60 + 5, by: 5) {
@@ -271,7 +271,7 @@ struct LocalServiceTests {
         _ = try await other.currentState()
         try await other.savePriceSettings(PriceSettings(agreement: .norgespris))
         try other.store.upsertEnergyDays(
-            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9)], deviceId: MockBackend.deviceId, now: clock.now)
+            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9)], device: MockBackend.device, now: clock.now)
         #expect(try await other.energy(period: .day, from: day, to: day.addingTimeInterval(86_399)).first?.isEstimate == true)
     }
 
@@ -280,7 +280,7 @@ struct LocalServiceTests {
         _ = try await service.currentState()
         let day = WireDate.calendar(.gmt).startOfDay(for: clock.now.addingTimeInterval(-86_400))
         try service.store.upsertEnergyDays(
-            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9)], deviceId: MockBackend.deviceId, now: clock.now)
+            [EnergyDay(day: WireDate.day(day, timeZone: .gmt), totalKWh: 9)], device: MockBackend.device, now: clock.now)
         // Only 06–09 covered.
         try service.store.insertLocalSamples((0...36).map { i in
             var s = LocalSample(timestamp: day.addingTimeInterval(6 * 3600 + Double(i) * 300))

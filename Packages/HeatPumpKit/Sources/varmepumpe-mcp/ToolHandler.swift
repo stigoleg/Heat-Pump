@@ -59,7 +59,7 @@ struct ToolHandler: Sendable {
 
     private func getStatus() async throws -> CallTool.Result {
         let state = try await service.currentState()
-        var view = StatusView(state, serviceName: service.serviceName)
+        var view = StatusView(state, serviceName: service.serviceName, noErrorCodes: service.errorCodes.noErrorCodes)
         if state.state != nil, let timer = try? await service.weeklyTimer() {
             view.weeklyTimerEnabled = timer.enabled
             if let next = timer.nextEvent(after: Date(), timeZone: .current) {
@@ -88,10 +88,11 @@ struct ToolHandler: Sendable {
         struct View: Encodable {
             var days: Int
             var count: Int
-            var entries: [ErrorLogEntry]
+            var entries: [ErrorLogEntryView]
             var caveat: String
         }
-        return try await output(View(days: days, count: entries.count, entries: entries, caveat: service.errorCodes.caveat))
+        return try await output(
+            View(days: days, count: entries.count, entries: entries.map(ErrorLogEntryView.init), caveat: service.errorCodes.caveat))
     }
 
     private func getHistory(_ args: Arguments) async throws -> CallTool.Result {
@@ -134,7 +135,7 @@ struct ToolHandler: Sendable {
             var isEstimate: Bool
             var cost: CostSplit?
             var agreement: String
-            var byMode: [EnergyModeShare]?
+            var byMode: [ModeShare]?
             var buckets: [EnergyBucket]
             var note: String
         }
@@ -152,11 +153,17 @@ struct ToolHandler: Sendable {
             split.fanKWh += modes.fanKWh
             split.otherKWh += modes.otherKWh
         }
-        let byMode = split.shares.map { share -> EnergyModeShare in
-            var s = share
-            s.kWh = (s.kWh * 100).rounded() / 100
-            s.share = (s.share * 1000).rounded() / 1000
-            return s
+        // `mode` is the number get_energy has always shown for a mode.
+        struct ModeShare: Encodable {
+            var mode: Int?
+            var name: String
+            var kWh: Double
+            var share: Double
+        }
+        let byMode = split.shares.map { share in
+            ModeShare(
+                mode: share.mode?.legacyCode, name: share.name, kWh: (share.kWh * 100).rounded() / 100,
+                share: (share.share * 1000).rounded() / 1000)
         }
         return try await output(
             View(
@@ -642,10 +649,12 @@ struct ToolHandler: Sendable {
     private func getDeviceInfo() async throws -> CallTool.Result {
         let state = try await service.currentState()
         guard let s = state.state else {
-            return try await output(StatusView(state, serviceName: service.serviceName), state: state, isError: true)
+            return try await output(StatusView(state, serviceName: service.serviceName, noErrorCodes: service.errorCodes.noErrorCodes), state: state, isError: true)
         }
+        let record = try? service.store.devices().first { $0.key == s.key }
         let view = DeviceInfoView(
-            name: s.name, deviceId: s.deviceId, buildingId: s.buildingId, model: service.integration.modelName, firmware: FirmwareView(s.firmware),
+            name: s.name, deviceId: Int(s.key.nativeId) ?? 0, buildingId: record?.metadata["buildingId"].flatMap { Int($0) } ?? 0,
+            model: service.integration.modelName, firmware: FirmwareView(s.firmware),
             lastServiceDate: s.lastServiceDate, numberOfFanSpeeds: s.numberOfFanSpeeds,
             hasAutomaticFanSpeed: s.hasAutomaticFanSpeed, temperatureIncrement: s.temperatureIncrement,
             limits: s.limits, energyCounters: s.energy, wifiSignalDbm: s.wifiSignal,
@@ -661,7 +670,7 @@ struct ToolHandler: Sendable {
             var status: StatusView
             var reports: [ReportSync]
         }
-        return try await output(View(status: StatusView(state, serviceName: service.serviceName), reports: reports), state: state)
+        return try await output(View(status: StatusView(state, serviceName: service.serviceName, noErrorCodes: service.errorCodes.noErrorCodes), reports: reports), state: state)
     }
 
     // MARK: Write tools

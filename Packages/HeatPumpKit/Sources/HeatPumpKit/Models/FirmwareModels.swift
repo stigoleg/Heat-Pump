@@ -91,7 +91,8 @@ public enum FirmwareUpdatePhase: String, Codable, Sendable, CaseIterable {
 public struct FirmwareUpdateStatus: Codable, Sendable, Equatable {
     /// MELCloud's id of this update (sent back with Approve2/Cancel2).
     public var id: Int?
-    public var deviceId: Int?
+    /// The device the entry is for, when the service says.
+    public var device: DeviceKey?
     public var currentPhase: Int?
     public var approvalStatus: Int?
     public var minutesOffline: Int?
@@ -103,12 +104,12 @@ public struct FirmwareUpdateStatus: Codable, Sendable, Equatable {
     public var lastCommunication: Date?
 
     public init(
-        id: Int? = nil, deviceId: Int? = nil, currentPhase: Int? = nil, approvalStatus: Int? = nil, minutesOffline: Int? = nil,
+        id: Int? = nil, device: DeviceKey? = nil, currentPhase: Int? = nil, approvalStatus: Int? = nil, minutesOffline: Int? = nil,
         filesDownloaded: Int? = nil, filesToDownload: Int? = nil, retries: Int? = nil, dateApproved: Date? = nil,
         dateCreated: Date? = nil, lastCommunication: Date? = nil
     ) {
         self.id = id
-        self.deviceId = deviceId
+        self.device = device
         self.currentPhase = currentPhase
         self.approvalStatus = approvalStatus
         self.minutesOffline = minutesOffline

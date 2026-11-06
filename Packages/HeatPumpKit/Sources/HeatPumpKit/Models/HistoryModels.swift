@@ -1,7 +1,7 @@
 import Foundation
 
 public struct ErrorLogEntry: Codable, Sendable, Equatable {
-    public var deviceId: Int
+    public var device: DeviceKey
     public var start: Date
     public var end: Date?
     public var message: String
@@ -10,8 +10,8 @@ public struct ErrorLogEntry: Codable, Sendable, Equatable {
     public var source: String
 
     /// `source` is the producing integration's `sourceTag`.
-    public init(deviceId: Int, start: Date, end: Date? = nil, message: String, code: String? = nil, source: String) {
-        self.deviceId = deviceId
+    public init(device: DeviceKey, start: Date, end: Date? = nil, message: String, code: String? = nil, source: String) {
+        self.device = device
         self.start = start
         self.end = end
         self.message = message
@@ -127,16 +127,6 @@ public enum MaintenanceKind: String, Codable, Sendable, CaseIterable {
         case .vBlockingFilter: L10n.tr("V-blocking filter (green)")
         case .professionalService: L10n.tr("Service by the dealer")
         case .other: L10n.tr("Other")
-        }
-    }
-
-    /// Recommended interval in days per the MSZ-RW owner manual (nil = no fixed interval).
-    public var recommendedIntervalDays: Int? {
-        switch self {
-        case .airFilter: 14
-        case .deodorizingFilter: 90
-        case .vBlockingFilter: 90
-        case .professionalService, .other: nil
         }
     }
 }
