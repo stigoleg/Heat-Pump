@@ -1,36 +1,14 @@
 import Foundation
-
-/// Minimal HTTP abstraction so the backend can be tested with canned responses.
-public protocol HTTPTransport: Sendable {
-    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
-}
-
-public struct URLSessionTransport: HTTPTransport {
-    private let session: URLSession
-
-    public init(session: URLSession = .shared) {
-        self.session = session
-    }
-
-    public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw HeatPumpError.network(L10n.tr("Invalid answer")) }
-            return (data, http)
-        } catch let error as HeatPumpError {
-            throw error
-        } catch {
-            throw HeatPumpError.network(error.localizedDescription)
-        }
-    }
-}
+import HeatPumpKit
 
 /// MELCloud Classic (`app.melcloud.com`) backend.
 ///
 /// One `fetchState` costs one `Device/Get` call, plus a `User/ListDevices` call when the
 /// cached listing (limits, Wi-Fi signal, firmware, energy counters) is older than
 /// `listingMaxAge`. Rate limiting across processes is the service's job.
-public actor MELCloudClassicBackend: HeatPumpBackend {
+public actor MELCloudClassicBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver, FirmwareDriver,
+    DeviceLocationReporting, HardwareAddressReporting
+{
     public nonisolated let identifier = "melcloud-classic"
 
     public static let baseURL = URL(string: "https://app.melcloud.com/Mitsubishi.Wifi.Client")!  // constant literal
@@ -118,6 +96,18 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
     }
 
     public nonisolated var requiresFreshStateForWrites: Bool { true }
+
+    /// MELCloud refuses a write without a valid mode.
+    public nonisolated var unknownModeProblem: String? { MELCloudClassicParser.invalidModeMessage }
+
+    public nonisolated var maxTemperatureLogDays: Int { MELCloudClassicParser.maxTemperatureRangeDays }
+
+    public nonisolated var maxEnergyReportDays: Int { MELCloudClassicParser.maxEnergyRangeDays }
+
+    /// The Wi-Fi adapter adds local readings and live power.
+    public nonisolated var capabilities: Set<Capability> {
+        Capability.derived(from: self).union([.localTelemetry, .livePower])
+    }
 
     public func writeBaseFetchedAt(deviceId: Int) async -> Date? {
         currentRaw(deviceId: deviceId)?.fetchedAt
@@ -220,6 +210,20 @@ public actor MELCloudClassicBackend: HeatPumpBackend {
             frost: try MELCloudClassicParser.frostProtection(frostJSON), holiday: try MELCloudClassicParser.holidayMode(holidayJSON),
             fetchedAt: now(), source: "melcloud")
     }
+
+    public nonisolated func awaySettings(fromStoredListing listing: JSONValue?) -> AwaySettings? {
+        MELCloudClassicParser.awayFromListing(listing)
+    }
+
+    public nonisolated func location(fromStoredListing listing: JSONValue?) -> (latitude: Double, longitude: Double)? {
+        MELCloudClassicParser.buildingLocation(listing)
+    }
+
+    public nonisolated func hardwareAddress(fromStoredListing listing: JSONValue?) -> String? {
+        listing?["Device"]?["MacAddress"]?.string ?? listing?["MacAddress"]?.string
+    }
+
+    public nonisolated var weeklyTimerFormat: any WeeklyTimerFormat { MELCloudTimerFormat() }
 
     public func applyAway(_ change: AwayChange, deviceId: Int) async throws {
         let (path, body): (String, JSONValue) =

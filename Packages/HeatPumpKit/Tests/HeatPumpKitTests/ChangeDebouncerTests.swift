@@ -2,6 +2,7 @@ import Foundation
 import Synchronization
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 /// Records sends and serves a configurable budget.
 /// One-shot gate a fake send can wait on.

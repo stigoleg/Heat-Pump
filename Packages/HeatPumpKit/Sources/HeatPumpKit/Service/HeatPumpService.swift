@@ -3,26 +3,18 @@ import Foundation
 /// Single entry point for the app and the MCP server.
 ///
 /// Reads come from the shared SQLite cache; the network is touched only when the cache
-/// is too old, never more than once per 60 s across all processes, and never while a
-/// MELCloud block is active. Every change is validated, budgeted (12 per rolling hour
+/// is too old, never more than once per `policy.minRefreshInterval` across all processes, and
+/// never while a block is active. Every change is validated, budgeted (`policy.changeBudget`,
 /// across processes) and logged.
 public actor HeatPumpService {
-    public static let defaultMaxAge: TimeInterval = 10 * 60
-    public static let minRefreshInterval: TimeInterval = 60
-    public static let reportInterval: TimeInterval = 3600
     public static let historyDays = 90
-    /// Used when a login throttle does not say how long it lasts.
-    public static let defaultLoginBlock: TimeInterval = 30 * 60
 
     static let stateKey = "state"
-    /// Global block after a persistent 401 (login works but MELCloud still refuses).
-    public static let unauthorizedBlock: TimeInterval = 3600
-    /// Longest a write waits for the cross-process spacing before giving up.
-    public static let maxWriteWait: TimeInterval = 10
-    /// Oldest device object a MELCloud write may be based on; older means a fresh read first.
-    public static let writeBaseMaxAge: TimeInterval = 60
 
-    public nonisolated let backend: any HeatPumpBackend
+    /// The connection to the unit. Optional capabilities are reached with `as? any …Driver`.
+    public nonisolated let backend: any DeviceConnection & ThermostatDriver
+    /// The integration's rate limits.
+    public nonisolated let policy: RateLimitPolicy
     public nonisolated let store: HistoryStore
     public nonisolated let timeZone: TimeZone
     /// Credential store used by `saveCredentials` / `signOut` (nil for the mock backend).
@@ -40,8 +32,8 @@ public actor HeatPumpService {
     let houseProvider: @Sendable () -> (any HouseConsumptionProviding)?
 
     public init(
-        backend: any HeatPumpBackend, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
-        timeZone: TimeZone = .current,
+        backend: any DeviceConnection & ThermostatDriver, store: HistoryStore, credentials: (any CredentialProviding)? = nil,
+        policy: RateLimitPolicy = .standard, timeZone: TimeZone = .current,
         now: @escaping @Sendable () -> Date = { Date() },
         sleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
             try? await Task.sleep(for: .seconds(max(0, seconds)))
@@ -56,6 +48,7 @@ public actor HeatPumpService {
         self.weatherProvider = weatherProvider
         self.local = local
         self.backend = backend
+        self.policy = policy
         self.store = store
         self.credentials = credentials
         self.timeZone = timeZone
@@ -63,43 +56,8 @@ public actor HeatPumpService {
         self.sleep = sleep
     }
 
-    /// Backend from `VARMEPUMPE_BACKEND` (`mock` or default MELCloud Classic), DB from
-    /// `VARMEPUMPE_DB_PATH` or Application Support, credentials from the keychain.
-    public static func makeDefault(
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) throws -> HeatPumpService {
-        let store = try HistoryStore(path: HistoryStore.defaultPath(environment: environment))
-        if isMock(environment: environment) {
-            return HeatPumpService(
-                backend: MockBackend(), store: store, priceProvider: { _ in MockPriceProvider() },
-                local: .simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short"),
-                weatherProvider: { _ in MockWeatherProvider() }, houseProvider: { MockHouseConsumptionProvider() })
-        }
-        let credentials = KeychainCredentialStore(environment: environment)
-        return HeatPumpService(
-            backend: MELCloudClassicBackend(credentials: credentials, rawCache: store), store: store, credentials: credentials,
-            priceProvider: { settings in
-                switch settings.agreement {
-                case .norgespris: return nil
-                case .spot: return HvaKosterStrommenProvider(area: settings.area)
-                case .tibber:
-                    // Read only when prices are actually fetched (at most hourly).
-                    return credentials.loadTibberToken().map { TibberPriceProvider(token: $0) }
-                }
-            }, local: .network,
-            weatherProvider: { settings in
-                METForecastProvider(userAgent: METForecastProvider.userAgent(version: appVersion, contact: settings.contactEmail))
-            },
-            // The token is read only when consumption is actually fetched (at most hourly).
-            houseProvider: { credentials.loadTibberToken().map { TibberConsumptionProvider(token: $0) } })
-    }
-
     /// Marketing version of the running app or helper (for User-Agent strings).
     public static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0" }
-
-    public static func isMock(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
-        environment["VARMEPUMPE_BACKEND"]?.lowercased() == "mock"
-    }
 
     // MARK: Credentials
 
@@ -154,11 +112,19 @@ public actor HeatPumpService {
     /// True for the simulated backend (`VARMEPUMPE_BACKEND=mock`).
     public nonisolated var isDemo: Bool { backend.identifier == "mock" }
 
+    /// The backend as the optional capability `T` (an `any …` driver protocol), or
+    /// `HeatPumpError.notSupported` when it does not have it.
+    nonisolated func driver<T>(_ capability: T.Type) throws -> T {
+        guard let driver = backend as? T else { throw HeatPumpError.notSupported }
+        return driver
+    }
+
     // MARK: State
 
     /// Cached state unless older than `maxAge` (or `force`). Network refresh is rate limited
     /// globally; when skipped or blocked the cached state is returned with an indicator.
-    public func currentState(maxAge: TimeInterval = defaultMaxAge, force: Bool = false) async throws -> StateResult {
+    public func currentState(maxAge: TimeInterval? = nil, force: Bool = false) async throws -> StateResult {
+        let maxAge = maxAge ?? policy.maxAge
         let t = now()
         let cached = try store.latestSnapshot()
         if let cached, !force, !cached.stale, t.timeIntervalSince(cached.state.fetchedAt) < maxAge {
@@ -172,7 +138,7 @@ public actor HeatPumpService {
             r.needsLogin = true
             return r
         }
-        return try await fetchState(minInterval: Self.minRefreshInterval, cached: cached, maxAge: maxAge)
+        return try await fetchState(minInterval: policy.minRefreshInterval, cached: cached, maxAge: maxAge)
     }
 
     private func fetchState(minInterval: TimeInterval, cached: HistoryStore.Snapshot?, maxAge: TimeInterval) async throws -> StateResult {
@@ -253,11 +219,11 @@ public actor HeatPumpService {
             try store.recordBlock(until: until, reason: .rateLimited)
             return until
         case .loginThrottled(let until):
-            let end = until ?? now.addingTimeInterval(Self.defaultLoginBlock)
+            let end = until ?? now.addingTimeInterval(policy.defaultLoginBlock)
             try store.recordBlock(until: end, reason: .loginThrottled)
             return end
         case .unauthorized:
-            let end = now.addingTimeInterval(Self.unauthorizedBlock)
+            let end = now.addingTimeInterval(policy.unauthorizedBlock)
             try store.recordBlock(until: end, reason: .unauthorized)
             return end
         case .invalidCredentials:
@@ -293,7 +259,7 @@ public actor HeatPumpService {
         var results: [ReportSync] = []
         for kind in ReportKind.allCases {
             let key = "report.\(kind.rawValue)"
-            switch try store.reserveFetch(key: key, minInterval: Self.reportInterval, now: t) {
+            switch try store.reserveFetch(key: key, minInterval: policy.reportInterval, now: t) {
             case .credentialsRejected:
                 results.append(
                     ReportSync(kind: kind, status: .blocked, count: 0,
@@ -331,23 +297,25 @@ public actor HeatPumpService {
             let lastSuccess = try store.fetchState(key: key)?.lastSuccess
             let from = max(earliest, (lastSuccess ?? earliest).addingTimeInterval(-86_400))
             guard let range = interval(from, t) else { return 0 }
-            let entries = try await backend.fetchErrorLog(deviceId: deviceId, range: range)
+            let entries = try await driver((any ErrorLogReporting).self).fetchErrorLog(deviceId: deviceId, range: range)
             try store.upsertErrorEvents(entries)
             return entries.count
         case .temperatureLog:
             // At most a week per request; the web app asks for short ranges too.
+            let reporter = try driver((any TemperatureLogReporting).self)
             let latest = try store.latestTemperaturePointDate(deviceId: deviceId)
-            let maxDays = Double(MELCloudClassicParser.maxTemperatureRangeDays)
+            let maxDays = Double(reporter.maxTemperatureLogDays)
             let from = max(t.addingTimeInterval(-maxDays * 86_400), latest ?? .distantPast)
             guard let range = interval(from, t) else { return 0 }
-            let points = try await backend.fetchTemperatureLog(deviceId: deviceId, range: range)
+            let points = try await reporter.fetchTemperatureLog(deviceId: deviceId, range: range)
             try store.upsertTemperaturePoints(points, deviceId: deviceId)
             return points.count
         case .energy:
-            // One request of at most 28 days so MELCloud answers per day. The last two stored
-            // days are fetched again because MELCloud fills energy data in late.
+            // One request short enough that the cloud answers per day. The last two stored
+            // days are fetched again because the cloud fills energy data in late.
+            let reporter = try driver((any EnergyReporting).self)
             let calendar = WireDate.calendar(timeZone)
-            let maxDays = MELCloudClassicParser.maxEnergyRangeDays - 1
+            let maxDays = reporter.maxEnergyReportDays - 1
             var from = calendar.startOfDay(for: t.addingTimeInterval(-Double(maxDays) * 86_400))
             if let latest = try store.latestEnergyDay(deviceId: deviceId),
                 let date = WireDate.parse(latest, timeZone: timeZone)
@@ -355,7 +323,7 @@ public actor HeatPumpService {
                 from = max(from, date.addingTimeInterval(-2 * 86_400))
             }
             guard let range = interval(from, t) else { return 0 }
-            let days = try await backend.fetchEnergy(deviceId: deviceId, range: range)
+            let days = try await reporter.fetchEnergy(deviceId: deviceId, range: range)
             try store.upsertEnergyDays(days, deviceId: deviceId, now: t)
             return days.count
         }
@@ -453,10 +421,8 @@ public actor HeatPumpService {
             }
         }
         // Refusals the backend would make locally go out before budget, approval or network.
-        if backend.requiresFreshStateForWrites, projected.mode == nil {
-            return .rejected(try rejectAll(
-                normalized, source: source, reason: reason, state: start,
-                error: MELCloudClassicParser.invalidModeMessage, now: t))
+        if let problem = backend.unknownModeProblem, projected.mode == nil {
+            return .rejected(try rejectAll(normalized, source: source, reason: reason, state: start, error: problem, now: t))
         }
         var dryRun = ChangeSet(deviceId: start.deviceId, buildingId: start.buildingId)
         for change in normalized { Self.merge(change, into: &dryRun) }
@@ -530,10 +496,10 @@ public actor HeatPumpService {
                     timestamp: t, source: source, field: $0.field, oldValue: $0.currentValue(in: base),
                     newValue: $0.valueDescription, reason: reason, result: .pending)
             }
-            switch try store.reserveChange(records) {
+            switch try store.reserveChange(records, budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(t))
-                if waited + wait > Self.maxWriteWait {
+                if waited + wait > policy.maxWriteWait {
                     let outcomes = try rejectAll(
                         request, source: source, reason: reason, state: base,
                         error: HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", now: t)
@@ -591,18 +557,18 @@ public actor HeatPumpService {
         }
     }
 
-    /// MELCloud Classic writes send the whole device object, so it must be recent. When the
-    /// backend's copy is missing or older than `writeBaseMaxAge`, one `Device/Get` is made under
+    /// Some drivers (MELCloud Classic) write the whole device object, so it must be recent. When the
+    /// backend's copy is missing or older than `writeBaseMaxAge`, one state fetch is made under
     /// the normal refresh rules. Returns a user-facing reason when the write must not be sent.
     private func refreshWriteBase(deviceId: Int) async throws -> String? {
         guard backend.requiresFreshStateForWrites else { return nil }
         func isFresh() async -> Bool {
             guard let at = await backend.writeBaseFetchedAt(deviceId: deviceId) else { return false }
-            return now().timeIntervalSince(at) < Self.writeBaseMaxAge
+            return now().timeIntervalSince(at) < policy.writeBaseMaxAge
         }
         if await isFresh() { return nil }
         let t = now()
-        switch try store.reserveFetch(key: Self.stateKey, minInterval: Self.minRefreshInterval, now: t) {
+        switch try store.reserveFetch(key: Self.stateKey, minInterval: policy.minRefreshInterval, now: t) {
         case .credentialsRejected:
             return HeatPumpError.credentialsRejected.errorDescription
         case .blocked(let until):
@@ -633,14 +599,15 @@ public actor HeatPumpService {
     /// (5 s spacing and the 12-per-hour budget, across processes).
     public func writeBudget() throws -> WriteBudget {
         let t = now()
-        let usage = try store.writeUsage(now: t)
-        let limit = ChangeBudget.maxChangesPerHour
+        let budget = policy.changeBudget
+        let usage = try store.writeUsage(now: t, window: budget.window)
+        let limit = budget.maxChangesPerHour
         var next: Date?
         if usage.used.count >= limit {
-            next = usage.used[usage.used.count - limit].addingTimeInterval(ChangeBudget.window)
+            next = usage.used[usage.used.count - limit].addingTimeInterval(budget.window)
         }
-        if let last = usage.lastWrite, t.timeIntervalSince(last) < ChangeBudget.minSpacing {
-            next = max(next ?? .distantPast, last.addingTimeInterval(ChangeBudget.minSpacing))
+        if let last = usage.lastWrite, t.timeIntervalSince(last) < budget.minSpacing {
+            next = max(next ?? .distantPast, last.addingTimeInterval(budget.minSpacing))
         }
         return WriteBudget(remaining: max(0, limit - usage.used.count), nextAllowed: next)
     }

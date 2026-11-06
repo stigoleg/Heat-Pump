@@ -1,5 +1,6 @@
 import Foundation
 import HeatPumpKit
+import Integrations
 import Observation
 import SwiftUI
 
@@ -206,13 +207,13 @@ final class AppModel {
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         do {
-            let service = try HeatPumpService.makeDefault(environment: environment)
+            let service = try IntegrationCatalog.makeService(environment: environment)
             self.service = service
             self.isDemo = service.isDemo
             self.startupError = nil
         } catch {
             self.service = nil
-            self.isDemo = HeatPumpService.isMock(environment: environment)
+            self.isDemo = IntegrationCatalog.isDemo(environment: environment)
             self.startupError = String(localized: "Could not open the database: \(error.localizedDescription)")
         }
         if let screen = environment["VARMEPUMPE_SCREEN"].flatMap(Screen.init(rawValue:)) {

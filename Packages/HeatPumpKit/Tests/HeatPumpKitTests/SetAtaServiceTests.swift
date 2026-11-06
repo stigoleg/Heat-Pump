@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 /// Regression tests for the round-3 SetAta bug: MELCloud Classic resets every field that is
 /// missing from the body (power off, mode 0), so writes must carry the full, fresh device object.

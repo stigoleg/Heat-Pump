@@ -1,9 +1,11 @@
 import Foundation
+import HeatPumpKit
+import MELCloudIntegration
 
 /// Deterministic backend with realistic Norwegian winter data. Selected with
 /// `VARMEPUMPE_BACKEND=mock`. All history is a pure function of time, so repeated
 /// runs and separate processes see the same past; only writes are per-process.
-public actor MockBackend: HeatPumpBackend {
+public actor MockBackend: HeatPumpBackend, AwayModesDriver, WeeklyScheduleDriver, FirmwareDriver, DemoDataSeeding {
     public nonisolated let identifier = "mock"
 
     public static let deviceId = 100_001
@@ -33,6 +35,24 @@ public actor MockBackend: HeatPumpBackend {
     public init(timeZone: TimeZone = .current, now: @escaping @Sendable () -> Date = { Date() }) {
         self.now = now
         self.timeZone = timeZone
+    }
+
+    /// Simulates the Wi-Fi adapter's local readings and live power too.
+    public nonisolated var capabilities: Set<Capability> {
+        Capability.derived(from: self).union([.localTelemetry, .livePower])
+    }
+
+    /// The weekly timer is kept in MELCloud's wire shape, so MELCloud's format reads it.
+    public nonisolated var weeklyTimerFormat: any WeeklyTimerFormat { MELCloudTimerFormat() }
+
+    // MARK: DemoDataSeeding
+
+    public nonisolated var demoDeviceId: Int { Self.deviceId }
+    public func demoState(at date: Date) -> DeviceState { state(at: date) }
+    public nonisolated var demoLocalHost: String { MockLocalSimulation.host }
+
+    public nonisolated func demoLocalSamples(from: Date, to: Date, shortCycling: Bool) -> [LocalSample] {
+        MockLocalSimulation.samples(from: from, to: to, shortCycling: shortCycling)
     }
 
     public func login() async throws {}

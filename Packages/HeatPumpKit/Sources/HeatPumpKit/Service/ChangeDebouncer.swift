@@ -130,7 +130,8 @@ public final class ChangeDebouncer {
         switch change {
         case .power(let on):
             edits.power = on
-            // MELCloud refuses a write without a valid mode; turning on picks Varme then.
+            // The cloud refuses a write without a valid mode (see `ThermostatDriver.unknownModeProblem`);
+            // turning on picks heat then.
             if on, base.mode == nil, edits.mode == nil {
                 edits.mode = .heat
                 impliedMode = true

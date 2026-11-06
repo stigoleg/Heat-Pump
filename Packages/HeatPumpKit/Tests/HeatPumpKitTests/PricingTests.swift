@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 @Suite("Electricity prices and cost")
 struct PricingTests {

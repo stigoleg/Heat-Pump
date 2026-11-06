@@ -1,6 +1,7 @@
 import Foundation
 import Synchronization
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 enum Fixture {
     static func data(_ name: String) throws -> Data {

@@ -39,7 +39,7 @@ extension HeatPumpService {
     public func saveLocalSettings(_ settings: LocalSettings) throws {
         var clean = settings
         if let host = settings.host?.trimmingCharacters(in: .whitespaces), !host.isEmpty {
-            guard let valid = LocalSmartClient.validatedHost(host) else {
+            guard let valid = LocalAccess.validatedHost(host) else {
                 throw HeatPumpError.validation(LocalAccessError.invalidHost(host).errorDescription ?? "")
             }
             clean.host = valid
@@ -99,15 +99,13 @@ extension HeatPumpService {
             return .throttled(nextAllowed: nil)  // not used for local keys
         case .allowed:
             do {
-                let reply = try await local.makeClient(host).readStatus()
-                let parsed = CN105Parser.sample(reply: reply, at: now())
-                guard parsed.used > 0 else { throw LocalAccessError.noFrames }
-                guard persist else { return .sample(parsed.sample) }
-                try store.insertLocalSample(parsed.sample)
+                let sample = try await local.makeClient(host).readSample(now: now)
+                guard persist else { return .sample(sample) }
+                try store.insertLocalSample(sample)
                 try store.recordFetchSuccess(key: Self.localFetchKey, now: t)
                 try store.saveSetting(LocalStatusRecord(), key: Self.localStatusKey)
                 try pruneLocalIfDue()
-                return .sample(parsed.sample)
+                return .sample(sample)
             } catch {
                 let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 guard persist else { return .failed(message) }
@@ -171,7 +169,7 @@ extension HeatPumpService {
 
     /// "Test" in Settings: one read of `host` (spacing still applies), without saving the address.
     public func testLocal(host: String) async throws -> LocalTestResult {
-        guard let valid = LocalSmartClient.validatedHost(host) else {
+        guard let valid = LocalAccess.validatedHost(host) else {
             return LocalTestResult(ok: false, message: LocalAccessError.invalidHost(host).errorDescription ?? "", sample: nil)
         }
         let saved = try localSettings().host
@@ -235,7 +233,7 @@ extension HeatPumpService {
                 message: L10n.tr("Did not find the heat pump's hardware address in MELCloud yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)."))
         }
         let hosts = try await local.scanner.hosts(matchingMAC: mac)
-        guard let host = hosts.first(where: { LocalSmartClient.validatedHost($0) != nil }) else {
+        guard let host = hosts.first(where: { LocalAccess.validatedHost($0) != nil }) else {
             return LocalDiscoveryResult(
                 host: nil,
                 message: L10n.tr("Did not find the heat pump on the home network. Check that the Mac is on the same network, or enter the IP address from the router."))
@@ -248,13 +246,14 @@ extension HeatPumpService {
         return LocalDiscoveryResult(host: host, message: L10n.format("Found the heat pump at %@. It is read at the next refresh.", host))
     }
 
-    /// The unit's MAC from the latest MELCloud data (snapshot, else the stored listing). Internal only.
+    /// The unit's MAC from the latest cloud data (snapshot, else the stored listing). Internal only.
     private func cloudMAC() throws -> String? {
         if let mac = try store.latestSnapshot()?.state.macAddress, normalizedMAC(mac) != nil { return mac }
         guard let deviceId = try store.latestSnapshot()?.state.deviceId,
-            let listing = try store.rawDevice(deviceId: deviceId)?.listing
+            let listing = try store.rawDevice(deviceId: deviceId)?.listing,
+            let reporter = backend as? any HardwareAddressReporting
         else { return nil }
-        let mac = listing["Device"]?["MacAddress"]?.string ?? listing["MacAddress"]?.string
+        let mac = reporter.hardwareAddress(fromStoredListing: listing)
         return mac.flatMap { normalizedMAC($0) != nil ? $0 : nil }
     }
 

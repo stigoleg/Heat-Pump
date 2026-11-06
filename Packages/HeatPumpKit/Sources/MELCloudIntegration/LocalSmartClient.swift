@@ -1,30 +1,6 @@
 import CommonCrypto
 import Foundation
-
-/// Errors from the local Wi-Fi adapter. `errorDescription` is display text (via `L10n`).
-public enum LocalAccessError: Error, Sendable, Equatable, LocalizedError {
-    case notEnabled
-    case missingHost
-    case invalidHost(String)
-    case http(status: Int)
-    case network(String)
-    case badResponse(String)
-    case noFrames
-    case notConfigured
-
-    public var errorDescription: String? {
-        switch self {
-        case .notEnabled: L10n.tr("Local connection is turned off.")
-        case .missingHost: L10n.tr("No IP address has been entered for the Wi-Fi adapter.")
-        case .invalidHost(let host): L10n.format("“%@” is not a valid IP address on the home network (for example 192.168.1.50).", host)
-        case .http(let status): L10n.format("The Wi-Fi adapter answered with HTTP error %lld.", status)
-        case .network(let detail): L10n.format("Could not reach the Wi-Fi adapter: %@", detail)
-        case .badResponse(let detail): L10n.format("The answer from the Wi-Fi adapter could not be read: %@", detail)
-        case .noFrames: L10n.tr("The Wi-Fi adapter answered, but without readings.")
-        case .notConfigured: L10n.tr("Local access is not available in this program.")
-        }
-    }
-}
+import HeatPumpKit
 
 /// What one status read returned, with identifiers already removed.
 public struct LocalStatusReply: Sendable, Equatable {
@@ -45,9 +21,19 @@ public struct LocalStatusReply: Sendable, Equatable {
     }
 }
 
-/// Anything that can do one read-only status request (the real client, or a test fake).
-public protocol LocalStatusReading: Sendable {
+/// Anything that can do one read-only status request and answers with CN105 frames (the real
+/// client, or a test fake). Parsing into a `LocalSample` is shared.
+public protocol CN105StatusReading: LocalStatusReading {
     func readStatus() async throws -> LocalStatusReply
+}
+
+extension CN105StatusReading {
+    public func readSample(now: @Sendable () -> Date) async throws -> LocalSample {
+        let reply = try await readStatus()
+        let parsed = CN105Parser.sample(reply: reply, at: now())
+        guard parsed.used > 0 else { throw LocalAccessError.noFrames }
+        return parsed.sample
+    }
 }
 
 /// Read-only client for the Wi-Fi adapter's unofficial `/smart` endpoint on the home network.
@@ -56,7 +42,7 @@ public protocol LocalStatusReading: Sendable {
 /// `<CSV></CSV>`. There is deliberately no way to send any other payload: no `CONNECT`
 /// element (the adapter stores it as a persistent setting; OFF silently cuts MELCloud),
 /// no CODE/VALUE commands, RESET, ECHONET, unit-info or admin pages.
-public struct LocalSmartClient: LocalStatusReading {
+public struct LocalSmartClient: CN105StatusReading {
     public static let path = "/smart"
     /// The only plaintext this client ever encrypts and sends.
     public static let statusPayload = "<CSV></CSV>"
@@ -140,23 +126,9 @@ public struct LocalSmartClient: LocalStatusReading {
         return request
     }
 
-    /// Accepts dotted IPv4 addresses in the private ranges (10/8, 172.16/12, 192.168/16) only,
-    /// so the client can never be pointed at anything outside the home network.
+    /// Private IPv4 addresses only (`LocalAccess.validatedHost`).
     public static func validatedHost(_ text: String) -> String? {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count == 4 else { return nil }
-        var octets: [Int] = []
-        for part in parts {
-            guard (1...3).contains(part.count), part.allSatisfy(\.isASCII), part.allSatisfy(\.isNumber),
-                let value = Int(part), (0...255).contains(value)
-            else { return nil }
-            octets.append(value)
-        }
-        let isPrivate =
-            octets[0] == 10 || (octets[0] == 172 && (16...31).contains(octets[1])) || (octets[0] == 192 && octets[1] == 168)
-        guard isPrivate, octets[3] != 0, octets[3] != 255 else { return nil }
-        return octets.map(String.init).joined(separator: ".")
+        LocalAccess.validatedHost(text)
     }
 
     // MARK: Response
@@ -217,13 +189,13 @@ public struct LocalSmartClient: LocalStatusReading {
     }
 
     /// `<ESV>base64(iv ‖ ciphertext)</ESV>` for `xml`: the adapter's reply format (simulation and tests).
-    static func envelope(_ xml: String, iv: [UInt8]) throws -> Data {
+    package static func envelope(_ xml: String, iv: [UInt8]) throws -> Data {
         let encrypted = try encrypt(Array(xml.utf8), iv: iv)
         return Data(("<ESV>" + Data(iv + encrypted).base64EncodedString() + "</ESV>").utf8)
     }
 
     /// Plaintext of a request body produced by `statusRequest` (simulation and tests).
-    static func decryptRequestBody(_ body: Data) -> String? {
+    package static func decryptRequestBody(_ body: Data) -> String? {
         let text = String(decoding: body, as: UTF8.self)
         guard let payload = element("ESV", in: text), let data = Data(base64Encoded: payload),
             let plain = decrypt(Array(data))

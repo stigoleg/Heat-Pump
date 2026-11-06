@@ -47,12 +47,14 @@ public struct BlockStatus: Sendable, Equatable {
     public var reason: BlockReason
 }
 
+/// The standard change budget (`RateLimitPolicy.standard`), for texts and defaults that have no
+/// service at hand.
 public enum ChangeBudget {
-    /// Maximum `Device/SetAta` requests per rolling window, across processes.
-    public static let maxChangesPerHour = 12
-    public static let window: TimeInterval = 3600
+    /// Maximum write requests per rolling window, across processes.
+    public static var maxChangesPerHour: Int { ChangeBudgetPolicy.standard.maxChangesPerHour }
+    public static var window: TimeInterval { ChangeBudgetPolicy.standard.window }
     /// Minimum time between two write requests, across processes.
-    public static let minSpacing: TimeInterval = 5
+    public static var minSpacing: TimeInterval { ChangeBudgetPolicy.standard.minSpacing }
 }
 
 /// The full MELCloud device object as last seen (from `Device/Get` or a `SetAta` response).
@@ -690,6 +692,11 @@ public final class HistoryStore: Sendable {
                 record.timestamp, record.source.rawValue, record.field, record.oldValue, record.newValue,
                 record.reason, record.result.rawValue, record.error, batchId,
             ])
+    }
+
+    /// `reserveChange` with the limits of `budget`.
+    public func reserveChange(_ records: [ChangeRecord], budget: ChangeBudgetPolicy) throws -> ChangeReservation {
+        try reserveChange(records, limit: budget.maxChangesPerHour, window: budget.window, minSpacing: budget.minSpacing)
     }
 
     /// Atomically checks write spacing and the rolling budget and, if both allow, inserts

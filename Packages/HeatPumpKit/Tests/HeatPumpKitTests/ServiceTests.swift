@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 @Suite("Setpoint validation")
 struct ValidationTests {

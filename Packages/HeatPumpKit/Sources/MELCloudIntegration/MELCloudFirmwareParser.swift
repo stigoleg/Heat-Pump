@@ -1,4 +1,5 @@
 import Foundation
+import HeatPumpKit
 
 /// Firmware updates of the Wi-Fi adapter (MELCloud Classic). Reverse-engineered from MELCloud's own
 /// web client and not verified against the user's account: parsing is tolerant and response shapes

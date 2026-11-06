@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 @Suite("Weekly timer: decoding, editing and saving")
 struct WeeklyTimerTests {

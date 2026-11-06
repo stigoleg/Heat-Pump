@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import HeatPumpKit
+import Integrations
 import MCP
 
 let instructions = """
@@ -32,7 +33,7 @@ application.setActivationPolicy(.accessory)
 
 let service: HeatPumpService
 do {
-    service = try HeatPumpService.makeDefault()
+    service = try IntegrationCatalog.makeService()
 } catch {
     Log.error("fatal: \(error)")
     exit(1)

@@ -1,4 +1,5 @@
 import Foundation
+import HeatPumpKit
 
 /// MELCloud Classic `Device/SetAta` EffectiveFlags bits.
 public struct ClassicEffectiveFlags: OptionSet, Sendable {
@@ -48,7 +49,7 @@ enum ClassicLoginOutcome: Equatable {
 
 /// Pure mapping between MELCloud Classic wire JSON and backend-neutral models.
 /// Every accessor is tolerant: missing, null or mistyped fields become `nil`.
-enum MELCloudClassicParser {
+package enum MELCloudClassicParser {
     static let loginThrottleErrorId = 6
 
     // MARK: Login

@@ -32,7 +32,7 @@ public struct ARPScanner: LocalNetworkScanning {
 
     /// Active, non-loopback Ethernet/Wi-Fi interfaces with a private IPv4 address:
     /// (own address, network base of its /24), host byte order.
-    static func localSubnets() -> [(own: UInt32, base: UInt32)] {
+    package static func localSubnets() -> [(own: UInt32, base: UInt32)] {
         var result: [(own: UInt32, base: UInt32)] = []
         var list: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&list) == 0, let first = list else { return [] }
@@ -46,7 +46,7 @@ public struct ARPScanner: LocalNetworkScanning {
                 String(cString: entry.pointee.ifa_name).hasPrefix("en")
             else { continue }
             let ip = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { UInt32(bigEndian: $0.pointee.sin_addr.s_addr) }
-            guard LocalSmartClient.validatedHost(dotted(ip)) != nil else { continue }
+            guard LocalAccess.validatedHost(dotted(ip)) != nil else { continue }
             result.append((ip, ip & 0xFFFF_FF00))
         }
         return result

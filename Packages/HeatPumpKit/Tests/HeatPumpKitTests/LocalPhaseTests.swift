@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 /// 0x09 (sub-mode, stage, auto sub-mode), runtime minutes in 0x03, defrost aggregation and the
 /// frequent-defrost health rule.

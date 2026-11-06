@@ -2,6 +2,8 @@ import Foundation
 import Synchronization
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 /// Counts reads per host; replies with the fixture frames (or fails) without any network.
 final class FakeLocalNetwork: Sendable {
@@ -26,7 +28,7 @@ final class FakeLocalNetwork: Sendable {
             currentSubnets: { self.state.withLock { $0.subnets } })
     }
 
-    struct Client: LocalStatusReading {
+    struct Client: CN105StatusReading {
         let host: String
         let network: FakeLocalNetwork
         func readStatus() async throws -> LocalStatusReply {

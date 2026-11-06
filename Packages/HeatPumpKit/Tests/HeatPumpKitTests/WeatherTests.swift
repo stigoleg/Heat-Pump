@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 @Suite("MET forecast and expected use tomorrow")
 struct WeatherTests {
@@ -147,7 +149,10 @@ struct WeatherTests {
         let store = try HistoryStore(path: temporaryDatabasePath())
         try store.insertSnapshot(makeState(at: clock.now))
         try store.saveRawDevice(RawDevice(deviceId: 1, fetchedAt: clock.now, json: .object([:]), listing: wrappers.first))
-        let service = makeService(store: store, transport: StubTransport())
+        // The stored listing is MELCloud's, so only the MELCloud connection reads it.
+        let service = HeatPumpService(
+            backend: MELCloudClassicBackend(credentials: InMemoryCredentialStore(), transport: StubTransport()), store: store,
+            timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         let resolved = try #require(try await service.weatherLocation())
         #expect(resolved.source == .melcloud)
         #expect(resolved.latitude == 59.91)

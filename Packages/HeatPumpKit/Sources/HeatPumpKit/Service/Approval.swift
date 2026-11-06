@@ -67,7 +67,7 @@ public enum ApprovalPolicy {
     public static func approver(
         environment: [String: String], interactive: any ChangeApprover
     ) -> any ChangeApprover {
-        guard HeatPumpService.isMock(environment: environment), let value = environment["VARMEPUMPE_APPROVAL"] else {
+        guard IntegrationContext.demoRequested(environment: environment), let value = environment["VARMEPUMPE_APPROVAL"] else {
             return interactive
         }
         switch value.lowercased() {

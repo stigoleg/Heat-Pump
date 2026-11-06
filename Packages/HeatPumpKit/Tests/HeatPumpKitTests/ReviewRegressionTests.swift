@@ -2,6 +2,8 @@ import Foundation
 import Synchronization
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 /// Regression tests for the round-1 review findings (numbered as in the review).
 @Suite("Review regressions")

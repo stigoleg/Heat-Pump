@@ -52,8 +52,8 @@ extension HeatPumpService {
         if let lat = settings.latitude, let lon = settings.longitude {
             return WeatherLocation(latitude: lat, longitude: lon, placeName: settings.placeName, source: .manual)
         }
-        if let deviceId = try store.latestSnapshot()?.state.deviceId,
-            let location = MELCloudClassicParser.buildingLocation(try store.rawDevice(deviceId: deviceId)?.listing)
+        if let deviceId = try store.latestSnapshot()?.state.deviceId, let reporter = backend as? any DeviceLocationReporting,
+            let location = reporter.location(fromStoredListing: try store.rawDevice(deviceId: deviceId)?.listing)
         {
             return WeatherLocation(latitude: location.latitude, longitude: location.longitude, placeName: settings.placeName, source: .melcloud)
         }

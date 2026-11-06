@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 @Suite("Frost protection, holiday mode and the weekly timer")
 struct AwayTests {
@@ -249,7 +251,7 @@ struct AwayTests {
     }
 
     /// MockBackend whose away/timer endpoints answer 401 (as an unsupported endpoint might).
-    actor RefusingBackend: HeatPumpBackend {
+    actor RefusingBackend: HeatPumpBackend, AwayModesDriver {
         nonisolated let identifier = "refusing"
         let inner: MockBackend
         init(now: @escaping @Sendable () -> Date) { inner = MockBackend(timeZone: .gmt, now: now) }

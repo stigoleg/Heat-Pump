@@ -66,6 +66,8 @@ targets:
     dependencies:
       - package: HeatPumpKit
         product: HeatPumpKit
+      - package: HeatPumpKit
+        product: Integrations
       - target: varmepumpe-mcp
         embed: true
         codeSign: true
@@ -90,6 +92,8 @@ targets:
     dependencies:
       - package: HeatPumpKit
         product: HeatPumpKit
+      - package: HeatPumpKit
+        product: Integrations
       - package: MCP
         product: MCP
 

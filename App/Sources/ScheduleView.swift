@@ -102,8 +102,8 @@ struct ScheduleView: View {
 
     /// MELCloud's plan (as last read) is no longer the one the draft was made from.
     private var changedElsewhere: Bool {
-        guard hasChanges, let base, let latest = model.weeklyTimer else { return false }
-        return !latest.hasSameContent(as: base)
+        guard hasChanges, let base, let latest = model.weeklyTimer, let format = model.service?.weeklyTimerFormat else { return false }
+        return !latest.hasSameContent(as: base, format: format)
     }
 
     /// Takes the stored plan as base and draft, unless the user has unsaved edits: then both stay,
@@ -346,7 +346,7 @@ struct ScheduleView: View {
     // MARK: Saving
 
     @ViewBuilder private func saveBar(_ draft: WeeklyTimer) -> some View {
-        let problem = draft.validationProblem(limits: model.state?.limits)
+        let problem = model.service?.weeklyTimerFormat.flatMap { draft.validationProblem(limits: model.state?.limits, format: $0) }
         if changedElsewhere || outcome?.message.contains(HeatPumpService.timerChangedMessage) == true {
             InsightCard(
                 title: "The schedule has changed in MELCloud",

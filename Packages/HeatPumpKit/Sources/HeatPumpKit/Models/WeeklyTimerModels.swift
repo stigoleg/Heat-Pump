@@ -13,8 +13,9 @@ public struct TimerEvent: Codable, Sendable, Equatable {
     public var fanSpeed: Int?
     public var vaneHorizontal: VaneHorizontal?
     public var vaneVertical: VaneVertical?
-    /// The wire object as read (nil for events made in the app). Fields the app does not know,
-    /// such as a server-side ID, go back unchanged.
+    /// The wire object as read (nil for events made in the app); opaque here, only the driver's
+    /// `WeeklyTimerFormat` interprets it. Fields the app does not know, such as a server-side ID,
+    /// go back unchanged.
     public var raw: JSONValue?
 
     public init(
@@ -30,11 +31,6 @@ public struct TimerEvent: Codable, Sendable, Equatable {
         self.vaneHorizontal = vaneHorizontal
         self.vaneVertical = vaneVertical
         self.raw = raw
-    }
-
-    /// Exactly as read from MELCloud (not made or changed in the app).
-    public var isAsRead: Bool {
-        raw.flatMap(MELCloudClassicParser.timerEvent) == self
     }
 
     /// Same settings (power, mode, temperature, fan, vanes), regardless of day, time and wire object.
@@ -282,24 +278,15 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// The same plan in effect: on/off, and per season its name, start and the multiset of events
     /// (day, time, power, mode, temperature, fan, vanes as they would be sent). Server-assigned or
     /// cosmetic fields (IDs, `Name`, `Settings`, `EventTime` formatting), order and read time do not
-    /// count, so a plan MELCloud gave IDs after a save still matches what was sent.
-    public func hasSameContent(as other: WeeklyTimer) -> Bool {
-        decoded && other.decoded && enabled == other.enabled && contentKey == other.contentKey
+    /// count, so a plan MELCloud gave IDs after a save still matches what was sent. `format` (the
+    /// driver's) says how an event would be sent.
+    public func hasSameContent(as other: WeeklyTimer, format: any WeeklyTimerFormat) -> Bool {
+        decoded && other.decoded && enabled == other.enabled && contentKey(format) == other.contentKey(format)
     }
 
-    private var contentKey: [String] {
+    private func contentKey(_ format: any WeeklyTimerFormat) -> [String] {
         seasons.map { season in
-            let events = season.events.map { event -> String in
-                let wire = MELCloudClassicParser.timerEventJSON(event)
-                let fields: [String] = [
-                    "\(event.weekday)", "\(event.minuteOfDay)", wire["Power"]?.bool.map { "\($0)" } ?? "-",
-                    wire["OperationMode"]?.int.map { "\($0)" } ?? "-", wire["SetTemperature"]?.double.map { "\($0)" } ?? "-",
-                    wire["FanSpeed"]?.int.map { "\($0)" } ?? "-", wire["VaneHorizontal"]?.int.map { "\($0)" } ?? "-",
-                    wire["VaneVertical"]?.int.map { "\($0)" } ?? "-",
-                ]
-                return fields.joined(separator: ",")
-            }
-            return season.identity + "|" + events.sorted().joined(separator: ";")
+            season.identity + "|" + season.events.map(format.contentKey).sorted().joined(separator: ";")
         }.sorted()
     }
 
@@ -446,7 +433,8 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
     /// Reason the plan cannot be saved, or nil. `limits` are the unit's setpoint limits.
     /// New and edited events are checked strictly; events exactly as read from MELCloud pass
     /// through unchanged (MELCloud accepted them, and the app must not make a plan unsavable).
-    public func validationProblem(limits: TemperatureLimits?) -> String? {
+    /// `format` (the driver's) says which events are as read.
+    public func validationProblem(limits: TemperatureLimits?, format: any WeeklyTimerFormat) -> String? {
         guard decoded else {
             return L10n.tr("The weekly schedule could not be read completely, so the app does not change it (that could delete events the app does not understand).")
         }
@@ -456,7 +444,7 @@ public struct WeeklyTimer: Codable, Sendable, Equatable {
         for season in seasons {
             var seen: [Int: Bool] = [:]
             for event in season.events {
-                let edited = !event.isAsRead
+                let edited = !format.isAsRead(event)
                 guard (1...7).contains(event.weekday), (0..<1440).contains(event.minuteOfDay) else {
                     return L10n.tr("Invalid day or time in the weekly schedule (00:00–23:59).")
                 }

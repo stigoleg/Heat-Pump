@@ -177,6 +177,13 @@ public struct LocalDiscoveryResult: Sendable, Equatable {
     }
 }
 
+/// One read-only status request to a local adapter (the real client, or a test fake).
+public protocol LocalStatusReading: Sendable {
+    /// Reads the adapter once and returns the parsed reading, stamped with `now()` taken when the
+    /// answer arrived. Throws `LocalAccessError.noFrames` when the answer holds no readings.
+    func readSample(now: @Sendable () -> Date) async throws -> LocalSample
+}
+
 /// Finds the adapter on the Mac's own subnet by its hardware address.
 public protocol LocalNetworkScanning: Sendable {
     /// IPv4 addresses on the local /24 whose hardware address is `mac` (any notation).
@@ -207,14 +214,28 @@ public struct LocalAccess: Sendable {
     public static let unavailable = LocalAccess(
         makeClient: { _ in throw LocalAccessError.notConfigured }, scanner: NoNetworkScanner(), currentSubnets: { [] })
 
-    /// The real adapter over HTTP on the home network.
-    public static let network = LocalAccess(
-        makeClient: { try LocalSmartClient(host: $0) }, scanner: ARPScanner(),
-        currentSubnets: { ARPScanner.localSubnets().map(\.base) })
+    /// Accepts dotted IPv4 addresses in the private ranges (10/8, 172.16/12, 192.168/16) only,
+    /// so a local client can never be pointed at anything outside the home network.
+    public static func validatedHost(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return nil }
+        var octets: [Int] = []
+        for part in parts {
+            guard (1...3).contains(part.count), part.allSatisfy(\.isASCII), part.allSatisfy(\.isNumber),
+                let value = Int(part), (0...255).contains(value)
+            else { return nil }
+            octets.append(value)
+        }
+        let isPrivate =
+            octets[0] == 10 || (octets[0] == 172 && (16...31).contains(octets[1])) || (octets[0] == 192 && octets[1] == 168)
+        guard isPrivate, octets[3] != 0, octets[3] != 255 else { return nil }
+        return octets.map(String.init).joined(separator: ".")
+    }
 }
 
 /// Network base of the /24 containing a dotted IPv4 address.
-func subnet24(_ host: String) -> UInt32? {
+package func subnet24(_ host: String) -> UInt32? {
     let parts = host.split(separator: ".").compactMap { UInt32($0) }
     guard parts.count == 4, parts.allSatisfy({ $0 <= 255 }) else { return nil }
     return parts[0] << 24 | parts[1] << 16 | parts[2] << 8
@@ -225,7 +246,7 @@ struct NoNetworkScanner: LocalNetworkScanning {
 }
 
 /// Normalised hardware address: 12 lowercase hex digits, or nil.
-func normalizedMAC(_ text: String) -> String? {
+package func normalizedMAC(_ text: String) -> String? {
     let hex = text.lowercased().filter(\.isHexDigit)
     return hex.count == 12 ? hex : nil
 }

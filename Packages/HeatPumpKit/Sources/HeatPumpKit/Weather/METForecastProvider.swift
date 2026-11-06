@@ -86,34 +86,3 @@ public struct METForecastProvider: WeatherProviding {
         return formatter.date(from: text)
     }
 }
-
-/// Demo forecast: `MockBackend`'s outdoor model continued into the future. Like MET: hourly for
-/// 60 hours, then one entry per 6 hours up to nine days, with made-up showers and symbols.
-public struct MockWeatherProvider: WeatherProviding {
-    private let now: @Sendable () -> Date
-
-    public init(now: @escaping @Sendable () -> Date = { Date() }) {
-        self.now = now
-    }
-
-    public func fetch(latitude: Double, longitude: Double, ifModifiedSince: String?) async throws -> WeatherResponse {
-        let start = (now().timeIntervalSince1970 / 3600).rounded(.down) * 3600
-        let first = Int(start / 3600)
-        let offsets = Array(0..<60) + (60..<(9 * 24)).filter { (first + $0) % 6 == 0 }
-        let hours = offsets.map { h -> ForecastHour in
-            let t = Date(timeIntervalSince1970: start + Double(h) * 3600)
-            let temperature = (MockBackend.outdoorTemperature(at: t) * 10).rounded() / 10
-            // Showers on some days, from smooth waves so every run shows the same weather.
-            let wave = sin(t.timeIntervalSince1970 / 86_400 * 1.7) + 0.4 * sin(t.timeIntervalSince1970 / 18_000)
-            let rain = max(0, (wave - 0.6) * 1.2)
-            let symbol =
-                rain > 0.3 ? (temperature < 0 ? "snow" : "rain")
-                : wave > 0.2 ? "cloudy" : wave > -0.4 ? "partlycloudy_day" : "clearsky_day"
-            return ForecastHour(
-                time: t, temperature: temperature, windSpeed: 2 + 2 * abs(sin(Double(h) / 7)), humidity: 85,
-                cloudFraction: 60, precipitation: h < 60 ? (rain * 10).rounded() / 10 : nil, symbol: symbol,
-                precipitation6h: (rain * 60).rounded() / 10)
-        }
-        return WeatherResponse(status: 200, hours: hours, lastModified: nil, expires: now().addingTimeInterval(1800))
-    }
-}

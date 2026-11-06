@@ -2,6 +2,7 @@ import Foundation
 import GRDB
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 @Suite("Price estimate and the multi-day outlook")
 struct PriceEstimatorTests {

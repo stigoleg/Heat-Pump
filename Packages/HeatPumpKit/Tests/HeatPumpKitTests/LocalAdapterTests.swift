@@ -3,6 +3,7 @@ import Foundation
 import Synchronization
 import Testing
 @testable import HeatPumpKit
+@testable import MELCloudIntegration
 
 /// Real frames captured from the user's adapter (no identifiers in them).
 enum LocalFixture {

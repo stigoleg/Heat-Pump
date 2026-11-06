@@ -252,37 +252,37 @@ extension HeatPumpService {
     /// Demo mode only: fills the last 48 hours with simulated snapshots (every 15 minutes) and 45
     /// days of outdoor temperatures so charts, hourly cost, power and forecast estimates have data
     /// on first launch. Does nothing when the
-    /// database already has older snapshots or the backend is not the mock.
+    /// database already has older snapshots or the backend does not simulate data.
     public func seedDemoHistoryIfNeeded() async throws {
-        guard let mock = backend as? MockBackend else { return }
+        guard let demo = backend as? any DemoDataSeeding else { return }
         let t = now()
-        try seedDemoLocalIfNeeded(now: t)
-        // Older outdoor temperatures (MELCloud's log only goes 7 days back per request), so the
+        try seedDemoLocalIfNeeded(demo, now: t)
+        // Older outdoor temperatures (the temperature log only goes 7 days back per request), so the
         // degree-day model behind "Estimate tomorrow" has enough days.
+        let deviceId = demo.demoDeviceId
         let older = DateInterval(start: t.addingTimeInterval(-45 * 86_400), end: t.addingTimeInterval(-7 * 86_400))
-        if try store.temperaturePoints(deviceId: MockBackend.deviceId, from: older.start, to: older.end).isEmpty {
-            try store.upsertTemperaturePoints(
-                try await mock.fetchTemperatureLog(deviceId: MockBackend.deviceId, range: older), deviceId: MockBackend.deviceId)
+        if try store.temperaturePoints(deviceId: deviceId, from: older.start, to: older.end).isEmpty {
+            try store.upsertTemperaturePoints(try await demo.fetchTemperatureLog(deviceId: deviceId, range: older), deviceId: deviceId)
         }
-        let existing = try store.snapshots(deviceId: MockBackend.deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
+        let existing = try store.snapshots(deviceId: deviceId, from: t.addingTimeInterval(-48 * 3600), to: t.addingTimeInterval(-3600))
         guard existing.isEmpty else { return }
         var at = t.addingTimeInterval(-48 * 3600)
         while at < t.addingTimeInterval(-60) {
-            try store.insertSnapshot(await mock.state(at: at))
+            try store.insertSnapshot(await demo.demoState(at: at))
             at = at.addingTimeInterval(15 * 60)
         }
     }
 
     /// Demo mode: turns local access on (simulated adapter) the first time, and while it is on
     /// fills the last 7 days with one simulated reading per minute.
-    func seedDemoLocalIfNeeded(now t: Date) throws {
+    func seedDemoLocalIfNeeded(_ demo: any DemoDataSeeding, now t: Date) throws {
         if try store.setting(LocalSettings.self, key: Self.localSettingsKey) == nil {
-            try saveLocalSettings(LocalSettings(enabled: true, host: MockLocalSimulation.host))
+            try saveLocalSettings(LocalSettings(enabled: true, host: demo.demoLocalHost))
         }
         let from = t.addingTimeInterval(-7 * 86_400)
         guard try localSettings().enabled, try store.localSamples(from: from, to: t.addingTimeInterval(-3600)).isEmpty
         else { return }
         try store.insertLocalSamples(
-            MockLocalSimulation.samples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling))
+            demo.demoLocalSamples(from: from, to: t.addingTimeInterval(-60), shortCycling: local.simulatedShortCycling))
     }
 }

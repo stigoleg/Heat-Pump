@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import MELCloudIntegration
 
 /// MELCloud Classic modes 9/10/11 are heat/dry/cool with i-See (homebridge constants).
 @Suite("i-See operation modes 9/10/11")

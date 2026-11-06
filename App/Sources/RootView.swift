@@ -93,7 +93,7 @@ struct RefreshButton: View {
         if let until = result.blockedUntil, until > now { return until }
         if let next = result.nextRefreshAllowed, next > now { return next }
         if result.refreshed, let fetched = result.fetchedAt {
-            let next = fetched.addingTimeInterval(HeatPumpService.minRefreshInterval)
+            let next = fetched.addingTimeInterval(model.service?.policy.minRefreshInterval ?? RateLimitPolicy.standard.minRefreshInterval)
             if next > now { return next }
         }
         return nil

@@ -1,4 +1,5 @@
 import Foundation
+import HeatPumpKit
 
 /// Frost protection, holiday mode and the weekly timer (MELCloud Classic). These endpoints are
 /// not verified against the user's account: parsing is tolerant and response shapes (keys and
@@ -88,7 +89,7 @@ extension MELCloudClassicParser {
 
     /// `Timer/Get2`: `{Enabled, Seasons: [{ID, Name, StartDay, StartMonth, Events}]}`. Events are
     /// listed only when every event of every season decodes (see `WeeklyTimer`).
-    static func weeklyTimer(_ json: JSONValue) -> WeeklyTimer {
+    package static func weeklyTimer(_ json: JSONValue) -> WeeklyTimer {
         var seasons: [TimerSeason] = []
         var count = 0
         var decoded = true
@@ -136,7 +137,7 @@ extension MELCloudClassicParser {
     /// `Timer/SetAta2` body: every season with its events. All fields of untouched events and
     /// seasons go back as read; with no events at all the plan is switched off (as the web client does).
     /// `enabled` must be known (`validationProblem` refuses nil); it is never guessed as off here.
-    static func timerSetBody(timer: WeeklyTimer, deviceId: Int) -> JSONValue {
+    package static func timerSetBody(timer: WeeklyTimer, deviceId: Int) -> JSONValue {
         let seasons = timer.seasons.map(timerSeasonJSON)
         let hasEvents = timer.seasons.contains { !$0.events.isEmpty }
         return .object([
@@ -196,7 +197,7 @@ extension MELCloudClassicParser {
     ]
 
     /// The error text of a `Timer/SetAta2` answer, or nil for success (`ErrorCode` -1, or no `Data`).
-    static func timerSaveError(_ json: JSONValue) -> String? {
+    package static func timerSaveError(_ json: JSONValue) -> String? {
         guard let data = json["Data"], !data.isNull, let code = data["ErrorCode"]?.int, code != -1 else { return nil }
         let index = timerErrorMessages.indices.contains(code) ? code : 0
         if index == 2, let max = data["MaxEvents"]?.string {

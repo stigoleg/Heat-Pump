@@ -220,32 +220,3 @@ public struct TibberPriceProvider: PriceProvider {
         return PriceAggregation.hourly(entries, area: "tibber", source: "tibber", timeZone: timeZone)
     }
 }
-
-/// Deterministic Norwegian winter price curve for `VARMEPUMPE_BACKEND=mock`: cheap nights,
-/// morning and evening peaks, a different level each day. Spot in NO1 (25 % VAT).
-public struct MockPriceProvider: PriceProvider {
-    public let source = "mock"
-    public let area = "NO1"
-    public let fetchesRangesInOneRequest = true
-
-    public init() {}
-
-    public func fetchPrices(days: [Date], timeZone: TimeZone) async throws -> [HourPrice] {
-        let calendar = WireDate.calendar(timeZone)
-        return days.flatMap { day -> [HourPrice] in
-            let start = calendar.startOfDay(for: day)
-            let dayIndex = start.timeIntervalSince1970 / 86_400
-            let level = 85 + 35 * sin(dayIndex * 0.9) + 15 * sin(dayIndex * 0.37)
-            return (0..<24).compactMap { h -> HourPrice? in
-                guard let hour = calendar.date(byAdding: .hour, value: h, to: start) else { return nil }
-                let hh = Double(h)
-                let morning = 45 * exp(-pow((hh - 8) / 1.6, 2))
-                let evening = 60 * exp(-pow((hh - 18) / 2.0, 2))
-                let night: Double = hh < 5 ? -25 : 0
-                let spot = max(5, level + morning + evening + night)
-                let rounded = (spot * 100).rounded() / 100
-                return HourPrice(hour: hour, area: area, source: source, spotOre: rounded, totalOre: rounded * 1.25)
-            }
-        }
-    }
-}

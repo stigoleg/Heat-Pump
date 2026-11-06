@@ -124,6 +124,13 @@ public struct WeatherResponse: Sendable, Equatable {
     public var hours: [ForecastHour]
     public var lastModified: String?
     public var expires: Date?
+
+    package init(status: Int, hours: [ForecastHour], lastModified: String?, expires: Date?) {
+        self.status = status
+        self.hours = hours
+        self.lastModified = lastModified
+        self.expires = expires
+    }
 }
 
 public enum WeatherError: Error, Sendable, Equatable, LocalizedError {

@@ -1,4 +1,6 @@
 import Foundation
+import HeatPumpKit
+import MELCloudIntegration
 
 /// Simulated local readings for demo mode (`VARMEPUMPE_BACKEND=mock`). A pure function of
 /// time, consistent with `MockBackend`: the average power equals the growth of its energy

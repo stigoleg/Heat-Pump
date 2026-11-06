@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import MELCloudIntegration
 
 @Suite("MELCloud Classic decoding")
 struct ClassicDecodingTests {

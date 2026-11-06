@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
+@testable import MELCloudIntegration
 
 @Suite("Firmware updates of the Wi-Fi adapter")
 struct FirmwareTests {

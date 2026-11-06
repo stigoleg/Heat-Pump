@@ -76,8 +76,10 @@ extension HeatPumpService {
     /// Cached settings (or the device listing's copy) without touching the network.
     public func storedAwaySettings() throws -> AwaySettings? {
         if let cached = try store.setting(AwaySettings.self, key: Self.awaySettingsKey) { return cached }
-        guard let deviceId = try store.latestSnapshot()?.state.deviceId else { return nil }
-        return MELCloudClassicParser.awayFromListing(try store.rawDevice(deviceId: deviceId)?.listing)
+        guard let deviceId = try store.latestSnapshot()?.state.deviceId,
+            let driver = backend as? any AwayModesDriver
+        else { return nil }
+        return driver.awaySettings(fromStoredListing: try store.rawDevice(deviceId: deviceId)?.listing)
     }
 
     /// Frost protection and holiday mode, read from MELCloud when the cached copy is older than
@@ -128,13 +130,19 @@ extension HeatPumpService {
 
     /// One read of both settings; keeps what was last sent so the page can compare.
     private func readAway(deviceId: Int, keeping cached: AwaySettings?, at t: Date) async throws -> AwaySettings {
-        var fresh = try await backend.fetchAwaySettings(deviceId: deviceId)
+        var fresh = try await driver((any AwayModesDriver).self).fetchAwaySettings(deviceId: deviceId)
         fresh.fetchedAt = fresh.fetchedAt ?? t
         fresh.sentFrost = cached?.sentFrost
         fresh.sentHoliday = cached?.sentHoliday
         fresh.sentAt = cached?.sentAt
         try store.saveSetting(fresh, key: Self.awaySettingsKey)
         return fresh
+    }
+
+    /// How the connection reads weekly plans (nil without a weekly schedule), for comparing and
+    /// validating plans in the UI.
+    public nonisolated var weeklyTimerFormat: (any WeeklyTimerFormat)? {
+        (backend as? any WeeklyScheduleDriver)?.weeklyTimerFormat
     }
 
     public func storedWeeklyTimer() throws -> WeeklyTimer? {
@@ -167,7 +175,7 @@ extension HeatPumpService {
             return cached
         case .allowed:
             do {
-                var timer = try await backend.fetchWeeklyTimer(deviceId: deviceId)
+                var timer = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(deviceId: deviceId)
                 timer.fetchedAt = timer.fetchedAt ?? t
                 try store.saveSetting(timer, key: Self.weeklyTimerKey)
                 try store.recordFetchSuccess(key: Self.timerFetchKey, now: t)
@@ -233,10 +241,10 @@ extension HeatPumpService {
             let record = ChangeRecord(
                 timestamp: at, source: source, field: change.field, oldValue: change.currentValue(in: current),
                 newValue: change.valueDescription, reason: reason, result: .pending)
-            switch try store.reserveChange([record]) {
+            switch try store.reserveChange([record], budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
-                if waited + wait > Self.maxWriteWait {
+                if waited + wait > policy.maxWriteWait {
                     return try reject(HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
                 }
                 waited += wait
@@ -245,7 +253,7 @@ extension HeatPumpService {
                 return try reject(HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
             case .reserved(let ids):
                 do {
-                    try await backend.applyAway(change, deviceId: deviceId)
+                    try await driver((any AwayModesDriver).self).applyAway(change, deviceId: deviceId)
                     try store.finishChange(ids: ids, result: .ok)
                     var updated = change.applied(to: current ?? AwaySettings())
                     updated.pendingSince = at
@@ -302,12 +310,16 @@ extension HeatPumpService {
                 nextAllowed: nextAllowed, blockedUntil: blockedUntil)
         }
         let t = now()
+        guard let schedule = backend as? any WeeklyScheduleDriver else {
+            return try reject(HeatPumpError.notSupported.errorDescription ?? "")
+        }
+        let format = schedule.weeklyTimerFormat
         guard let snapshot = try store.latestSnapshot() else { return try reject(L10n.tr("No status from the heat pump yet.")) }
         if !base.decoded {
             return try reject(
                 L10n.tr("The weekly schedule from MELCloud could not be read completely, so the app does not change it. Fetch the schedule again first."))
         }
-        if let problem = timer.validationProblem(limits: snapshot.state.limits) { return try reject(problem) }
+        if let problem = timer.validationProblem(limits: snapshot.state.limits, format: format) { return try reject(problem) }
         if try store.credentialsRejected() { return try reject(HeatPumpError.credentialsRejected.errorDescription ?? "") }
         if let block = try store.blockStatus(now: t) {
             return try reject(block.reason.message(until: block.until), blockedUntil: block.until)
@@ -315,7 +327,7 @@ extension HeatPumpService {
         let deviceId = snapshot.state.deviceId
         do {
             let fresh = try await readTimerBeforeSave(deviceId: deviceId)
-            if !fresh.hasSameContent(as: base) { return try reject(Self.timerChangedMessage) }
+            if !fresh.hasSameContent(as: base, format: format) { return try reject(Self.timerChangedMessage) }
         } catch let error as HeatPumpError {
             if case .blocked(let until) = error { return try reject(error.errorDescription ?? "", blockedUntil: until) }
             return try reject(error.errorDescription ?? "")
@@ -325,10 +337,10 @@ extension HeatPumpService {
             let at = now()
             let record = ChangeRecord(
                 timestamp: at, source: source, field: field, oldValue: oldValue, newValue: newValue, reason: reason, result: .pending)
-            switch try store.reserveChange([record]) {
+            switch try store.reserveChange([record], budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
-                if waited + wait > Self.maxWriteWait {
+                if waited + wait > policy.maxWriteWait {
                     return try reject(HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
                 }
                 waited += wait
@@ -337,7 +349,7 @@ extension HeatPumpService {
                 return try reject(HeatPumpError.changeBudgetExceeded(nextAllowed: next).errorDescription ?? "", nextAllowed: next)
             case .reserved(let ids):
                 do {
-                    try await backend.saveWeeklyTimer(timer, deviceId: deviceId)
+                    try await schedule.saveWeeklyTimer(timer, deviceId: deviceId)
                     try store.finishChange(ids: ids, result: .ok)
                 } catch {
                     let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -347,19 +359,15 @@ extension HeatPumpService {
                         result: .failed, message: L10n.format("The weekly schedule was not saved: %@", message), field: field, oldValue: oldValue,
                         newValue: newValue, blockedUntil: blocked)
                 }
-                // Until it is read back, the cache holds what was sent (as MELCloud would return it).
-                var sent = MELCloudClassicParser.weeklyTimer(
-                    .object([
-                        "Enabled": MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)["TimerEnabled"] ?? .null,
-                        "Seasons": MELCloudClassicParser.timerSetBody(timer: timer, deviceId: deviceId)["Seasons"] ?? .array([]),
-                    ]))
+                // Until it is read back, the cache holds what was sent (as the unit would return it).
+                var sent = format.savedForm(of: timer, deviceId: deviceId)
                 sent.fetchedAt = at
                 sent.maxEvents = timer.maxEvents
                 sent.pendingSince = at
                 try store.saveSetting(sent, key: Self.weeklyTimerKey)
                 var readBack: WeeklyTimer?
                 if try store.reserveFetch(key: Self.timerVerifyKey, minInterval: Self.verifyInterval, now: now()) == .allowed,
-                    var fresh = try? await backend.fetchWeeklyTimer(deviceId: deviceId)
+                    var fresh = try? await schedule.fetchWeeklyTimer(deviceId: deviceId)
                 {
                     fresh.fetchedAt = fresh.fetchedAt ?? now()
                     fresh.maxEvents = fresh.maxEvents ?? timer.maxEvents
@@ -367,7 +375,7 @@ extension HeatPumpService {
                     try store.recordFetchSuccess(key: Self.timerFetchKey, now: now())
                     readBack = fresh
                 }
-                let confirmed = readBack.map { $0.hasSameContent(as: sent) }
+                let confirmed = readBack.map { $0.hasSameContent(as: sent, format: format) }
                 let summary = sent.summary.lowercased(with: L10n.locale)
                 let message: String =
                     switch confirmed {
@@ -401,7 +409,7 @@ extension HeatPumpService {
         case .allowed: break
         }
         do {
-            var fresh = try await backend.fetchWeeklyTimer(deviceId: deviceId)
+            var fresh = try await driver((any WeeklyScheduleDriver).self).fetchWeeklyTimer(deviceId: deviceId)
             fresh.fetchedAt = fresh.fetchedAt ?? t
             try store.saveSetting(fresh, key: Self.weeklyTimerKey)
             try store.recordFetchSuccess(key: Self.timerFetchKey, now: t)

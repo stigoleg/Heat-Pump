@@ -2,6 +2,7 @@ import Foundation
 import Synchronization
 import Testing
 @testable import HeatPumpKit
+@testable import DemoIntegration
 
 /// Approver that records requests and answers with a fixed decision.
 final class RecordingApprover: ChangeApprover {

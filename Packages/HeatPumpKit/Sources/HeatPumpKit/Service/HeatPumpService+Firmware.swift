@@ -59,7 +59,7 @@ extension HeatPumpService {
                 ?? HeatPumpError.blocked(until: until).errorDescription
         case .allowed:
             do {
-                status.updates = try await backend.firmwareUpdates(deviceId: state.deviceId)
+                status.updates = try await driver((any FirmwareDriver).self).firmwareUpdates(deviceId: state.deviceId)
                 status.fetchedAt = t
                 try store.saveSetting(status, key: Self.firmwareStatusKey)
                 try store.recordFetchSuccess(key: Self.firmwareFetchKey, now: t)
@@ -188,7 +188,7 @@ extension HeatPumpService {
         }
         return try await sendFirmwareAction(
             source: source, reason: reason, old: oldValue, new: newValue,
-            send: { try await self.backend.approveFirmwareUpdate(id: updateId, deviceId: deviceId) },
+            send: { try await self.driver((any FirmwareDriver).self).approveFirmwareUpdate(id: updateId, deviceId: deviceId) },
             succeeded: { at in
                 status.startedAt = at
                 status.fetchedAt = nil  // read again on the next poll
@@ -222,7 +222,7 @@ extension HeatPumpService {
         }
         return try await sendFirmwareAction(
             source: source, reason: reason, old: oldValue, new: newValue,
-            send: { try await self.backend.cancelFirmwareUpdate(id: updateId, deviceId: deviceId) },
+            send: { try await self.driver((any FirmwareDriver).self).cancelFirmwareUpdate(id: updateId, deviceId: deviceId) },
             succeeded: { _ in
                 status.startedAt = nil
                 status.fetchedAt = nil
@@ -253,10 +253,10 @@ extension HeatPumpService {
             let at = now()
             let record = ChangeRecord(
                 timestamp: at, source: source, field: Self.firmwareField, oldValue: old, newValue: new, reason: reason, result: .pending)
-            switch try store.reserveChange([record]) {
+            switch try store.reserveChange([record], budget: policy.changeBudget) {
             case .tooSoon(let next):
                 let wait = max(0, next.timeIntervalSince(at))
-                if waited + wait > Self.maxWriteWait {
+                if waited + wait > policy.maxWriteWait {
                     return try firmwareReject(
                         HeatPumpError.writeTooSoon(nextAllowed: next).errorDescription ?? "", source: source, reason: reason, old: old,
                         new: new, nextAllowed: next, blockedUntil: nil)
