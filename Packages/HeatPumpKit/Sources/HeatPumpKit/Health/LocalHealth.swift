@@ -136,7 +136,7 @@ public enum LocalHealth {
             HealthFinding(
                 code: "local_unreachable", severity: .info, title: L10n.tr("The Wi-Fi adapter is not responding on the home network"),
                 detail: detail,
-                recommendation: L10n.tr("Often the router has given the heat pump a new IP address. Click “Find automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router."))
+                recommendation: L10n.tr("Often the router has given the heat pump a new IP address. Click “Find Automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router."))
         ]
     }
 

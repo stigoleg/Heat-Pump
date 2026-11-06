@@ -3328,7 +3328,7 @@
         }
       }
     },
-    "Often the router has given the heat pump a new IP address. Click “Find automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router." : {
+    "Often the router has given the heat pump a new IP address. Click “Find Automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {

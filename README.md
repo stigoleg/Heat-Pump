@@ -204,7 +204,7 @@ Turned on under Forecast. In hours that Tibber (or the app, against the average 
 <details>
 <summary><b>Changes are sent automatically</b></summary>
 
-Changes in Control and on the thermostat are sent about 2 seconds after the last adjustment. Several adjustments are combined into one send, and if you set a value back to the current one, nothing is sent. The badge at the top shows “Edited…”, “Sending…”, “Sent – waiting for the heat pump”, “Confirmed” or the error. Each send contains the whole settings object from MELCloud, so fields you did not change keep their values.
+Changes in Control and on the thermostat are sent about 2 seconds after the last adjustment. Several adjustments are combined into one send, and if you set a value back to the current one, nothing is sent. The badge at the top shows “Changed…”, “Sending…”, “Sent – waiting for the heat pump”, “Confirmed” or the error. Each send contains the whole settings object from MELCloud, so fields you did not change keep their values.
 
 </details>
 
