@@ -36,9 +36,9 @@ extension HeatPumpService {
     public static let timerChangedMessage =
         L10n.tr("The weekly schedule has been changed in MELCloud since you started editing. Fetch the schedule again and redo your changes.")
     static let awayRefusedMessage =
-        L10n.tr("MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try again”.")
+        L10n.tr("MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try Again”.")
     static let timerRefusedMessage =
-        L10n.tr("MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch now”.")
+        L10n.tr("MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch Now”.")
 
     /// When automatic reads of `key` (`away` or `timer`) are paused after a refusal, or nil.
     public func endpointRefusedUntil(_ key: String) throws -> Date? {

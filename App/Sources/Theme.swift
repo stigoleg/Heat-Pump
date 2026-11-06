@@ -195,12 +195,12 @@ enum Format {
     }
 
     static func hour(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)).minute().locale(Display.locale))
+        date.formatted(Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)).minute().locale(Display.locale))
     }
 
     /// "tor. 14" (weekday and hour).
     static func weekdayHour(_ date: Date) -> String {
-        date.formatted(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)).locale(Display.locale))
+        date.formatted(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .abbreviated)).locale(Display.locale))
     }
 
     static func dayMonth(_ date: Date) -> String {

@@ -95,7 +95,7 @@ struct OutlookView: View {
         }
         .chartYScale(domain: low...high)
         .calmYAxis { Display.format("%.0f°", $0) }
-        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
+        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .abbreviated)), count: 6)
         .chartXSelection(value: $selectedWeather)
         .accessibilityLabel("Temperature and precipitation, next 48 hours")
     }

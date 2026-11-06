@@ -17,7 +17,7 @@ extension HeatPumpService {
     static let firmwareActionMaxAge: TimeInterval = 60
     static let firmwareField = "firmware"
     static let firmwareRefusedMessage =
-        L10n.tr("MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh status”.")
+        L10n.tr("MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”.")
 
     public func storedFirmwareStatus() throws -> FirmwareStatus? {
         try store.setting(FirmwareStatus.self, key: Self.firmwareStatusKey)

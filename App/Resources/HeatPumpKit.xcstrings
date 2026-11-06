@@ -2286,7 +2286,7 @@
         }
       }
     },
-    "MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try again”." : {
+    "MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try Again”." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
@@ -2297,7 +2297,7 @@
         }
       }
     },
-    "MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh status”." : {
+    "MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh Status”." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {
@@ -2319,7 +2319,7 @@
         }
       }
     },
-    "MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch now”." : {
+    "MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch Now”." : {
       "extractionState" : "manual",
       "localizations" : {
         "nb" : {

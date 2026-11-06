@@ -421,7 +421,7 @@ struct HistoryView: View {
                     // Day bars reach to the end of today (and hour bars to the end of this hour).
                     .chartXScale(domain: periodStart...houseDomainEnd(perHour: perHour))
                     .calmYAxis { Display.format("%.0f", $0) }
-                    .calmXAxis(perHour ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat)
+                    .calmXAxis(perHour ? Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)) : range.axisFormat)
                     .chartXSelection(value: $selected)
                     .frame(height: 200)
                 }
@@ -617,7 +617,7 @@ struct HistoryView: View {
                     }
                 }
                 .calmYAxis { Display.format("%.1f", $0) }
-                .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
+                .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)), count: 8)
                 .chartXSelection(value: $selectedPrice)
                 .padding(.top, Theme.Space.l)
                 .frame(height: 196)
@@ -777,7 +777,7 @@ struct HistoryView: View {
         }
     }
 
-    private var powerAxis: Date.FormatStyle { range == .day ? Date.FormatStyle().hour(.twoDigits(amPM: .omitted)) : range.axisFormat }
+    private var powerAxis: Date.FormatStyle { range == .day ? Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)) : range.axisFormat }
 
     private func powerChart(_ buckets: [LocalPowerBucket]) -> some View {
         Chart {
@@ -876,7 +876,7 @@ struct HistoryView: View {
 extension HistoryRange {
     var axisFormat: Date.FormatStyle {
         switch self {
-        case .day: Date.FormatStyle().hour(.twoDigits(amPM: .omitted))
+        case .day: Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated))
         case .week: Date.FormatStyle().weekday(.abbreviated).day()
         case .month: Date.FormatStyle().day().month(.abbreviated)
         case .year: Date.FormatStyle().month(.abbreviated)

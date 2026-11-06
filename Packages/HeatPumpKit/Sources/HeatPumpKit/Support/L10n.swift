@@ -10,7 +10,7 @@ import Foundation
 ///
 /// The language is fixed for the life of the process; changing it in the app takes a restart.
 /// Keys must be string literals passed directly to `tr` or `format`, so
-/// `scripts/extract-kit-strings.py` can find them.
+/// `scripts/l10n.py` can find them.
 public enum L10n {
     public enum Language: String, Sendable, CaseIterable {
         case english = "en"
@@ -34,8 +34,7 @@ public enum L10n {
     public static let locale: Locale = makeLocale(language: language, region: Locale.current.region?.identifier)
 
     /// The `<lang>.lproj` folder of the enclosing app, or nil outside an app bundle.
-    // Immutable after initialization; Bundle lookups are thread-safe.
-    nonisolated(unsafe) static let strings: Bundle? = localizedBundle(for: language, in: hostApp())
+    static let strings: Bundle? = localizedBundle(for: language, in: hostApp())
 
     /// Translates `key` (English source text).
     public static func tr(_ key: String) -> String {

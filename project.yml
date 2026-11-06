@@ -38,7 +38,7 @@ targets:
       # Rendered from App/Icon/AppIcon.svg by App/Icon/render.sh.
       - path: App/Assets.xcassets
       # String catalogs: English source, Norwegian bokmål translation. HeatPumpKit.xcstrings
-      # holds the package's strings (scripts/extract-kit-strings.py), also read by the MCP helper.
+      # holds the package's strings (scripts/l10n.py), also read by the MCP helper.
       - path: App/Resources
     # Merged with the generated Info.plist: plain HTTP to the Wi-Fi adapter on the home network.
     info:

@@ -381,7 +381,7 @@ struct OverviewView: View {
         }
         .chartXScale(domain: domain)
         .calmYAxis { Display.format("%.1f", $0) }
-        .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .omitted)), count: 8)
+        .calmXAxis(Date.FormatStyle().hour(.twoDigits(amPM: .abbreviated)), count: 8)
         .chartXSelection(value: $selected)
     }
 
@@ -488,7 +488,7 @@ struct OverviewView: View {
         }
         .chartYScale(domain: low...high)
         .calmYAxis { Display.format("%.0f°", $0) }
-        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .omitted)), count: 6)
+        .calmXAxis(Date.FormatStyle().weekday(.abbreviated).hour(.twoDigits(amPM: .abbreviated)), count: 6)
         .chartXSelection(value: $selectedForecast)
         .accessibilityLabel("Outdoor temperature, next 48 hours")
     }

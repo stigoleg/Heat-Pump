@@ -24,13 +24,14 @@ Commands:
 import argparse
 import json
 import pathlib
+import platform
 import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESOURCES = ROOT / "App/Resources"
 KIT_SOURCES = ROOT / "Packages/HeatPumpKit/Sources"
-STRINGSDATA = ROOT / "build/DerivedData/Build/Intermediates.noindex/Varmepumpe.build/Debug/Varmepumpe.build/Objects-normal/arm64"
+STRINGSDATA = ROOT / "build/DerivedData/Build/Intermediates.noindex/Varmepumpe.build/Debug/Varmepumpe.build/Objects-normal" / platform.machine()
 CATALOGS = {"Localizable": RESOURCES / "Localizable.xcstrings", "HeatPumpKit": RESOURCES / "HeatPumpKit.xcstrings"}
 
 KIT_CALL = re.compile(r'L10n\.(?:tr|format)\(\s*"((?:[^"\\\n]|\\.)*)"')
@@ -113,6 +114,22 @@ def localization(value):
     if isinstance(value, str):
         return unit(value)
     return {"variations": {"plural": {form: unit(text) for form, text in value.items()}}}
+
+
+SPECIFIER = re.compile(r"%(?:\d+\$)?[-+ #0]*\d*(?:\.\d+)?(?:ll|l|h)?[@dDiuUxXoOfeEgGcCsSp%]")
+
+
+def specifiers(text):
+    """Sorted specifier types, ignoring positions and %%, for comparing key and translation."""
+    found = [re.sub(r"\d+\$", "", s) for s in SPECIFIER.findall(text) if s != "%%"]
+    return sorted(found)
+
+
+def translations_of(entry):
+    nb = entry.get("localizations", {}).get("nb", {})
+    if "stringUnit" in nb:
+        return [nb["stringUnit"].get("value", "")]
+    return [v["stringUnit"].get("value", "") for v in nb.get("variations", {}).get("plural", {}).values()]
 
 
 def has_translation(entry):
@@ -206,6 +223,12 @@ def main():
         problems += [f"[{table}] not in catalog: {k!r}" for k in keys if k not in strings]
         problems += [f"[{table}] unused in catalog: {k!r}" for k in strings if k not in keys]
         problems += [f"[{table}] no Norwegian translation: {k!r}" for k in keys if k in strings and not has_translation(strings[k])]
+        for key, entry in strings.items():
+            plural = "variations" in entry.get("localizations", {}).get("nb", {})
+            for value in translations_of(entry):
+                # A plural form may leave out the count (e.g. "one" written as a word).
+                if specifiers(value) != specifiers(key) and not (plural and set(specifiers(value)) <= set(specifiers(key))):
+                    problems.append(f"[{table}] format specifiers differ: {key!r} → {value!r}")
     if problems:
         print("\n".join(problems))
         print(f"{len(problems)} problem(s). Run `make l10n` and add the missing translations.")
