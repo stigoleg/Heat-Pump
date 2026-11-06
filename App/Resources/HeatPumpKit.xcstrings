@@ -1,5 +1,6198 @@
 {
   "sourceLanguage" : "en",
-  "strings" : {},
+  "strings" : {
+    "%.1f °C is outside the allowed range %.0f–%.0f °C for the %@ mode." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.1f °C er utenfor det tillatte området %.0f–%.0f °C for modus %@."
+          }
+        }
+      }
+    },
+    "%.2f NOK/kWh" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%.2f kr/kWh"
+          }
+        }
+      }
+    },
+    "%@\n\nReason from Claude: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n\nBegrunnelse fra Claude: %@"
+          }
+        }
+      }
+    },
+    "%@ (from %@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (fra %@)"
+          }
+        }
+      }
+    },
+    "%@ downloaded." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ lastet ned."
+          }
+        }
+      }
+    },
+    "%@: Changed: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Endret: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "%@: New: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Ny: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "%@: Removed: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Fjernet: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "%@: lowered to %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: senkes til %@ – %@"
+          }
+        }
+      }
+    },
+    "%@: normal temperature %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: vanlig temperatur %@"
+          }
+        }
+      }
+    },
+    "%@: pre-heated to %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: forvarmes til %@ – %@"
+          }
+        }
+      }
+    },
+    "%lld blinks: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld blink: %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld blinks: %@"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld blink: %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld blink: %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld defrosts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld defrost"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld defrosts"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld avriming"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld avriminger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld errors in the error log. Latest: “%@” %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld error in the error log. Latest: “%@” %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld errors in the error log. Latest: “%@” %@."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feil i feilloggen. Siste: «%@» %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feil i feilloggen. Siste: «%@» %@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld new errors, latest: “%@”. See Health in the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new error, latest: “%@”. See Health in the app."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld new errors, latest: “%@”. See Health in the app."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ny feil, siste: «%@». Se Helse i appen."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nye feil, siste: «%@». Se Helse i appen."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld files" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld av %lld filer"
+          }
+        }
+      }
+    },
+    "%lld older errors. Latest: “%@” %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld older error. Latest: “%@” %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld older errors. Latest: “%@” %@."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld eldre feil. Siste: «%@» %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld eldre feil. Siste: «%@» %@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "(phase %@, approval %@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(fase %@, godkjenning %@)"
+          }
+        }
+      }
+    },
+    "1 (left)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 (venstre)"
+          }
+        }
+      }
+    },
+    "1 (top)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 (øverst)"
+          }
+        }
+      }
+    },
+    "1 July 2026" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1. juli 2026"
+          }
+        }
+      }
+    },
+    "3 (center)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 (midten)"
+          }
+        }
+      }
+    },
+    "5 (bottom)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 (nederst)"
+          }
+        }
+      }
+    },
+    "5 (right)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 (høyre)"
+          }
+        }
+      }
+    },
+    "A complete status from the heat pump is missing, so the change was not sent. Refresh and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mangler fullstendig status fra varmepumpen, så endringen ble ikke sendt. Oppdater og prøv igjen."
+          }
+        }
+      }
+    },
+    "A sensor in the outdoor unit is short-circuited or open." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En føler i utedelen er kortsluttet eller brutt."
+          }
+        }
+      }
+    },
+    "Air filter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfilter"
+          }
+        }
+      }
+    },
+    "An unknown error occurred while saving the weekly schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En ukjent feil oppstod da ukeplanen skulle lagres."
+          }
+        }
+      }
+    },
+    "Another change was just sent. Try again after %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En annen endring ble nettopp sendt. Prøv igjen etter %@."
+          }
+        }
+      }
+    },
+    "Another error was detected, for example in sensors or valves. Do not restart until it has been repaired." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annen feil oppdaget, blant annet på følere eller ventiler. Ikke start igjen før det er reparert."
+          }
+        }
+      }
+    },
+    "App" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        }
+      }
+    },
+    "Attempt %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forsøk nr. %lld."
+          }
+        }
+      }
+    },
+    "Auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
+          }
+        }
+      }
+    },
+    "Away during the day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borte på dagtid"
+          }
+        }
+      }
+    },
+    "Blinks steadily: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blinker jevnt: %@"
+          }
+        }
+      }
+    },
+    "Call the dealer or installer and give them the error code and the time." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ring forhandleren/installatøren og oppgi feilkoden og tidspunktet."
+          }
+        }
+      }
+    },
+    "Change mode to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endre modus til %@"
+          }
+        }
+      }
+    },
+    "Change target temperature to %.1f °C" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endre ønsket temperatur til %.1f °C"
+          }
+        }
+      }
+    },
+    "Changed in the app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endret i appen"
+          }
+        }
+      }
+    },
+    "Changed: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endret: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "Changed…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endret…"
+          }
+        }
+      }
+    },
+    "Cheap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Billig"
+          }
+        }
+      }
+    },
+    "Cheap hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Billig"
+          }
+        }
+      }
+    },
+    "Check that the air filter is clean and that the outdoor unit is not iced up, covered by snow or blocked. A lot of defrosting in damp sub-zero weather can also raise consumption for a while. If it persists for several days, call the dealer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk at luftfilteret er rent og at utedelen ikke er nediset, dekket av snø eller blokkert. Mye avriming i fuktig kuldegrader kan også gi høyere forbruk en periode. Vedvarer det i flere dager, ring forhandleren."
+          }
+        }
+      }
+    },
+    "Check that the air filter is clean, that the outdoor unit is not iced up or covered by snow, and that doors and windows are closed. If it continues for several days, call the dealer. Note that MELCloud sometimes reports energy figures late or wrong." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk at luftfilteret er rent, at utedelen ikke er nediset eller dekket av snø, og at dører/vinduer er lukket. Fortsetter det flere dager, ring forhandleren. Merk at MELCloud av og til rapporterer energitall forsinket eller feil."
+          }
+        }
+      }
+    },
+    "Check that the router and the internet work, and that the heat pump has power. If that does not help, switch off the circuit breaker for the heat pump for one minute and switch it back on." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk at ruteren og internett virker, og at varmepumpen har strøm. Hjelper ikke det, slå av sikringen til varmepumpen i ett minutt og slå den på igjen."
+          }
+        }
+      }
+    },
+    "Check whether the operation lamp on the indoor unit is blinking, and count the blinks. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk om driftslampen på innedelen blinker, og tell antall blink. %@"
+          }
+        }
+      }
+    },
+    "Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If it does not blink and the heating works, watch whether the error goes away at the next refresh." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se etter om driftslampen på innedelen blinker, og tell antall blink. Blinker den, slå av varmepumpen og ring forhandleren. Blinker den ikke og varmen virker, følg med på om feilen forsvinner ved neste oppdatering."
+          }
+        }
+      }
+    },
+    "Check whether the operation lamp on the indoor unit is blinking, and count the blinks. If it blinks, turn off the heat pump and call the dealer. If the code goes away by itself at the next reading, watch whether it comes back." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk om driftslampen på innedelen blinker, og tell antall blink. Blinker den, slå av varmepumpen og ring forhandleren. Forsvinner koden av seg selv ved neste avlesning, følg med på om den kommer igjen."
+          }
+        }
+      }
+    },
+    "Chosen place" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valgt sted"
+          }
+        }
+      }
+    },
+    "Claude wants to change the heat pump" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claude vil endre varmepumpen"
+          }
+        }
+      }
+    },
+    "Clean the air filter and record it, so the app can remind you next time." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rengjør luftfilteret og registrer det, så kan appen minne deg på neste gang."
+          }
+        }
+      }
+    },
+    "Clean the air filter within the next few days and record it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rengjør luftfilteret i løpet av de neste dagene og registrer det."
+          }
+        }
+      }
+    },
+    "Clean them at the next filter cleaning and record it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rengjør dem ved neste filterrengjøring og registrer det."
+          }
+        }
+      }
+    },
+    "Common causes are a clogged air filter, a heat pump that is large for the room (especially in mild weather), or a target temperature or fan setting that changes often. Clean the air filter, keep the target temperature steady (avoid big jumps), and consider fan auto. If it continues for several days, also when it is cold outdoors, you should call the dealer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanlige årsaker er tett luftfilter, at varmepumpen er stor for rommet (særlig i mildvær), eller at ønsket temperatur eller viften endres ofte. Rengjør luftfilteret, la ønsket temperatur ligge fast (unngå store hopp), og bruk gjerne vifte auto. Fortsetter det flere dager, også når det er kaldt ute, bør du ringe forhandleren."
+          }
+        }
+      }
+    },
+    "Communication error between the indoor and outdoor unit (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommunikasjonsfeil mellom innedel og utedel (simulert)"
+          }
+        }
+      }
+    },
+    "Confirmed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekreftet"
+          }
+        }
+      }
+    },
+    "Connected to the Wi-Fi adapter." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt med Wi-Fi-modulen."
+          }
+        }
+      }
+    },
+    "Cool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjøling"
+          }
+        }
+      }
+    },
+    "Cooling" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjøler"
+          }
+        }
+      }
+    },
+    "Could not change the temperature. Trying again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre temperaturen. Prøver igjen kl. %@."
+          }
+        }
+      }
+    },
+    "Could not change the temperature. Trying again at the next change at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre temperaturen. Prøver igjen ved neste skifte kl. %@."
+          }
+        }
+      }
+    },
+    "Could not change the temperature. Trying again later in this period." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke endre temperaturen. Prøver igjen senere i denne perioden."
+          }
+        }
+      }
+    },
+    "Could not interpret the answer from MELCloud: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke tolke svaret fra MELCloud: %@"
+          }
+        }
+      }
+    },
+    "Could not reach the Wi-Fi adapter: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fikk ikke kontakt med Wi-Fi-modulen: %@"
+          }
+        }
+      }
+    },
+    "Could not read frost protection and holiday mode from MELCloud: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese frostsikring og feriemodus fra MELCloud: %@"
+          }
+        }
+      }
+    },
+    "Could not read the firmware status from MELCloud: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese fastvarestatus fra MELCloud: %@"
+          }
+        }
+      }
+    },
+    "Could not read the weekly schedule from MELCloud before saving, so it was not sent (it may have been changed there): %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke lese ukeplanen fra MELCloud før lagring, så den ble ikke sendt (den kan være endret der): %@"
+          }
+        }
+      }
+    },
+    "Could not show the approval dialog (%@), so the change was not sent." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke vise godkjenningsdialog (%@), så endringen ble ikke sendt."
+          }
+        }
+      }
+    },
+    "Critical" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kritisk"
+          }
+        }
+      }
+    },
+    "Defrosting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avriser"
+          }
+        }
+      }
+    },
+    "Defrosting – it may blow little or cold air for a few minutes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avriser – det kan blåse lite eller kaldt i noen minutter"
+          }
+        }
+      }
+    },
+    "Demo: the token was not tested against Tibber." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo: nøkkelen ble ikke testet mot Tibber."
+          }
+        }
+      }
+    },
+    "Deodorizing/air purifying filter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luktfilter/luftrenser"
+          }
+        }
+      }
+    },
+    "DeviceID missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DeviceID mangler"
+          }
+        }
+      }
+    },
+    "Did not find the heat pump on the home network. Check that the Mac is on the same network, or enter the IP address from the router." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ikke varmepumpen på hjemmenettet. Sjekk at Macen er på samme nett, eller skriv inn IP-adressen fra ruteren."
+          }
+        }
+      }
+    },
+    "Did not find the heat pump's hardware address in MELCloud yet. Fetch the status first, or enter the IP address yourself (it is in the router's list of devices)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ikke maskinvareadressen til varmepumpen i MELCloud ennå. Hent status først, eller skriv inn IP-adressen selv (står i ruterens liste over enheter)."
+          }
+        }
+      }
+    },
+    "Did not get a fresh firmware status from MELCloud. Try again in a little while." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fikk ikke fersk fastvarestatus fra MELCloud. Prøv igjen om litt."
+          }
+        }
+      }
+    },
+    "Dry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avfukting"
+          }
+        }
+      }
+    },
+    "Drying" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avfukter"
+          }
+        }
+      }
+    },
+    "Electricity is cheap now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømmen er billig nå"
+          }
+        }
+      }
+    },
+    "Electricity is expensive now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømmen er dyr nå"
+          }
+        }
+      }
+    },
+    "Electricity is very cheap now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømmen er svært billig nå"
+          }
+        }
+      }
+    },
+    "Electricity is very expensive now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømmen er svært dyr nå"
+          }
+        }
+      }
+    },
+    "Elvia, standard grid tariff for households" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elvia, standard nettleie for husholdninger"
+          }
+        }
+      }
+    },
+    "Enter both latitude and longitude, or neither." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fyll inn både breddegrad og lengdegrad, eller ingen av dem."
+          }
+        }
+      }
+    },
+    "Error code %@. %@: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilkode %@. %@: %@"
+          }
+        }
+      }
+    },
+    "Error code %@. %@: %@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilkode %@. %@: %@ %@"
+          }
+        }
+      }
+    },
+    "Error: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feil: %@"
+          }
+        }
+      }
+    },
+    "Errors recorded in the last %lld days" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Errors recorded in the last %lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Errors recorded in the last %lld days"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Feil registrert siste %lld dag"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Feil registrert siste %lld dager"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Estimate tomorrow: ~%.0f kWh" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag i morgen: ~%.0f kWh"
+          }
+        }
+      }
+    },
+    "Estimate tomorrow: ~%.0f kWh · ~%.0f NOK" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslag i morgen: ~%.0f kWh · ~%.0f kr"
+          }
+        }
+      }
+    },
+    "Every day 22:30 → 19 °C, weekdays 06:30 and weekends 08:00 → 21 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle dager 22:30 → 19 °C, hverdager 06:30 og helg 08:00 → 21 °C."
+          }
+        }
+      }
+    },
+    "Expensive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyr"
+          }
+        }
+      }
+    },
+    "Expensive hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dyrt"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilet"
+          }
+        }
+      }
+    },
+    "Fair Wi-Fi signal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Middels Wi-Fi-signal"
+          }
+        }
+      }
+    },
+    "Fan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vifte"
+          }
+        }
+      }
+    },
+    "Fan only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bare vifte"
+          }
+        }
+      }
+    },
+    "Fan speed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftehastighet"
+          }
+        }
+      }
+    },
+    "Fan speed must be 0 (auto) or 1–%lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftehastighet må være 0 (auto) eller 1–%lld."
+          }
+        }
+      }
+    },
+    "Fetch the status (refresh) and run the health check again in a little while." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hent status (oppdater) og kjør helsesjekken igjen om litt."
+          }
+        }
+      }
+    },
+    "Fetched from MELCloud later (at most once an hour)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hentes fra MELCloud senere (høyst én gang i timen)."
+          }
+        }
+      }
+    },
+    "Fetching a new status has not succeeded (for example without internet)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det har ikke lyktes å hente ny status (for eksempel uten internett)."
+          }
+        }
+      }
+    },
+    "Firmware %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare %@."
+          }
+        }
+      }
+    },
+    "Firmware cannot be rolled back once the update has started." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvare kan ikke rulles tilbake når oppdateringen først er startet."
+          }
+        }
+      }
+    },
+    "Firmware update was aborted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Programvareoppdatering ble avbrutt"
+          }
+        }
+      }
+    },
+    "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "For at least %lld hour the room temperature has been %@ or more below the target temperature (now %@ vs. %@)."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@)."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "I minst %lld time har romtemperaturen ligget %@ eller mer under ønsket temperatur (nå %@ mot %@)."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "I minst %lld timer har romtemperaturen ligget %@ eller mer under ønsket temperatur (nå %@ mot %@)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@). It is %@ outdoors." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "For at least %lld hour the room temperature has been %@ or more below the target temperature (now %@ vs. %@). It is %@ outdoors."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "For at least %lld hours the room temperature has been %@ or more below the target temperature (now %@ vs. %@). It is %@ outdoors."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "I minst %lld time har romtemperaturen ligget %@ eller mer under ønsket temperatur (nå %@ mot %@). Ute er det %@."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "I minst %lld timer har romtemperaturen ligget %@ eller mer under ønsket temperatur (nå %@ mot %@). Ute er det %@."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "For information" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Til info"
+          }
+        }
+      }
+    },
+    "Found no active electricity subscription on the Tibber account." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ikke noe aktivt strømabonnement på Tibber-kontoen."
+          }
+        }
+      }
+    },
+    "Found the heat pump at %@, and it answers." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant varmepumpen på %@, og den svarer."
+          }
+        }
+      }
+    },
+    "Found the heat pump at %@. It is read at the next refresh." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant varmepumpen på %@. Den leses ved neste oppdatering."
+          }
+        }
+      }
+    },
+    "Frost protection takes whole degrees." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikringen tar hele grader."
+          }
+        }
+      }
+    },
+    "Frost protection was not turned off because holiday mode is on. Without frost protection the house can get cold while the heat pump stands off. Turn off holiday mode first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring ble ikke slått av fordi feriemodus er på. Uten frostsikring kan huset bli kaldt mens varmepumpen står av. Slå av feriemodus først."
+          }
+        }
+      }
+    },
+    "Frost protection: unexpected answer from MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frostsikring: uventet svar fra MELCloud."
+          }
+        }
+      }
+    },
+    "Has not received the update list from MELCloud yet. Refresh the status and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Har ikke fått oppdateringslisten fra MELCloud ennå. Oppdater status og prøv igjen."
+          }
+        }
+      }
+    },
+    "Heat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varme"
+          }
+        }
+      }
+    },
+    "Heat Pump %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe %@"
+          }
+        }
+      }
+    },
+    "Heat Pump – MELCloud login" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe – MELCloud-innlogging"
+          }
+        }
+      }
+    },
+    "Heat Pump – MELCloud session" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe – MELCloud-økt"
+          }
+        }
+      }
+    },
+    "Heat Pump – Tibber token" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpe – Tibber-nøkkel"
+          }
+        }
+      }
+    },
+    "Heating" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmer"
+          }
+        }
+      }
+    },
+    "Holiday mode can last at most one year." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus kan vare høyst ett år."
+          }
+        }
+      }
+    },
+    "Holiday mode is on, so price control is waiting." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus er på, så prisstyringen venter."
+          }
+        }
+      }
+    },
+    "Holiday mode needs both a start and an end." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus trenger både start og slutt."
+          }
+        }
+      }
+    },
+    "Holiday mode was not turned on because frost protection is off. In holiday mode the heat pump may stand off, and then frost protection is what keeps the house from getting too cold. Turn on frost protection first (for example 8–12 °C)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus ble ikke slått på fordi frostsikring er av. I feriemodus kan varmepumpen stå av, og da er det frostsikringen som hindrer at huset blir for kaldt. Slå på frostsikring først (for eksempel 8–12 °C)."
+          }
+        }
+      }
+    },
+    "Holiday mode was not turned on because the app does not know whether frost protection is on (the settings could not be read from MELCloud). In holiday mode the heat pump may stand off. Turn on frost protection first (for example 8–12 °C), and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus ble ikke slått på fordi appen ikke vet om frostsikring er på (innstillingene kunne ikke leses fra MELCloud). I feriemodus kan varmepumpen stå av. Slå på frostsikring først (for eksempel 8–12 °C), og prøv igjen."
+          }
+        }
+      }
+    },
+    "Holiday mode: unexpected answer from MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feriemodus: uventet svar fra MELCloud."
+          }
+        }
+      }
+    },
+    "Horizontal airflow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horisontalt spjeld"
+          }
+        }
+      }
+    },
+    "If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjentar feilen seg, eller blinker driftslampen, bør du ringe forhandleren. Én enkelt kort feil som har gått over av seg selv er ofte ufarlig."
+          }
+        }
+      }
+    },
+    "If the error repeats, or the operation lamp blinks, you should call the dealer. A single short error that went away by itself is often harmless. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjentar feilen seg, eller blinker driftslampen, bør du ringe forhandleren. Én enkelt kort feil som har gått over av seg selv er ofte ufarlig. %@"
+          }
+        }
+      }
+    },
+    "In Mitsubishi's general 4-digit codes, 5101 means a fault in the intake/room temperature sensor. Not confirmed for MSZ-RW." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I Mitsubishis generelle 4-sifrede koder betyr 5101 feil på inntaks-/romtemperaturføleren. Ikke bekreftet for MSZ-RW."
+          }
+        }
+      }
+    },
+    "In Mitsubishi's general 4-digit codes, 5102 means a fault in the liquid pipe sensor. Not confirmed for MSZ-RW." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I Mitsubishis generelle 4-sifrede koder betyr 5102 feil på væskerørføleren. Ikke bekreftet for MSZ-RW."
+          }
+        }
+      }
+    },
+    "In Mitsubishi's general codes, 6840 is used for indoor/outdoor communication errors. Not confirmed for MSZ-RW." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I Mitsubishis generelle koder brukes 6840 om kommunikasjonsfeil inne/ute. Ikke bekreftet for MSZ-RW."
+          }
+        }
+      }
+    },
+    "In the last day it has used on average %.0f W per degree of difference between indoors and outdoors (%.0f degrees, idle time included), %.1f times the usual at a similar difference (median %.0f W per degree, %lld days)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste døgn har den brukt i snitt %.0f W per grad forskjell mellom inne og ute (%.0f grader, stopp medregnet), %.1f ganger det vanlige ved tilsvarende forskjell (median %.0f W per grad, %lld dager)."
+          }
+        }
+      }
+    },
+    "In the last day the heat pump has been defrosting %.0f %% of the time (%lld hours with readings, milder than −5 °C outdoors). Over 20 %% is a lot; the limit is a rule of thumb." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste døgn har varmepumpen avrist %.0f %% av tiden (%lld timer med målinger, ute mildere enn −5 °C). Over 20 %% er mye; grensen er en tommelfingerregel."
+          }
+        }
+      }
+    },
+    "Indoor unit control board" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Styrekort i innedelen"
+          }
+        }
+      }
+    },
+    "Indoor unit fan motor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftemotor i innedelen"
+          }
+        }
+      }
+    },
+    "Indoor unit temperature sensor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturføler i innedelen"
+          }
+        }
+      }
+    },
+    "Indoors %.1f °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inne %.1f °C."
+          }
+        }
+      }
+    },
+    "Invalid address" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig adresse"
+          }
+        }
+      }
+    },
+    "Invalid answer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig svar"
+          }
+        }
+      }
+    },
+    "Invalid day or time in the weekly schedule (00:00–23:59)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig dag eller klokkeslett i ukeplanen (00:00–23:59)."
+          }
+        }
+      }
+    },
+    "Invalid temperature." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ugyldig temperatur."
+          }
+        }
+      }
+    },
+    "It has been %lld days since it was cleaned. The recommendation is every 3 months, with a new filter every year." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld day since it was cleaned. The recommendation is every 3 months, with a new filter every year."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld days since it was cleaned. The recommendation is every 3 months, with a new filter every year."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dag siden det ble rengjort. Anbefalt er hver 3. måned, og nytt filter hvert år."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dager siden det ble rengjort. Anbefalt er hver 3. måned, og nytt filter hvert år."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld day since the air filter was last cleaned. The recommendation is every 2 weeks."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld days since the air filter was last cleaned. The recommendation is every 2 weeks."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dag siden luftfilteret sist ble rengjort. Anbefalt er hver 2. uke."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dager siden luftfilteret sist ble rengjort. Anbefalt er hver 2. uke."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld day since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "It has been %lld days since the air purifying filter and the black deodorizing filter were cleaned. The recommendation is every 3 months."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dag siden luftrenseren og det svarte luktfilteret ble rengjort. Anbefalt er hver 3. måned."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Det er %lld dager siden luftrenseren og det svarte luktfilteret ble rengjort. Anbefalt er hver 3. måned."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "It has been over 30 days since the air filter was cleaned. Record it in the app when it is done." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det er over 30 dager siden luftfilteret ble rengjort. Registrer det i appen når det er gjort."
+          }
+        }
+      }
+    },
+    "Keychain error %@: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelring-feil %@: %@"
+          }
+        }
+      }
+    },
+    "Latitude must be between −90 and 90, longitude between −180 and 180." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Breddegrad må være mellom −90 og 90, lengdegrad mellom −180 og 180."
+          }
+        }
+      }
+    },
+    "Living room (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stue (simulert)"
+          }
+        }
+      }
+    },
+    "Local access is not available in this program." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal tilgang er ikke tilgjengelig i dette programmet."
+          }
+        }
+      }
+    },
+    "Local connection is turned off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal tilkobling er slått av."
+          }
+        }
+      }
+    },
+    "Lowered to %@ – %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senket til %@ – %@."
+          }
+        }
+      }
+    },
+    "MELCloud answered with HTTP error %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud svarte med HTTP-feil %lld."
+          }
+        }
+      }
+    },
+    "MELCloud did not accept the email or password. Update the login in Settings. The app does not try again until you have done so, so the account is not locked." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud godtok ikke e-post eller passord. Oppdater innloggingen i Innstillinger. Appen prøver ikke igjen før du har gjort det, så kontoen ikke blir sperret."
+          }
+        }
+      }
+    },
+    "MELCloud did not accept the login (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud godtok ikke innloggingen (%@)."
+          }
+        }
+      }
+    },
+    "MELCloud did not accept the login." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud godtok ikke innloggingen."
+          }
+        }
+      }
+    },
+    "MELCloud did not allow reading frost protection and holiday mode for this account. The app tries again in a day, or click “Try again”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke å lese frostsikring og feriemodus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Prøv igjen»."
+          }
+        }
+      }
+    },
+    "MELCloud did not allow reading the firmware status for this account. The app tries again in a day, or click “Refresh status”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke å lese fastvarestatus for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Oppdater status»."
+          }
+        }
+      }
+    },
+    "MELCloud did not allow reading the weekly schedule (next try %@), and it is not saved without checking that it is unchanged." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke å lese ukeplanen (ny prøve %@), og den lagres ikke uten å sjekke at den er uendret."
+          }
+        }
+      }
+    },
+    "MELCloud did not allow reading the weekly schedule for this account. The app tries again in a day, or click “Fetch now”." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke å lese ukeplanen for denne kontoen. Appen prøver igjen om et døgn, eller trykk «Hent nå»."
+          }
+        }
+      }
+    },
+    "MELCloud did not allow this request for the account (HTTP %lld)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud tillot ikke denne forespørselen for kontoen (HTTP %lld)."
+          }
+        }
+      }
+    },
+    "MELCloud did not say whether the weekly schedule is on. Choose on or off before you save." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud oppga ikke om ukeplanen er på. Velg på eller av før du lagrer."
+          }
+        }
+      }
+    },
+    "MELCloud gave no id for the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud oppga ingen id for oppdateringen."
+          }
+        }
+      }
+    },
+    "MELCloud has a newer firmware version ready for the adapter." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har en nyere fastvareversjon klar for modulen."
+          }
+        }
+      }
+    },
+    "MELCloud has blocked the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har sperret oppdateringen."
+          }
+        }
+      }
+    },
+    "MELCloud has not said whether the account owns the unit. Refresh the status and try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har ikke oppgitt om kontoen eier enheten. Oppdater status og prøv igjen."
+          }
+        }
+      }
+    },
+    "MELCloud has temporarily blocked updates until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har midlertidig stengt for oppdateringer til %@."
+          }
+        }
+      }
+    },
+    "MELCloud has temporarily stopped accepting requests (too much traffic) until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har midlertidig stengt for flere forespørsler (for mye trafikk) til %@."
+          }
+        }
+      }
+    },
+    "MELCloud has temporarily stopped updates because there has been too much traffic. Try again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud har midlertidig stengt for oppdateringer fordi det har vært for mye trafikk. Prøv igjen kl. %@."
+          }
+        }
+      }
+    },
+    "MELCloud is carrying out a required update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud gjennomfører en påkrevd oppdatering."
+          }
+        }
+      }
+    },
+    "MELCloud is reporting an error now (code %@). Open Health in the app for advice." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud melder en feil nå (kode %@). Åpne Helse i appen for råd."
+          }
+        }
+      }
+    },
+    "MELCloud is reporting an error now. Open Health in the app for advice." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud melder en feil nå. Åpne Helse i appen for råd."
+          }
+        }
+      }
+    },
+    "MELCloud is temporarily blocking login (too many attempts) until %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud blokkerer innlogging midlertidig (for mange forsøk) til %@."
+          }
+        }
+      }
+    },
+    "MELCloud is temporarily blocking login (too many attempts)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud blokkerer innlogging midlertidig (for mange forsøk)."
+          }
+        }
+      }
+    },
+    "MELCloud refuses access even after a new login. Fetching is paused for an hour." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud avviser tilgangen selv etter ny innlogging. Henting er satt på pause i en time."
+          }
+        }
+      }
+    },
+    "MELCloud refuses access even after a new login. The app tries again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud avviser tilgangen selv etter ny innlogging. Appen prøver igjen kl. %@."
+          }
+        }
+      }
+    },
+    "MELCloud rejected the change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud avviste endringen."
+          }
+        }
+      }
+    },
+    "MELCloud rejected the request: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud avviste forespørselen: %@"
+          }
+        }
+      }
+    },
+    "MELCloud reports an error without an error code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud melder en feil uten feilkode"
+          }
+        }
+      }
+    },
+    "MELCloud reports an unknown status for the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud rapporterer en ukjent status for oppdateringen."
+          }
+        }
+      }
+    },
+    "MELCloud uses 8000 for “no error” on air-to-air units." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud bruker 8000 for «ingen feil» på luft-til-luft-enheter."
+          }
+        }
+      }
+    },
+    "MET asks for fewer requests (HTTP 429). The app waits before asking again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MET ber om færre forespørsler (HTTP 429). Appen venter før den spør igjen."
+          }
+        }
+      }
+    },
+    "MET rejected the request (HTTP 403). The app tries again in an hour." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MET avviste forespørselen (HTTP 403). Appen prøver igjen om en time."
+          }
+        }
+      }
+    },
+    "MSZ-LN service manual OBH766H §10-4 (related model)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MSZ-LN servicehåndbok OBH766H §10-4 (beslektet modell)"
+          }
+        }
+      }
+    },
+    "Make sure Wi-Fi is stable and try again under Health → Firmware. If needed, restart the heat pump via the circuit breaker first. If it persists, contact the dealer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sørg for stabilt Wi-Fi og prøv igjen under Helse → Fastvare. Prøv eventuelt å starte varmepumpen på nytt via sikringen først. Vedvarer det, kontakt forhandleren."
+          }
+        }
+      }
+    },
+    "Miswiring or serial signal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilkobling eller seriesignal"
+          }
+        }
+      }
+    },
+    "Mitsubishi general check codes (other series)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitsubishi generelle kontrollkoder (andre serier)"
+          }
+        }
+      }
+    },
+    "Mode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus"
+          }
+        }
+      }
+    },
+    "Move the router closer, or set up a Wi-Fi extender or mesh node near the indoor unit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flytt ruteren nærmere, eller sett opp en Wi-Fi-forsterker/mesh-node nær innedelen."
+          }
+        }
+      }
+    },
+    "NO1 – Eastern Norway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NO1 – Øst-Norge"
+          }
+        }
+      }
+    },
+    "NO2 – Southern Norway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NO2 – Sør-Norge"
+          }
+        }
+      }
+    },
+    "NO3 – Central Norway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NO3 – Midt-Norge"
+          }
+        }
+      }
+    },
+    "NO4 – Northern Norway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NO4 – Nord-Norge"
+          }
+        }
+      }
+    },
+    "NO5 – Western Norway" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NO5 – Vest-Norge"
+          }
+        }
+      }
+    },
+    "Network calls are stopped until %@ because MELCloud has limited the traffic." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettverkskall er stoppet til %@ fordi MELCloud har begrenset trafikken."
+          }
+        }
+      }
+    },
+    "Network error: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nettverksfeil: %@"
+          }
+        }
+      }
+    },
+    "New error in the error log" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny feil i feilloggen"
+          }
+        }
+      }
+    },
+    "New firmware is ready and waiting for you to start the update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny fastvare er klar og venter på at du starter oppdateringen."
+          }
+        }
+      }
+    },
+    "New firmware is ready, but the unit is offline. The update can be started when it is connected again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny fastvare er klar, men enheten er frakoblet. Oppdateringen kan startes når den er tilkoblet igjen."
+          }
+        }
+      }
+    },
+    "New: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ny: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "Night setback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nattsenking"
+          }
+        }
+      }
+    },
+    "No IP address has been entered for the Wi-Fi adapter." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen IP-adresse er lagt inn for Wi-Fi-modulen."
+          }
+        }
+      }
+    },
+    "No MELCloud login. Enter your email and password in the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mangler innlogging til MELCloud. Legg inn e-post og passord i appen."
+          }
+        }
+      }
+    },
+    "No Tibber token. Enter it under Settings → Electricity price." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mangler Tibber-nøkkel. Legg den inn under Innstillinger → Strømpris."
+          }
+        }
+      }
+    },
+    "No action needed beyond regular maintenance." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tiltak nødvendig utover vanlig vedlikehold."
+          }
+        }
+      }
+    },
+    "No action needed now. If the connection drops, consider better Wi-Fi coverage near the indoor unit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tiltak nødvendig nå. Hvis kontakten faller ut, vurder bedre Wi-Fi-dekning ved innedelen."
+          }
+        }
+      }
+    },
+    "No action needed on the heat pump. The app fetches a new status automatically when it can." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tiltak på varmepumpen. Appen henter ny status automatisk når det er mulig."
+          }
+        }
+      }
+    },
+    "No action now. Mention them to the dealer at the next service." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tiltak nå. Nevn dem for forhandleren ved neste service."
+          }
+        }
+      }
+    },
+    "No action." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tiltak."
+          }
+        }
+      }
+    },
+    "No active MELCloud session yet. Trying again later." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen aktiv MELCloud-økt ennå. Prøver igjen senere."
+          }
+        }
+      }
+    },
+    "No answer in the approval dialog within %lld seconds, counted as rejected." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen svar i godkjenningsdialogen innen %lld sekunder, regnet som avvist."
+          }
+        }
+      }
+    },
+    "No base temperature yet: turn on price control while the heat pump is in heat mode, or use the weekly schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen grunntemperatur ennå: slå på prisstyringen mens varmepumpen står på varme, eller bruk ukeplanen."
+          }
+        }
+      }
+    },
+    "No change was sent." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen endring ble sendt."
+          }
+        }
+      }
+    },
+    "No change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen endring."
+          }
+        }
+      }
+    },
+    "No error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen feil"
+          }
+        }
+      }
+    },
+    "No error reported." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen feil rapportert."
+          }
+        }
+      }
+    },
+    "No errors, warnings or anomalies were found in the data we have." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen feil, advarsler eller avvik er funnet i dataene vi har."
+          }
+        }
+      }
+    },
+    "No filter cleaning recorded" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen registrert filterrengjøring"
+          }
+        }
+      }
+    },
+    "No firmware update is waiting for the unit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen fastvareoppdatering venter for enheten."
+          }
+        }
+      }
+    },
+    "No heat pump found on the account." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen varmepumpe på kontoen."
+          }
+        }
+      }
+    },
+    "No known electricity prices for the next hours yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen kjente strømpriser for de neste timene ennå."
+          }
+        }
+      }
+    },
+    "No plan for this hour (price or base temperature missing)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen plan for denne timen (mangler pris eller grunntemperatur)."
+          }
+        }
+      }
+    },
+    "No position for the weather forecast. Enter a place under Settings → Weather." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen posisjon for værvarselet. Legg inn sted under Innstillinger → Vær."
+          }
+        }
+      }
+    },
+    "No status from the heat pump yet, so the change cannot be checked." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen status fra varmepumpen ennå, så endringen kan ikke kontrolleres."
+          }
+        }
+      }
+    },
+    "No status from the heat pump yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen status fra varmepumpen ennå."
+          }
+        }
+      }
+    },
+    "No status has been fetched from the heat pump yet, so the health check is limited." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det er ikke hentet noen status fra varmepumpen ennå, så helsesjekken er begrenset."
+          }
+        }
+      }
+    },
+    "No unit known yet." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen enhet kjent ennå."
+          }
+        }
+      }
+    },
+    "Normal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normal"
+          }
+        }
+      }
+    },
+    "Normal electricity price now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanlig strømpris nå"
+          }
+        }
+      }
+    },
+    "Normal hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normalt"
+          }
+        }
+      }
+    },
+    "Normal temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanlig temperatur"
+          }
+        }
+      }
+    },
+    "Normal temperature (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vanlig temperatur (%@)."
+          }
+        }
+      }
+    },
+    "Not enough data yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke nok data ennå"
+          }
+        }
+      }
+    },
+    "Not on the home network. Local reading is paused until the Mac is back on the same network as the heat pump." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke på hjemmenettet. Lokal avlesning er satt på pause til Macen er tilbake på samme nett som varmepumpen."
+          }
+        }
+      }
+    },
+    "Not sent because the previous part of the change did not go through." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke sendt fordi forrige del av endringen ikke gikk gjennom."
+          }
+        }
+      }
+    },
+    "Not sent: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ikke sendt: %@"
+          }
+        }
+      }
+    },
+    "Not supported by this connection." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Støttes ikke av denne tilkoblingen."
+          }
+        }
+      }
+    },
+    "Note: Mitsubishi has no public error code table for MSZ-RW in MELCloud. The explanation comes from related models and may be imprecise." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merk: Mitsubishi har ingen offentlig feilkodetabell for MSZ-RW i MELCloud. Forklaringen er hentet fra beslektede modeller og kan være upresis."
+          }
+        }
+      }
+    },
+    "Note: the weekly schedule in MELCloud is on, so the heat pump may change by itself according to the schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merk: ukeplanen i MELCloud er på, så varmepumpen kan endre seg selv etter planen."
+          }
+        }
+      }
+    },
+    "OK" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "Observed in pymelcloud/Home Assistant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observert i pymelcloud/Home Assistant"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av"
+          }
+        }
+      }
+    },
+    "Off, %lld events" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Off, %lld event"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Off, %lld events"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Av, %lld hendelse"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Av, %lld hendelser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Often the router has given the heat pump a new IP address. Click “Find automatically” under Settings → Local connection, or enter the address from the router's device list. Consider giving the heat pump a fixed IP in the router." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ofte har ruteren gitt varmepumpen en ny IP-adresse. Trykk «Finn automatisk» under Innstillinger → Lokal tilkobling, eller skriv inn adressen fra ruterens enhetsliste. Gi gjerne varmepumpen fast IP i ruteren."
+          }
+        }
+      }
+    },
+    "Older errors in the error log" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eldre feil i feilloggen"
+          }
+        }
+      }
+    },
+    "On" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "På"
+          }
+        }
+      }
+    },
+    "On %@ the heat pump used %.2f kWh per degree day, %.1f times more than usual (median %.2f over recent days). Degree days are adjusted for the outdoor temperature." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ brukte varmepumpen %.2f kWh per graddag, %.1f ganger mer enn vanlig (median %.2f siste dager). Graddager er justert for utetemperatur."
+          }
+        }
+      }
+    },
+    "On, %lld events" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "On, %lld event"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "On, %lld events"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "På, %lld hendelse"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "På, %lld hendelser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "On/off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Av/på"
+          }
+        }
+      }
+    },
+    "Only the fan is running; the heat pump is not heating or cooling." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bare viften går; varmepumpen varmer eller kjøler ikke."
+          }
+        }
+      }
+    },
+    "Only the owner of the unit in MELCloud can start a firmware update." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bare eieren av enheten i MELCloud kan starte en fastvareoppdatering."
+          }
+        }
+      }
+    },
+    "Oslo (demo)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oslo (demo)"
+          }
+        }
+      }
+    },
+    "Other" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annet"
+          }
+        }
+      }
+    },
+    "Other error (14 blinks or more)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annen feil (14 blink eller mer)"
+          }
+        }
+      }
+    },
+    "Outdoor unit control board" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Styrekort i utedelen"
+          }
+        }
+      }
+    },
+    "Outdoor unit power system" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømsystem i utedelen"
+          }
+        }
+      }
+    },
+    "Outdoor unit temperature sensors" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturfølere i utedelen"
+          }
+        }
+      }
+    },
+    "Outdoors %.1f °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ute %.1f °C."
+          }
+        }
+      }
+    },
+    "Paused – you changed the temperature. Resumes at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause – du endret temperaturen. Fortsetter kl. %@."
+          }
+        }
+      }
+    },
+    "Possible communication error between the indoor and outdoor unit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mulig kommunikasjonsfeil mellom innedel og utedel"
+          }
+        }
+      }
+    },
+    "Possible fault in the indoor unit pipe sensor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mulig feil på rørføler i innedelen"
+          }
+        }
+      }
+    },
+    "Possible fault in the room temperature sensor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mulig feil på romtemperaturføler"
+          }
+        }
+      }
+    },
+    "Power %lld W." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekt %lld W."
+          }
+        }
+      }
+    },
+    "Pre-heating" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forvarmer"
+          }
+        }
+      }
+    },
+    "Pre-heating before expensive hours (%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forvarming før dyre timer (%@)"
+          }
+        }
+      }
+    },
+    "Pre-heating to %@ before expensive hours." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forvarmer til %@ før dyre timer."
+          }
+        }
+      }
+    },
+    "Price control" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring"
+          }
+        }
+      }
+    },
+    "Price control is off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring er av."
+          }
+        }
+      }
+    },
+    "Price control only works in heat mode." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyringen virker bare i varmemodus."
+          }
+        }
+      }
+    },
+    "Price control: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring: %@"
+          }
+        }
+      }
+    },
+    "Price control: back to normal temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisstyring: tilbake til vanlig temperatur"
+          }
+        }
+      }
+    },
+    "Price data could not be interpreted: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisdata kunne ikke tolkes: %@"
+          }
+        }
+      }
+    },
+    "Price data: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisdata: %@"
+          }
+        }
+      }
+    },
+    "Price data: network error (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisdata: nettverksfeil (%@)."
+          }
+        }
+      }
+    },
+    "Price data: the server answered with HTTP error %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prisdata: serveren svarte med HTTP-feil %lld."
+          }
+        }
+      }
+    },
+    "Reason: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Begrunnelse: %@"
+          }
+        }
+      }
+    },
+    "Rejected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvist"
+          }
+        }
+      }
+    },
+    "Rejected by the user in the approval dialog." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvist av brukeren i godkjenningsdialogen."
+          }
+        }
+      }
+    },
+    "Removed: %@ at %@ – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fjernet: %@ kl. %@ – %@"
+          }
+        }
+      }
+    },
+    "Resting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hviler"
+          }
+        }
+      }
+    },
+    "Resting (target temperature reached)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hviler (ønsket temperatur nådd)"
+          }
+        }
+      }
+    },
+    "Resting – the compressor is idle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hviler – kompressoren står"
+          }
+        }
+      }
+    },
+    "Running" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Går"
+          }
+        }
+      }
+    },
+    "Running (auto)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Går (auto)"
+          }
+        }
+      }
+    },
+    "Season" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesong"
+          }
+        }
+      }
+    },
+    "Sending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendes"
+          }
+        }
+      }
+    },
+    "Sending…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sender…"
+          }
+        }
+      }
+    },
+    "Sent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt"
+          }
+        }
+      }
+    },
+    "Sent – waiting for the heat pump" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt – venter på pumpen"
+          }
+        }
+      }
+    },
+    "Sent: %@. Check that MELCloud shows the same (shown on the page)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt: %@. Sjekk at MELCloud viser det samme (vises på siden)."
+          }
+        }
+      }
+    },
+    "Sent: %@. It may take up to a couple of minutes before the heat pump confirms." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt: %@. Det kan ta opptil et par minutter før varmepumpen bekrefter."
+          }
+        }
+      }
+    },
+    "Sent: %@. It may take up to a couple of minutes before the heat pump confirms. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt: %@. Det kan ta opptil et par minutter før varmepumpen bekrefter. %@"
+          }
+        }
+      }
+    },
+    "Sent: %@. MELCloud confirms at the next fetch (at most once an hour)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendt: %@. MELCloud bekrefter ved neste henting (høyst én gang i timen)."
+          }
+        }
+      }
+    },
+    "Service by the dealer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Service hos forhandler"
+          }
+        }
+      }
+    },
+    "Set fan speed to %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett viftehastighet til %lld"
+          }
+        }
+      }
+    },
+    "Set fan speed to auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett viftehastighet til auto"
+          }
+        }
+      }
+    },
+    "Set horizontal airflow to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett horisontalt spjeld til %@"
+          }
+        }
+      }
+    },
+    "Set vertical airflow to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sett vertikalt spjeld til %@"
+          }
+        }
+      }
+    },
+    "Signal %lld dBm." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signal %lld dBm."
+          }
+        }
+      }
+    },
+    "Split" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delt"
+          }
+        }
+      }
+    },
+    "Spot price via Tibber" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotpris via Tibber"
+          }
+        }
+      }
+    },
+    "Spot price without Tibber" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotpris uten Tibber"
+          }
+        }
+      }
+    },
+    "Start a firmware update of the Wi-Fi adapter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start fastvareoppdatering av Wi-Fi-modulen"
+          }
+        }
+      }
+    },
+    "Start a firmware update of the Wi-Fi adapter (now version %@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start fastvareoppdatering av Wi-Fi-modulen (nå versjon %@)"
+          }
+        }
+      }
+    },
+    "Start the update under Health → Firmware in this app (or in the MELCloud app) while the heat pump has power and good Wi-Fi. Do not cut the power and do not use the remote control while it runs. Firmware cannot be rolled back." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start oppdateringen under Helse → Fastvare i denne appen (eller i MELCloud-appen) mens varmepumpen står på strøm og har godt Wi-Fi. Ikke slå av strømmen og ikke bruk fjernkontrollen mens den pågår. Fastvare kan ikke rulles tilbake."
+          }
+        }
+      }
+    },
+    "Starting up" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter opp"
+          }
+        }
+      }
+    },
+    "Starting/pre-heating" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starter/forvarmer"
+          }
+        }
+      }
+    },
+    "Stop using the heat pump and call the dealer (the manual says so when the operation lamp blinks)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slutt å bruke varmepumpen og ring forhandleren (bruksanvisningen sier dette når driftslampen blinker)."
+          }
+        }
+      }
+    },
+    "Swing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sving"
+          }
+        }
+      }
+    },
+    "Switch off the circuit breaker for the heat pump for one minute and switch it back on. If the error comes back: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av sikringen til varmepumpen i ett minutt og slå den på igjen. Kommer feilen tilbake: %@"
+          }
+        }
+      }
+    },
+    "Target temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ønsket temperatur"
+          }
+        }
+      }
+    },
+    "The MELCloud connection is turned off in the adapter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MELCloud-tilkoblingen er slått av i modulen"
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter answered with HTTP error %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen svarte med HTTP-feil %lld."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter answered, but without readings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen svarte, men uten måledata."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter had not reported in for over an hour when the status was fetched. Last contact: %@. The heat pump can still heat as normal, but we cannot see what it is doing." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen hadde ikke rapportert inn på over en time da status ble hentet. Siste kontakt: %@. Varmepumpen kan fortsatt varme som normalt, men vi ser ikke hva den gjør."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter had not reported in for over an hour when the status was fetched. The heat pump can still heat as normal, but we cannot see what it is doing." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen hadde ikke rapportert inn på over en time da status ble hentet. Varmepumpen kan fortsatt varme som normalt, men vi ser ikke hva den gjør."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter is not responding on the home network" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen svarer ikke på hjemmenettet"
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter is restarting." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen starter på nytt."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter itself says the connection to MELCloud is turned off (CONNECT = OFF). Then neither status nor changes from MELCloud get through, and the app can only read locally." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen sier selv at forbindelsen til MELCloud er slått av (CONNECT = OFF). Da kommer verken status eller endringer fra MELCloud fram, og appen kan bare lese lokalt."
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter on the home network reports error code %@. The code comes directly from the indoor unit and is not translated; MELCloud has not reported the error yet. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen på hjemmenettet rapporterer feilkode %@. Koden kommer direkte fra innedelen og er ikke oversatt; MELCloud har ikke meldt feilen ennå. %@"
+          }
+        }
+      }
+    },
+    "The Wi-Fi adapter will restart soon." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wi-Fi-modulen skal snart starte på nytt."
+          }
+        }
+      }
+    },
+    "The adapter answers at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modulen svarer på %@."
+          }
+        }
+      }
+    },
+    "The adapter has firmware %@. MELCloud has a newer version ready." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modulen har fastvare %@. MELCloud har en nyere versjon klar."
+          }
+        }
+      }
+    },
+    "The adapter was just asked. Try again after %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modulen ble nettopp spurt. Prøv igjen etter %@."
+          }
+        }
+      }
+    },
+    "The adapter was just asked. Try again in a little while." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modulen ble nettopp spurt. Prøv igjen om litt."
+          }
+        }
+      }
+    },
+    "The air filter should be cleaned now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfilteret bør rengjøres nå"
+          }
+        }
+      }
+    },
+    "The air purifying and deodorizing filters should be cleaned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftrenser og luktfilter bør rengjøres"
+          }
+        }
+      }
+    },
+    "The air purifying filter and the black deodorizing filter should be cleaned every 3 months." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftrenseren og det svarte luktfilteret skal rengjøres hver 3. måned."
+          }
+        }
+      }
+    },
+    "The answer from the Wi-Fi adapter could not be read: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svaret fra Wi-Fi-modulen kunne ikke leses: %@"
+          }
+        }
+      }
+    },
+    "The app has not reached the adapter locally since %@. Control and status via MELCloud work as before." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %@. Styring og status via MELCloud virker som før."
+          }
+        }
+      }
+    },
+    "The app has not reached the adapter locally since %@. Last response: %@. Control and status via MELCloud work as before." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen har ikke fått kontakt med modulen lokalt siden %@. Sist svar: %@. Styring og status via MELCloud virker som før."
+          }
+        }
+      }
+    },
+    "The app never changes this setting. Restart the heat pump via the circuit breaker, and check the MELCloud app. If the connection is still off, contact the dealer or Mitsubishi support." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appen endrer aldri denne innstillingen. Start varmepumpen på nytt via sikringen, og sjekk MELCloud-appen. Er tilkoblingen fortsatt av, kontakt forhandleren eller Mitsubishi-support."
+          }
+        }
+      }
+    },
+    "The building in MELCloud" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bygget i MELCloud"
+          }
+        }
+      }
+    },
+    "The cancellation has been sent to MELCloud. The status is updated in a little while." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryting er sendt til MELCloud. Statusen oppdateres om litt."
+          }
+        }
+      }
+    },
+    "The change failed: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen feilet: %@"
+          }
+        }
+      }
+    },
+    "The change was not sent because the answer from MELCloud lacked a complete status for the heat pump." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen ble ikke sendt fordi svaret fra MELCloud manglet fullstendig status for varmepumpen."
+          }
+        }
+      }
+    },
+    "The change was not sent because the app must first fetch a fresh status from the heat pump, and it was fetched recently. Try again after %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen ble ikke sendt fordi appen først må hente fersk status fra varmepumpen, og det er hentet nylig. Prøv igjen etter %@."
+          }
+        }
+      }
+    },
+    "The change was not sent because the status from the heat pump could not be fetched first: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen ble ikke sendt fordi status fra varmepumpen ikke kunne hentes først: %@"
+          }
+        }
+      }
+    },
+    "The change was rejected by the user." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endringen ble avvist av brukeren."
+          }
+        }
+      }
+    },
+    "The compressor has started %lld times in the last 3 hours, with %lld or more starts in %lld of the hours. Such short runs wear on the compressor and lower the efficiency." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren har startet %lld ganger de siste 3 timene, med %lld eller flere starter i %lld av timene. Så korte runder sliter på kompressoren og gir dårligere virkningsgrad."
+          }
+        }
+      }
+    },
+    "The compressor has started on average %.1f times an hour in the last 3 hours while heating. More than 3–4 starts an hour over time counts as short cycling." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren har startet i snitt %.1f ganger i timen de siste 3 timene mens den varmet. Mer enn 3–4 starter i timen over tid regnes som korte runder."
+          }
+        }
+      }
+    },
+    "The compressor has stopped for overcurrent or a start-up failure three times in a row." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren har stoppet for overstrøm eller oppstartsfeil tre ganger på rad."
+          }
+        }
+      }
+    },
+    "The compressor is idle. This happens when the room is warm enough, and otherwise for a short while between two runs. It starts again by itself." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren står. Det skjer når rommet er varmt nok, og ellers en kort stund mellom to runder. Den starter igjen av seg selv."
+          }
+        }
+      }
+    },
+    "The compressor is running and cooling the room." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren går og kjøler rommet."
+          }
+        }
+      }
+    },
+    "The compressor is running and heating the room." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren går og varmer rommet."
+          }
+        }
+      }
+    },
+    "The compressor is running in automatic mode." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren går i automatisk modus."
+          }
+        }
+      }
+    },
+    "The compressor starts and stops often" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren starter og stopper ofte"
+          }
+        }
+      }
+    },
+    "The compressor starts and stops very often" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kompressoren starter og stopper svært ofte"
+          }
+        }
+      }
+    },
+    "The contact email does not look right." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt-e-posten ser ikke riktig ut."
+          }
+        }
+      }
+    },
+    "The control board cannot read its memory." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Styrekortet klarer ikke å lese minnet sitt."
+          }
+        }
+      }
+    },
+    "The data is old" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dataene er gamle"
+          }
+        }
+      }
+    },
+    "The date cannot be in the future." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datoen kan ikke være frem i tid."
+          }
+        }
+      }
+    },
+    "The download is being retried." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nedlastingen prøves på nytt."
+          }
+        }
+      }
+    },
+    "The end of holiday mode cannot be in the past." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slutten på feriemodus kan ikke være passert."
+          }
+        }
+      }
+    },
+    "The end of holiday mode must be after the start." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slutten på feriemodus må være etter starten."
+          }
+        }
+      }
+    },
+    "The estimate is based on how the price has varied through the day over the last four weeks and the level over the last week, adjusted for the weather forecast when the price has followed the temperature; actual prices for tomorrow arrive around 13:00." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslaget bygger på hvordan prisen har variert gjennom døgnet de siste fire ukene og nivået den siste uka, justert for værvarselet når prisen har fulgt temperaturen; virkelige priser for i morgen kommer rundt kl. 13."
+          }
+        }
+      }
+    },
+    "The estimate needs at least %lld days of stored prices." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anslaget trenger minst %lld dager med lagrede priser."
+          }
+        }
+      }
+    },
+    "The event on %@ at %@ is missing on/off, mode or temperature." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hendelsen %@ kl. %@ mangler av/på, modus eller temperatur."
+          }
+        }
+      }
+    },
+    "The fan motor gives no speed signal." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viftemotoren gir ikke turtallssignal."
+          }
+        }
+      }
+    },
+    "The firmware update has started. Follow it under Health → Firmware. It can take a while, and the Wi-Fi adapter restarts along the way." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fastvareoppdateringen er startet. Følg med under Helse → Fastvare. Den kan ta en stund, og Wi-Fi-modulen starter på nytt underveis."
+          }
+        }
+      }
+    },
+    "The green V-blocking filter should be cleaned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det grønne V-blokkerende filteret bør rengjøres"
+          }
+        }
+      }
+    },
+    "The heat pump appears to be working normally" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen ser ut til å fungere normalt"
+          }
+        }
+      }
+    },
+    "The heat pump has defrosted more than %lld times an hour for %lld hours in a row in the last day. Normally it defrosts every 40–90 minutes of running in damp cold. The limit is a rule of thumb." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen har avrist mer enn %lld ganger i timen i %lld timer på rad siste døgn. Normalt avriser den hvert 40.–90. driftsminutt i fuktig kulde. Grensen er en tommelfingerregel."
+          }
+        }
+      }
+    },
+    "The heat pump has just started and is getting going." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen har nettopp startet og kommer i gang."
+          }
+        }
+      }
+    },
+    "The heat pump has no contact with MELCloud" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen har ikke kontakt med MELCloud"
+          }
+        }
+      }
+    },
+    "The heat pump has not reported a target temperature." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen har ikke meldt ønsket temperatur."
+          }
+        }
+      }
+    },
+    "The heat pump has set an error flag, but MELCloud gives no error code. So we do not know what the error is about." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen har satt et feilflagg, men MELCloud oppgir ingen feilkode. Vi vet derfor ikke hva feilen gjelder."
+          }
+        }
+      }
+    },
+    "The heat pump is off (frost protection is watching)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er av (frostsikringen passer på)."
+          }
+        }
+      }
+    },
+    "The heat pump is off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er av."
+          }
+        }
+      }
+    },
+    "The heat pump is reporting an error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen melder feil"
+          }
+        }
+      }
+    },
+    "The heat pump is reporting an error now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen melder feil nå"
+          }
+        }
+      }
+    },
+    "The heat pump is reporting an error now (local)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen melder feil nå (lokal)"
+          }
+        }
+      }
+    },
+    "The heat pump is taking moisture out of the air." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen tar fukt ut av lufta."
+          }
+        }
+      }
+    },
+    "The heat pump is turned off." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen er slått av."
+          }
+        }
+      }
+    },
+    "The heat pump must have power and good Wi-Fi the whole time. Do not disconnect it from power and do not use the remote control (the local controller) while the update runs." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen må stå på strøm og ha godt Wi-Fi hele tiden. Ikke koble den fra strømmen og ikke bruk fjernkontrollen (den lokale styringen) mens oppdateringen pågår."
+          }
+        }
+      }
+    },
+    "The heat pump reports no valid mode. Choose a mode (for example Heat) together with the change." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen rapporterer ingen gyldig modus. Velg modus (for eksempel Varme) samtidig med endringen."
+          }
+        }
+      }
+    },
+    "The heat pump uses more electricity than usual for the temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varmepumpen bruker mer strøm enn vanlig for temperaturen"
+          }
+        }
+      }
+    },
+    "The highest frost protection temperature must be 6–16 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høyeste temperatur for frostsikring må være 6–16 °C."
+          }
+        }
+      }
+    },
+    "The highest temperature must be at least 2 °C above the lowest (for example 8 and 10 °C)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høyeste temperatur må være minst 2 °C over laveste (for eksempel 8 og 10 °C)."
+          }
+        }
+      }
+    },
+    "The indoor unit receives no signal from the outdoor unit." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innedelen mottar ikke signal fra utedelen."
+          }
+        }
+      }
+    },
+    "The indoor unit warms up before the fan starts in earnest, so it does not blow cold air." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innedelen varmes opp før viften starter for fullt, så den ikke blåser kald luft."
+          }
+        }
+      }
+    },
+    "The last update of the Wi-Fi adapter did not complete." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste oppdatering av Wi-Fi-modulen ble ikke fullført."
+          }
+        }
+      }
+    },
+    "The latest status is from %@. %@ The assessments below apply to that time." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siste status er fra %@. %@ Vurderingene under gjelder det tidspunktet."
+          }
+        }
+      }
+    },
+    "The lowest frost protection temperature must be 4–14 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laveste temperatur for frostsikring må være 4–14 °C."
+          }
+        }
+      }
+    },
+    "The lowest temperature must be 16–22 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laveste temperatur må være 16–22 °C."
+          }
+        }
+      }
+    },
+    "The number of hours lowered per day must be 1–24." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antall timer som senkes per døgn må være 1–24."
+          }
+        }
+      }
+    },
+    "The outdoor unit control board cannot read its memory." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Styrekortet i utedelen klarer ikke å lese minnet sitt."
+          }
+        }
+      }
+    },
+    "The outdoor unit defrosts unusually often" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utedelen avriser uvanlig ofte"
+          }
+        }
+      }
+    },
+    "The outdoor unit is melting away ice that has built up. Meanwhile little or cold air comes from the indoor unit. This is perfectly normal in cold, damp weather and usually takes 3–10 minutes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utedelen smelter bort is som har samlet seg. Imens kommer det lite eller kald luft fra innedelen. Det er helt normalt i kaldt og fuktig vær og tar vanligvis 3–10 minutter."
+          }
+        }
+      }
+    },
+    "The outdoor unit may have ice or poor airflow — check that it is free of snow, ice and leaves, and that nothing stands close to it. Do not chip ice off with tools; let it melt or use lukewarm water. If it continues after the outdoor unit has been cleared, call the dealer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utedelen kan ha is eller dårlig luftstrøm — sjekk at den er fri for snø/is og løv, og at ingenting står tett inntil den. Ikke hakk løs is med verktøy; la den smelte eller bruk lunkent vann. Fortsetter det etter at utedelen er ryddet, ring forhandleren."
+          }
+        }
+      }
+    },
+    "The outdoor unit spends a lot of time defrosting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utedelen bruker mye tid på avriming"
+          }
+        }
+      }
+    },
+    "The pipe sensor or room temperature sensor is short-circuited or open." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rørføler eller romtemperaturføler er kortsluttet eller brutt."
+          }
+        }
+      }
+    },
+    "The reduction must be 0–4 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senkingen må være 0–4 °C."
+          }
+        }
+      }
+    },
+    "The room is not reaching the target temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rommet når ikke ønsket temperatur"
+          }
+        }
+      }
+    },
+    "The search was just run. Wait a minute before you try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søket ble nettopp kjørt. Vent et minutt før du prøver igjen."
+          }
+        }
+      }
+    },
+    "The seasons are not valid. Check the start dates." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesongene er ikke gyldige. Sjekk startdatoene."
+          }
+        }
+      }
+    },
+    "The signal strength is %lld dBm, which is weak. It can cause dropouts in the connection to MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signalstyrken er %lld dBm, som er svakt. Det kan gi brudd i kontakten med MELCloud."
+          }
+        }
+      }
+    },
+    "The signal strength is %lld dBm. It usually works, but it is not strong." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signalstyrken er %lld dBm. Det fungerer som regel, men er ikke sterkt."
+          }
+        }
+      }
+    },
+    "The status from the heat pump lacks %@, so the change was not sent." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status fra varmepumpen mangler %@, så endringen ble ikke sendt."
+          }
+        }
+      }
+    },
+    "The temperature on %@ at %@ must be %@–%@ in steps of 0.5 °C (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperaturen %@ kl. %@ må være %@–%@ i trinn på 0,5 °C (%@)."
+          }
+        }
+      }
+    },
+    "The text comes directly from MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teksten kommer direkte fra MELCloud."
+          }
+        }
+      }
+    },
+    "The text comes directly from MELCloud. Possible interpretation: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teksten kommer direkte fra MELCloud. Mulig tolkning: %@"
+          }
+        }
+      }
+    },
+    "The token works. Found %lld hourly prices for today." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkelen virker. Fant %lld timepriser for i dag."
+          }
+        }
+      }
+    },
+    "The unit is disconnected from MELCloud. The update can be started when it is connected again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enheten er frakoblet fra MELCloud. Oppdateringen kan startes når den er tilkoblet igjen."
+          }
+        }
+      }
+    },
+    "The unit is downloading new firmware." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enheten laster ned ny fastvare."
+          }
+        }
+      }
+    },
+    "The update can take a while. The Wi-Fi adapter restarts along the way, and the heat pump then cannot be controlled from the app or MELCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen kan ta en stund. Wi-Fi-modulen starter på nytt underveis, og varmepumpen kan da ikke styres fra appen eller MELCloud."
+          }
+        }
+      }
+    },
+    "The update cannot be approved now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen kan ikke godkjennes nå"
+          }
+        }
+      }
+    },
+    "The update cannot be started now: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen kan ikke startes nå: %@"
+          }
+        }
+      }
+    },
+    "The update has started and is waiting for the unit to fetch it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen er startet og venter på at enheten henter den."
+          }
+        }
+      }
+    },
+    "The update is being cancelled." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen avbrytes."
+          }
+        }
+      }
+    },
+    "The update is complete." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen er fullført."
+          }
+        }
+      }
+    },
+    "The update was aborted because the unit was offline." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen ble avbrutt fordi enheten var frakoblet."
+          }
+        }
+      }
+    },
+    "The update was aborted. You can try again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringen ble avbrutt. Du kan prøve igjen."
+          }
+        }
+      }
+    },
+    "The weather forecast could not be interpreted: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værvarselet kunne ikke tolkes: %@"
+          }
+        }
+      }
+    },
+    "The weather forecast is not available." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værvarsel er ikke tilgjengelig."
+          }
+        }
+      }
+    },
+    "The weekly schedule can have at most %lld events in total, but has %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen kan ha høyst %lld hendelser til sammen, men har %lld."
+          }
+        }
+      }
+    },
+    "The weekly schedule cannot be turned on without events. Add at least one event first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen kan ikke slås på uten hendelser. Legg til minst én hendelse først."
+          }
+        }
+      }
+    },
+    "The weekly schedule could not be read completely, so the app does not change it (that could delete events the app does not understand)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen kunne ikke leses helt, så appen endrer den ikke (det kunne ha slettet hendelser appen ikke forstår)."
+          }
+        }
+      }
+    },
+    "The weekly schedule from MELCloud could not be read completely, so the app does not change it. Fetch the schedule again first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen fra MELCloud kunne ikke leses helt, så appen endrer den ikke. Hent planen på nytt først."
+          }
+        }
+      }
+    },
+    "The weekly schedule has been changed in MELCloud since you started editing. Fetch the schedule again and redo your changes." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er endret i MELCloud siden du begynte å redigere. Hent planen på nytt og gjør endringene igjen."
+          }
+        }
+      }
+    },
+    "The weekly schedule is saved in MELCloud (%@). MELCloud confirms at the next fetch." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud bekrefter ved neste henting."
+          }
+        }
+      }
+    },
+    "The weekly schedule is saved in MELCloud (%@). MELCloud shows a different schedule than the one that was sent. Check in the MELCloud app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud viser en annen plan enn den som ble sendt. Sjekk i MELCloud-appen."
+          }
+        }
+      }
+    },
+    "The weekly schedule is saved in MELCloud (%@). MELCloud shows the same schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen er lagret i MELCloud (%@). MELCloud viser den samme planen."
+          }
+        }
+      }
+    },
+    "The weekly schedule is turned off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen slås av"
+          }
+        }
+      }
+    },
+    "The weekly schedule is turned on" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen slås på"
+          }
+        }
+      }
+    },
+    "The weekly schedule was just fetched. Try again after %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen ble nettopp hentet. Prøv igjen etter %@."
+          }
+        }
+      }
+    },
+    "The weekly schedule was not saved: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplanen ble ikke lagret: %@"
+          }
+        }
+      }
+    },
+    "There is no update that can be cancelled now." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det er ingen oppdatering som kan avbrytes nå."
+          }
+        }
+      }
+    },
+    "There is no update that can be cancelled now: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det er ingen oppdatering som kan avbrytes nå: %@"
+          }
+        }
+      }
+    },
+    "This can be perfectly normal when it is very cold outdoors, or right after the temperature has been turned up. Check that the air filter is clean, that nothing blocks the airflow, and that the outdoor unit is not covered by snow or ice. If it persists in mild weather, call the dealer." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det kan være helt normalt når det er veldig kaldt ute, eller rett etter at temperaturen er skrudd opp. Sjekk at luftfilteret er rent, at ingenting blokkerer luftstrømmen, og at utedelen ikke er dekket av snø eller is. Vedvarer det i milde perioder, ring forhandleren."
+          }
+        }
+      }
+    },
+    "This unit does not support automatic fan speed." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denne enheten støtter ikke automatisk viftehastighet."
+          }
+        }
+      }
+    },
+    "Tibber did not accept the token. Check that it was copied correctly." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tibber godtok ikke nøkkelen. Sjekk at den er kopiert riktig."
+          }
+        }
+      }
+    },
+    "Time to clean the air filter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tid for å rengjøre luftfilteret"
+          }
+        }
+      }
+    },
+    "Time to clean the air filter soon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snart tid for å rengjøre luftfilteret"
+          }
+        }
+      }
+    },
+    "Timeout (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tidsavbrudd (simulert)"
+          }
+        }
+      }
+    },
+    "Too many changes in the last hour (max %lld). The next change is allowed after %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For mange endringer siste time (maks %lld). Neste endring tillatt etter %@."
+          }
+        }
+      }
+    },
+    "Too many login attempts to MELCloud. Try again at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For mange innloggingsforsøk mot MELCloud. Prøv igjen kl. %@."
+          }
+        }
+      }
+    },
+    "Turn off frost protection (the range %.0f–%.0f °C is kept unchanged)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av frostsikring (området %.0f–%.0f °C lagres uendret)"
+          }
+        }
+      }
+    },
+    "Turn off holiday mode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av feriemodus"
+          }
+        }
+      }
+    },
+    "Turn off the heat pump, take out the air filter, vacuum or rinse it, and let it dry in the shade before putting it back. Record the cleaning afterwards." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå av varmepumpen, ta ut luftfilteret, støvsug eller skyll det, og la det tørke i skyggen før det settes inn igjen. Registrer rengjøringen etterpå."
+          }
+        }
+      }
+    },
+    "Turn on frost protection: keeps %.0f–%.0f °C when the heat pump is otherwise off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på frostsikring: holder %.0f–%.0f °C når varmepumpen ellers er av"
+          }
+        }
+      }
+    },
+    "Turn on holiday mode from %@ to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på feriemodus fra %@ til %@"
+          }
+        }
+      }
+    },
+    "Turn on holiday mode from %@ to %@ – during the period the heat pump keeps the frost protection range %.0f–%.0f °C" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på feriemodus fra %@ til %@ – i perioden holder varmepumpen frostsikringens område %.0f–%.0f °C"
+          }
+        }
+      }
+    },
+    "Turn on holiday mode from %@ to %@ – during the period the heat pump keeps the frost protection range %.0f–%.0f °C (the lowest, %.0f °C, is low; 8 °C or more is recommended)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på feriemodus fra %@ til %@ – i perioden holder varmepumpen frostsikringens område %.0f–%.0f °C (laveste %.0f °C er lavt; 8 °C eller mer anbefales)"
+          }
+        }
+      }
+    },
+    "Turn on holiday mode from %@ to %@ – frost protection is NOT on" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå på feriemodus fra %@ til %@ – frostsikring er IKKE på"
+          }
+        }
+      }
+    },
+    "Turn the heat pump OFF" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå varmepumpen AV"
+          }
+        }
+      }
+    },
+    "Turn the heat pump ON" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slå varmepumpen PÅ"
+          }
+        }
+      }
+    },
+    "Two events on %@ at %@. Remove one of them." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To hendelser %@ kl. %@. Fjern den ene."
+          }
+        }
+      }
+    },
+    "Unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent"
+          }
+        }
+      }
+    },
+    "Unknown error code" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent feilkode"
+          }
+        }
+      }
+    },
+    "Unknown error code %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent feilkode %@"
+          }
+        }
+      }
+    },
+    "Unknown update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent oppdatering"
+          }
+        }
+      }
+    },
+    "Unknown when the deodorizing filter was last cleaned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent når luktfilteret sist ble rengjort"
+          }
+        }
+      }
+    },
+    "Unknown whether the weekly schedule will be on" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukjent om ukeplanen blir på"
+          }
+        }
+      }
+    },
+    "Unknown, %lld events" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unknown, %lld event"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Unknown, %lld events"
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ukjent, %lld hendelse"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Ukjent, %lld hendelser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Unusually high electricity use" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uvanlig høyt strømforbruk"
+          }
+        }
+      }
+    },
+    "Update available for the Wi-Fi adapter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdatering tilgjengelig for Wi-Fi-modulen"
+          }
+        }
+      }
+    },
+    "Use whole or half degrees." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk hele eller halve grader."
+          }
+        }
+      }
+    },
+    "V-blocking filter (green)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "V-blokkerende filter (grønt)"
+          }
+        }
+      }
+    },
+    "Vacuum the filter, or rinse it in lukewarm water and dry it in the shade. Spare part: MAC-2490FT-E." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Støvsug filteret, eller skyll det i lunkent vann og tørk i skyggen. Reservedel: MAC-2490FT-E."
+          }
+        }
+      }
+    },
+    "Vacuum the filters (the deodorizing filter can be soaked in lukewarm water at 30–40 °C for about 15 minutes) and dry them in the shade. Spare part if needed: MAC-3010FT-E." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Støvsug filtrene (luktfilteret kan bløtlegges i lunkent vann 30–40 °C i ca. 15 minutter), tørk i skyggen. Reservedel ved behov: MAC-3010FT-E."
+          }
+        }
+      }
+    },
+    "Vertical airflow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertikalt spjeld"
+          }
+        }
+      }
+    },
+    "Very cheap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært billig"
+          }
+        }
+      }
+    },
+    "Very cheap hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært billig"
+          }
+        }
+      }
+    },
+    "Very expensive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært dyr"
+          }
+        }
+      }
+    },
+    "Very expensive hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært dyrt"
+          }
+        }
+      }
+    },
+    "Wait a few seconds before you test again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vent noen sekunder før du tester igjen."
+          }
+        }
+      }
+    },
+    "Waiting until the weekly schedule has changed the temperature at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter til ukeplanen har endret temperaturen kl. %@."
+          }
+        }
+      }
+    },
+    "Waiting – %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter – %@"
+          }
+        }
+      }
+    },
+    "Waiting: at most one change an hour. Next at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter: høyst én endring i timen. Neste kl. %@."
+          }
+        }
+      }
+    },
+    "Waiting: price control has made %lld changes in the last hour." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Waiting: price control has made %lld change in the last hour."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Waiting: price control has made %lld changes in the last hour."
+                }
+              }
+            }
+          }
+        },
+        "nb" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Venter: prisstyringen har gjort %lld endring den siste timen."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Venter: prisstyringen har gjort %lld endringer den siste timen."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Warning" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advarsel"
+          }
+        }
+      }
+    },
+    "We do not know when the air filter was last cleaned. The manual recommends every 2 weeks." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vi vet ikke når luftfilteret sist ble rengjort. Bruksanvisningen anbefaler hver 2. uke."
+          }
+        }
+      }
+    },
+    "We have no reliable explanation of this code for MSZ-RW. %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vi har ingen sikker forklaring på denne koden for MSZ-RW. %@"
+          }
+        }
+      }
+    },
+    "Weak Wi-Fi signal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svakt Wi-Fi-signal"
+          }
+        }
+      }
+    },
+    "Weather data: MET Norway (yr.no), CC BY 4.0" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værdata: MET Norway (yr.no), CC BY 4.0"
+          }
+        }
+      }
+    },
+    "Weather forecast: network error (%@)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værvarselet: nettverksfeil (%@)."
+          }
+        }
+      }
+    },
+    "Weather forecast: the server answered with HTTP error %lld." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Værvarselet: serveren svarte med HTTP-feil %lld."
+          }
+        }
+      }
+    },
+    "Weekdays 08:00 → 18 °C and 15:30 → 21 °C." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hverdager 08:00 → 18 °C og 15:30 → 21 °C."
+          }
+        }
+      }
+    },
+    "Weekly schedule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ukeplan"
+          }
+        }
+      }
+    },
+    "With Norgespris the price is the same all day, so price control has nothing to steer by." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Med Norgespris er prisen den samme hele døgnet, så prisstyringen har ingenting å styre etter."
+          }
+        }
+      }
+    },
+    "You cannot have more than %@ events in the weekly schedule (in total for all seasons)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kan ikke ha mer enn %@ hendelser i ukeplanen (til sammen for alle sesonger)."
+          }
+        }
+      }
+    },
+    "You cannot have more than the allowed number of events in the weekly schedule (in total for all seasons)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du kan ikke ha mer enn det tillatte antallet hendelser i ukeplanen (til sammen for alle sesonger)."
+          }
+        }
+      }
+    },
+    "airflow %@/%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spjeld %@/%@"
+          }
+        }
+      }
+    },
+    "answer from another address" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "svar fra en annen adresse"
+          }
+        }
+      }
+    },
+    "answer too large" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "for stort svar"
+          }
+        }
+      }
+    },
+    "auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "auto"
+          }
+        }
+      }
+    },
+    "cool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kjøling"
+          }
+        }
+      }
+    },
+    "could not decrypt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kunne ikke dekryptere"
+          }
+        }
+      }
+    },
+    "dry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "avfukting"
+          }
+        }
+      }
+    },
+    "encryption failed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kryptering feilet"
+          }
+        }
+      }
+    },
+    "every day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alle dager"
+          }
+        }
+      }
+    },
+    "expected a list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "forventet en liste"
+          }
+        }
+      }
+    },
+    "fan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vifte"
+          }
+        }
+      }
+    },
+    "fan %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vifte %lld"
+          }
+        }
+      }
+    },
+    "fan auto" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vifte auto"
+          }
+        }
+      }
+    },
+    "heat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "varme"
+          }
+        }
+      }
+    },
+    "invalid IV" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ugyldig IV"
+          }
+        }
+      }
+    },
+    "invalid JSON" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ugyldig JSON"
+          }
+        }
+      }
+    },
+    "invalid address" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ugyldig adresse"
+          }
+        }
+      }
+    },
+    "max %lld changes per hour are used. Sends at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "maks %lld endringer per time er brukt. Sendes kl. %@."
+          }
+        }
+      }
+    },
+    "missing <ESV>" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mangler <ESV>"
+          }
+        }
+      }
+    },
+    "no address" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ingen adresse"
+          }
+        }
+      }
+    },
+    "off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "av"
+          }
+        }
+      }
+    },
+    "on, %.0f–%.0f °C" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "på, %.0f–%.0f °C"
+          }
+        }
+      }
+    },
+    "on, %@ → %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "på, %@ → %@"
+          }
+        }
+      }
+    },
+    "sends at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sendes kl. %@."
+          }
+        }
+      }
+    },
+    "sends in a few seconds." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sendes om noen sekunder."
+          }
+        }
+      }
+    },
+    "timeseries missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mangler timeseries"
+          }
+        }
+      }
+    },
+    "turned off – back to normal temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "slått av – tilbake til vanlig temperatur"
+          }
+        }
+      }
+    },
+    "unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukjent"
+          }
+        }
+      }
+    },
+    "unknown error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukjent feil"
+          }
+        }
+      }
+    },
+    "unknown version" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukjent versjon"
+          }
+        }
+      }
+    },
+    "update cancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oppdatering avbrutt"
+          }
+        }
+      }
+    },
+    "update started" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oppdatering startet"
+          }
+        }
+      }
+    },
+    "weekdays" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hverdager"
+          }
+        }
+      }
+    },
+    "weekends" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "helg"
+          }
+        }
+      }
+    },
+    "“%@” is not a valid IP address on the home network (for example 192.168.1.50)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@» er ikke en gyldig IP-adresse på hjemmenettet (for eksempel 192.168.1.50)."
+          }
+        }
+      }
+    },
+    "“%@”. See Health in the app for what it means." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«%@». Se Helse i appen for hva det betyr."
+          }
+        }
+      }
+    }
+  },
   "version" : "1.0"
 }

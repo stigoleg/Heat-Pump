@@ -1,7 +1,7 @@
 import Foundation
 
 /// Estimated price per kWh for one hour (øre/kWh incl. VAT, same basis as `PriceBreakdown.totalOre`:
-/// electricity + grid tariff − strømstøtte). An estimate, not a published price.
+/// electricity + grid tariff − electricity subsidy). An estimate, not a published price.
 public struct EstimatedPrice: Codable, Sendable, Equatable {
     public var hour: Date
     public var totalOre: Double
@@ -27,7 +27,7 @@ public struct PriceOutlook: Codable, Sendable, Equatable {
 
     /// One sentence on how the estimate is made.
     public static let methodText =
-        "Anslaget bygger på hvordan prisen har variert gjennom døgnet de siste fire ukene og nivået den siste uka, justert for værvarselet når prisen har fulgt temperaturen; virkelige priser for i morgen kommer rundt kl. 13."
+        L10n.tr("The estimate is based on how the price has varied through the day over the last four weeks and the level over the last week, adjusted for the weather forecast when the price has followed the temperature; actual prices for tomorrow arrive around 13:00.")
 }
 
 /// Expected use and cost of one forecast day (an estimate).
@@ -75,7 +75,7 @@ extension HeatPumpService {
                 history: history, dayTemperatures: try dayTemperatures(from: historyStart, to: end), from: from, to: end,
                 timeZone: timeZone)
         else {
-            outlook.estimateMissing = "Anslaget trenger minst \(PriceEstimator.minDays) dager med lagrede priser."
+            outlook.estimateMissing = L10n.format("The estimate needs at least %lld days of stored prices.", PriceEstimator.minDays)
             return outlook
         }
         // Spot excl. VAT → the full price per kWh, like the published hours.

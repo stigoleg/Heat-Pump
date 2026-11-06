@@ -6,21 +6,21 @@ public enum PriceArea: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .no1: "NO1 – Øst-Norge"
-        case .no2: "NO2 – Sør-Norge"
-        case .no3: "NO3 – Midt-Norge"
-        case .no4: "NO4 – Nord-Norge"
-        case .no5: "NO5 – Vest-Norge"
+        case .no1: L10n.tr("NO1 – Eastern Norway")
+        case .no2: L10n.tr("NO2 – Southern Norway")
+        case .no3: L10n.tr("NO3 – Central Norway")
+        case .no4: L10n.tr("NO4 – Northern Norway")
+        case .no5: L10n.tr("NO5 – Western Norway")
         }
     }
 
-    /// VAT on electricity: 25 %, except Nord-Norge (NO4), which is exempt.
+    /// VAT on electricity: 25 %, except Northern Norway (NO4), which is exempt.
     public var vatFactor: Double { self == .no4 ? 1.0 : 1.25 }
 }
 
 /// Which kind of electricity agreement the household has.
 public enum PriceAgreementKind: String, Codable, Sendable, CaseIterable {
-    /// Fixed state price per kWh (no strømstøtte).
+    /// Fixed state price per kWh (no electricity subsidy).
     case norgespris
     /// Spot price from the user's Tibber account.
     case tibber
@@ -30,13 +30,13 @@ public enum PriceAgreementKind: String, Codable, Sendable, CaseIterable {
     public var displayName: String {
         switch self {
         case .norgespris: "Norgespris"
-        case .tibber: "Spotpris via Tibber"
-        case .spot: "Spotpris uten Tibber"
+        case .tibber: L10n.tr("Spot price via Tibber")
+        case .spot: L10n.tr("Spot price without Tibber")
         }
     }
 }
 
-/// Grid tariff energy component (energiledd), øre/kWh incl. VAT and fees.
+/// Grid tariff energy charge, øre/kWh incl. VAT and fees.
 public struct GridTariff: Codable, Sendable, Equatable {
     /// Weekdays 06–22.
     public var dayOre: Double
@@ -49,15 +49,15 @@ public struct GridTariff: Codable, Sendable, Equatable {
     }
 
     /// Elvia standard tariff for households from 1 July 2026: day 46,40 and night/weekend
-    /// 31,40 øre/kWh, "inklusive alle avgifter" (Enova 1,0 øre, elavgift 7,13 øre and 25 % VAT).
+    /// 31,40 øre/kWh, "including all fees" (Enova 1,0 øre, electricity tax 7,13 øre and 25 % VAT).
     /// Source: https://www.elvia.no/siteassets/dokumenter/priser/2026/1-juli-2026/tariffblad_1_0_standard-tariff_privat_20260701.pdf
     /// (read 2026-11-05). The fixed capacity part (fastledd) is left out on purpose.
     public static let elvia2026 = GridTariff(dayOre: 46.40, nightOre: 31.40)
-    public static let elviaSource = "Elvia, standard nettleie for husholdninger"
-    public static let elviaAsOf = "1. juli 2026"
+    public static let elviaSource = L10n.tr("Elvia, standard grid tariff for households")
+    public static let elviaAsOf = L10n.tr("1 July 2026")
 }
 
-/// State electricity support for households on spot agreements (strømstøtte).
+/// State electricity subsidy for households on spot agreements (strømstøtte).
 public enum Stromstotte {
     /// 2026 threshold: 77 øre/kWh excl. VAT (96,25 øre incl. 25 % VAT); raised from 75 øre on
     /// 1 January 2026. Source: regjeringen.no "Regjeringens strømtiltak"
@@ -114,22 +114,22 @@ public enum PriceLevel: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .veryCheap: "Svært billig"
-        case .cheap: "Billig"
-        case .normal: "Normal"
-        case .expensive: "Dyr"
-        case .veryExpensive: "Svært dyr"
+        case .veryCheap: L10n.tr("Very cheap")
+        case .cheap: L10n.tr("Cheap")
+        case .normal: L10n.tr("Normal")
+        case .expensive: L10n.tr("Expensive")
+        case .veryExpensive: L10n.tr("Very expensive")
         }
     }
 
-    /// Short chip text for Oversikt.
+    /// Short chip text for Overview.
     public var nowText: String {
         switch self {
-        case .veryCheap: "Strømmen er svært billig nå"
-        case .cheap: "Strømmen er billig nå"
-        case .normal: "Vanlig strømpris nå"
-        case .expensive: "Strømmen er dyr nå"
-        case .veryExpensive: "Strømmen er svært dyr nå"
+        case .veryCheap: L10n.tr("Electricity is very cheap now")
+        case .cheap: L10n.tr("Electricity is cheap now")
+        case .normal: L10n.tr("Normal electricity price now")
+        case .expensive: L10n.tr("Electricity is expensive now")
+        case .veryExpensive: L10n.tr("Electricity is very expensive now")
         }
     }
 
@@ -183,7 +183,7 @@ public struct PriceBreakdown: Codable, Sendable, Equatable {
     public var energyOre: Double
     /// Grid tariff energy part for this hour.
     public var gridOre: Double
-    /// Strømstøtte, zero or negative.
+    /// Electricity subsidy, zero or negative.
     public var supportOre: Double
     public var totalOre: Double { energyOre + gridOre + supportOre }
     /// True when the grid tariff uses the day rate this hour.

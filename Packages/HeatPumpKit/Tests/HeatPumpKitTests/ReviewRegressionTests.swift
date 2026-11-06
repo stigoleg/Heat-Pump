@@ -27,7 +27,7 @@ struct ReviewRegressionTests {
         clock.advance(6)
         let low = try await svc.apply(.temperature(12), source: .claude, reason: "for kaldt i kjøling")
         #expect(low.result == .rejected)
-        #expect(low.message.contains("Kjøling"))
+        #expect(low.message.contains("Cool"))
         // Another process sharing the database sees the same expected state.
         let other = try service(path: path, clock: clock, backend: CountingBackend(now: clock.provider))
         #expect(try await other.apply(.temperature(12), source: .app, reason: "x").result == .rejected)
@@ -67,7 +67,7 @@ struct ReviewRegressionTests {
         await backend.failNext(with: .invalidCredentials("Feil passord"))
         let first = try await svc.currentState()
         #expect(first.needsLogin)
-        #expect(first.error?.contains("Innstillinger") == true)
+        #expect(first.error?.contains("Settings") == true)
         clock.advance(3600)
         let second = try await svc.currentState(force: true)
         #expect(second.needsLogin)
@@ -164,7 +164,7 @@ struct ReviewRegressionTests {
         #expect(codes.contains("stale_data"))
         #expect(!codes.contains("offline"))
         let stale = report.findings.first { $0.code == "stale_data" }
-        #expect(stale?.detail.contains("MELCloud har midlertidig stengt") == true)
+        #expect(stale?.detail.contains("MELCloud has temporarily blocked") == true)
         #expect(stale?.recommendation.contains("sikringen") == false)
     }
 
@@ -207,7 +207,7 @@ struct ReviewRegressionTests {
                 HealthInput(latestState: makeState(at: now, hasError: true, errorCode: code), now: now))
             let finding = report.findings.first { $0.code == "error_flag" }
             #expect(finding?.severity == .warning)
-            #expect(finding?.title.contains("uten feilkode") == true)
+            #expect(finding?.title.contains("without an error code") == true)
             #expect(!report.findings.contains { $0.code == "active_error" })
             #expect(!report.findings.contains { $0.detail.contains("Ingen feil") })
         }
@@ -279,7 +279,7 @@ struct ReviewRegressionTests {
             try await svc.recordMaintenance(kind: .airFilter, date: clock.now.addingTimeInterval(86_400))
         }
         let record = try await svc.recordMaintenance(kind: .airFilter, note: "Støvsuget", reason: "Brukeren sa det i chatten")
-        #expect(record.note == "Støvsuget\nBegrunnelse: Brukeren sa det i chatten")
+        #expect(record.note == "Støvsuget\nReason: Brukeren sa det i chatten")
     }
 
     @Test func knowledgeCorrections() throws {

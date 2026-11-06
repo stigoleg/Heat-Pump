@@ -28,7 +28,7 @@ public struct METForecastProvider: WeatherProviding {
     }
 
     public func fetch(latitude: Double, longitude: Double, ifModifiedSince: String?) async throws -> WeatherResponse {
-        guard let url = Self.url(latitude: latitude, longitude: longitude) else { throw WeatherError.network("ugyldig adresse") }
+        guard let url = Self.url(latitude: latitude, longitude: longitude) else { throw WeatherError.network(L10n.tr("invalid address")) }
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -60,8 +60,8 @@ public struct METForecastProvider: WeatherProviding {
     /// and the next 6 hours' precipitation (and symbol where the hourly part has ended).
     static func parse(_ data: Data) throws -> [ForecastHour] {
         let json: JSONValue
-        do { json = try JSONValue.parse(data) } catch { throw WeatherError.decoding("ugyldig JSON") }
-        guard let series = json["properties"]?["timeseries"]?.array else { throw WeatherError.decoding("mangler timeseries") }
+        do { json = try JSONValue.parse(data) } catch { throw WeatherError.decoding(L10n.tr("invalid JSON")) }
+        guard let series = json["properties"]?["timeseries"]?.array else { throw WeatherError.decoding(L10n.tr("timeseries missing")) }
         return series.compactMap { entry in
             guard let time = PriceAggregation.iso(entry["time"]?.string),
                 let details = entry["data"]?["instant"]?["details"], let temperature = details["air_temperature"]?.double

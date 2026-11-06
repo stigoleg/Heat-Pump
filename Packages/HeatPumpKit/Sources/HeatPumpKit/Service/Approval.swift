@@ -2,9 +2,9 @@ import Foundation
 
 /// What a human is asked to approve before Claude's change reaches the heat pump.
 public struct ApprovalRequest: Sendable, Equatable {
-    public static let title = "Claude vil endre varmepumpen"
+    public static let title = L10n.tr("Claude wants to change the heat pump")
 
-    /// Norwegian one-line summary per change.
+    /// One-line summary per change.
     public var summaries: [String]
     /// Claude's stated reason.
     public var reason: String
@@ -16,9 +16,9 @@ public struct ApprovalRequest: Sendable, Equatable {
 
     /// Body text for the dialog.
     public var message: String {
-        // Non-breaking space keeps "21,5 °C" on one line in a narrow dialog.
-        summaries.map { "• \($0.replacingOccurrences(of: " °C", with: "\u{00A0}°C"))" }.joined(separator: "\n")
-            + "\n\nBegrunnelse fra Claude: \(reason)"
+        // Non-breaking space keeps "21.5 °C" on one line in a narrow dialog.
+        let list = summaries.map { "• \($0.replacingOccurrences(of: " °C", with: "\u{00A0}°C"))" }.joined(separator: "\n")
+        return L10n.format("%@\n\nReason from Claude: %@", list, reason)
     }
 }
 
@@ -29,14 +29,14 @@ public enum ApprovalDecision: Sendable, Equatable {
     /// No dialog could be shown (for example no GUI session).
     case unavailable(String)
 
-    /// Norwegian text logged with a rejected change.
+    /// Text logged with a rejected change.
     public var rejectionText: String {
         switch self {
         case .approved: ""
-        case .rejected: "Avvist av brukeren i godkjenningsdialogen."
+        case .rejected: L10n.tr("Rejected by the user in the approval dialog.")
         case .timedOut:
-            "Ingen svar i godkjenningsdialogen innen \(Int(ApprovalPolicy.timeout)) sekunder, regnet som avvist."
-        case .unavailable(let detail): "Kunne ikke vise godkjenningsdialog (\(detail)), så endringen ble ikke sendt."
+            L10n.format("No answer in the approval dialog within %lld seconds, counted as rejected.", Int(ApprovalPolicy.timeout))
+        case .unavailable(let detail): L10n.format("Could not show the approval dialog (%@), so the change was not sent.", detail)
         }
     }
 }

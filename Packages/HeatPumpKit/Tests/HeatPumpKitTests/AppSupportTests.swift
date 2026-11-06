@@ -38,11 +38,11 @@ struct AppSupportTests {
         let record = ChangeRecord(
             timestamp: now, source: .claude, field: "setTemperature", oldValue: "21.0", newValue: "21.5",
             reason: "x", result: .ok)
-        #expect(record.displaySummary == "Endre ønsket temperatur til 21,5 °C")
+        #expect(record.displaySummary == "Change target temperature to 21,5 °C")
         #expect(record.oldDisplayValue == "21,0 °C")
         let mode = ChangeRecord(timestamp: now, source: .app, field: "mode", oldValue: "heat", newValue: "cool", reason: nil, result: .rejected)
-        #expect(mode.newDisplayValue == "Kjøling")
-        #expect(mode.oldDisplayValue == "Varme")
+        #expect(mode.newDisplayValue == "Cool")
+        #expect(mode.oldDisplayValue == "Heat")
         let unknown = ChangeRecord(timestamp: now, source: .app, field: "weird", oldValue: nil, newValue: "1", reason: nil, result: .ok)
         #expect(unknown.displaySummary == "weird: 1")
         for change: DeviceChange in [.power(false), .fanSpeed(0), .vaneVertical(.swing), .vaneHorizontal(.split), .mode(.dry)] {
@@ -61,7 +61,7 @@ struct AppSupportTests {
         let fresh = ErrorLogEntry(deviceId: 1, start: now.addingTimeInterval(-60), message: "Ny feil")
         (planned, memory) = NotificationPlanner.plan(
             state: makeState(at: now), errorEvents: [old, fresh], maintenance: [], memory: memory, now: now)
-        #expect(planned.map(\.title) == ["Ny feil i feilloggen"])
+        #expect(planned.map(\.title) == ["New error in the error log"])
         (planned, memory) = NotificationPlanner.plan(
             state: makeState(at: now), errorEvents: [old, fresh], maintenance: [], memory: memory, now: now)
         #expect(planned.isEmpty)

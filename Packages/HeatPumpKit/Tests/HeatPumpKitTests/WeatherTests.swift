@@ -211,7 +211,7 @@ struct WeatherTests {
         let expected = 8.4 * (50 + (16 * 46.4 + 8 * 31.4) / 24) / 100
         #expect(abs((estimate.costNok ?? 0) - expected) < 0.06)
         #expect(estimate.pricesFromToday == false)
-        #expect(estimate.shortText == "Anslag i morgen: ~8 kWh · ~" + Display.format("%.0f kr", expected))
+        #expect(estimate.shortText == "Estimate tomorrow: ~8 kWh · ~" + Display.format("%.0f NOK", expected))
     }
 
     @Test func noEstimateWithoutEnoughDays() async throws {

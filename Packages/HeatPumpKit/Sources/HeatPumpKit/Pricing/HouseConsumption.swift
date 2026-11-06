@@ -61,7 +61,7 @@ public struct TibberConsumptionProvider: HouseConsumptionProviding {
     /// Hours from the first home with consumption data; hours Tibber has not finished (null) are skipped.
     static func parse(_ data: Data) throws -> [HouseHour] {
         let json: JSONValue
-        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding("ugyldig JSON") }
+        do { json = try JSONValue.parse(data) } catch { throw PriceError.decoding(L10n.tr("invalid JSON")) }
         if let errors = json["errors"]?.array, !errors.isEmpty {
             let message = errors.compactMap { $0["message"]?.string }.joined(separator: "; ")
             if message.lowercased().contains("unauthor") || message.lowercased().contains("token") { throw PriceError.unauthorized }

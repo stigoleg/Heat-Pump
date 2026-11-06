@@ -39,15 +39,15 @@ struct LocalPhaseTests {
         #expect(sample(subMode: 0, running: false).phase == .resting)
         #expect(sample(subMode: 0, running: false, power: false).phase == .off)
         #expect(sample(subMode: 0x10, running: false).phase == .off)
-        #expect(LocalPhase.defrost.statusLine == "Avriser – det kan blåse lite eller kaldt i noen minutter")
-        #expect(LocalPhase.standby.statusLine == "Hviler – kompressoren står")
-        // "Ønsket temperatur nådd" only when the room is at or above the setpoint.
+        #expect(LocalPhase.defrost.statusLine == "Defrosting – it may blow little or cold air for a few minutes")
+        #expect(LocalPhase.standby.statusLine == "Resting – the compressor is idle")
+        // "Target temperature reached" only when the room is at or above the setpoint.
         var resting = sample(subMode: 0, running: false)
         resting.setTemperature = 21
         resting.roomTemperature = 20.5
-        #expect(resting.statusLine == "Hviler – kompressoren står")
+        #expect(resting.statusLine == "Resting – the compressor is idle")
         resting.roomTemperature = 21
-        #expect(resting.statusLine == "Hviler (ønsket temperatur nådd)")
+        #expect(resting.statusLine == "Resting (target temperature reached)")
         #expect(LocalSample(timestamp: date).phase == nil)
     }
 
@@ -136,7 +136,7 @@ struct LocalPhaseTests {
         let busy = LocalHealth.frequentDefrost(hours(3, endingAt: now, defrosts: 4, defrostMinutes: 12), now: now)
         #expect(busy.map(\.code) == ["frequent_defrost"])
         #expect(busy.first?.severity == .warning)
-        #expect(busy.first?.recommendation.contains("snø/is og løv") == true)
+        #expect(busy.first?.recommendation.contains("snow, ice and leaves") == true)
         // Only two such hours: nothing from that rule (and share is below 20 %).
         #expect(LocalHealth.frequentDefrost(hours(2, endingAt: now, defrosts: 4, defrostMinutes: 10), now: now).isEmpty)
         // Defrosting a quarter of the time over 6+ hours at mild temperatures: info.
@@ -159,7 +159,7 @@ struct LocalPhaseTests {
         let service = HeatPumpService(backend: MockBackend(timeZone: .gmt, now: clock.provider), store: store, timeZone: .gmt, now: clock.provider)
         let points = try await service.history(metric: .defrost, from: start, to: clock.now)
         #expect(points.map(\.value) == [6, 4])
-        #expect(points.map(\.text) == ["1 avriminger", "1 avriminger"])
+        #expect(points.map(\.text) == [L10n.format("%lld defrosts", 1), L10n.format("%lld defrosts", 1)])
         #expect(points.allSatisfy { $0.source == "local" })
         let summary = try await service.liveSummary(maxAge: 3600)
         #expect(summary.defrostsLast24Hours == 2)

@@ -30,7 +30,7 @@ final class FakeWriter: Sendable {
                 s.sent.append(changes)
                 return changes.map {
                     ChangeOutcome(
-                        result: s.outcome, message: s.outcome == .ok ? "Sendt" : "Ikke sendt: For mange endringer", field: $0.field,
+                        result: s.outcome, message: s.outcome == .ok ? "Sendt" : "Not sent: Too many changes", field: $0.field,
                         nextAllowed: s.nextAllowed)
                 }
             }
@@ -103,7 +103,7 @@ struct ChangeDebouncerTests {
         #expect(writer.sent.isEmpty)
         #expect(d.hasDraft)
         guard case .waiting(let reason, let retry) = d.status else { Issue.record("expected waiting"); return }
-        #expect(reason.contains("maks 12"))
+        #expect(reason.contains("max 12"))
         #expect(retry == clock.now.addingTimeInterval(600))
         #expect(d.remainingThisHour == 0)
         // Once allowed again the draft goes out.

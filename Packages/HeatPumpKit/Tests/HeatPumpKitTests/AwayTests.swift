@@ -17,8 +17,8 @@ struct AwayTests {
         #expect(FrostProtection(enabled: true, minimum: 10, maximum: 11).validationProblem() != nil)  // gap < 2
         #expect(FrostProtection(enabled: false, minimum: 10, maximum: 11).validationProblem() != nil)
         #expect(FrostProtection(enabled: true, minimum: 8.5, maximum: 12).validationProblem() != nil)  // whole degrees
-        #expect(FrostProtection(enabled: true, minimum: 8, maximum: 12).summary == "på, 8–12 °C")
-        #expect(FrostProtection(enabled: false, minimum: 8, maximum: 12).summary == "av")
+        #expect(FrostProtection(enabled: true, minimum: 8, maximum: 12).summary == "on, 8–12 °C")
+        #expect(FrostProtection(enabled: false, minimum: 8, maximum: 12).summary == "off")
     }
 
     @Test func frostProtectionBody() {
@@ -111,7 +111,7 @@ struct AwayTests {
         #expect(timer.events[3].weekday == 7)  // EventDay 0 = Sunday
         #expect(timer.events[3].minuteOfDay == 1350)  // from EventTime
         #expect(timer.events[3].power == false)
-        #expect(timer.events[0].summary == "Varme 21 °C")
+        #expect(timer.events[0].summary == "Heat 21 °C")
         #expect(timer.seasons.first?.id == 11)
         #expect(timer.seasons.first?.name == "Default")
     }
@@ -184,8 +184,8 @@ struct AwayTests {
         #expect(await backend.frost.enabled == true)
         let row = try #require(try store.changes(limit: 1).first)
         #expect(row.field == "frostProtection")
-        #expect(row.oldValue == "av")
-        #expect(row.newValue == "på, 8–12 °C")
+        #expect(row.oldValue == "off")
+        #expect(row.newValue == "on, 8–12 °C")
         #expect(row.result == .ok)
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour - 1)
         #expect(try await service.storedAwaySettings()?.frost?.enabled == true)
@@ -222,8 +222,8 @@ struct AwayTests {
         #expect(refused.result == .rejected)
         #expect(rejecting.received.count == 1)
         let summary = rejecting.received.first?.summaries.first ?? ""
-        #expect(summary.hasPrefix("Slå på feriemodus"))
-        #expect(summary.contains("frostsikringens område 8–12 °C"))
+        #expect(summary.hasPrefix("Turn on holiday mode"))
+        #expect(summary.contains("frost protection range 8–12 °C"))
         #expect(await backend.awayWrites == 1)  // only the frost protection
         let approving = RecordingApprover(.approved)
         let sent = try await service.applyAway(change, source: .claude, reason: "Hytta", approver: approving)
@@ -271,7 +271,7 @@ struct AwayTests {
         let service = HeatPumpService(backend: RefusingBackend(now: clock.provider), store: store, timeZone: .gmt, now: clock.provider, sleep: clock.sleeper)
         _ = try await service.currentState()
         let away = try await service.awaySettings()
-        #expect(away.message?.contains("Kunne ikke lese") == true)
+        #expect(away.message?.contains("Could not read") == true)
         _ = try await service.weeklyTimer()
         let outcome = try await service.applyAway(.frostProtection(FrostProtection(enabled: true, minimum: 8, maximum: 12)), source: .app, reason: "x")
         #expect(outcome.result == .failed)
@@ -290,7 +290,7 @@ struct AwayTests {
         // Mock starts with frost protection off.
         let refused = try await service.applyAway(holiday, source: .claude, reason: "Ferie", approver: approver)
         #expect(refused.result == .rejected)
-        #expect(refused.message.contains("frostsikring er av"))
+        #expect(refused.message.contains("frost protection is off"))
         #expect(approver.received.isEmpty)
         #expect(await backend.awayWrites == 0)
         // Low but allowed range: sent, and the summary warns.
@@ -299,12 +299,12 @@ struct AwayTests {
         clock.advance(10)
         let sent = try await service.applyAway(holiday, source: .claude, reason: "Ferie", approver: approver)
         #expect(sent.result == .ok)
-        #expect(approver.received.first?.summaries.first?.contains("8 °C eller mer anbefales") == true)
+        #expect(approver.received.first?.summaries.first?.contains("8 °C or more is recommended") == true)
         // Frost protection cannot be switched off during the holiday.
         clock.advance(10)
         let off = try await service.applyAway(.frostProtection(FrostProtection(enabled: false, minimum: 6, maximum: 10)), source: .app, reason: "x")
         #expect(off.result == .rejected)
-        #expect(off.message.contains("feriemodus er på"))
+        #expect(off.message.contains("holiday mode is on"))
         #expect(await backend.frost.enabled == true)
     }
 
@@ -315,7 +315,7 @@ struct AwayTests {
         let outcome = try await service.applyAway(
             .holidayMode(HolidayMode(enabled: true, start: clock.now, end: clock.now.addingTimeInterval(86_400))), source: .app, reason: "x")
         #expect(outcome.result == .rejected)
-        #expect(outcome.message.contains("ikke vet om frostsikring er på"))
+        #expect(outcome.message.contains("does not know whether frost protection is on"))
         #expect(try await service.writeBudget().remaining == ChangeBudget.maxChangesPerHour)
     }
 
@@ -327,7 +327,7 @@ struct AwayTests {
         #expect(FrostProtection.resolving(enabled: true, minimum: 8, maximum: nil, current: nil) == nil)
         #expect(FrostProtection.resolving(enabled: true, minimum: 8, maximum: 12, current: nil) == FrostProtection(enabled: true, minimum: 8, maximum: 12))
         #expect(AwayChange.frostProtection(FrostProtection(enabled: false, minimum: 10, maximum: 14)).displaySummary
-            == "Slå av frostsikring (området 10–14 °C lagres uendret)")
+            == "Turn off frost protection (the range 10–14 °C is kept unchanged)")
     }
 
     @Test func writeIsReadBackForComparison() async throws {
@@ -368,10 +368,10 @@ struct AwayTests {
         #expect(paths.filter { $0.hasSuffix("ClientLogin") }.isEmpty)
         #expect(paths.filter { $0.hasSuffix("FrostProtection/GetSettings") }.count == 1)
         #expect(paths.filter { $0.hasSuffix("Timer/Get2") }.count == 1)
-        #expect(last?.message?.contains("tillot ikke å lese frostsikring og feriemodus") == true)
+        #expect(last?.message?.contains("did not allow reading frost protection and holiday mode") == true)
         #expect(last?.refusedUntil != nil)
         #expect(try store.blockStatus(now: clock.now) == nil)
-        // "Prøv igjen" lifts the pause.
+        // "Try again" lifts the pause.
         _ = try await service.awaySettings(manual: true)
         #expect(transport.requests.compactMap { $0.url?.path }.filter { $0.hasSuffix("FrostProtection/GetSettings") }.count == 2)
     }
@@ -399,6 +399,6 @@ struct AwayTests {
         _ = try await service.weeklyTimer()
         #expect(await backend.timerReads == 2)
         let outcome = try await service.apply(.temperature(22), source: .app, reason: "x")
-        #expect(outcome.message.contains("ukeplanen"))
+        #expect(outcome.message.contains("weekly schedule"))
     }
 }

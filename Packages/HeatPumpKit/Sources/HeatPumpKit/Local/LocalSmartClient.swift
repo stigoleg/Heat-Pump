@@ -1,7 +1,7 @@
 import CommonCrypto
 import Foundation
 
-/// Errors from the local Wi-Fi adapter. `errorDescription` is Norwegian display text.
+/// Errors from the local Wi-Fi adapter. `errorDescription` is display text (via `L10n`).
 public enum LocalAccessError: Error, Sendable, Equatable, LocalizedError {
     case notEnabled
     case missingHost
@@ -14,14 +14,14 @@ public enum LocalAccessError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .notEnabled: "Lokal tilkobling er slått av."
-        case .missingHost: "Ingen IP-adresse er lagt inn for Wi-Fi-modulen."
-        case .invalidHost(let host): "«\(host)» er ikke en gyldig IP-adresse på hjemmenettet (for eksempel 192.168.1.50)."
-        case .http(let status): "Wi-Fi-modulen svarte med HTTP-feil \(status)."
-        case .network(let detail): "Fikk ikke kontakt med Wi-Fi-modulen: \(detail)"
-        case .badResponse(let detail): "Svaret fra Wi-Fi-modulen kunne ikke leses: \(detail)"
-        case .noFrames: "Wi-Fi-modulen svarte, men uten måledata."
-        case .notConfigured: "Lokal tilgang er ikke tilgjengelig i dette programmet."
+        case .notEnabled: L10n.tr("Local connection is turned off.")
+        case .missingHost: L10n.tr("No IP address has been entered for the Wi-Fi adapter.")
+        case .invalidHost(let host): L10n.format("“%@” is not a valid IP address on the home network (for example 192.168.1.50).", host)
+        case .http(let status): L10n.format("The Wi-Fi adapter answered with HTTP error %lld.", status)
+        case .network(let detail): L10n.format("Could not reach the Wi-Fi adapter: %@", detail)
+        case .badResponse(let detail): L10n.format("The answer from the Wi-Fi adapter could not be read: %@", detail)
+        case .noFrames: L10n.tr("The Wi-Fi adapter answered, but without readings.")
+        case .notConfigured: L10n.tr("Local access is not available in this program.")
         }
     }
 }
@@ -114,9 +114,9 @@ public struct LocalSmartClient: LocalStatusReading {
         }
         // Only an answer from the address that was asked counts (redirects are refused, so a
         // 3xx arrives here as an error status).
-        guard response.url?.host == host else { throw LocalAccessError.badResponse("svar fra en annen adresse") }
+        guard response.url?.host == host else { throw LocalAccessError.badResponse(L10n.tr("answer from another address")) }
         guard response.statusCode == 200 else { throw LocalAccessError.http(status: response.statusCode) }
-        guard data.count <= Self.maxResponseBytes else { throw LocalAccessError.badResponse("for stort svar") }
+        guard data.count <= Self.maxResponseBytes else { throw LocalAccessError.badResponse(L10n.tr("answer too large")) }
         return try Self.parseResponse(data)
     }
 
@@ -127,7 +127,7 @@ public struct LocalSmartClient: LocalStatusReading {
         guard let valid = validatedHost(host), let url = URL(string: "http://\(valid)\(path)") else {
             throw LocalAccessError.invalidHost(host)
         }
-        guard iv.count == blockSize else { throw LocalAccessError.badResponse("ugyldig IV") }
+        guard iv.count == blockSize else { throw LocalAccessError.badResponse(L10n.tr("invalid IV")) }
         let encrypted = try encrypt(Array(statusPayload.utf8), iv: iv)
         let body = #"<?xml version="1.0" encoding="UTF-8"?><ESV>"# + Data(iv + encrypted).base64EncodedString() + "</ESV>"
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
@@ -166,8 +166,8 @@ public struct LocalSmartClient: LocalStatusReading {
         let text = String(decoding: data, as: UTF8.self)
         guard let payload = element("ESV", in: text)?.trimmingCharacters(in: .whitespacesAndNewlines),
             let encrypted = Data(base64Encoded: payload, options: .ignoreUnknownCharacters)
-        else { throw LocalAccessError.badResponse("mangler <ESV>") }
-        guard let plain = decrypt(Array(encrypted)) else { throw LocalAccessError.badResponse("kunne ikke dekryptere") }
+        else { throw LocalAccessError.badResponse(L10n.tr("missing <ESV>")) }
+        guard let plain = decrypt(Array(encrypted)) else { throw LocalAccessError.badResponse(L10n.tr("could not decrypt")) }
         let xml = redacted(String(decoding: plain, as: UTF8.self))
         return reply(fromDecrypted: xml)
     }
@@ -235,7 +235,7 @@ public struct LocalSmartClient: LocalStatusReading {
 
     static func encrypt(_ plaintext: [UInt8], iv: [UInt8]) throws -> [UInt8] {
         guard let out = cbc(CCOperation(kCCEncrypt), pad(plaintext), iv: iv) else {
-            throw LocalAccessError.badResponse("kryptering feilet")
+            throw LocalAccessError.badResponse(L10n.tr("encryption failed"))
         }
         return out
     }
