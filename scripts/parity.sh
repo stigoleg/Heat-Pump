@@ -43,14 +43,13 @@ compare() {
         swiftc -O scripts/tools/image-diff.swift -o $tool
     fi
     mkdir -p $after/diff
-    local failed=0
+    local failed=0 name b pct
     for a in $before/*.png; do
-        local name=${a:t}
-        local b=$after/$name
+        name=${a:t}
+        b=$after/$name
         if [[ ! -f $b ]]; then
             echo "missing  $name"; failed=1; continue
         fi
-        local pct
         pct=$($tool $a $b $after/diff/$name) || true
         if [[ $pct == size ]]; then
             echo "SIZE     $name"; failed=1

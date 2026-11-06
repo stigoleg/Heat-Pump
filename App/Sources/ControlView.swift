@@ -168,18 +168,26 @@ struct ControlView: View {
 
     private func modeButton(_ mode: OperationMode, current: OperationMode?, _ debouncer: ChangeDebouncer) -> some View {
         let selected = current == mode
+        // Only the active mode has colour; the others are neutral, so the choice reads at a glance.
         return Button {
             debouncer.edit(.mode(mode))
         } label: {
             VStack(spacing: Theme.Space.s) {
                 Image(systemName: mode.systemImage)
                     .font(.system(size: 26, weight: .medium))
-                    .foregroundStyle(selected ? .white : mode.tint)
+                    .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
                     .frame(width: 56, height: 56)
                     .background(
-                        selected ? AnyShapeStyle(mode.tint.gradient) : AnyShapeStyle(mode.tint.opacity(0.12)),
+                        selected ? AnyShapeStyle(mode.tint.gradient) : AnyShapeStyle(Color.primary.opacity(0.05)),
                         in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                Text(mode.displayName).font(.callout.weight(selected ? .semibold : .regular))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                            .strokeBorder(selected ? Color.clear : Theme.hairline)
+                    }
+                    .shadow(color: selected ? mode.tint.opacity(0.35) : .clear, radius: 6, y: 2)
+                Text(mode.displayName)
+                    .font(.callout.weight(selected ? .semibold : .regular))
+                    .foregroundStyle(selected ? AnyShapeStyle(mode.tint) : AnyShapeStyle(.secondary))
             }
             .frame(minWidth: 72, maxWidth: .infinity)
             .padding(.vertical, Theme.Space.s)
