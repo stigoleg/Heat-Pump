@@ -2541,6 +2541,16 @@
         }
       }
     },
+    "From an air quality sensor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fra en luftkvalitetsmåler"
+          }
+        }
+      }
+    },
     "From the building in %@" : {
       "localizations" : {
         "nb" : {
@@ -4541,6 +4551,16 @@
         }
       }
     },
+    "Open Overview" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne Oversikt"
+          }
+        }
+      }
+    },
     "Open Weekly Schedule" : {
       "localizations" : {
         "nb" : {
@@ -4957,6 +4977,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radon vurderes ut fra årsmiddelverdien: tiltak anbefales fra 100 Bq/m³, og 200 Bq/m³ er grenseverdien. Korttidsverdier svinger med vær og ventilasjon, så mål i minst to måneder i vinterhalvåret."
+          }
+        }
+      }
+    },
+    "Radon, long-term" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon, langtidssnitt"
+          }
+        }
+      }
+    },
+    "Radon, short-term" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon, korttidssnitt"
           }
         }
       }

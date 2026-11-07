@@ -65,6 +65,21 @@ struct MenuBarTitleView: View {
         case .todayCost(let nok): Text(verbatim: Format.kroner(nok))
         case .priceNow(let ore, _): Text(verbatim: Format.ore(ore))
         case .health(let severity): Image(systemName: severity.systemImage)
+        case .radon(let value):
+            HStack(spacing: 2) {
+                Image(systemName: AirQualityMetric.radonShortTerm.systemImage).imageScale(.small)
+                Text(verbatim: Display.format("%.0f", value))
+            }
+        case .co2(let value):
+            HStack(spacing: 2) {
+                Image(systemName: AirQualityMetric.co2.systemImage).imageScale(.small)
+                Text(verbatim: Display.format("%.0f", value))
+            }
+        case .humidity(let value):
+            HStack(spacing: 2) {
+                Image(systemName: AirQualityMetric.humidity.systemImage).imageScale(.small)
+                Text(verbatim: AirQualityMetric.humidity.formatted(value))
+            }
         }
     }
 }
@@ -75,6 +90,7 @@ extension MenuBarSymbol {
         case .mode(let mode): mode.systemImage
         case .off: "power"
         case .meter: DeviceKind.energyMeter.systemImage
+        case .sensor: DeviceKind.airQualitySensor.systemImage
         }
     }
 }
@@ -96,6 +112,8 @@ struct MenuBarPanel: View {
                 HeatPumpPanel(device: pump, showWindow: showWindow)
             } else if let meter = device as? EnergyMeterDeviceModel {
                 MeterPanel(device: meter)
+            } else if let sensor = device as? AirQualityDeviceModel {
+                SensorPanel(device: sensor, showWindow: showWindow)
             }
             if app.priceControl.enabled {
                 Divider()
@@ -106,6 +124,14 @@ struct MenuBarPanel: View {
         }
         .padding(Theme.Space.l)
         .frame(width: 360)
+    }
+
+    /// Whether the panel has a view for devices of `kind` (the device picker lists only those, and
+    /// a remembered choice without one falls back to the primary device).
+    static func shows(_ kind: DeviceKind) -> Bool {
+        switch kind {
+        case .airToAirHeatPump, .energyMeter, .airQualitySensor: true
+        }
     }
 
     // MARK: Price control
@@ -210,22 +236,18 @@ private struct HeatPumpPanel: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: Theme.Space.s) {
-            IconBadge(
-                systemImage: mode?.systemImage ?? DeviceKind.airToAirHeatPump.systemImage,
-                color: isOn ? (mode?.tint ?? .gray) : .gray, size: 32)
-            VStack(alignment: .leading, spacing: 2) {
-                DeviceTitle(name: device.displayName)
-                statusLine.font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: Theme.Space.s)
+        PanelHeader(
+            name: device.displayName, systemImage: mode?.systemImage ?? DeviceKind.airToAirHeatPump.systemImage,
+            color: isOn ? (mode?.tint ?? .gray) : .gray
+        ) {
+            statusLine
+        } trailing: {
             if let state = device.state {
                 Label(state.offline ? "Offline" : "Online", systemImage: state.offline ? "wifi.slash" : "wifi")
                     .font(.caption)
                     .foregroundStyle(state.offline ? Theme.Status.caution : Theme.Status.good)
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
     /// The mode, and what the unit is doing when a local reading says so ("Defrosting – …").
@@ -445,20 +467,15 @@ private struct MeterPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(spacing: Theme.Space.s) {
-                IconBadge(systemImage: DeviceKind.energyMeter.systemImage, color: .yellow, size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    DeviceTitle(name: device.displayName)
-                    Text(DeviceKind.energyMeter.title).font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: Theme.Space.s)
+            PanelHeader(name: device.displayName, systemImage: DeviceKind.energyMeter.systemImage, color: .yellow) {
+                Text(DeviceKind.energyMeter.title)
+            } trailing: {
                 if device.powerNowW != nil {
                     Label("Live", systemImage: "dot.radiowaves.left.and.right")
                         .font(.caption)
                         .foregroundStyle(Theme.Status.good)
                 }
             }
-            .accessibilityElement(children: .combine)
             if let problem = device.syncProblem ?? device.liveProblem {
                 Label(problem, systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
@@ -483,7 +500,160 @@ private struct MeterPanel: View {
     }
 }
 
+// MARK: - Air quality sensor
+
+/// An air quality sensor in the panel: radon, CO₂, humidity, temperature and the particles it
+/// reports, each with its level's colour, when it measured, the battery, and its most important
+/// finding with a way to its overview; no controls.
+private struct SensorPanel: View {
+    let device: AirQualityDeviceModel
+    let showWindow: () -> Void
+    @Environment(AppModel.self) private var app
+
+    /// The readings shown, in this order; the ones the sensor does not report are left out.
+    private static let metrics: [AirQualityMetric] = [.radonShortTerm, .radonLongTerm, .co2, .humidity, .temperature, .voc, .pm25, .pm1]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            PanelHeader(name: device.displayName, systemImage: DeviceKind.airQualitySensor.systemImage, color: .teal) {
+                if let status = device.status {
+                    Text(measured(status)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(DeviceKind.airQualitySensor.title)
+                }
+            } trailing: {
+                if let level = device.status?.worstLevel {
+                    Label(level.title, systemImage: level.systemImage)
+                        .font(.caption)
+                        .foregroundStyle(level.color)
+                }
+            }
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Status.caution)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let status = device.status {
+                insight(status)
+                findings(status)
+            } else {
+                Text("No readings yet").foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var problem: String? {
+        if !device.hasCredentials { return String(localized: "Sign in to \(device.serviceName) under Settings → Account.") }
+        return device.syncProblem
+    }
+
+    /// "Measured 3 minutes ago · Battery 78 %" (the charge never split from its unit).
+    private func measured(_ status: AirQualityStatus) -> String {
+        let when = String(localized: "Measured \(Format.relative(status.recorded ?? status.fetchedAt))")
+        guard let battery = status.value(.battery) else { return when }
+        let charge = AirQualityMetric.battery.formatted(battery.value).replacingOccurrences(of: " ", with: "\u{00A0}")
+        return String(localized: "\(when) · Battery \(charge)")
+    }
+
+    // MARK: Insight
+
+    /// Radon's two averages on a row of their own (radon is what the sensor is mostly for, and
+    /// their names need the width), then the other readings three to a row.
+    @ViewBuilder private func insight(_ status: AirQualityStatus) -> some View {
+        let values = Self.metrics.compactMap { status.value($0) }
+        let radon = values.filter(\.metric.isRadon)
+        let others = values.filter { !$0.metric.isRadon }
+        let rows = (radon.isEmpty ? [] : [radon]) + stride(from: 0, to: others.count, by: 3).map { Array(others[$0..<min($0 + 3, others.count)]) }
+        if !rows.isEmpty {
+            CardSurface(padding: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    ForEach(rows.indices, id: \.self) { index in
+                        if index > 0 { Divider() }
+                        HStack(alignment: .top, spacing: Theme.Space.m) {
+                            ForEach(rows[index]) { value in reading(value) }
+                            // Keeps a short row of three in the columns of the one above.
+                            if !rows[index][0].metric.isRadon {
+                                ForEach(rows[index].count..<3, id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 0) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func reading(_ value: AirQualityValue) -> some View {
+        figure(
+            label(value.metric), systemImage: value.metric.systemImage, tint: value.level?.color ?? value.metric.tint,
+            detail: value.level?.title
+        ) {
+            Text(value.metric.formatted(value.value))
+        }
+    }
+
+    /// Radon's two averages are told apart by name.
+    private func label(_ metric: AirQualityMetric) -> Text {
+        switch metric {
+        case .radonShortTerm: Text("Radon, short-term")
+        case .radonLongTerm: Text("Radon, long-term")
+        default: Text(metric.title)
+        }
+    }
+
+    // MARK: Findings
+
+    /// The most important finding (or that nothing needs doing) and the way to the overview.
+    private func findings(_ status: AirQualityStatus) -> some View {
+        let top = HealthReport(generatedAt: Date(), findings: status.findings).findings.first { $0.severity != .ok }
+        return Button {
+            app.route = .device(device.key, .overview)
+            showWindow()
+        } label: {
+            HStack(spacing: Theme.Space.s) {
+                if let top {
+                    Image(systemName: top.severity.systemImage).foregroundStyle(top.severity.color)
+                    Text(top.title).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.Status.good)
+                    Text("Nothing to do right now")
+                }
+                Spacer(minLength: Theme.Space.s)
+                Text("Open Overview").foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+            }
+            .font(.callout)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Open Overview")
+    }
+}
+
 // MARK: - Shared
+
+/// A device's header in the panel: its badge, the name with the device picker, a status line and
+/// something at the trailing edge. Every kind uses it, so the picker is always within reach.
+private struct PanelHeader<Status: View, Trailing: View>: View {
+    let name: String
+    let systemImage: String
+    let color: Color
+    @ViewBuilder let status: Status
+    @ViewBuilder let trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            IconBadge(systemImage: systemImage, color: color, size: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                DeviceTitle(name: name)
+                status.font(.callout).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Theme.Space.s)
+            trailing
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
 
 /// The device's name; with two or more devices a menu that chooses the one the panel and the
 /// title show (remembered).
@@ -492,10 +662,11 @@ private struct DeviceTitle: View {
     let name: String
 
     var body: some View {
-        if app.devices.count >= 2 {
+        let devices = app.menuBarDevices
+        if devices.count >= 2 {
             Menu {
-                ForEach(app.devices.indices, id: \.self) { index in
-                    let device = app.devices[index]
+                ForEach(devices.indices, id: \.self) { index in
+                    let device = devices[index]
                     Button {
                         app.menuBar.choose(device.key)
                     } label: {
@@ -518,9 +689,15 @@ private struct DeviceTitle: View {
 private func figure<Value: View>(
     _ label: LocalizedStringKey, systemImage: String, tint: Color, detail: String? = nil, @ViewBuilder value: () -> Value
 ) -> some View {
+    figure(Text(label), systemImage: systemImage, tint: tint, detail: detail, value: value)
+}
+
+private func figure<Value: View>(
+    _ label: Text, systemImage: String, tint: Color, detail: String? = nil, @ViewBuilder value: () -> Value
+) -> some View {
     VStack(alignment: .leading, spacing: 2) {
         Label {
-            Text(label).foregroundStyle(.secondary)
+            label.foregroundStyle(.secondary)
         } icon: {
             Image(systemName: systemImage).foregroundStyle(tint)
         }
@@ -568,16 +745,32 @@ enum MenuBarDev {
                 break
             }
         }
-        // A full menu bar hides the item and puts the panel off screen; move it on screen.
+        // A full menu bar hides the item and puts the panel off screen; move it on screen. The
+        // panel snaps back to its item whenever its content changes size, so it is moved again
+        // after each move or resize (the panel can also take a moment to appear).
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1))
-            guard let screen = NSScreen.main else { return }
-            for window in NSApp.windows where window.isVisible && window.level.rawValue > 0 && window.frame.width >= 300 {
-                if !screen.visibleFrame.contains(window.frame) {
-                    window.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.maxX - window.frame.width - 80, y: screen.visibleFrame.maxY))
+            for _ in 0..<5 {
+                try? await Task.sleep(for: .seconds(1))
+                guard let panel = NSApp.windows.first(where: { $0.isVisible && $0.level.rawValue > 0 && $0.frame.width >= 300 }) else {
+                    continue
                 }
+                keepOnScreen(panel)
+                for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification] {
+                    observers.append(
+                        NotificationCenter.default.addObserver(forName: name, object: panel, queue: .main) { _ in
+                            MainActor.assumeIsolated { keepOnScreen(panel) }
+                        })
+                }
+                return
             }
         }
+    }
+
+    @MainActor private static var observers: [NSObjectProtocol] = []
+
+    @MainActor private static func keepOnScreen(_ window: NSWindow) {
+        guard let screen = NSScreen.main, !screen.visibleFrame.contains(window.frame) else { return }
+        window.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.maxX - window.frame.width - 80, y: screen.visibleFrame.maxY))
     }
 
     @MainActor private static func statusButton(in view: NSView?) -> NSButton? {

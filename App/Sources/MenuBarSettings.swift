@@ -79,6 +79,9 @@ extension MenuBarItem {
         case .todayCost: String(localized: "Today's cost")
         case .priceNow: String(localized: "Price now")
         case .health: String(localized: "Health warning")
+        case .radon: String(localized: "Radon")
+        case .co2: AirQualityMetric.co2.title
+        case .humidity: AirQualityMetric.humidity.title
         }
     }
 
@@ -92,6 +95,9 @@ extension MenuBarItem {
         case .todayCost: "chart.bar.fill"
         case .priceNow: "bolt.horizontal.fill"
         case .health: "exclamationmark.triangle.fill"
+        case .radon: AirQualityMetric.radonShortTerm.systemImage
+        case .co2: AirQualityMetric.co2.systemImage
+        case .humidity: AirQualityMetric.humidity.systemImage
         }
     }
 
@@ -105,6 +111,9 @@ extension MenuBarItem {
         case .todayCost: Theme.Data.energy
         case .priceNow: Theme.Data.electricity
         case .health: Theme.Status.caution
+        case .radon: AirQualityMetric.radonShortTerm.tint
+        case .co2: AirQualityMetric.co2.tint
+        case .humidity: AirQualityMetric.humidity.tint
         }
     }
 
@@ -112,6 +121,7 @@ extension MenuBarItem {
     var note: String? {
         switch self {
         case .health: String(localized: "Only when there is a warning")
+        case .radon, .co2, .humidity: String(localized: "From an air quality sensor")
         default: nil
         }
     }

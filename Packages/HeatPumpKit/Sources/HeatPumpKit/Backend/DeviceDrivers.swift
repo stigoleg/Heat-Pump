@@ -144,8 +144,34 @@ public protocol EnergyMeterDriver: DeviceConnection {
 /// itself within its integration's limits and reports why when it stops for good.
 public protocol LivePowerDriver: Sendable {
     /// Readings and state changes for `device` until the stream is cancelled (which closes the
-    /// connection when no other stream needs it).
-    func liveReadings(device: DeviceKey) -> AsyncStream<LivePowerEvent>
+    /// connection when no other stream needs it). The driver asks `gate` before the first
+    /// connection and before each reconnect, and reports a refused sign-in or a rate limit to it.
+    func liveReadings(device: DeviceKey, gate: LivePowerGate) -> AsyncStream<LivePowerEvent>
+}
+
+/// The service's say over a live stream (`EnergyMeterService.live()`): the integration's blocks and
+/// a refused sign-in stop the socket like every other request, and what the socket's own
+/// requests learn (a refused token, 429) is recorded in the store as the hourly sync does, so the
+/// other requests and the MCP helper stop too.
+public struct LivePowerGate: Sendable {
+    public enum Decision: Sendable, Equatable {
+        case allowed
+        /// The integration is blocked (after 429) until then.
+        case blocked(until: Date)
+        /// The service refused the stored sign-in values; nothing is sent until new ones are saved.
+        case rejected
+    }
+
+    public var check: @Sendable () -> Decision
+    public var report: @Sendable (HeatPumpError) -> Void
+
+    public init(check: @escaping @Sendable () -> Decision, report: @escaping @Sendable (HeatPumpError) -> Void) {
+        self.check = check
+        self.report = report
+    }
+
+    /// Always allowed, records nothing (tests, simulated meters).
+    public static let open = LivePowerGate(check: { .allowed }, report: { _ in })
 }
 
 /// An air quality sensor (radon, CO2, humidity, …): readings only. Sensors report every few

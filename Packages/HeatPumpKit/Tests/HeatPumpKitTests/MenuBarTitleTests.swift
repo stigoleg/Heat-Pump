@@ -63,7 +63,7 @@ struct MenuBarTitleTests {
     }
 
     @Test func availableItemsAreTheOnesNotChosen() {
-        #expect(MenuBarLayout.default.available == [.target, .outdoor, .todayCost, .priceNow, .health])
+        #expect(MenuBarLayout.default.available == [.target, .outdoor, .todayCost, .priceNow, .health, .radon, .co2, .humidity])
         #expect(MenuBarLayout(items: MenuBarItem.allCases).available.isEmpty)
     }
 
@@ -80,6 +80,17 @@ struct MenuBarTitleTests {
         #expect(layout.items == [.modeIcon, .power, .indoor, .health])
         layout.remove(.power)
         #expect(layout.items == [.modeIcon, .indoor, .health])
+    }
+
+    @Test func anAirQualitySensorShowsItsReadings() {
+        let layout = MenuBarLayout(items: [.modeIcon, .indoor, .radon, .co2, .humidity, .power, .health])
+        let sensor = MenuBarValues(symbol: .sensor, indoor: 21.4, radon: 48, co2: 640, humidity: 38, health: .warning)
+        #expect(
+            layout.segments(for: sensor)
+                == [.symbol(.sensor), .indoor(21.4), .radon(48), .co2(640), .humidity(38), .health(.warning)])
+        // A heat pump has none of them: they are left out.
+        #expect(layout.segments(for: values()) == [.symbol(.mode(.heat)), .indoor(21), .power(780)])
+        #expect(MenuBarLayout(storedValue: "radon,co2,humidity").items == [.radon, .co2, .humidity])
     }
 
     @Test func shownDeviceIsTheChosenOneWhenItIsEnabled() {

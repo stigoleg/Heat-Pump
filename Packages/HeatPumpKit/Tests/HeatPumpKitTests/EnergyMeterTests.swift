@@ -163,6 +163,54 @@ struct EnergyMeterTests {
         #expect(events == [.state(.stopped(.notAvailable))])
     }
 
+    @Test func theLiveStreamFollowsTheStoreAndRecordsWhatItLearns() async throws {
+        let store = try HistoryStore(path: temporaryDatabasePath())
+        let hub = try demoHub(store: store)
+        let home = DeviceKey(integration: TibberIntegration.id, nativeId: "96a14971-525a-4420-aae9-e5aedaa129ff")
+        try store.registerDevices([
+            DeviceSummary(key: home, name: "Hjemme", kind: .energyMeter, metadata: [TibberIntegration.realTimeKey: "true"])
+        ])
+        let clock = clock
+        func service(_ transport: StubTransport, _ sockets: FakeSockets = FakeSockets()) -> EnergyMeterService {
+            let connection = TibberConnection(token: { "TOKEN" }, transport: transport, sockets: sockets, userAgent: "test", now: clock.provider)
+            return EnergyMeterService(
+                connection: connection, store: store, integration: TibberIntegration(), energy: hub.energy, device: home, now: clock.provider)
+        }
+        /// The events until the stream stops or waits.
+        func events(_ service: EnergyMeterService) async -> [LivePowerEvent] {
+            var events: [LivePowerEvent] = []
+            for await event in await service.live() {
+                events.append(event)
+                if case .state(.stopped) = event { break }
+                if case .state(.waiting) = event { break }
+            }
+            return events
+        }
+
+        // A token the homes request refuses stops every request of the integration.
+        let refused = StubTransport()
+        refused.enqueue("gql", body: try Fixture.data("tibber_unauthenticated"))
+        #expect(await events(service(refused)).last == .state(.stopped(.unauthorized)))
+        #expect(try store.credentialsRejected(integration: TibberIntegration.id))
+        // While it stands, a new stream sends nothing.
+        let quiet = StubTransport()
+        let sockets = FakeSockets()
+        #expect(await events(service(quiet, sockets)) == [.state(.stopped(.unauthorized))])
+        #expect(quiet.requests.isEmpty)
+        #expect(sockets.connects == 0)
+        try store.clearCredentialsRejected(integration: TibberIntegration.id)
+
+        // 429 blocks the integration (the hourly sync waits too), and a new stream waits it out.
+        let until = clock.now.addingTimeInterval(TibberAPI.rateLimitPause)
+        let limited = StubTransport()
+        limited.enqueue("gql", status: 429, body: Data())
+        #expect(await events(service(limited)).last == .state(.waiting(until: until)))
+        #expect(try store.blockedUntil(now: clock.now, integration: TibberIntegration.id) == until)
+        let blocked = StubTransport()
+        #expect(await events(service(blocked)) == [.state(.waiting(until: until))])
+        #expect(blocked.requests.isEmpty)
+    }
+
     // MARK: Tibber through the hub
 
     func tibberHub(store: HistoryStore, credentials: InMemoryCredentialStore, transport: StubTransport) throws -> DeviceHub {

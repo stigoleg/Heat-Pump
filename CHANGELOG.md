@@ -4,7 +4,7 @@ New entries are in English. Entries up to 1.1.5 are in Norwegian.
 
 ## [Unreleased]
 
-- **Menu bar**: turn on Settings → General → Menu bar to keep the heat pump in the menu bar. The title shows the mode, indoor temperature and power by default, and you choose what it shows and in which order (target and outdoor temperature, today's cost, the price now, a health warning). Click it for status, today's numbers, health and the controls (power, mode, temperature, fan and airflow direction), sent the same way as on Control. With several devices you pick which one it shows. While it is on, the app keeps running without a Dock icon when you close the window.
+- **Menu bar**: turn on Settings → General → Menu bar to keep the heat pump in the menu bar. The title shows the mode, indoor temperature and power by default, and you choose what it shows and in which order (target and outdoor temperature, today's cost, the price now, a health warning). Click it for status, today's numbers, health and the controls (power, mode, temperature, fan and airflow direction), sent the same way as on Control. With several devices you pick which one it shows; an energy meter shows its power and today's use, an air quality sensor its readings with their levels (radon, CO₂, humidity and temperature can also go in the title). While it is on, the app keeps running without a Dock icon when you close the window.
 
 ## [1.2.0] – 2026-11-06
 

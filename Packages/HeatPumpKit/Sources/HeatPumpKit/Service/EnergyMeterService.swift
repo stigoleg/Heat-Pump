@@ -226,7 +226,7 @@ public actor EnergyMeterService: DeviceAccount {
                 continuation.finish()
             }
         }
-        let upstream = driver.liveReadings(device: device)
+        let upstream = driver.liveReadings(device: device, gate: liveGate)
         return AsyncStream { continuation in
             let task = Task {
                 for await event in upstream {
@@ -238,6 +238,24 @@ public actor EnergyMeterService: DeviceAccount {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// The integration's blocks and "credentials rejected" stop, read before every connection
+    /// attempt; a refused token or 429 the stream runs into is recorded like the hourly sync's.
+    var liveGate: LivePowerGate {
+        let store = store
+        let id = integration.id
+        let now = now
+        return LivePowerGate(
+            check: {
+                if (try? store.credentialsRejected(integration: id)) == true { return .rejected }
+                if let until = try? store.blockedUntil(now: now(), integration: id) { return .blocked(until: until) }
+                return .allowed
+            },
+            report: { error in
+                if error.isCredentialProblem { try? store.recordCredentialsRejected(now: now(), integration: id) }
+                if case .rateLimited(let until) = error { try? store.recordBlock(until: until, reason: .rateLimited, integration: id) }
+            })
     }
 
     /// Adds a reading to its minute; writes the minute when it is complete, and the minute being

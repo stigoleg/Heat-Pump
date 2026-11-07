@@ -80,7 +80,7 @@ public actor MockMeter: EnergyMeterDriver, LivePowerDriver, MeterDemoSeeding {
         LivePowerReading(at: date, powerW: (powerW(at: date)).rounded(), consumptionTodayKWh: consumptionToday(at: date), currency: "NOK")
     }
 
-    public nonisolated func liveReadings(device: DeviceKey) -> AsyncStream<LivePowerEvent> {
+    public nonisolated func liveReadings(device: DeviceKey, gate: LivePowerGate) -> AsyncStream<LivePowerEvent> {
         let now = now
         return AsyncStream { continuation in
             let task = Task {

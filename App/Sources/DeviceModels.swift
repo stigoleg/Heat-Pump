@@ -540,7 +540,8 @@ final class EnergyMeterDeviceModel: DeviceModel {
     // MARK: Live power
 
     /// Starts the live stream when the meter has one (the app runs and the meter is on); a
-    /// second call does nothing.
+    /// second call does nothing while the stream runs. A stream that ended by itself (stopped for
+    /// good, or no live data) can be started again.
     func startLive() {
         guard hasLivePower, liveTask == nil else { return }
         let service = service
@@ -552,6 +553,8 @@ final class EnergyMeterDeviceModel: DeviceModel {
                 case .state(let state): self.liveState = state
                 }
             }
+            // `stopLive` cancels and clears the slot itself (a newer stream may hold it).
+            if !Task.isCancelled { self?.liveTask = nil }
         }
     }
 

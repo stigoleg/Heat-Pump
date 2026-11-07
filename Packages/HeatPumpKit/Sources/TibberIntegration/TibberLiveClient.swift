@@ -30,7 +30,10 @@ public struct WebSocketClosed: Error, Sendable, Equatable {
 /// (`features.realTimeConsumptionEnabled`) are not subscribed (checked again before each
 /// reconnect). A dropped connection or a silence longer than `silenceTimeout` reconnects after an
 /// exponential backoff with jitter; close code 1001 after a random 1–60 s; close code 4403 (invalid
-/// token) or a refused token stops every stream for good, so a rejected token is never retried.
+/// token) or a refused token stops every stream for good, so a rejected token is never retried
+/// (until `reset()`, after new credentials are saved). Before each attempt the service's gate is
+/// asked: while the integration is blocked nothing is sent, and a "credentials rejected" stop ends
+/// every stream; a refused token or 429 met here is reported to it.
 actor TibberLiveClient {
     /// What one connection attempt needs from Tibber's HTTP API: the socket address and the
     /// homes that have live data.
@@ -59,8 +62,10 @@ actor TibberLiveClient {
     private var subscribed: Set<String> = []
     /// The open channel's `connection_ack` arrived.
     private var acked = false
-    /// Set after a refused token: nothing is sent again until the app starts over.
+    /// Set after a refused token: nothing is sent again until `reset()`.
     private var rejected = false
+    /// The service's gate (the newest stream's; every meter of the account shares one store).
+    private var gate = LivePowerGate.open
 
     init(
         connector: any WebSocketConnecting, token: @escaping @Sendable () -> String?, prepare: @escaping Prepare, userAgent: String,
@@ -80,15 +85,21 @@ actor TibberLiveClient {
     // MARK: Streams
 
     /// Live events for `home` until the stream is cancelled.
-    nonisolated func stream(home: String) -> AsyncStream<LivePowerEvent> {
+    nonisolated func stream(home: String, gate: LivePowerGate) -> AsyncStream<LivePowerEvent> {
         AsyncStream { continuation in
             let id = UUID()
             continuation.onTermination = { _ in Task { await self.remove(id, home: home) } }
-            Task { await self.add(continuation, id: id, home: home) }
+            Task { await self.add(continuation, id: id, home: home, gate: gate) }
         }
     }
 
-    private func add(_ continuation: AsyncStream<LivePowerEvent>.Continuation, id: UUID, home: String) async {
+    /// New credentials were saved: a refused token may work now.
+    func reset() {
+        rejected = false
+    }
+
+    private func add(_ continuation: AsyncStream<LivePowerEvent>.Continuation, id: UUID, home: String, gate: LivePowerGate) async {
+        self.gate = gate
         if rejected {
             continuation.yield(.state(.stopped(.unauthorized)))
             continuation.finish()
@@ -149,26 +160,38 @@ actor TibberLiveClient {
         var attempt = 0
         while !Task.isCancelled, !subscribers.isEmpty {
             let delay: TimeInterval
-            do {
-                try await connectOnce(onLive: { attempt = 0 })
-                if subscribers.isEmpty || Task.isCancelled { break }
-                delay = backoff(attempt)
-                attempt += 1
-            } catch let closed as WebSocketClosed where closed.code == 4403 {
+            let decision = gate.check()
+            if decision == .rejected {
                 stopAll(.unauthorized)
                 break
-            } catch HeatPumpError.invalidCredentials, HeatPumpError.credentialsRejected, HeatPumpError.missingCredentials {
-                stopAll(.unauthorized)
-                break
-            } catch let closed as WebSocketClosed where closed.code == 1001 {
-                delay = random(1...60)
-            } catch HeatPumpError.rateLimited(let until) {
-                delay = max(backoff(attempt), until.timeIntervalSince(now()))
-                attempt += 1
-            } catch {
-                if Task.isCancelled { break }
-                delay = backoff(attempt)
-                attempt += 1
+            }
+            if case .blocked(let until) = decision {
+                delay = until.timeIntervalSince(now())
+            } else {
+                do {
+                    try await connectOnce(onLive: { attempt = 0 })
+                    if subscribers.isEmpty || Task.isCancelled { break }
+                    delay = backoff(attempt)
+                    attempt += 1
+                } catch let closed as WebSocketClosed where closed.code == 4403 {
+                    gate.report(.invalidCredentials(nil))
+                    stopAll(.unauthorized)
+                    break
+                } catch let error as HeatPumpError where error.isCredentialProblem || error == .missingCredentials {
+                    if error.isCredentialProblem { gate.report(error) }
+                    stopAll(.unauthorized)
+                    break
+                } catch let closed as WebSocketClosed where closed.code == 1001 {
+                    delay = random(1...60)
+                } catch HeatPumpError.rateLimited(let until) {
+                    gate.report(.rateLimited(until: until))
+                    delay = max(backoff(attempt), until.timeIntervalSince(now()))
+                    attempt += 1
+                } catch {
+                    if Task.isCancelled { break }
+                    delay = backoff(attempt)
+                    attempt += 1
+                }
             }
             // A cancelled loop leaves the channel to `remove` (and to a loop started after it).
             if Task.isCancelled { break }

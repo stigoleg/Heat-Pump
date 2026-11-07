@@ -243,6 +243,13 @@ final class AppModel {
         ]
     }
 
+    /// Starts the meters' live streams that are not running, while polling and awake (a stream
+    /// that stopped for good starts again after new credentials or when a home gains live power).
+    private func resumeLive() {
+        guard pollTask != nil, !isAsleep else { return }
+        for meter in meters { meter.startLive() }
+    }
+
     /// Live power pauses while the Mac sleeps and resumes after it wakes (while polling).
     private func observeSleep() {
         let center = NSWorkspace.shared.notificationCenter
@@ -324,6 +331,8 @@ final class AppModel {
         guard let hub else { return }
         do {
             var next: [any DeviceModel] = []
+            /// Meters whose live power came or went (a Pulse paired or removed since the last listing).
+            var liveChanged: [EnergyMeterDeviceModel] = []
             for descriptor in try await hub.devices() {
                 switch try await hub.service(for: descriptor.key) {
                 case .heatPump(let service):
@@ -332,7 +341,11 @@ final class AppModel {
                     next.append(model)
                 case .energyMeter(let service):
                     let model = meters.first { $0.service === service } ?? EnergyMeterDeviceModel(service: service, descriptor: descriptor)
-                    if model.descriptor != descriptor { model.descriptor = descriptor }
+                    if model.descriptor != descriptor {
+                        let hadLive = model.hasLivePower
+                        model.descriptor = descriptor
+                        if model.hasLivePower != hadLive { liveChanged.append(model) }
+                    }
                     next.append(model)
                 case .airQuality(let service):
                     let model = sensors.first { $0.service === service } ?? AirQualityDeviceModel(service: service, descriptor: descriptor)
@@ -353,8 +366,10 @@ final class AppModel {
                 let kept = Set(next.map(ObjectIdentifier.init))
                 for meter in meters where !kept.contains(ObjectIdentifier(meter)) { meter.stopLive() }
                 devices = next
-                if pollTask != nil, !isAsleep { for meter in meters { meter.startLive() } }
+                resumeLive()
             }
+            for meter in liveChanged where !meter.hasLivePower { meter.stopLive() }
+            if !liveChanged.isEmpty { resumeLive() }
             await loadIntegrations()
             let controlled = try await hub.priceControlService()
             if controlled !== priceControl.service, !priceControl.isBusy { await priceControl.use(controlled) }
@@ -621,11 +636,15 @@ final class AppModel {
 
     // MARK: Menu bar
 
-    /// The device the menu bar shows: the one last chosen in the panel, else the primary one.
+    /// The device the menu bar shows: the one last chosen in the panel, else the primary one (also
+    /// when the chosen one is gone or the panel has nothing for its kind).
     var menuBarDevice: any DeviceModel {
-        let key = MenuBarLayout.shownDevice(chosen: menuBar.chosenDevice, devices: devices.compactMap(\.key))
+        let key = MenuBarLayout.shownDevice(chosen: menuBar.chosenDevice, devices: menuBarDevices.compactMap(\.key))
         return devices.first { $0.key != nil && $0.key == key } ?? devices[0]
     }
+
+    /// The devices the menu bar panel can show (its device picker lists them).
+    var menuBarDevices: [any DeviceModel] { devices.filter { MenuBarPanel.shows($0.kind) } }
 
     /// The price of the current hour (shared by every device).
     var currentPrice: PriceBreakdown? {
@@ -652,6 +671,15 @@ final class AppModel {
             values.powerW = meter.powerNowW
             values.todayCostNok = meter.status?.today.cost?.totalNok
             values.priceNowOre = values.priceNowOre ?? meter.status?.priceNowOre
+        } else if let sensor = device as? AirQualityDeviceModel {
+            values.symbol = .sensor
+            if let status = sensor.status {
+                values.indoor = status.value(.temperature)?.value
+                values.radon = (status.value(.radonShortTerm) ?? status.value(.radonLongTerm))?.value
+                values.co2 = status.value(.co2)?.value
+                values.humidity = status.value(.humidity)?.value
+                values.health = status.findings.map(\.severity).max()
+            }
         }
         return values
     }
@@ -747,6 +775,7 @@ final class AppModel {
         let message = await service.testTibberToken(token)
         // The meter shares the token: a refused one may work again now.
         try? await hub?.sharedCredentialsChanged()
+        resumeLive()
         await savePriceSettings(priceSettings)
         return message
     }
@@ -880,6 +909,8 @@ final class AppModel {
     /// Shows a sign-in's test fetch on the device it found and says how it went.
     private func signedIn(_ result: StateResult, integration id: String) async -> (Bool, String) {
         await syncDevices()
+        // New credentials: a live stream the old ones stopped may start again.
+        resumeLive()
         if result.state == nil, result.refreshed, result.error == nil {
             // An integration without a heat pump (a meter): it listed its devices.
             await reloadLocal()

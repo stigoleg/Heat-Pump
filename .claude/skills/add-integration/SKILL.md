@@ -120,7 +120,7 @@ and screens and MCP tools appear only where a capability exists.
 | `DeviceLocationReporting` | location | `location(fromStoredListing:)` |
 | `HardwareAddressReporting` | – | `hardwareAddress(fromStoredListing:)` (find the unit on the LAN) |
 | `EnergyMeterDriver` | energyLog | refines `DeviceConnection`; `fetchHours(device:lastHours:)` |
-| `LivePowerDriver` | livePower | `liveReadings(device:) -> AsyncStream<LivePowerEvent>` |
+| `LivePowerDriver` | livePower | `liveReadings(device:gate:) -> AsyncStream<LivePowerEvent>`; ask `gate.check()` before every connection attempt and `gate.report(_:)` a refused sign-in or 429 |
 | `AirQualityDriver` | airQuality | refines `DeviceConnection`; `fetchLatest(devices:)` (several devices in one request), optional `maxDevicesPerRequest`, `fetchThresholds(device:)` |
 | `AirQualityLogReporting` | airQualityLog | `fetchHourly(device:range:)`, `maxAirQualityLogDays` |
 | `RequestBudgetReporting` | – | `requestBudget()`: the vendor's rate limit headers, so the service stops before the budget runs out |

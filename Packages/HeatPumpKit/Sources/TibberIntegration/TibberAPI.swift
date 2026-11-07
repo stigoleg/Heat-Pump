@@ -3,7 +3,8 @@ import HeatPumpKit
 
 /// Tibber's GraphQL API over HTTP (`https://api.tibber.com/v1-beta/gql`, `Authorization: Bearer
 /// <token>`). About 100 requests per 5 minutes per IP are allowed; callers ask for homes and
-/// consumption at most hourly and for the socket address once per connection attempt.
+/// consumption at most hourly (the socket address comes with the homes, and a connection attempt
+/// reuses a listing from the last hour).
 ///
 /// Errors: HTTP 401/403 and GraphQL `UNAUTHENTICATED` (Tibber answers an invalid token with
 /// HTTP 200 since 2025-01-03) are `invalidCredentials`, `HOME_NOT_FOUND` is `deviceNotFound`,

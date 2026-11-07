@@ -176,7 +176,9 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   its temperature back (`DeviceHub.setEnabled`).
 
 - **Menu bar** (`MenuBarSettings.swift`, `MenuBarPanel.swift`): an optional `MenuBarExtra`
-  (window style) for the device last chosen in its panel, else the primary one. The title's
+  (window style) for the device last chosen in its panel, else the primary one (also when the
+  chosen one is gone or the panel has no view for its kind, `MenuBarPanel.shows`). Every kind has
+  a panel (heat pump, energy meter, air quality sensor) under one header with the device picker. The title's
   rules are the kit's `MenuBarLayout` (tested); the preferences are app-only (UserDefaults).
   With it on, `AppModel.keepsRunningInBackground` is true and `updateDockIcon()` drops the Dock
   icon while no window is open; price control's own item (`PriceControlMenu`) shows only while

@@ -187,13 +187,36 @@ struct TibberLiveTests {
     let url = URL(string: "wss://websocket-api.tibber.com/v1-beta/gql/subscriptions")!
     let sleeper = RecordingSleeper()
 
-    func client(_ sockets: FakeSockets, realTime: Set<String>? = nil) -> TibberLiveClient {
+    /// `prepare` replaces the homes request (`prepares` counts the calls).
+    func client(
+        _ sockets: FakeSockets, realTime: Set<String>? = nil, prepares: Counter? = nil,
+        prepare: (@Sendable () async throws -> Void)? = nil
+    ) -> TibberLiveClient {
         let url = url
         let homes = realTime ?? [home]
         return TibberLiveClient(
-            connector: sockets, token: { "TOKEN" }, prepare: { (url, homes) }, userAgent: "Varmepumpe/9.9 (macOS)",
+            connector: sockets, token: { "TOKEN" },
+            prepare: {
+                prepares?.increment()
+                try await prepare?()
+                return (url, homes)
+            }, userAgent: "Varmepumpe/9.9 (macOS)",
             now: { Date(timeIntervalSince1970: 1_793_872_800) }, sleep: sleeper.sleep,
             random: { ($0.lowerBound + $0.upperBound) / 2 })
+    }
+
+    /// A gate that answers `decisions` in turn (then allows) and records what it is told.
+    final class ScriptedGate: Sendable {
+        let decisions: Mutex<[LivePowerGate.Decision]>
+        let reported = Mutex<[HeatPumpError]>([])
+
+        init(_ decisions: [LivePowerGate.Decision] = []) { self.decisions = Mutex(decisions) }
+
+        var gate: LivePowerGate {
+            LivePowerGate(
+                check: { self.decisions.withLock { $0.isEmpty ? .allowed : $0.removeFirst() } },
+                report: { error in self.reported.withLock { $0.append(error) } })
+        }
     }
 
     static let ack = #"{"type":"connection_ack"}"#
@@ -215,7 +238,7 @@ struct TibberLiveTests {
     @Test func handshakeSubscribeAndReadings() async throws {
         let channel = FakeChannel([.success(Self.ack), .success(#"{"type":"ping"}"#), .success(next(power: 1830)), .success(next(power: 1750))])
         let sockets = FakeSockets([channel])
-        let events = await collect(client(sockets).stream(home: home), readings: 2)
+        let events = await collect(client(sockets).stream(home: home, gate: .open), readings: 2)
         let readings = events.compactMap { if case .reading(let r) = $0 { r } else { nil } }
         #expect(readings.map(\.powerW) == [1830, 1750])
         #expect(readings[0].consumptionTodayKWh == 12.5)
@@ -240,11 +263,11 @@ struct TibberLiveTests {
         let channel = FakeChannel([.failure(WebSocketClosed(code: 4403))])
         let sockets = FakeSockets([channel, FakeChannel([.success(Self.ack)])])
         let live = client(sockets)
-        let events = await collect(live.stream(home: home), readings: 1)
+        let events = await collect(live.stream(home: home, gate: .open), readings: 1)
         #expect(events.last == .state(.stopped(.unauthorized)))
         #expect(sockets.connects == 1)
         // A new stream is refused without a connection: the token is never retried.
-        let again = await collect(live.stream(home: home), readings: 1)
+        let again = await collect(live.stream(home: home, gate: .open), readings: 1)
         #expect(again == [.state(.stopped(.unauthorized))])
         #expect(sockets.connects == 1)
     }
@@ -253,7 +276,7 @@ struct TibberLiveTests {
         let first = FakeChannel([.success(Self.ack), .failure(WebSocketClosed(code: 1001))])
         let second = FakeChannel([.success(Self.ack), .success(next(power: 900))])
         let sockets = FakeSockets([first, second])
-        let events = await collect(client(sockets).stream(home: home), readings: 1)
+        let events = await collect(client(sockets).stream(home: home, gate: .open), readings: 1)
         #expect(sleeper.waits.withLock { $0 } == [30.5])  // random(1...60), here its middle
         #expect(events.contains(.state(.waiting(until: Date(timeIntervalSince1970: 1_793_872_800 + 30.5)))))
         #expect(sockets.connects == 2)
@@ -264,7 +287,7 @@ struct TibberLiveTests {
         let second = FakeChannel([.success(Self.ack)])
         let third = FakeChannel([.success(Self.ack), .success(next(power: 640))])
         let sockets = FakeSockets([quiet, second, third])
-        let events = await collect(client(sockets).stream(home: home), readings: 1)
+        let events = await collect(client(sockets).stream(home: home, gate: .open), readings: 1)
         #expect(events.last.map { if case .reading = $0 { true } else { false } } == true)
         // Base 10 s, doubled for the second failure (jitter at its middle, × 1).
         #expect(sleeper.waits.withLock { $0 } == [10, 20], "\(sleeper.waits.withLock { $0 })")
@@ -276,15 +299,108 @@ struct TibberLiveTests {
         let notFound =
             #"{"id":"\#(home)","type":"next","payload":{"errors":[{"message":"Could not find home","extensions":{"code":"HOME_NOT_FOUND"}}]}}"#
         let sockets = FakeSockets([FakeChannel([.success(Self.ack), .success(notFound), .success(#"{"id":"\#(home)","type":"complete"}"#)])])
-        let events = await collect(client(sockets).stream(home: home), readings: 1)
+        let events = await collect(client(sockets).stream(home: home, gate: .open), readings: 1)
         #expect(events.last == .state(.stopped(.notFound)))
     }
 
     @Test func homeWithoutRealTimeReaderIsNotSubscribed() async throws {
         let sockets = FakeSockets([FakeChannel([.success(Self.ack)])])
-        let events = await collect(client(sockets, realTime: []).stream(home: home), readings: 1)
+        let events = await collect(client(sockets, realTime: []).stream(home: home, gate: .open), readings: 1)
         #expect(events.last == .state(.stopped(.notAvailable)))
         #expect(sockets.connects == 0)
+    }
+
+    @Test func aBlockedIntegrationWaitsWithoutARequest() async throws {
+        let until = Date(timeIntervalSince1970: 1_793_872_800 + 900)
+        let gate = ScriptedGate([.blocked(until: until)])
+        let prepares = Counter()
+        let sockets = FakeSockets([FakeChannel([.success(Self.ack), .success(next(power: 700))])])
+        let events = await collect(client(sockets, prepares: prepares).stream(home: home, gate: gate.gate), readings: 1)
+        #expect(events.first == .state(.waiting(until: until)))
+        #expect(sleeper.waits.withLock { $0 } == [900])
+        #expect(prepares.count == 1)  // only after the block
+        #expect(sockets.connects == 1)
+    }
+
+    @Test func rejectedCredentialsSendNothing() async throws {
+        let gate = ScriptedGate([.rejected])
+        let prepares = Counter()
+        let sockets = FakeSockets([FakeChannel([.success(Self.ack)])])
+        let live = client(sockets, prepares: prepares)
+        let events = await collect(live.stream(home: home, gate: gate.gate), readings: 1)
+        #expect(events == [.state(.stopped(.unauthorized))])
+        #expect(prepares.count == 0)
+        #expect(sockets.connects == 0)
+    }
+
+    @Test func aRefusedTokenIsReportedAndNotRetried() async throws {
+        let gate = ScriptedGate()
+        let prepares = Counter()
+        let sockets = FakeSockets()
+        let events = await collect(
+            client(sockets, prepares: prepares, prepare: { throw HeatPumpError.invalidCredentials(nil) }).stream(home: home, gate: gate.gate),
+            readings: 1)
+        #expect(events.last == .state(.stopped(.unauthorized)))
+        #expect(gate.reported.withLock { $0 } == [.invalidCredentials(nil)])
+        #expect(prepares.count == 1)
+
+        // The socket's own refusal (4403) is reported too.
+        let socketGate = ScriptedGate()
+        let refused = FakeSockets([FakeChannel([.failure(WebSocketClosed(code: 4403))])])
+        _ = await collect(client(refused).stream(home: home, gate: socketGate.gate), readings: 1)
+        #expect(socketGate.reported.withLock { $0 } == [.invalidCredentials(nil)])
+    }
+
+    @Test func aRateLimitIsReportedAndWaitedOut() async throws {
+        let until = Date(timeIntervalSince1970: 1_793_872_800 + TibberAPI.rateLimitPause)
+        let gate = ScriptedGate()
+        let attempts = Counter()
+        let sockets = FakeSockets([FakeChannel([.success(Self.ack), .success(next(power: 700))])])
+        let live = client(sockets, prepare: {
+            attempts.increment()
+            if attempts.count == 1 { throw HeatPumpError.rateLimited(until: until) }
+        })
+        let events = await collect(live.stream(home: home, gate: gate.gate), readings: 1)
+        #expect(gate.reported.withLock { $0 } == [.rateLimited(until: until)])
+        #expect(events.contains(.state(.waiting(until: until))))
+        #expect(sleeper.waits.withLock { $0 } == [TibberAPI.rateLimitPause])
+    }
+
+    @Test func resetLetsANewTokenTryAgain() async throws {
+        let sockets = FakeSockets([FakeChannel([.failure(WebSocketClosed(code: 4403))]), FakeChannel([.success(Self.ack), .success(next(power: 500))])])
+        let live = client(sockets)
+        #expect(await collect(live.stream(home: home, gate: .open), readings: 1).last == .state(.stopped(.unauthorized)))
+        #expect(await collect(live.stream(home: home, gate: .open), readings: 1) == [.state(.stopped(.unauthorized))])
+        await live.reset()
+        let events = await collect(live.stream(home: home, gate: .open), readings: 1)
+        #expect(events.contains(.state(.live)))
+        #expect(sockets.connects == 2)
+    }
+
+    @Test func theConnectionReusesItsListingAndANewTokenResumes() async throws {
+        let transport = StubTransport()
+        transport.enqueue("gql", body: try Fixture.data("tibber_homes"))
+        let sockets = FakeSockets([
+            FakeChannel([.failure(WebSocketClosed(code: 4403))]), FakeChannel([.success(Self.ack), .success(next(power: 800))]),
+        ])
+        let tibber = TibberConnection(
+            token: { "TOKEN" }, transport: transport, sockets: sockets, userAgent: "Varmepumpe/9.9 (macOS)",
+            now: { Date(timeIntervalSince1970: 1_793_872_800) })
+        _ = try await tibber.listDevices()
+        #expect(await tibber.recentListing()?.count == 2)
+        let device = DeviceKey(integration: TibberIntegration.id, nativeId: home)
+        let refused = await collect(tibber.liveReadings(device: device, gate: .open), readings: 1)
+        #expect(refused.last == .state(.stopped(.unauthorized)))
+        #expect(transport.requests.count == 1)  // address and homes from the listing
+        #expect(sockets.connects == 1)
+        // New credentials (sign-in or the price token saved) lift the stop and forget the listing.
+        await tibber.resetSession()
+        #expect(await tibber.recentListing() == nil)
+        transport.enqueue("gql", body: try Fixture.data("tibber_homes"))
+        let events = await collect(tibber.liveReadings(device: device, gate: .open), readings: 1)
+        #expect(events.contains(.state(.live)))
+        #expect(transport.requests.count == 2)
+        #expect(sockets.connects == 2)
     }
 
     @Test func measurementWithMissingFields() {

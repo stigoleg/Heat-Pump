@@ -4,14 +4,17 @@ import Foundation
 /// they never change.
 public enum MenuBarItem: String, Sendable, CaseIterable, Codable {
     case modeIcon, indoor, target, outdoor, power, todayCost, priceNow, health
+    /// An air quality sensor's readings (its temperature is `indoor`).
+    case radon, co2, humidity
 }
 
-/// The symbol at the start of the title: the heat pump's mode, a heat pump that is off, or an
-/// energy meter.
+/// The symbol at the start of the title: the heat pump's mode, a heat pump that is off, an
+/// energy meter or an air quality sensor.
 public enum MenuBarSymbol: Sendable, Equatable {
     case mode(OperationMode)
     case off
     case meter
+    case sensor
 }
 
 /// What the shown device and the shared context have right now; nil is unknown (not shown).
@@ -25,10 +28,17 @@ public struct MenuBarValues: Sendable, Equatable {
     public var priceNowOre: Double?
     public var priceLevel: PriceLevel?
     public var health: HealthSeverity?
+    /// Radon in Bq/m³ (the short-term average, else the long-term one).
+    public var radon: Double?
+    /// CO₂ in ppm.
+    public var co2: Double?
+    /// Relative humidity in %.
+    public var humidity: Double?
 
     public init(
         symbol: MenuBarSymbol? = nil, indoor: Double? = nil, target: Double? = nil, outdoor: Double? = nil, powerW: Double? = nil,
-        todayCostNok: Double? = nil, priceNowOre: Double? = nil, priceLevel: PriceLevel? = nil, health: HealthSeverity? = nil
+        todayCostNok: Double? = nil, priceNowOre: Double? = nil, priceLevel: PriceLevel? = nil, radon: Double? = nil,
+        co2: Double? = nil, humidity: Double? = nil, health: HealthSeverity? = nil
     ) {
         self.symbol = symbol
         self.indoor = indoor
@@ -39,6 +49,9 @@ public struct MenuBarValues: Sendable, Equatable {
         self.priceNowOre = priceNowOre
         self.priceLevel = priceLevel
         self.health = health
+        self.radon = radon
+        self.co2 = co2
+        self.humidity = humidity
     }
 }
 
@@ -52,6 +65,9 @@ public enum MenuBarSegment: Sendable, Equatable {
     case todayCost(Double)
     case priceNow(ore: Double, level: PriceLevel?)
     case health(HealthSeverity)
+    case radon(Double)
+    case co2(Double)
+    case humidity(Double)
 }
 
 /// The menu bar title the user designed (Settings → General → Menu bar): which items, in which
@@ -96,6 +112,9 @@ public struct MenuBarLayout: Sendable, Equatable {
             case .todayCost: values.todayCostNok.map { .todayCost($0) }
             case .priceNow: values.priceNowOre.map { .priceNow(ore: $0, level: values.priceLevel) }
             case .health: values.health.flatMap { $0 >= .warning ? .health($0) : nil }
+            case .radon: values.radon.map { .radon($0) }
+            case .co2: values.co2.map { .co2($0) }
+            case .humidity: values.humidity.map { .humidity($0) }
             }
         }
     }

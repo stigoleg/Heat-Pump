@@ -529,11 +529,13 @@ public actor DeviceHub {
     }
 
     /// The integrations whose sign-in values are shared with the price source (the price token was
-    /// saved or tested in Settings → Electricity price): lifts their "credentials rejected" stop
-    /// and forgets the cached answer to "are credentials stored?".
+    /// saved or tested in Settings → Electricity price): lifts their "credentials rejected" stop,
+    /// resets the connection's session (a refused live stream may try again) and forgets the
+    /// cached answer to "are credentials stored?".
     public func sharedCredentialsChanged() async throws {
         for runtime in runtimes where runtime.integration.credentialMapping.isShared {
             try store.clearCredentialsRejected(integration: runtime.integration.id)
+            await runtime.connection.resetSession()
             for account in accounts(of: runtime.integration.id) { await account.forgetCredentialCache() }
         }
     }
