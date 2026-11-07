@@ -147,7 +147,9 @@ struct AddIntegrationSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var app
     let integrations: [any Integration]
-    @State private var chosen: String?
+    /// Dev only: `VARMEPUMPE_SETTINGS_SHEET=add-integration/<id>` opens on that integration.
+    @State private var chosen: String? = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_SHEET"]
+        .flatMap { $0.hasPrefix("add-integration/") ? String($0.dropFirst("add-integration/".count)) : nil }
     /// Values already stored per integration (a token saved for the electricity price).
     @State private var stored: [String: [String: String]] = [:]
 
@@ -219,6 +221,7 @@ extension DeviceKind {
         switch self {
         case .airToAirHeatPump: String(localized: "Air-to-air heat pump")
         case .energyMeter: String(localized: "Energy meter")
+        case .airQualitySensor: String(localized: "Air quality sensor")
         }
     }
 
@@ -226,6 +229,7 @@ extension DeviceKind {
         switch self {
         case .airToAirHeatPump: "fan.fill"
         case .energyMeter: "bolt.fill"
+        case .airQualitySensor: "aqi.medium"
         }
     }
 }

@@ -55,6 +55,7 @@ Built and tested with an **MSZ-RW25VG** with built-in Wi-Fi. Other air-to-air mo
 - **Local connection** – reads power, compressor, defrosting and an accurate energy meter directly from the Wi-Fi adapter on the home network. Read-only.
 - **Household electricity use** – from Tibber, with the heat pump's share.
 - **Energy meter (Tibber)** – optional: add Tibber under Settings → Account → Add Integration… and your Tibber home appears as a device with live power (with Tibber Pulse or Watty), today's use and cost, and history per hour and day. It uses the same token as the Tibber prices.
+- **Indoor air quality (Airthings)** – optional: add Airthings under Settings → Account → Add Integration… with the client ID and secret of an API client you create on Airthings' developer site. Each sensor appears as a device with radon (short- and long-term average), CO₂, VOC, particles, humidity, temperature and air pressure, levels (good/fair/poor, from your own thresholds in the Airthings app), advice, history up to two years, a Home card and an optional notification when the long-term radon average reaches 100 Bq/m³. Read-only. Claude can read it too (`get_air_quality`, `get_air_quality_history`).
 - **Claude** – a built-in MCP server with 25 tools, a health check and knowledge documents about maintenance and error codes.
 - **Menu bar** – optional (Settings → General → Menu bar): the mode, temperatures, power, cost or price in the menu bar, as you choose, and a panel with status, today's numbers, health and the controls. The app then keeps running when the window is closed.
 - **Light and dark mode** – one click in the toolbar or ⌘⇧L.
@@ -130,7 +131,7 @@ Varmepumpe.app (SwiftUI)          varmepumpe-mcp (stdio, in Contents/Helpers)
         \                                  /
          HeatPumpKit (Swift package)
            HeatPumpService – cache, traffic limits, audit log
-           MELCloud client (control) · local client (read-only) · Tibber · MET
+           MELCloud client (control) · local client (read-only) · Tibber · Airthings · MET
            HistoryStore    – SQLite in ~/Library/Application Support/Varmepumpe/
            HealthEngine    – rule-based health assessment
            Knowledge/      – knowledge used by the app and Claude (English and Norwegian)
@@ -214,8 +215,8 @@ Changes in Control and on the thermostat are sent about 2 seconds after the last
 
 - **Claude reads freely, but changes only with approval** in the window on your Mac. Every change is logged with its source (app, Claude or price control), old and new value, reason and result, and shown under Claude activity.
 - **Polite to MELCloud.** Status is fetched at most once a minute and reused for 10 minutes. At most 12 changes per hour, at least 5 seconds apart. On “too many requests” (HTTP 429) all traffic stops until the block is over, and on a rejected password all fetching stops until a new sign-in is saved.
-- **Secrets** (MELCloud sign-in, session and Tibber token) are kept in the macOS keychain, never in plain text on disk.
-- **Other services:** MET Norway (weather), Tibber (prices and consumption, only with a token; live power over one connection while the app runs, only with the energy meter turned on), hvakosterstrommen.no (prices), Apple Maps (place search in the settings) and GitHub (new versions, once a day). No analytics or tracking.
+- **Secrets** (MELCloud sign-in, session, Tibber token and Airthings client ID and secret) are kept in the macOS keychain, never in plain text on disk.
+- **Other services:** MET Norway (weather), Tibber (prices and consumption, only with a token; live power over one connection while the app runs, only with the energy meter turned on), Airthings (only when added: a token from accounts-api.airthings.com with your client ID and secret, then the newest values of all sensors at most every 5 minutes, each sensor's hourly history at most hourly and its thresholds daily, from consumer-api.airthings.com), hvakosterstrommen.no (prices), Apple Maps (place search in the settings) and GitHub (new versions, once a day). No analytics or tracking.
 - **No official error-code table** for the MSZ-RW is public. The explanations of error codes are therefore marked with how certain they are.
 
 Heat Pump is not made by or affiliated with Mitsubishi Electric. MELCloud is a trademark of Mitsubishi Electric.
@@ -263,7 +264,7 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 | `VARMEPUMPE_LANGUAGE` | `en` or `nb`, without saving the choice (also for the MCP server) |
 | `VARMEPUMPE_SETTINGS_TAB` | Opens Settings on a tab: generelt, konto, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | The simulated compressor runs in short cycles |
-| `VARMEPUMPE_DEMO_DEVICES` | Simulated devices, comma-separated (default `heatpump`); `heatpump,heatpump` adds a second heat pump (“Bedroom (simulated)”), `heatpump,meter` a simulated Tibber home (“Home (simulated)”, key `demo-meter:home`) |
+| `VARMEPUMPE_DEMO_DEVICES` | Simulated devices, comma-separated (default `heatpump`); `heatpump,heatpump` adds a second heat pump (“Bedroom (simulated)”), `heatpump,meter` a simulated Tibber home (“Home (simulated)”, key `demo-meter:home`), `heatpump,airthings` a simulated Airthings Wave Plus (“Basement (simulated)”, key `demo-airquality:2930000001`) |
 | `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Opens Add Integration on the Account tab (screenshots; with `VARMEPUMPE_SETTINGS_TAB=konto`) |
 | `VARMEPUMPE_MENU_BAR` | `on` or `off` overrides Settings → General → Menu bar without saving; `open` also opens its panel (screenshots) |
 

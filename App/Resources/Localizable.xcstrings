@@ -141,6 +141,16 @@
         }
       }
     },
+    "%@ is asked for the hourly averages at most once an hour." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ blir spurt om timesnittene høyst én gang i timen."
+          }
+        }
+      }
+    },
     "%@ of the time" : {
       "localizations" : {
         "nb" : {
@@ -217,6 +227,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ mot forrige periode"
+          }
+        }
+      }
+    },
+    "%@ · Battery %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · Batteri %2$@"
           }
         }
       }
@@ -501,6 +521,16 @@
         }
       }
     },
+    "About the last 24 hours" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omtrent det siste døgnet"
+          }
+        }
+      }
+    },
     "Account" : {
       "localizations" : {
         "nb" : {
@@ -597,6 +627,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Luftfilter hver 2. uke, luktfilter hver 3. måned"
+          }
+        }
+      }
+    },
+    "Air quality sensor" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftkvalitetsmåler"
           }
         }
       }
@@ -891,6 +931,16 @@
         }
       }
     },
+    "Bq/m³ radon" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bq/m³ radon"
+          }
+        }
+      }
+    },
     "Breakdown by mode" : {
       "localizations" : {
         "nb" : {
@@ -1167,6 +1217,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trykk for å slå på."
+          }
+        }
+      }
+    },
+    "Client ID" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klient-ID"
+          }
+        }
+      }
+    },
+    "Client secret" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klienthemmelighet"
           }
         }
       }
@@ -1527,6 +1597,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sted nå"
+          }
+        }
+      }
+    },
+    "Daily average" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Døgnsnitt"
+          }
+        }
+      }
+    },
+    "Daily averages of the hourly values. Shaded bands mark the fair and poor ranges." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Døgnsnitt av timeverdiene. Skraverte felt viser middels og dårlige nivåer."
           }
         }
       }
@@ -2771,6 +2861,26 @@
         }
       }
     },
+    "Hourly average" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timesnitt"
+          }
+        }
+      }
+    },
+    "Hourly averages. Shaded bands mark the fair and poor ranges." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timesnitt. Skraverte felt viser middels og dårlige nivåer."
+          }
+        }
+      }
+    },
     "Hourly figures from %@ arrive 2–3 hours late; until then today's use comes from the live meter reader." : {
       "localizations" : {
         "nb" : {
@@ -3171,6 +3281,26 @@
         }
       }
     },
+    "Levels follow common defaults until the sensor's own thresholds are fetched. Sensors report every few minutes through a hub (radon hourly), or when the phone app syncs." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivåene følger vanlige standardverdier til målerens egne grenser er hentet. Målerne rapporterer med noen minutters mellomrom gjennom en hub (radon hver time), eller når appen på telefonen synkroniserer."
+          }
+        }
+      }
+    },
+    "Levels follow the thresholds set for this sensor in the %@ app. Sensors report every few minutes through a hub (radon hourly), or when the phone app syncs." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivåene følger grensene som er satt for denne måleren i %@-appen. Målerne rapporterer med noen minutters mellomrom gjennom en hub (radon hver time), eller når appen på telefonen synkroniserer."
+          }
+        }
+      }
+    },
     "Light" : {
       "localizations" : {
         "nb" : {
@@ -3277,6 +3407,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Logg inn på %@ i Innstillinger."
+          }
+        }
+      }
+    },
+    "Long-term average" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langtidssnitt"
           }
         }
       }
@@ -3467,6 +3607,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Maks"
+          }
+        }
+      }
+    },
+    "Measured %@" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Målt %@"
           }
         }
       }
@@ -3861,6 +4011,16 @@
         }
       }
     },
+    "No history yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen historikk ennå"
+          }
+        }
+      }
+    },
     "No hours yet today" : {
       "localizations" : {
         "nb" : {
@@ -3951,6 +4111,16 @@
         }
       }
     },
+    "No readings yet" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen målinger ennå"
+          }
+        }
+      }
+    },
     "No starts recorded yet" : {
       "localizations" : {
         "nb" : {
@@ -3977,6 +4147,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen temperaturdata ennå"
+          }
+        }
+      }
+    },
+    "No value calls for action." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen verdier krever tiltak."
           }
         }
       }
@@ -4167,6 +4347,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Merknad (valgfritt)"
+          }
+        }
+      }
+    },
+    "Nothing to do right now" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingenting å gjøre nå"
+          }
+        }
+      }
+    },
+    "Notify me about high radon" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsle meg om høy radon"
           }
         }
       }
@@ -4737,6 +4937,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Avslutt Varmepumpe"
+          }
+        }
+      }
+    },
+    "Radon" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon"
+          }
+        }
+      }
+    },
+    "Radon is judged by the annual average: measures are recommended from 100 Bq/m³, and 200 Bq/m³ is the limit. Short-term values swing with weather and ventilation, so measure for at least two months in the winter half-year." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon vurderes ut fra årsmiddelverdien: tiltak anbefales fra 100 Bq/m³, og 200 Bq/m³ er grenseverdien. Korttidsverdier svinger med vær og ventilasjon, så mål i minst to måneder i vinterhalvåret."
           }
         }
       }
@@ -5401,6 +5621,16 @@
         }
       }
     },
+    "Short-term average" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korttidssnitt"
+          }
+        }
+      }
+    },
     "Show in Finder" : {
       "localizations" : {
         "nb" : {
@@ -5471,6 +5701,16 @@
         }
       }
     },
+    "Sign in to %@ under Settings → Account." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg inn hos %@ under Innstillinger → Konto."
+          }
+        }
+      }
+    },
     "Sign out of %@?" : {
       "localizations" : {
         "nb" : {
@@ -5537,6 +5777,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Innlogget. Fant «%@»."
+          }
+        }
+      }
+    },
+    "Since the sensor was set up, up to a year" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siden måleren ble satt opp, opptil ett år"
           }
         }
       }
@@ -6581,6 +6831,16 @@
         }
       }
     },
+    "The values appear after the first fetch from %@." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verdiene vises etter første henting fra %@."
+          }
+        }
+      }
+    },
     "The weather forecast is fetched from MET Norway at most once an hour." : {
       "localizations" : {
         "nb" : {
@@ -7241,6 +7501,16 @@
         }
       }
     },
+    "What to do" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hva du bør gjøre"
+          }
+        }
+      }
+    },
     "What's new in %@" : {
       "localizations" : {
         "nb" : {
@@ -7277,6 +7547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Når huset står tomt"
+          }
+        }
+      }
+    },
+    "When the long-term average is 100 Bq/m³ or more; at most once a week while it lasts." : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Når langtidssnittet er 100 Bq/m³ eller mer; høyst én gang i uken så lenge det varer."
           }
         }
       }

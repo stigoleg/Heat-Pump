@@ -34,20 +34,31 @@ final class ActiveRuntimes: Sendable {
 public enum DeviceService: Sendable {
     case heatPump(HeatPumpService)
     case energyMeter(EnergyMeterService)
+    case airQuality(AirQualityService)
 
     /// The heat pump service, or nil for another kind.
     public var heatPump: HeatPumpService? {
-        switch self {
-        case .heatPump(let service): service
-        case .energyMeter: nil
-        }
+        if case .heatPump(let service) = self { return service }
+        return nil
     }
 
     /// The energy meter service, or nil for another kind.
     public var energyMeter: EnergyMeterService? {
-        switch self {
-        case .energyMeter(let service): service
-        case .heatPump: nil
+        if case .energyMeter(let service) = self { return service }
+        return nil
+    }
+
+    /// The air quality sensor service, or nil for another kind.
+    public var airQuality: AirQualityService? {
+        if case .airQuality(let service) = self { return service }
+        return nil
+    }
+
+    /// Whether a device of `kind` is served by a `HeatPumpService` (its connection's thermostat).
+    static func isHeatPump(_ kind: DeviceKind) -> Bool {
+        switch kind {
+        case .airToAirHeatPump: true
+        case .energyMeter, .airQualitySensor: false
         }
     }
 }
@@ -98,6 +109,10 @@ public actor DeviceHub {
     private var meters: [DeviceKey: EnergyMeterService] = [:]
     /// Per active meter integration without an enabled meter: a service that signs in and lists.
     private var meterAccounts: [String: EnergyMeterService] = [:]
+    /// The enabled air quality sensors' services.
+    private var sensors: [DeviceKey: AirQualityService] = [:]
+    /// Per active sensor integration without an enabled sensor: a service that signs in and lists.
+    private var sensorAccounts: [String: AirQualityService] = [:]
     /// The device price control steered when the services were last matched to the registry.
     private var priceControlled: DeviceKey?
 
@@ -166,11 +181,13 @@ public actor DeviceHub {
         var unresolved: [String: HeatPumpService] = [:]
         var meters: [DeviceKey: EnergyMeterService] = [:]
         var meterAccounts: [String: EnergyMeterService] = [:]
+        var sensors: [DeviceKey: AirQualityService] = [:]
+        var sensorAccounts: [String: AirQualityService] = [:]
         let records = try store.devices()
         for runtime in runtimes {
             let enabled = records.filter { $0.enabled && $0.key.integration == runtime.integration.id }
             if let thermostat = runtime.connection as? any DeviceConnection & ThermostatDriver {
-                let heatPumps = enabled.filter { $0.kind != .energyMeter }
+                let heatPumps = enabled.filter { DeviceService.isHeatPump($0.kind) }
                 for record in heatPumps {
                     services[record.key] = Self.makeService(
                         runtime, thermostat, device: record.key, store: store, energy: energy, timeZone: timeZone, now: now,
@@ -191,11 +208,23 @@ public actor DeviceHub {
                         runtime, meter, device: nil, store: store, energy: energy, timeZone: timeZone, now: now)
                 }
             }
+            if let sensor = runtime.connection as? any AirQualityDriver {
+                let enabledSensors = enabled.filter { $0.kind == .airQualitySensor }
+                for record in enabledSensors {
+                    sensors[record.key] = Self.makeSensor(runtime, sensor, device: record.key, store: store, timeZone: timeZone, now: now)
+                }
+                if enabledSensors.isEmpty {
+                    sensorAccounts[runtime.integration.id] = Self.makeSensor(
+                        runtime, sensor, device: nil, store: store, timeZone: timeZone, now: now)
+                }
+            }
         }
         self.services = services
         self.unresolved = unresolved
         self.meters = meters
         self.meterAccounts = meterAccounts
+        self.sensors = sensors
+        self.sensorAccounts = sensorAccounts
         let primary = Self.primary(
             records: records, active: runtimes.map(\.integration.id), services: services, unresolved: unresolved)
         primaryAtLaunch = primary
@@ -233,6 +262,15 @@ public actor DeviceHub {
         EnergyMeterService(
             connection: meter, store: store, credentials: runtime.credentials, integration: runtime.integration, energy: energy,
             device: device, timeZone: timeZone, now: now)
+    }
+
+    private static func makeSensor(
+        _ runtime: IntegrationRuntime, _ sensor: any AirQualityDriver, device: DeviceKey?, store: HistoryStore, timeZone: TimeZone,
+        now: @escaping @Sendable () -> Date
+    ) -> AirQualityService {
+        AirQualityService(
+            connection: sensor, store: store, credentials: runtime.credentials, integration: runtime.integration, device: device,
+            timeZone: timeZone, now: now)
     }
 
     /// The first enabled device's service in registry order, else the first active integration's
@@ -284,7 +322,14 @@ public actor DeviceHub {
     public func service(for key: DeviceKey) async throws -> DeviceService? {
         _ = try await reconcile()
         if let service = services[key] { return .heatPump(service) }
-        return meters[key].map(DeviceService.energyMeter)
+        if let meter = meters[key] { return .energyMeter(meter) }
+        return sensors[key].map(DeviceService.airQuality)
+    }
+
+    /// The air quality service of an enabled sensor.
+    public func airQualityService(for key: DeviceKey) async throws -> AirQualityService? {
+        _ = try await reconcile()
+        return sensors[key]
     }
 
     /// The energy meter service of an enabled meter.
@@ -357,11 +402,13 @@ public actor DeviceHub {
         var nextUnresolved: [String: HeatPumpService] = [:]
         var nextMeters: [DeviceKey: EnergyMeterService] = [:]
         var nextAccounts: [String: EnergyMeterService] = [:]
+        var nextSensors: [DeviceKey: AirQualityService] = [:]
+        var nextSensorAccounts: [String: AirQualityService] = [:]
         for runtime in runtimes {
             let id = runtime.integration.id
             let enabled = records.filter { $0.enabled && $0.key.integration == id }
             if let thermostat = runtime.connection as? any DeviceConnection & ThermostatDriver {
-                let heatPumps = enabled.filter { $0.kind != .energyMeter }
+                let heatPumps = enabled.filter { DeviceService.isHeatPump($0.kind) }
                 for record in heatPumps {
                     if let service = byDevice[record.key] {
                         next[record.key] = service
@@ -387,6 +434,17 @@ public actor DeviceHub {
                         ?? Self.makeMeter(runtime, meter, device: nil, store: store, energy: energy, timeZone: timeZone, now: now)
                 }
             }
+            if let sensor = runtime.connection as? any AirQualityDriver {
+                let enabledSensors = enabled.filter { $0.kind == .airQualitySensor }
+                for record in enabledSensors {
+                    nextSensors[record.key] =
+                        sensors[record.key] ?? Self.makeSensor(runtime, sensor, device: record.key, store: store, timeZone: timeZone, now: now)
+                }
+                if enabledSensors.isEmpty {
+                    nextSensorAccounts[id] =
+                        sensorAccounts[id] ?? Self.makeSensor(runtime, sensor, device: nil, store: store, timeZone: timeZone, now: now)
+                }
+            }
         }
         // The device price control steers lost its service (turned off in the other process, no
         // longer listed by its account, another account signed in): price control goes off
@@ -404,6 +462,8 @@ public actor DeviceHub {
         unresolved = nextUnresolved
         meters = nextMeters
         meterAccounts = nextAccounts
+        sensors = nextSensors
+        sensorAccounts = nextSensorAccounts
         priceControlled = Self.priceControlDevice(
             records: records, active: runtimes.map(\.integration.id), chosen: try store.setting(DeviceKey.self, key: Self.priceControlDeviceKey))
         let primary = Self.primary(records: records, active: runtimes.map(\.integration.id), services: next, unresolved: nextUnresolved)
@@ -417,7 +477,9 @@ public actor DeviceHub {
             services.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (unresolved[id].map { [$0] } ?? [])
         let meters: [any DeviceAccount] =
             self.meters.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (meterAccounts[id].map { [$0] } ?? [])
-        return heatPumps + meters
+        let sensors: [any DeviceAccount] =
+            self.sensors.filter { $0.key.integration == id }.sorted { $0.key < $1.key }.map(\.value) + (sensorAccounts[id].map { [$0] } ?? [])
+        return heatPumps + meters + sensors
     }
 
     /// The service that speaks for an integration's account: its first device's (registry
@@ -427,8 +489,9 @@ public actor DeviceHub {
         for record in order where record.enabled && record.key.integration == id {
             if let service = services[record.key] { return service }
             if let meter = meters[record.key] { return meter }
+            if let sensor = sensors[record.key] { return sensor }
         }
-        return unresolved[id] ?? meterAccounts[id] ?? accounts(of: id).first
+        return unresolved[id] ?? meterAccounts[id] ?? sensorAccounts[id] ?? accounts(of: id).first
     }
 
     // MARK: Discovery
@@ -604,6 +667,9 @@ public actor DeviceHub {
         }
         for (_, meter) in meters.sorted(by: { $0.key < $1.key }) {
             try await meter.seedDemoIfNeeded()
+        }
+        for (_, sensor) in sensors.sorted(by: { $0.key < $1.key }) {
+            try await sensor.seedDemoIfNeeded()
         }
     }
 }

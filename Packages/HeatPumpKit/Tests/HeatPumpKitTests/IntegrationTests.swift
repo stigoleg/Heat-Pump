@@ -45,7 +45,7 @@ struct IntegrationTests {
 
     @Test func catalogListsEachIntegrationOnce() {
         let ids = IntegrationCatalog.all.map(\.id)
-        #expect(ids == ["melcloud-classic", "tibber", "demo", "demo-meter"])
+        #expect(ids == ["melcloud-classic", "tibber", "airthings", "demo", "demo-meter", "demo-airquality"])
         #expect(IntegrationCatalog.tibber.credentialFields.map(\.kind) == [.token])
         #expect(IntegrationCatalog.melcloud.displayName == "MELCloud")
         #expect(IntegrationCatalog.melcloud.credentialFields.map(\.kind) == [.email, .password])
@@ -111,8 +111,10 @@ struct IntegrationTests {
     @Test func capabilitiesFollowConformances() {
         #expect(ThermostatOnly(now: clock.provider).capabilities == [.thermostat, .fanSpeed, .airflow])
         let melcloud = MELCloudClassicBackend(credentials: InMemoryCredentialStore(), transport: StubTransport())
-        #expect(melcloud.capabilities == Set(Capability.allCases))
-        #expect(MockBackend().capabilities == Set(Capability.allCases).subtracting([.location]))
+        // Every capability but an air quality sensor's.
+        let heatPumpCapabilities = Set(Capability.allCases).subtracting([.airQuality, .airQualityLog])
+        #expect(melcloud.capabilities == heatPumpCapabilities)
+        #expect(MockBackend().capabilities == heatPumpCapabilities.subtracting([.location]))
     }
 
     // MARK: MELCloud answers what the service used to parse itself

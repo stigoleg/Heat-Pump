@@ -52,6 +52,9 @@ public enum DeviceNavigation {
         case .energyMeter:
             // Live power and today on Overview, hours and days on History.
             return [.overview, .history]
+        case .airQualitySensor:
+            // The newest readings and findings on Overview, the hourly history on History.
+            return capabilities.contains(.airQualityLog) ? [.overview, .history] : [.overview]
         }
     }
 

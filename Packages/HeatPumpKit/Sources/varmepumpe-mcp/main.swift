@@ -15,13 +15,17 @@ func instructions(for integration: any Integration, devices: [DeviceDescriptor] 
     let meter =
         devices.contains { $0.kind == .energyMeter }
         ? " get_meter_status gives the home's energy meter: live power and today's use and cost; get_house_consumption reads the house's use from it." : ""
+    let air =
+        devices.contains { $0.kind == .airQualitySensor }
+        ? " get_air_quality gives the indoor air quality sensors' newest values (radon, CO2, humidity, …) with levels and advice; get_air_quality_history their hourly history. Judge radon by the long-term average, not a single short-term value."
+        : ""
     return baseInstructions(for: integration, opening: "Tools for the user's \(devices.count) devices: \(list.joined(separator: "; ")).")
         + " " + """
         Every tool about a device takes an optional device argument: the device's key or name from \
         list_devices. When it is left out and more than one device could answer, the tool returns an \
         error listing the choices; ask the user which device they mean when it is not clear. get_prices \
         is shared by all devices.
-        """ + meter
+        """ + meter + air
 }
 
 private func baseInstructions(for integration: any Integration, opening: String? = nil) -> String {
@@ -94,9 +98,9 @@ func runServer(hub: DeviceHub, approver: any ChangeApprover) async throws {
             resources: .init(subscribe: false, listChanged: false),
             tools: .init(listChanged: false)))
     let router = ToolRouter(hub: hub, approver: approver)
-    // The heat pump's documents, then those of an enabled meter's integration.
+    // The heat pump's documents, then those of an enabled meter's or sensor's integration.
     var integrations: [any Integration] = [service.integration]
-    for device in try await hub.devices() where device.kind == .energyMeter {
+    for device in try await hub.devices() where device.kind != .airToAirHeatPump {
         if let integration = hub.integration(for: device.key), !integrations.contains(where: { $0.id == integration.id }) {
             integrations.append(integration)
         }

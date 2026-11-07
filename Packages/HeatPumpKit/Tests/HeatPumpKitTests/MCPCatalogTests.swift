@@ -39,9 +39,11 @@ struct MCPCatalogTests {
         #expect(try canonical(ToolCatalog.tools(for: [descriptor(living, "Stue")], service: integration.displayName)) == golden.tools)
         #expect(instructions(for: integration) == golden.instructions)
         #expect(instructions(for: integration, devices: [descriptor(living, "Stue")]) == golden.instructions)
-        // MELCloud's own unit has every capability the tools need too.
+        // MELCloud's own unit has every capability the heat pump's and the meter's tools need too.
         let melcloud = MELCloudClassicBackend(credentials: InMemoryCredentialStore())
-        #expect(ToolCatalog.requiredCapability.values.allSatisfy(melcloud.capabilities.contains))
+        #expect(
+            ToolCatalog.requiredCapability.filter { ToolCatalog.kind(of: $0.key) != .airQualitySensor }.values
+                .allSatisfy(melcloud.capabilities.contains))
     }
 
     @Test func twoDevicesAddTheDeviceArgumentAndListDevices() throws {

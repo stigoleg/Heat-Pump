@@ -1,0 +1,39 @@
+{
+  "devices": [
+    {
+      "serialNumber": "2930000001",
+      "home": "Hjemme",
+      "name": "Kjeller",
+      "type": "WAVE_PLUS",
+      "sensors": ["radonShortTermAvg", "temp", "humidity", "pressure", "co2", "voc"]
+    },
+    {
+      "serialNumber": "2960000002",
+      "home": null,
+      "name": "Stue",
+      "type": "VIEW_PLUS",
+      "sensors": ["radonShortTermAvg", "temp", "humidity", "pressure", "co2", "voc", "pm1", "pm25"]
+    },
+    {
+      "serialNumber": "2920000003",
+      "home": "Hjemme",
+      "name": "",
+      "type": "WAVE_MINI",
+      "sensors": ["temp", "humidity", "voc"]
+    },
+    {
+      "serialNumber": "2820000004",
+      "home": "Hjemme",
+      "name": "Hub",
+      "type": "HUB",
+      "sensors": []
+    },
+    {
+      "serialNumber": "3210000005",
+      "home": "Hjemme",
+      "name": "Renew",
+      "type": "AP_1",
+      "sensors": ["pm1", "pm25", "humidity", "temp"]
+    }
+  ]
+}

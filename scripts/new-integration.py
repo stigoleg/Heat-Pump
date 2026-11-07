@@ -35,7 +35,7 @@ CATALOG_TEST = TESTS / "IntegrationTests.swift"
 DEVICE_KIND = SOURCES / "HeatPumpKit/Devices/DeviceKind.swift"
 
 # Ids the store or the demo already use for something else.
-RESERVED_IDS = {"house", "mock", "demo", "demo-meter"}
+RESERVED_IDS = {"house", "mock", "demo", "demo-meter", "demo-airquality"}
 
 
 def fail(message):
@@ -112,6 +112,35 @@ KIND_TEMPLATES = {
         "test_unimplemented": """    @Test func hoursAreNotImplementedYet() async throws {
         let meter = DeviceKey(integration: {T}Integration.id, nativeId: "1")
         await #expect(throws: HeatPumpError.notSupported) { try await connection(StubTransport()).fetchHours(device: meter, lastHours: 24) }
+    }""",
+    },
+    "airQualitySensor": {
+        "drivers": "AirQualityDriver, AirQualityLogReporting",
+        "noun": "air quality sensor",
+        "capabilities": "[.airQuality, .airQualityLog]",
+        "rate_comment": """    // TODO(integration): the vendor's documented limits (research them first; see the
+    // add-integration skill). Until then: newest values of every sensor at most every 5 minutes,
+    // history and listings hourly, no writes.""",
+        "rate_policy": """RateLimitPolicy(
+            maxAge: 300, minRefreshInterval: 300, reportInterval: 3600, defaultLoginBlock: 30 * 60, unauthorizedBlock: 3600,
+            maxWriteWait: 0, writeBaseMaxAge: 0, changeBudget: ChangeBudgetPolicy(maxChangesPerHour: 0, window: 3600, minSpacing: 0))""",
+        "members": """    public func fetchLatest(devices: [DeviceKey]) async throws -> [AirQualityReading] {
+        // TODO(integration): the newest values of `devices` in one request, metric units, mapped to
+        // `AirQualityMetric` (unknown sensor types are left out).
+        throw HeatPumpError.notSupported
+    }
+
+    public func fetchHourly(device: DeviceKey, range: DateInterval) async throws -> [AirQualityHour] {
+        // TODO(integration): hourly averages for the hours that start in `range`, one request.
+        throw HeatPumpError.notSupported
+    }""",
+        "test_unimplemented": """    @Test func readingsAreNotImplementedYet() async throws {
+        let sensor = DeviceKey(integration: {T}Integration.id, nativeId: "1")
+        let client = connection(StubTransport())
+        await #expect(throws: HeatPumpError.notSupported) { try await client.fetchLatest(devices: [sensor]) }
+        await #expect(throws: HeatPumpError.notSupported) {
+            try await client.fetchHourly(device: sensor, range: DateInterval(start: clock.now.addingTimeInterval(-3600), end: clock.now))
+        }
     }""",
     },
 }

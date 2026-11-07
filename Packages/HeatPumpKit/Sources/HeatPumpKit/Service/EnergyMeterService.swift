@@ -97,7 +97,7 @@ public actor EnergyMeterService: DeviceAccount {
         }
         try store.clearCredentialsRejected(integration: integration.id)
         await connection.resetSession()
-        return try await list(minInterval: HeatPumpService.signInMinInterval)
+        return try await listing.signInListing(minInterval: HeatPumpService.signInMinInterval)
     }
 
     public func signOut() async throws {
@@ -110,71 +110,15 @@ public actor EnergyMeterService: DeviceAccount {
     /// allowed or nothing is stored.
     public func refreshDeviceList() async throws -> [DeviceSummary]? {
         guard hasCredentials() else { return nil }
-        let t = now()
-        guard try reserve(HeatPumpService.stateKey, minInterval: integration.rateLimitPolicy.minRefreshInterval, now: t) == .allowed
-        else { return nil }
         do {
-            let listed = try await connection.listDevices()
-            try store.syncDevices(listed, integration: integration.id)
-            try store.recordFetchSuccess(key: HistoryStore.fetchKey(HeatPumpService.stateKey, integration: integration.id), now: t)
-            return listed
+            return try await listing.refresh()
         } catch let error as HeatPumpError {
-            try handle(error, now: t)
+            if error.isCredentialProblem { credentialsStored = true }
             throw error
         }
     }
 
-    private func list(minInterval: TimeInterval) async throws -> StateResult {
-        let t = now()
-        switch try reserve(HeatPumpService.stateKey, minInterval: minInterval, now: t) {
-        case .allowed:
-            do {
-                let listed = try await connection.listDevices()
-                try store.syncDevices(listed, integration: integration.id)
-                try store.recordFetchSuccess(key: HistoryStore.fetchKey(HeatPumpService.stateKey, integration: integration.id), now: t)
-                guard !listed.isEmpty else { return result(error: describe(HeatPumpError.deviceNotFound)) }
-                return StateResult(state: nil, refreshed: true, stale: false)
-            } catch let error as HeatPumpError {
-                try handle(error, now: t)
-                var r = result(error: describe(error.isCredentialProblem ? HeatPumpError.credentialsRejected : error))
-                r.needsLogin = error.isCredentialProblem || error == .missingCredentials
-                return r
-            }
-        case .throttled(let next):
-            return StateResult(state: nil, refreshed: false, stale: true, nextRefreshAllowed: next)
-        case .blocked(let until):
-            var r = result(error: nil)
-            r.blockedUntil = until
-            r.blockMessage = BlockReason.rateLimited.message(until: until, serviceName: serviceName)
-            return r
-        case .credentialsRejected:
-            var r = result(error: describe(HeatPumpError.credentialsRejected))
-            r.needsLogin = true
-            return r
-        }
-    }
-
-    private func result(error: String?) -> StateResult {
-        StateResult(state: nil, refreshed: false, stale: true, error: error)
-    }
-
-    private func reserve(_ name: String, minInterval: TimeInterval, now: Date) throws -> FetchDecision {
-        try store.reserveFetch(
-            key: HistoryStore.fetchKey(name, integration: integration.id), minInterval: minInterval, now: now,
-            blockingIntegration: integration.id)
-    }
-
-    /// Records a block for too much traffic, and stops every request after a refused token until
-    /// new values are saved (never retried with the same token).
-    private func handle(_ error: HeatPumpError, now: Date) throws {
-        switch error {
-        case .rateLimited(let until): try store.recordBlock(until: until, reason: .rateLimited, integration: integration.id)
-        case .invalidCredentials, .credentialsRejected:
-            credentialsStored = true
-            try store.recordCredentialsRejected(now: now, integration: integration.id)
-        default: break
-        }
-    }
+    private var listing: DeviceListing { DeviceListing(connection: connection, integration: integration, store: store, now: now) }
 
     // MARK: Hourly use
 

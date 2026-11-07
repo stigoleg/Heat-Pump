@@ -18,6 +18,10 @@ public enum Capability: String, Sendable, Codable, CaseIterable, Hashable {
     case localTelemetry
     /// Electrical power right now.
     case livePower
+    /// An air quality sensor's newest readings (radon, CO2, humidity, …) and their levels.
+    case airQuality
+    /// An air quality sensor's hourly history.
+    case airQualityLog
 
     /// The capabilities `connection` has by its conformances. A thermostat driver controls fan
     /// and airflow too; local telemetry comes from the integration, not the connection.
@@ -34,6 +38,8 @@ public enum Capability: String, Sendable, Codable, CaseIterable, Hashable {
         if connection is any DeviceLocationReporting { set.insert(.location) }
         if connection is any EnergyMeterDriver { set.insert(.energyLog) }
         if connection is any LivePowerDriver { set.insert(.livePower) }
+        if connection is any AirQualityDriver { set.insert(.airQuality) }
+        if connection is any AirQualityLogReporting { set.insert(.airQualityLog) }
         return set
     }
 }

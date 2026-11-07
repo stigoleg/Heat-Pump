@@ -1,0 +1,17 @@
+{
+  "data": {
+    "time": ["2026-11-05T07:00:00Z", "2026-11-05T08:00:00Z", "2026-11-05T09:00:00Z"],
+    "temp": [19.4, 19.5, null],
+    "humidity": [40.0, 41.0, 42.0],
+    "pressure": [1003.1, 1003.3, 1003.4],
+    "radonShortTermAvg": [81.0, 83.0, 84.0],
+    "co2": [980.0, 1060.0, 1150.0],
+    "voc": [110.0, 111.0, 112.0],
+    "pm1": null,
+    "pm25": null
+  },
+  "start": "2026-11-05T07:00:00Z",
+  "end": "2026-11-05T10:00:00Z",
+  "units": { "temp": "c", "humidity": "pct", "pressure": "hpa", "radonShortTermAvg": "bq", "co2": "ppm", "voc": "ppb" },
+  "cursor": "MTc5Mzg3MjgwMA=="
+}

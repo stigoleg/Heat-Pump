@@ -30,8 +30,8 @@ App hooks you can pass after the file name:
 | `VARMEPUMPE_SCROLL_TO` | a section `.id(…)` on the screen; scrolls there after 3 s (also `menubar` on Settings → General) |
 | `VARMEPUMPE_APPEARANCE` | light, dark, system (not saved) |
 | `VARMEPUMPE_MOCK_CYCLING` | short (simulated short cycling, for Health) |
-| `VARMEPUMPE_DEMO_DEVICES` | heatpump (default), heatpump,heatpump (adds “Bedroom (simulated)”, for multi-device screens), heatpump,meter (adds the simulated Tibber home `demo-meter:home`: screens `demo-meter:home/overview` and `/history`) |
-| `VARMEPUMPE_SETTINGS_SHEET` | add-integration (opens Add Integration on Account; with `VARMEPUMPE_SETTINGS_TAB=konto` and `WINDOW=settings`) |
+| `VARMEPUMPE_DEMO_DEVICES` | heatpump (default), heatpump,heatpump (adds “Bedroom (simulated)”, for multi-device screens), heatpump,meter (adds the simulated Tibber home `demo-meter:home`: screens `demo-meter:home/overview` and `/history`), heatpump,airthings (adds the simulated Airthings sensor `demo-airquality:2930000001`: screens `demo-airquality:2930000001/overview` and `/history`) |
+| `VARMEPUMPE_SETTINGS_SHEET` | add-integration (opens Add Integration on Account; with `VARMEPUMPE_SETTINGS_TAB=konto` and `WINDOW=settings`), add-integration/<id> (the same, on that integration, e.g. `add-integration/airthings`) |
 | `VARMEPUMPE_MENU_BAR` | on, off (overrides Settings → General → Menu bar without saving), open (also opens the panel; with `WINDOW=panel`). A full menu bar hides the item; the dev hook then moves the panel on screen |
 
 The window size is passed as an argument-domain default, so the real app's saved window frame is

@@ -103,6 +103,13 @@ struct LoginForm: View {
                 .textContentType(.password)
         case .token:
             SecureField("Token", text: value)
+        case .clientId:
+            TextField("Client ID", text: value)
+        case .clientSecret:
+            SecureField("Client secret", text: value)
+        }
+        if let help = field.help {
+            Text(help).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         if let url = field.helpURL {
             Link(destination: url) {

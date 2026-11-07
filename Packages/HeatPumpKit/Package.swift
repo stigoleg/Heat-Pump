@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "HeatPumpKit", targets: ["HeatPumpKit"]),
         .library(name: "MELCloudIntegration", targets: ["MELCloudIntegration"]),
         .library(name: "TibberIntegration", targets: ["TibberIntegration"]),
+        .library(name: "AirthingsIntegration", targets: ["AirthingsIntegration"]),
         .library(name: "DemoIntegration", targets: ["DemoIntegration"]),
         .library(name: "Integrations", targets: ["Integrations"]),
         .executable(name: "varmepumpe-mcp", targets: ["varmepumpe-mcp"]),
@@ -28,10 +29,13 @@ let package = Package(
         .target(name: "MELCloudIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
         // Tibber homes as energy meters (hourly use, live power).
         .target(name: "TibberIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
-        // The demo simulates a MELCloud unit and a Tibber home, so it reuses their wire formats and texts.
-        .target(name: "DemoIntegration", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration"]),
+        // Airthings air quality sensors (radon, CO2, humidity, …), read-only.
+        .target(name: "AirthingsIntegration", dependencies: ["HeatPumpKit"], exclude: ["Knowledge"]),
+        // The demo simulates a MELCloud unit, a Tibber home and an Airthings sensor, so it reuses
+        // their wire formats and texts.
+        .target(name: "DemoIntegration", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "AirthingsIntegration"]),
         // The only list of integrations, and the factory the app and the helper start from.
-        .target(name: "Integrations", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "DemoIntegration"]),
+        .target(name: "Integrations", dependencies: ["HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "AirthingsIntegration", "DemoIntegration"]),
         .executableTarget(
             name: "varmepumpe-mcp",
             dependencies: [
@@ -44,7 +48,7 @@ let package = Package(
         .testTarget(
             name: "HeatPumpKitTests",
             dependencies: [
-                "HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "DemoIntegration", "Integrations", "varmepumpe-mcp",
+                "HeatPumpKit", "MELCloudIntegration", "TibberIntegration", "AirthingsIntegration", "DemoIntegration", "Integrations", "varmepumpe-mcp",
             ],
             resources: [.copy("Fixtures")]
         ),

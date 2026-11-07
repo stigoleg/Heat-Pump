@@ -148,6 +148,59 @@ public protocol LivePowerDriver: Sendable {
     func liveReadings(device: DeviceKey) -> AsyncStream<LivePowerEvent>
 }
 
+/// An air quality sensor (radon, CO2, humidity, …): readings only. Sensors report every few
+/// minutes at best (radon hourly), so the service asks for every sensor of the integration in one
+/// request at most every `RateLimitPolicy.minRefreshInterval`.
+public protocol AirQualityDriver: DeviceConnection {
+    /// The newest readings of `devices` (at most `maxDevicesPerRequest`) in one request. Devices the
+    /// vendor has no reading for are left out.
+    func fetchLatest(devices: [DeviceKey]) async throws -> [AirQualityReading]
+    /// How many devices one `fetchLatest` may ask for.
+    var maxDevicesPerRequest: Int { get }
+    /// The levels the vendor rates `device`'s values by (the user's own settings or the vendor's
+    /// defaults), or nil when it has none (the core's `AirQualityThresholds.standard` apply).
+    func fetchThresholds(device: DeviceKey) async throws -> AirQualityThresholds?
+}
+
+extension AirQualityDriver {
+    public var maxDevicesPerRequest: Int { 50 }
+    public func fetchThresholds(device: DeviceKey) async throws -> AirQualityThresholds? { nil }
+}
+
+/// An air quality sensor's history as hourly averages.
+public protocol AirQualityLogReporting: Sendable {
+    /// Hourly averages of `device` for the hours that start in `range`, oldest first. The hour
+    /// still running may be a partial average.
+    func fetchHourly(device: DeviceKey, range: DateInterval) async throws -> [AirQualityHour]
+    /// Longest range one request may ask for, in days.
+    var maxAirQualityLogDays: Int { get }
+}
+
+extension AirQualityLogReporting {
+    public var maxAirQualityLogDays: Int { 30 }
+}
+
+/// What the vendor's answers say about its request budget (rate limit headers): the service stops
+/// asking before the budget runs out instead of waiting for a refusal.
+public protocol RequestBudgetReporting: Sendable {
+    /// The newest budget the vendor reported, or nil when it reported none.
+    func requestBudget() async -> RequestBudget?
+}
+
+/// A vendor's request budget for the current window.
+public struct RequestBudget: Sendable, Equatable {
+    public var limit: Int
+    public var remaining: Int
+    /// When the window has room again.
+    public var resetsAt: Date
+
+    public init(limit: Int, remaining: Int, resetsAt: Date) {
+        self.limit = limit
+        self.remaining = remaining
+        self.resetsAt = resetsAt
+    }
+}
+
 /// Where the unit is, from the stored device listing.
 public protocol DeviceLocationReporting: Sendable {
     func location(fromStoredListing listing: JSONValue?) -> (latitude: Double, longitude: Double)?
@@ -169,6 +222,12 @@ public protocol DemoDataSeeding: TemperatureLogReporting {
     var demoLocalHost: String { get }
     /// Simulated local readings every minute from `from` to `to`.
     func demoLocalSamples(from: Date, to: Date, shortCycling: Bool) -> [LocalSample]
+}
+
+/// Demo data for a simulated air quality sensor.
+public protocol AirQualityDemoSeeding: Sendable {
+    /// Simulated hourly averages from `from` to `to`.
+    func demoHours(device: DeviceKey, from: Date, to: Date) -> [AirQualityHour]
 }
 
 /// The capabilities every cloud heat pump connection had before they were split (eases test doubles).
