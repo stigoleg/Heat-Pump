@@ -1,5 +1,7 @@
 #!/bin/zsh
-# Builds a Developer ID signed, notarized and stapled Varmepumpe.app and zips it.
+# Builds a Developer ID signed, notarized and stapled Varmepumpe.app and packs it twice: a disk
+# image for people to download, and a zip for the in-app updater (it only reads .zip assets, so
+# installed versions keep updating).
 #
 # Usage: scripts/release.sh <version>
 #
@@ -13,7 +15,7 @@
 #     NOTARY_APPLE_ID, NOTARY_PASSWORD, NOTARY_TEAM_ID   Apple ID + app-specific password
 #   SKIP_NOTARIZE=1      sign only (local smoke test; the result will not pass Gatekeeper)
 #
-# Output: build/release/Varmepumpe-<version>.zip and its .sha256.
+# Output: build/release/Varmepumpe-<version>.dmg and Varmepumpe-<version>.zip, each with a .sha256.
 set -euo pipefail
 
 VERSION=${1:?usage: scripts/release.sh <version>}
@@ -27,6 +29,7 @@ DERIVED=build/release/DerivedData
 APP=$DERIVED/Build/Products/Release/Varmepumpe.app
 OUT=build/release
 ZIP=$OUT/Varmepumpe-$VERSION.zip
+DMG=$OUT/Varmepumpe-$VERSION.dmg
 
 sign_flags="--timestamp"
 [[ -n ${SIGN_KEYCHAIN:-} ]] && sign_flags="$sign_flags --keychain $SIGN_KEYCHAIN"
@@ -57,8 +60,7 @@ done
 
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
-if [[ -z ${SKIP_NOTARIZE:-} ]]; then
-  echo "==> Notarizing"
+notary_auth() {
   if [[ -n ${NOTARY_PROFILE:-} ]]; then
     auth=(--keychain-profile "$NOTARY_PROFILE")
   elif [[ -n ${NOTARY_KEY_PATH:-} ]]; then
@@ -69,15 +71,26 @@ if [[ -z ${SKIP_NOTARIZE:-} ]]; then
     echo "No notarization credentials (NOTARY_PROFILE, NOTARY_KEY_* or NOTARY_APPLE_ID)." >&2
     exit 1
   fi
-  xcrun notarytool submit "$ZIP" "${auth[@]}" --wait --timeout 30m --output-format json > "$OUT/notary.json"
-  cat "$OUT/notary.json"
-  result=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$OUT/notary.json")
+}
+
+# Submits a file and waits; fails with the notary log unless Apple accepts it.
+notarize() {
+  local file=$1 json=$OUT/notary-${1:t:e}.json result id
+  xcrun notarytool submit "$file" "${auth[@]}" --wait --timeout 30m --output-format json > "$json"
+  cat "$json"
+  result=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$json")
   if [[ $result != Accepted ]]; then
-    id=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$OUT/notary.json")
+    id=$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$json")
     xcrun notarytool log "$id" "${auth[@]}" || true
-    echo "Notarization failed: $result" >&2
+    echo "Notarization of ${file:t} failed: $result" >&2
     exit 1
   fi
+}
+
+if [[ -z ${SKIP_NOTARIZE:-} ]]; then
+  echo "==> Notarizing the app"
+  notary_auth
+  notarize "$ZIP"
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP"
   spctl --assess --type execute --verbose=2 "$APP"
@@ -85,5 +98,27 @@ if [[ -z ${SKIP_NOTARIZE:-} ]]; then
   ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 fi
 
-(cd "$OUT" && shasum -a 256 "${ZIP:t}" > "${ZIP:t}.sha256")
-echo "==> Done: $ZIP"
+# The stapled app and a link to Applications, so it installs by dragging.
+echo "==> Building the disk image"
+stage=$OUT/dmg-root
+rm -rf "$stage"
+mkdir -p "$stage"
+ditto "$APP" "$stage/Varmepumpe.app"
+ln -s /Applications "$stage/Applications"
+hdiutil create -volname Varmepumpe -srcfolder "$stage" -fs HFS+ -format UDZO -imagekey zlib-level=9 -ov "$DMG" -quiet
+rm -rf "$stage"
+dmg_flags=(--sign "$SIGN_IDENTITY" --timestamp)
+[[ -n ${SIGN_KEYCHAIN:-} ]] && dmg_flags+=(--keychain "$SIGN_KEYCHAIN")
+codesign "${dmg_flags[@]}" "$DMG"
+codesign --verify --verbose=2 "$DMG"
+
+if [[ -z ${SKIP_NOTARIZE:-} ]]; then
+  echo "==> Notarizing the disk image"
+  notarize "$DMG"
+  xcrun stapler staple "$DMG"
+  xcrun stapler validate "$DMG"
+  spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+fi
+
+(cd "$OUT" && shasum -a 256 "${ZIP:t}" > "${ZIP:t}.sha256" && shasum -a 256 "${DMG:t}" > "${DMG:t}.sha256")
+echo "==> Done: $DMG and $ZIP"

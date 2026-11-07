@@ -7,7 +7,8 @@
 #   make l10n     refresh the string catalogs from the sources and list missing translations
 #                 [TRANSLATIONS="a.json b.json"] merges translation files (see scripts/l10n.py)
 #   make release VERSION=1.2.3 [NOTARY_PROFILE=varmepumpe]
-#                 Developer ID signed + notarized zip in build/release (CI does this on tags)
+#                 Developer ID signed + notarized dmg (download) and zip (in-app updates) in
+#                 build/release (CI does this on tags)
 
 SCHEME       := Varmepumpe
 DERIVED      := build/DerivedData

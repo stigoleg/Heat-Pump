@@ -112,10 +112,12 @@ jobs:
           # Section for this version from CHANGELOG.md, if present.
           awk -v v="$v" '$0 ~ "^## \\[?"v"\\]?" {p=1; next} /^## / && p {exit} p' CHANGELOG.md > "$notes" || true
           [ -s "$notes" ] || echo "Varmepumpe $v" > "$notes"
+          # The disk image is the download; the zip is what installed apps update from (keep it).
+          assets="build/release/Varmepumpe-$v.dmg build/release/Varmepumpe-$v.dmg.sha256 build/release/Varmepumpe-$v.zip build/release/Varmepumpe-$v.zip.sha256"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" build/release/Varmepumpe-$v.zip build/release/Varmepumpe-$v.zip.sha256 --clobber
+            gh release upload "$tag" $assets --clobber
           else
-            gh release create "$tag" build/release/Varmepumpe-$v.zip build/release/Varmepumpe-$v.zip.sha256 \
+            gh release create "$tag" $assets \
               --title "Varmepumpe $v" --notes-file "$notes" --verify-tag
           fi
 

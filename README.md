@@ -83,8 +83,8 @@ The screenshots are taken in demo mode with simulated data.
 
 ## Install
 
-1. Download `Varmepumpe-<version>.zip` from the [latest release](https://github.com/stigoleg/Heat-Pump/releases/latest).
-2. Unzip it and move `Varmepumpe.app` to Applications. It shows up as Heat Pump on an English Mac.
+1. Download `Varmepumpe-<version>.dmg` from the [latest release](https://github.com/stigoleg/Heat-Pump/releases/latest).
+2. Open it and drag `Varmepumpe.app` to Applications. It shows up as Heat Pump on an English Mac.
 3. Open the app. It is signed with a Developer ID and notarized by Apple, so it opens without a warning.
 
 Requires macOS 26 or later, on Apple silicon or Intel.
@@ -281,7 +281,7 @@ git tag v1.2.3
 git push origin main v1.2.3
 ```
 
-The workflow runs the tests, builds a universal app (Apple silicon and Intel), notarizes and staples it, and puts `Varmepumpe-1.2.3.zip` with its SHA-256 under Releases. The release notes come from CHANGELOG.md. Installed apps find the version through GitHub's “latest release”, so it must not be marked as a pre-release, and the zip file must be named `Varmepumpe-<version>.zip`.
+The workflow runs the tests, builds a universal app (Apple silicon and Intel), notarizes and staples it, and puts `Varmepumpe-1.2.3.dmg` (the download) and `Varmepumpe-1.2.3.zip` (what installed apps update from), each with its SHA-256, under Releases. The release notes come from CHANGELOG.md. Installed apps find the version through GitHub's “latest release”, so it must not be marked as a pre-release, and the zip file must be named `Varmepumpe-<version>.zip`.
 
 It needs these secrets in the repository:
 

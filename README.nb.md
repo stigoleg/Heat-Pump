@@ -83,8 +83,8 @@ Skjermbildene er tatt i demo-modus med simulerte data.
 
 ## Installer
 
-1. Last ned `Varmepumpe-<versjon>.zip` fra [siste versjon](https://github.com/stigoleg/Heat-Pump/releases/latest).
-2. Pakk ut og flytt `Varmepumpe.app` til Programmer.
+1. Last ned `Varmepumpe-<versjon>.dmg` fra [siste versjon](https://github.com/stigoleg/Heat-Pump/releases/latest).
+2. Åpne den og dra `Varmepumpe.app` til Programmer.
 3. Åpne appen. Den er signert med Developer ID og notarisert av Apple, så den åpnes uten advarsel.
 
 Krever macOS 26 eller nyere, på Apple Silicon eller Intel.
@@ -280,7 +280,7 @@ git tag v1.2.3
 git push origin main v1.2.3
 ```
 
-Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.zip` med SHA-256 under Releases. Teksten hentes fra CHANGELOG.md. Installerte apper finner versjonen via GitHubs «latest release». Den må derfor ikke merkes som forhåndsversjon, og zip-filen må hete `Varmepumpe-<versjon>.zip`.
+Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.dmg` (nedlastingen) og `Varmepumpe-1.2.3.zip` (det installerte apper oppdaterer seg fra), hver med SHA-256, under Releases. Teksten hentes fra CHANGELOG.md. Installerte apper finner versjonen via GitHubs «latest release». Den må derfor ikke merkes som forhåndsversjon, og zip-filen må hete `Varmepumpe-<versjon>.zip`.
 
 Den trenger disse hemmelighetene i repoet:
 
