@@ -160,7 +160,7 @@ final class AppModel {
     var route: AppRoute = .device(nil, .overview)
     /// Dev only (`VARMEPUMPE_HISTORY_TAB`): start tab in Historikk, for screenshots.
     var initialHistoryTab: String?
-    /// Selected Settings tab (generelt, konto, strompris, lokal, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
+    /// Selected Settings tab (generelt, konto, enheter, strompris, lokal, vaer, claude, data). Dev: `VARMEPUMPE_SETTINGS_TAB`.
     var settingsTab = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] ?? "generelt"
     /// Light/dark choice, stored in UserDefaults. Dev: `VARMEPUMPE_APPEARANCE` overrides it without saving.
     private(set) var appearance: AppAppearance = .system
@@ -814,22 +814,25 @@ final class AppModel {
         integrationsLoaded = true
     }
 
-    /// Integrations that can be added: known to this build, not active, not the simulated one.
-    /// None in demo mode.
-    var addableIntegrations: [any Integration] {
-        guard let hub, !isDemo, integrationsLoaded else { return [] }
-        let active = Set(activeIntegrations.map(\.id))
-        return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) }
+    /// Every service a user can connect (Add Device, Settings → Devices), active ones too; never
+    /// the simulated ones. In demo mode the list shows, but signing in is not used.
+    var setupIntegrations: [any Integration] {
+        guard let hub else { return [] }
+        return hub.catalog.filter { !IntegrationCatalog.simulated.contains($0.id) }
     }
 
-    /// Dev only (`VARMEPUMPE_SETTINGS_SHEET=add-integration`, or `add-integration/<id>` to choose
-    /// one; screenshots): the integrations the sheet would offer outside demo mode.
-    var devAddableIntegrations: [any Integration] {
-        guard let hub, let sheet = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_SHEET"],
-            sheet == "add-integration" || sheet.hasPrefix("add-integration/")
-        else { return [] }
-        let active = Set(activeIntegrations.map(\.id))
-        return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) && $0.id != IntegrationCatalog.melcloud.id }
+    func isActive(_ integration: any Integration) -> Bool {
+        activeIntegrations.contains { $0.id == integration.id }
+    }
+
+    /// The Add Device sheet in the main window (sidebar button, File → Add Device…), and the
+    /// service it opens on (nil: the list). Dev: `VARMEPUMPE_ADD_DEVICE=1` or `=<integration id>`.
+    var showingAddDevice = ProcessInfo.processInfo.environment["VARMEPUMPE_ADD_DEVICE"] != nil
+    var addDeviceChoice: String? = ProcessInfo.processInfo.environment["VARMEPUMPE_ADD_DEVICE"].flatMap { $0 == "1" ? nil : $0 }
+
+    func addDevice(choosing id: String? = nil) {
+        addDeviceChoice = id
+        showingAddDevice = true
     }
 
     /// Values already stored for an integration that is not active yet (its token shared with the

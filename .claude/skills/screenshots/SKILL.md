@@ -26,12 +26,13 @@ App hooks you can pass after the file name:
 | `VARMEPUMPE_SCREEN` | overview, control, schedule, history, outlook, away, health, activity; with two or more devices also home, home/forecast, home/activity and `<device key>/<screen>` (e.g. demo:100002/control) |
 | `VARMEPUMPE_HISTORY_TAB` | temperature, energy, energy-kr, operation, power |
 | `VARMEPUMPE_HISTORY_RANGE` | day, week, month, year |
-| `VARMEPUMPE_SETTINGS_TAB` | generelt, konto, strompris, lokal, vaer, claude, data (opens Settings; use `WINDOW=settings`) |
+| `VARMEPUMPE_SETTINGS_TAB` | generelt, konto, enheter, strompris, lokal, vaer, claude, data (opens Settings; use `WINDOW=settings`) |
 | `VARMEPUMPE_SCROLL_TO` | a section `.id(…)` on the screen; scrolls there after 3 s (also `menubar` on Settings → General) |
 | `VARMEPUMPE_APPEARANCE` | light, dark, system (not saved) |
 | `VARMEPUMPE_MOCK_CYCLING` | short (simulated short cycling, for Health) |
 | `VARMEPUMPE_DEMO_DEVICES` | heatpump (default), heatpump,heatpump (adds “Bedroom (simulated)”, for multi-device screens), heatpump,meter (adds the simulated Tibber home `demo-meter:home`: screens `demo-meter:home/overview` and `/history`), heatpump,airthings (adds the simulated Airthings sensor `demo-airquality:2930000001`: screens `demo-airquality:2930000001/overview` and `/history`) |
-| `VARMEPUMPE_SETTINGS_SHEET` | add-integration (opens Add Integration on Account; with `VARMEPUMPE_SETTINGS_TAB=konto` and `WINDOW=settings`), add-integration/<id> (the same, on that integration, e.g. `add-integration/airthings`) |
+| `VARMEPUMPE_SETTINGS_SHEET` | add-integration (opens Add Device on the Devices tab; with `VARMEPUMPE_SETTINGS_TAB=enheter` and `WINDOW=settings`), add-integration/<id> (the same, on that service, e.g. `add-integration/airthings`) |
+| `VARMEPUMPE_ADD_DEVICE` | 1 (opens Add Device in the main window), or an integration id to open on that service |
 | `VARMEPUMPE_MENU_BAR` | on, off (overrides Settings → General → Menu bar without saving), open (also opens the panel; with `WINDOW=panel`). A full menu bar hides the item; the dev hook then moves the panel on screen |
 
 The window size is passed as an argument-domain default, so the real app's saved window frame is

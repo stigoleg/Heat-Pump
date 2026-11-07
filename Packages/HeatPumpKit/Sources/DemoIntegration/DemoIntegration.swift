@@ -21,6 +21,8 @@ public struct DemoIntegration: Integration {
     public var brandName: String { simulated.brandName }
     public var modelName: String? { simulated.modelName }
     public var unitDescription: String { simulated.unitDescription }
+    public var setupSummary: String { simulated.setupSummary }
+    public var deviceKind: DeviceKind { simulated.deviceKind }
     public var sourceTag: String { simulated.sourceTag }
     public var credentialFields: [CredentialField] { [] }
     /// The same limits as MELCloud, so demo mode behaves like the real thing.

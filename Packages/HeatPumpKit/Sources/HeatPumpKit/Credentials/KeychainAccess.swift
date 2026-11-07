@@ -19,15 +19,10 @@ enum KeychainAccess {
     /// tests), where an item trusts only its creator as before.
     static func shared(label: String) -> SecAccess? {
         guard let paths = trustedPaths() else { return nil }
-        var apps: [SecTrustedApplication] = []
-        for path in paths {
-            var app: SecTrustedApplication?
-            guard SecTrustedApplicationCreateFromPath(path, &app) == errSecSuccess, let app else { return nil }
-            apps.append(app)
-        }
-        var access: SecAccess?
-        guard SecAccessCreate(label as CFString, apps as CFArray, &access) == errSecSuccess else { return nil }
-        return access
+        // Called through the protocol, so the deliberate use of the deprecated API stays in one
+        // place and does not warn on every build.
+        let maker: any LegacyAccessMaking = LegacyAccessMaker()
+        return maker.access(label: label, trusting: paths)
     }
 
     /// The enclosing `.app` and its helper, found from the running executable (the app's
@@ -43,5 +38,26 @@ enum KeychainAccess {
         }
         let helper = url.appending(path: helperSubpath).path
         return fileExists(helper) ? [url.path, helper] : [url.path]
+    }
+}
+
+/// Indirection for the deprecated `SecAccess` calls (see `KeychainAccess`): a call through an
+/// existential does not report the witness's deprecation.
+private protocol LegacyAccessMaking {
+    func access(label: String, trusting paths: [String]) -> SecAccess?
+}
+
+private struct LegacyAccessMaker: LegacyAccessMaking {
+    @available(macOS, deprecated: 10.10, message: "SecKeychain ACLs; still the only way for the file-based login keychain")
+    func access(label: String, trusting paths: [String]) -> SecAccess? {
+        var apps: [SecTrustedApplication] = []
+        for path in paths {
+            var app: SecTrustedApplication?
+            guard SecTrustedApplicationCreateFromPath(path, &app) == errSecSuccess, let app else { return nil }
+            apps.append(app)
+        }
+        var access: SecAccess?
+        guard SecAccessCreate(label as CFString, apps as CFArray, &access) == errSecSuccess else { return nil }
+        return access
     }
 }

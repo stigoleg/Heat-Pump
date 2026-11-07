@@ -55,8 +55,8 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 - **Borte hjemmefra** – frostsikring og feriemodus.
 - **Lokal tilkobling** – leser effekt, kompressor, avriming og en nøyaktig strømmåler direkte fra Wi-Fi-modulen på hjemmenettet. Bare lesing.
 - **Husets strømforbruk** – fra Tibber, med varmepumpens andel.
-- **Strømmåler (Tibber)** – valgfritt: legg til Tibber under Innstillinger → Konto → Legg til integrasjon … så vises Tibber-hjemmet ditt som en enhet med effekt nå (med Tibber Pulse eller Watty), dagens forbruk og kostnad, og historikk per time og døgn. Den bruker samme nøkkel som Tibber-prisene.
-- **Inneluft (Airthings)** – valgfritt: legg til Airthings under Innstillinger → Konto → Legg til integrasjon … med klient-ID og hemmelighet fra en API-klient du lager på Airthings' utviklerside. Hver måler vises som en enhet med radon (kort- og langtidssnitt), CO₂, VOC, svevestøv, luftfuktighet, temperatur og lufttrykk, nivåer (bra/middels/dårlig, etter dine egne grenser i Airthings-appen), råd, historikk i opptil to år, et kort på Hjem og et valgfritt varsel når langtidssnittet for radon når 100 Bq/m³. Bare lesing. Claude kan også lese det (`get_air_quality`, `get_air_quality_history`).
+- **Strømmåler (Tibber)** – valgfritt: velg Legg til enhet … (sidepanelet, Arkiv-menyen eller Innstillinger → Enheter) → Tibber, så vises Tibber-hjemmet ditt som en enhet med effekt nå (med Tibber Pulse eller Watty), dagens forbruk og kostnad, og historikk per time og døgn. Den bruker samme nøkkel som Tibber-prisene.
+- **Inneluft (Airthings)** – valgfritt: velg Legg til enhet … → Airthings og skriv inn klient-ID og hemmelighet fra en API-klient du lager på Airthings' utviklerside. Hver måler vises som en enhet med radon (kort- og langtidssnitt), CO₂, VOC, svevestøv, luftfuktighet, temperatur og lufttrykk, nivåer (bra/middels/dårlig, etter dine egne grenser i Airthings-appen), råd, historikk i opptil to år, et kort på Hjem og et valgfritt varsel når langtidssnittet for radon når 100 Bq/m³. Bare lesing. Claude kan også lese det (`get_air_quality`, `get_air_quality_history`).
 - **Claude** – innebygd MCP-server med 25 verktøy, en helsesjekk og kunnskapsdokumenter om vedlikehold og feilkoder.
 - **Lys og mørk modus** – med ett klikk i verktøylinjen eller ⌘⇧L.
 - **Norsk og engelsk** – følger språket i macOS, eller velges under Innstillinger → Generelt → Språk.
@@ -261,10 +261,11 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 | `VARMEPUMPE_SCROLL_TO` | Ruller til en seksjon etter tre sekunder (skjermbilder) |
 | `VARMEPUMPE_APPEARANCE` | `light`, `dark` eller `system`, uten å lagre valget |
 | `VARMEPUMPE_LANGUAGE` | `en` eller `nb`, uten å lagre valget (også for MCP-serveren) |
-| `VARMEPUMPE_SETTINGS_TAB` | Åpner Innstillinger på fanen: generelt, konto, strompris, lokal, vaer, claude, data |
+| `VARMEPUMPE_SETTINGS_TAB` | Åpner Innstillinger på fanen: generelt, konto, enheter, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | Simulert kompressor går i korte runder |
 | `VARMEPUMPE_DEMO_DEVICES` | Simulerte enheter, kommaseparert (standard `heatpump`); `heatpump,heatpump` gir en varmepumpe til («Soverom (simulert)»), `heatpump,meter` et simulert Tibber-hjem («Hjemme (simulert)», nøkkel `demo-meter:home`), `heatpump,airthings` en simulert Airthings Wave Plus («Kjeller (simulert)», nøkkel `demo-airquality:2930000001`) |
-| `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Åpner Legg til integrasjon på Konto-fanen (skjermbilder; med `VARMEPUMPE_SETTINGS_TAB=konto`) |
+| `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Åpner Legg til enhet på Enheter-fanen (skjermbilder; med `VARMEPUMPE_SETTINGS_TAB=enheter`; `add-integration/<id>` åpner på den tjenesten) |
+| `VARMEPUMPE_ADD_DEVICE=1` | Åpner Legg til enhet i hovedvinduet (`=<id>`, f.eks. `airthings`, åpner på den tjenesten) |
 | `VARMEPUMPE_MENU_BAR` | `on` eller `off` overstyrer Innstillinger → Generelt → Menylinjen uten å lagre; `open` åpner også panelet (skjermbilder) |
 
 </details>

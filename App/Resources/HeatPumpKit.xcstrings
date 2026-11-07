@@ -2990,6 +2990,17 @@
         }
       }
     },
+    "Mitsubishi Electric heat pumps on your MELCloud account: status, control and energy use." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitsubishi Electric-varmepumper på MELCloud-kontoen din: status, styring og energibruk."
+          }
+        }
+      }
+    },
     "Mitsubishi general check codes (other series)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3309,6 +3320,17 @@
         }
       }
     },
+    "No devices found on the %@ account." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fant ingen enheter på %@-kontoen."
+          }
+        }
+      }
+    },
     "No error" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3371,17 +3393,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen fastvareoppdatering venter for enheten."
-          }
-        }
-      }
-    },
-    "No heat pump found on the account." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fant ingen varmepumpe på kontoen."
           }
         }
       }
@@ -4245,6 +4256,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radon vurderes ut fra årsmiddelverdien: tiltak anbefales fra 100 Bq/m³, og grenseverdien er 200 Bq/m³. Korttidsverdier svinger med vær og ventilasjon."
+          }
+        }
+      }
+    },
+    "Radon, CO₂, humidity and temperature from your Airthings sensors." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon, CO₂, luftfuktighet og temperatur fra Airthings-målerne dine."
           }
         }
       }
@@ -7011,6 +7033,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du kan ikke ha mer enn det tillatte antallet hendelser i ukeplanen (til sammen for alle sesonger)."
+          }
+        }
+      }
+    },
+    "Your home's electricity use and cost per hour, and live power with Tibber Pulse." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strømforbruk og kostnad per time for hjemmet, og effekt i sanntid med Tibber Pulse."
           }
         }
       }

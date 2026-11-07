@@ -167,11 +167,14 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   `home/<screen>` and `<device key>/<screen>`.
 - **`DeviceUIRegistry`** maps a device to its screens (kind and capabilities), the views behind
   them (with the model injected), its Home card and its Settings (today the local connection).
-- **Settings**: the sign-in form comes from the integration's `credentialFields`. With two or more
-  integrations Account has a section per integration; with two or more devices a device list
-  (rename, turn on/off, refresh the list). "Add Integration…" (a quiet button at the bottom of
-  Account) appears when the catalog has an integration that is not active (the simulated ones
-  are never offered); for Tibber the token saved for prices is filled in. Turning off (or
+- **Adding devices**: one sheet, `AddDeviceSheet` (`IntegrationSettings.swift`), opened from
+  "Add Device…" in the sidebar, File → Add Device… (⇧⌘N), Settings → Devices and, with a Tibber
+  price token, the Electricity price tab. It lists every catalog integration (never the
+  simulated ones) with its `setupSummary` and `deviceKind` icon, shows the sign-in form from
+  `credentialFields` (for Tibber the token saved for prices is filled in), then what was found.
+  The onboarding screen points to it. Settings → Devices lists the services and every device
+  (rename, turn on/off, refresh the list); with two or more integrations Account has a section
+  per integration (sign out, remove). Turning off (or
   removing the integration of) price control's device first turns price control off, which sets
   its temperature back (`DeviceHub.setEnabled`).
 
@@ -289,5 +292,5 @@ Data (database, fetch status, blocks)
 - [ ] `VARMEPUMPE_BACKEND`, `VARMEPUMPE_DB_PATH`, `MELCLOUD_EMAIL`/`MELCLOUD_PASSWORD`,
   `VARMEPUMPE_APPROVAL`, `VARMEPUMPE_SCREEN`, `VARMEPUMPE_HISTORY_TAB`, `VARMEPUMPE_HISTORY_RANGE`,
   `VARMEPUMPE_SCROLL_TO`, `VARMEPUMPE_APPEARANCE`, `VARMEPUMPE_LANGUAGE`, `VARMEPUMPE_SETTINGS_TAB`,
-  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`, `VARMEPUMPE_SETTINGS_SHEET`, `VARMEPUMPE_MENU_BAR`
+  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`, `VARMEPUMPE_SETTINGS_SHEET`, `VARMEPUMPE_ADD_DEVICE`, `VARMEPUMPE_MENU_BAR`
 - [ ] `make demo`, `make l10n`, `make release`; CI and release workflows

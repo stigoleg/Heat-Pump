@@ -55,8 +55,9 @@ of `IntegrationTests.catalogListsEachIntegrationOnce`. It refuses when anything 
 The stubs list no devices and throw `HeatPumpError.notSupported`; the generated tests pin that
 state and must be replaced as the connection grows.
 
-Every catalog integration is offered under Settings → Account → Add Integration… (except the
-simulated ones), so do not ship the catalog entry before the connection works.
+Every catalog integration is offered in Add Device (sidebar, File menu, Settings → Devices; except
+the simulated ones) with its `setupSummary` (one localized sentence: what the user gets) and the
+icon of its `deviceKind`; set both. Do not ship the catalog entry before the connection works.
 
 ## 4. The `Integration` contract (`Sources/HeatPumpKit/Integration/Integration.swift`)
 
@@ -226,8 +227,9 @@ Demo mode (`VARMEPUMPE_BACKEND=mock`, `make demo`) never touches the network.
   `AirQualityDemoSeeding`). The default demo (`heatpump`) must look exactly as before:
   `scripts/parity.sh` proves it.
 - Document the token in the README env tables (both languages) and the `screenshots` skill. The
-  sign-in form of a new integration: `VARMEPUMPE_SETTINGS_SHEET=add-integration/<id>` with
-  `VARMEPUMPE_SETTINGS_TAB=konto` and `WINDOW=settings`.
+  sign-in form of a new integration: `VARMEPUMPE_ADD_DEVICE=<id>` (main window), or
+  `VARMEPUMPE_SETTINGS_SHEET=add-integration/<id>` with `VARMEPUMPE_SETTINGS_TAB=enheter` and
+  `WINDOW=settings`.
 
 ## 9. Texts, docs, changelog
 

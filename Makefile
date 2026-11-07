@@ -25,7 +25,7 @@ project:
 	xcodegen generate
 
 build: project
-	xcodebuild -scheme $(SCHEME) -configuration Release -derivedDataPath $(DERIVED) build -quiet
+	xcodebuild -scheme $(SCHEME) -configuration Release -derivedDataPath $(DERIVED) -destination 'platform=macOS,arch=$(shell uname -m)' build -quiet
 	codesign --verify --deep --strict $(RELEASE_APP)
 	@echo "Built: $(RELEASE_APP)"
 
@@ -33,7 +33,7 @@ build: project
 buil: build
 
 debug: project
-	xcodebuild -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) build -quiet
+	xcodebuild -scheme $(SCHEME) -configuration Debug -derivedDataPath $(DERIVED) -destination 'platform=macOS,arch=$(shell uname -m)' build -quiet
 
 test:
 	cd $(PACKAGE) && swift test

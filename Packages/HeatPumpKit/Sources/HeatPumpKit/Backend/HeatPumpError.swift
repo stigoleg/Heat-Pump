@@ -49,7 +49,7 @@ public enum HeatPumpError: Error, Sendable, Equatable, LocalizedError {
         case .decoding(let detail):
             L10n.format("Could not interpret the answer from %@: %@", serviceName, detail)
         case .deviceNotFound:
-            L10n.tr("No heat pump found on the account.")
+            L10n.format("No devices found on the %@ account.", serviceName)
         case .server(let detail):
             L10n.format("%@ rejected the request: %@", serviceName, detail)
         case .validation(let detail):

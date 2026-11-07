@@ -17,6 +17,12 @@ public protocol Integration: Sendable {
     /// What Claude is told the device is (the first line of the MCP server instructions, the
     /// device list). Defaults to "\(displayName) heat pump".
     var unitDescription: String { get }
+    /// What the user gets from connecting the service, in one localized sentence (Add Device,
+    /// Settings → Devices). Defaults to `unitDescription`.
+    var setupSummary: String { get }
+    /// The kind of device the integration brings (its icon when adding it). Defaults to
+    /// `.airToAirHeatPump`.
+    var deviceKind: DeviceKind { get }
     /// Stored with rows the integration produced (error log, away settings). Persisted, so it
     /// never changes for an existing integration. Defaults to `id`.
     var sourceTag: String { get }
@@ -45,6 +51,8 @@ extension Integration {
     public var brandName: String { vendorName }
     public var modelName: String? { nil }
     public var unitDescription: String { "\(displayName) heat pump" }
+    public var setupSummary: String { unitDescription }
+    public var deviceKind: DeviceKind { .airToAirHeatPump }
     public var sourceTag: String { id }
     public var healthChecks: any HealthCheckProviding { NoHealthChecks() }
     public var maintenanceTasks: [MaintenanceTask] { [] }

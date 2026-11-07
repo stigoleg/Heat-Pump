@@ -21,6 +21,8 @@ public struct AirthingsIntegration: Integration {
     public var displayName: String { Self.displayName }
     public var vendorName: String { "Airthings" }
     public var unitDescription: String { "Airthings air quality sensor (radon, CO2, humidity and more; read-only)" }
+    public var setupSummary: String { L10n.tr("Radon, CO₂, humidity and temperature from your Airthings sensors.") }
+    public var deviceKind: DeviceKind { .airQualitySensor }
 
     /// The API client's values; stored as `airthings/clientId` and `airthings/clientSecret`.
     public var credentialFields: [CredentialField] {

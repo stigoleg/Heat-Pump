@@ -10,6 +10,7 @@ struct SettingsView: View {
         TabView(selection: $model.settingsTab) {
             Tab("General", systemImage: "gearshape", value: "generelt") { GeneralSettings() }
             Tab("Account", systemImage: "person.crop.circle", value: "konto") { AccountSettings() }
+            Tab("Devices", systemImage: "square.grid.2x2", value: "enheter") { DevicesSettings() }
             Tab("Electricity price", systemImage: "bolt.horizontal.circle", value: "strompris") { PriceSettingsView() }
             // The local connection is the integration's own section (MELCloud's adapter on the
             // home network), shown while a device has it.
@@ -121,15 +122,13 @@ struct LoginForm: View {
 }
 
 /// Signed in: account details. Not signed in, or password refused: the login form. With two or
-/// more integrations: a section per integration; with two or more devices: the device list.
+/// more integrations: a section per integration. Devices and Add Device are on the Devices tab.
 struct AccountSettings: View {
     @Environment(AppModel.self) private var app
     @Environment(HeatPumpDeviceModel.self) private var model
     @State private var confirmingSignOut = false
     @State private var switchingAccount = false
-    @State private var addingIntegration = false
     @State private var email: String?
-    @State private var allDevices: [DeviceDescriptor] = []
 
     /// Stored credentials that MELCloud has not refused.
     private var signedIn: Bool {
@@ -137,10 +136,6 @@ struct AccountSettings: View {
     }
 
     private var multipleIntegrations: Bool { app.activeIntegrations.count >= 2 }
-
-    private var addable: [any Integration] {
-        app.addableIntegrations.isEmpty ? app.devAddableIntegrations : app.addableIntegrations
-    }
 
     var body: some View {
         Form {
@@ -161,34 +156,10 @@ struct AccountSettings: View {
             } else {
                 loginSection
             }
-            if allDevices.count >= 2 || multipleIntegrations {
-                DevicesSection(devices: allDevices) { allDevices = await app.allDevices() }
-            }
-            if !addable.isEmpty {
-                // Quiet, below everything else: the tab looks as before.
-                Section {
-                } footer: {
-                    HStack {
-                        Spacer()
-                        Button("Add Integration…") { addingIntegration = true }
-                            .buttonStyle(.borderless)
-                    }
-                }
-            }
         }
         .formStyle(.grouped)
         .task(id: model.hasCredentials) { email = await model.accountEmail() }
-        .task(id: app.devices.count) {
-            await app.loadIntegrations()
-            allDevices = await app.allDevices()
-        }
-        .sheet(isPresented: $addingIntegration) {
-            AddIntegrationSheet(integrations: addable)
-        }
-        .task {
-            // Dev only (screenshots): open the sheet.
-            if !app.devAddableIntegrations.isEmpty { addingIntegration = true }
-        }
+        .task(id: app.devices.count) { await app.loadIntegrations() }
         .confirmationDialog("Sign out of \(model.serviceName)?", isPresented: $confirmingSignOut) {
             Button("Sign Out", role: .destructive) {
                 Task {
@@ -387,6 +358,7 @@ struct PriceSettingsView: View {
     @State private var testing = false
     @State private var testResult: String?
     @State private var loaded = false
+    @State private var addingTibber = false
 
     var body: some View {
         Form {
@@ -425,6 +397,20 @@ struct PriceSettingsView: View {
                             .font(.callout)
                     }
                     if let testResult { Text(testResult).font(.callout).foregroundStyle(.secondary) }
+                    if tokenStored, !model.isDemo, let tibber = model.setupIntegrations.first(where: { $0.deviceKind == .energyMeter }),
+                        !model.isActive(tibber)
+                    {
+                        HStack {
+                            Label("Show your Tibber home as a device too: hourly use and cost, and live power with Pulse.", systemImage: "bolt.fill")
+                                .font(.callout).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                            Button("Add as Device…") { addingTibber = true }
+                        }
+                        .sheet(isPresented: $addingTibber) {
+                            AddDeviceSheet(choosing: tibber.id, showsDeviceOnDone: false)
+                        }
+                    }
                 case .spot:
                     Picker("Price area", selection: $draft.area) {
                         ForEach(PriceArea.allCases, id: \.self) { Text($0.displayName).tag($0) }
@@ -475,6 +461,7 @@ struct PriceSettingsView: View {
             draft = await model.loadPriceSettings()
             await model.checkTibberToken()
             tokenStored = model.hasTibberToken
+            await model.loadIntegrations()
         }
     }
 

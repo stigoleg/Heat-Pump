@@ -44,7 +44,7 @@ when format specifiers differ between key and translation.
   No `n == 1 ? … : …` branching.
 - Never localize identifiers: enum raw values, finding `code`s, DB tables/columns/settings keys,
   UserDefaults keys, MCP tool and argument names, prompt name `helsesjekk`, resource URIs,
-  settings-tab tags (`generelt`, `konto`, `strompris`, `lokal`, `vaer`, `claude`, `data`),
+  settings-tab tags (`generelt`, `konto`, `enheter`, `strompris`, `lokal`, `vaer`, `claude`, `data`),
   keychain names, `VARMEPUMPE_*` variables, log lines, text passed through from MELCloud/Tibber.
 - Do not compare display text in logic (filter on enums or keys instead).
 - The service, vendor and unit are never literals in core, app or MCP texts: pass
@@ -102,7 +102,7 @@ Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.
 |---|---|
 | Heat Pump (the app) / the heat pump (device) | Varmepumpe / varmepumpen |
 | Overview, Control, Weekly schedule, History, Forecast, Away, Health, Claude activity | Oversikt, Kontroll, Ukeplan, Historikk, Prognose, Borte hjemmefra, Helse, Claude-aktivitet |
-| Settings: General, Account, Electricity price, Local connection, Weather, Claude, Data | Generelt, Konto, Strømpris, Lokal tilkobling, Vær, Claude, Data |
+| Settings: General, Account, Devices, Electricity price, Local connection, Weather, Claude, Data | Generelt, Konto, Enheter, Strømpris, Lokal tilkobling, Vær, Claude, Data |
 | Price control | Prisstyring |
 | Norgespris (fixed price) | Norgespris |
 | spot price, electricity contract, price area | spotpris, strømavtale, prisområde |
@@ -130,7 +130,7 @@ Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.
 | Refresh Now, Check for Updates…, Install and Restart, Restart Now | Oppdater nå, Se etter oppdateringer …, Installer og start på nytt, Start på nytt nå |
 | integration, device, energy meter, water heater | integrasjon, enhet, strømmåler, varmtvannsbereder |
 | live power (meter), real-time meter reader, token (Tibber) | effekt nå, sanntidsmåler, nøkkel |
-| Home (sidebar group with two or more devices), Devices, Add Integration…, Refresh Device List | Hjem, Enheter, Legg til integrasjon …, Oppdater enhetslisten |
+| Home (sidebar group with two or more devices), Devices, Add Device…, Services, Refresh Device List | Hjem, Enheter, Legg til enhet …, Tjenester, Oppdater enhetslisten |
 | menu bar, Show in the menu bar, health warning | menylinjen, Vis i menylinjen, helsevarsel |
 | air quality sensor, radon, short-term / long-term average, action level, limit value, annual average | luftkvalitetsmåler, radon, korttidssnitt / langtidssnitt, tiltaksnivå, grenseverdi, årsmiddelverdi |
 | humidity, air pressure, level Good / Fair / Poor | luftfuktighet, lufttrykk, nivå Bra / Middels / Dårlig |

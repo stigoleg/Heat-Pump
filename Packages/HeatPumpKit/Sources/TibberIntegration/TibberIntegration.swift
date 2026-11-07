@@ -20,6 +20,8 @@ public struct TibberIntegration: Integration {
     public var displayName: String { Self.displayName }
     public var vendorName: String { "Tibber" }
     public var unitDescription: String { "Tibber energy meter (the home's electricity use)" }
+    public var setupSummary: String { L10n.tr("Your home's electricity use and cost per hour, and live power with Tibber Pulse.") }
+    public var deviceKind: DeviceKind { .energyMeter }
 
     public var credentialFields: [CredentialField] {
         [CredentialField(id: "token", kind: .token, isSecret: true, helpURL: Self.tokenURL)]

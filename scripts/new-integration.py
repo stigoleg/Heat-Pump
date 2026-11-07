@@ -165,6 +165,10 @@ public struct {T}Integration: Integration {
     public var vendorName: String { "{display}" }
     // TODO(integration): what Claude is told the device is (MCP instructions, `list_devices`).
     public var unitDescription: String { "{display} {noun}" }
+    // TODO(integration): `setupSummary`, what the user gets in one localized sentence (L10n.tr
+    // with a Norwegian translation), shown in Add Device. Until then it shows `unitDescription`.
+    /// The icon in Add Device and Settings → Devices.
+    public var deviceKind: DeviceKind { .{kindcase} }
 
     // TODO(integration): the sign-in fields the vendor needs (`.email` + `.password`, or `.token`
     // with a `helpURL` to where the user creates it). Stored as `{id}/<field>` in the keychain.
@@ -439,6 +443,7 @@ def main():
         .replace("{id}", integration_id)
         .replace("{display}", display)
         .replace("{noun}", template["noun"])
+        .replace("{kindcase}", args.kind)
         .replace("\0", "{")
         .replace("\1", "}"),
         source_dir / f"{name}Connection.swift": CONNECTION.format(
@@ -486,7 +491,7 @@ Next steps (.claude/skills/add-integration/SKILL.md):
   5. Knowledge documents, a demo variant, l10n, README and CHANGELOG as the skill describes.
   6. make check && python3 scripts/l10n.py check
 Until the connection works, keep the catalog entry out of a release: the app offers every
-catalog integration under Settings > Account > Add Integration…"""
+catalog integration in Add Device (sidebar, File menu, Settings > Devices)"""
     )
 
 

@@ -18,6 +18,8 @@ public struct DemoAirQualityIntegration: Integration {
     public var vendorName: String { "Simulated" }
     public var brandName: String { simulated.brandName }
     public var unitDescription: String { simulated.unitDescription }
+    public var setupSummary: String { simulated.setupSummary }
+    public var deviceKind: DeviceKind { simulated.deviceKind }
     public var credentialFields: [CredentialField] { [] }
     public var rateLimitPolicy: RateLimitPolicy { simulated.rateLimitPolicy }
     public var errorCodes: any ErrorCodeExplaining { simulated.errorCodes }

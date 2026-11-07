@@ -77,6 +77,9 @@ struct VarmepumpeApp: App {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesCommand(model: model)
             }
+            CommandGroup(after: .newItem) {
+                AddDeviceCommand(model: model)
+            }
             CommandGroup(after: .toolbar) {
                 Button("Refresh Now") {
                     Task { await model.refresh(force: true) }
@@ -122,5 +125,28 @@ struct VarmepumpeApp: App {
         } label: {
             Label("Heat Pump – price control", systemImage: "bolt.badge.clock")
         }
+    }
+}
+
+/// File → Add Device…: opens the main window if needed and shows the Add Device sheet there.
+private struct AddDeviceCommand: View {
+    let model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button("Add Device…") {
+            // The main window, not Settings; opened when closed (the Dock icon comes back with it).
+            NSApp.setActivationPolicy(.regular)
+            if let window = NSApp.windows.first(where: {
+                $0.isVisible && $0.canBecomeMain && $0.identifier?.rawValue.contains("Settings") != true
+            }) {
+                window.makeKeyAndOrderFront(nil)
+            } else {
+                openWindow(id: "main")
+            }
+            NSApp.activate()
+            model.addDevice()
+        }
+        .keyboardShortcut("n", modifiers: [.command, .shift])
     }
 }

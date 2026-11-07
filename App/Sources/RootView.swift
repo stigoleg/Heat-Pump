@@ -13,6 +13,13 @@ struct RootView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if model.isDemo { DemoBadge() }
                     UpdateReadyBadge()
+                    Button {
+                        model.addDevice()
+                    } label: {
+                        Label("Add Device…", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Connect a heat pump, a Tibber energy meter or Airthings sensors")
                     SettingsLink {
                         Label("Settings", systemImage: "gearshape")
                     }
@@ -35,6 +42,9 @@ struct RootView: View {
         .task {
             // Dev only (screenshots): open Settings on a given tab without keyboard input.
             if ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_TAB"] != nil { openSettings() }
+        }
+        .sheet(isPresented: Binding(get: { model.showingAddDevice }, set: { model.showingAddDevice = $0 })) {
+            AddDeviceSheet(choosing: model.addDeviceChoice)
         }
         // Home and the toolbar use the primary device; device screens get their own.
         .environment(model.primaryHeatPump)
@@ -178,6 +188,14 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 LoginForm(integration: model.integration)
                     .frame(maxWidth: 420)
+                Divider().frame(maxWidth: 420)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Other equipment").font(.headline)
+                    Text("A Tibber energy meter or Airthings sensors can be added next to the heat pump with Add Device… in the sidebar or the File menu.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: 420, alignment: .leading)
             }
             .padding(32)
             .frame(maxWidth: 640, alignment: .leading)

@@ -17,6 +17,7 @@ public struct MELCloudIntegration: Integration {
     public var brandName: String { "Mitsubishi" }
     public var modelName: String? { "Mitsubishi Electric MSZ-RW25VG (MSZ-RW25VG-SC1)" }
     public var unitDescription: String { "Mitsubishi MSZ-RW25VG wall heat pump (MELCloud Classic)" }
+    public var setupSummary: String { L10n.tr("Mitsubishi Electric heat pumps on your MELCloud account: status, control and energy use.") }
     public var sourceTag: String { Self.sourceTag }
     public var errorCodes: any ErrorCodeExplaining { MELCloudErrorCodes() }
     public var healthChecks: any HealthCheckProviding { MELCloudHealthChecks() }

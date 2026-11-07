@@ -54,8 +54,8 @@ Built and tested with an **MSZ-RW25VG** with built-in Wi-Fi. Other air-to-air mo
 - **Away** – frost protection and holiday mode.
 - **Local connection** – reads power, compressor, defrosting and an accurate energy meter directly from the Wi-Fi adapter on the home network. Read-only.
 - **Household electricity use** – from Tibber, with the heat pump's share.
-- **Energy meter (Tibber)** – optional: add Tibber under Settings → Account → Add Integration… and your Tibber home appears as a device with live power (with Tibber Pulse or Watty), today's use and cost, and history per hour and day. It uses the same token as the Tibber prices.
-- **Indoor air quality (Airthings)** – optional: add Airthings under Settings → Account → Add Integration… with the client ID and secret of an API client you create on Airthings' developer site. Each sensor appears as a device with radon (short- and long-term average), CO₂, VOC, particles, humidity, temperature and air pressure, levels (good/fair/poor, from your own thresholds in the Airthings app), advice, history up to two years, a Home card and an optional notification when the long-term radon average reaches 100 Bq/m³. Read-only. Claude can read it too (`get_air_quality`, `get_air_quality_history`).
+- **Energy meter (Tibber)** – optional: choose Add Device… (sidebar, File menu or Settings → Devices) → Tibber, and your Tibber home appears as a device with live power (with Tibber Pulse or Watty), today's use and cost, and history per hour and day. It uses the same token as the Tibber prices.
+- **Indoor air quality (Airthings)** – optional: choose Add Device… → Airthings and enter the client ID and secret of an API client you create on Airthings' developer site. Each sensor appears as a device with radon (short- and long-term average), CO₂, VOC, particles, humidity, temperature and air pressure, levels (good/fair/poor, from your own thresholds in the Airthings app), advice, history up to two years, a Home card and an optional notification when the long-term radon average reaches 100 Bq/m³. Read-only. Claude can read it too (`get_air_quality`, `get_air_quality_history`).
 - **Claude** – a built-in MCP server with 25 tools, a health check and knowledge documents about maintenance and error codes.
 - **Menu bar** – optional (Settings → General → Menu bar): the mode, temperatures, power, cost or price in the menu bar, as you choose, and a panel with status, today's numbers, health and the controls. The app then keeps running when the window is closed.
 - **Light and dark mode** – one click in the toolbar or ⌘⇧L.
@@ -262,10 +262,11 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 | `VARMEPUMPE_SCROLL_TO` | Scrolls to a section after three seconds (screenshots) |
 | `VARMEPUMPE_APPEARANCE` | `light`, `dark` or `system`, without saving the choice |
 | `VARMEPUMPE_LANGUAGE` | `en` or `nb`, without saving the choice (also for the MCP server) |
-| `VARMEPUMPE_SETTINGS_TAB` | Opens Settings on a tab: generelt, konto, strompris, lokal, vaer, claude, data |
+| `VARMEPUMPE_SETTINGS_TAB` | Opens Settings on a tab: generelt, konto, enheter, strompris, lokal, vaer, claude, data |
 | `VARMEPUMPE_MOCK_CYCLING=short` | The simulated compressor runs in short cycles |
 | `VARMEPUMPE_DEMO_DEVICES` | Simulated devices, comma-separated (default `heatpump`); `heatpump,heatpump` adds a second heat pump (“Bedroom (simulated)”), `heatpump,meter` a simulated Tibber home (“Home (simulated)”, key `demo-meter:home`), `heatpump,airthings` a simulated Airthings Wave Plus (“Basement (simulated)”, key `demo-airquality:2930000001`) |
-| `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Opens Add Integration on the Account tab (screenshots; with `VARMEPUMPE_SETTINGS_TAB=konto`) |
+| `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Opens Add Device on the Devices tab (screenshots; with `VARMEPUMPE_SETTINGS_TAB=enheter`; `add-integration/<id>` opens on that service) |
+| `VARMEPUMPE_ADD_DEVICE=1` | Opens Add Device in the main window (`=<id>`, e.g. `airthings`, opens on that service) |
 | `VARMEPUMPE_MENU_BAR` | `on` or `off` overrides Settings → General → Menu bar without saving; `open` also opens its panel (screenshots) |
 
 </details>
