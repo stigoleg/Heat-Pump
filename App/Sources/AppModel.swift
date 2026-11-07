@@ -188,12 +188,15 @@ final class AppModel {
     private(set) var priceControlDevice: DeviceKey?
     /// App updates from GitHub releases (Innstillinger → Generelt).
     let updater = Updater()
+    /// The menu bar item (Settings → General → Menu bar). Dev: `VARMEPUMPE_MENU_BAR`.
+    let menuBar = MenuBarPreferences()
 
     private var pollTask: Task<Void, Never>?
     private let notifier = Notifier()
     /// Between the Mac's sleep and wake notifications (live power is paused).
     private var isAsleep = false
     @ObservationIgnored private var sleepObservers: [NSObjectProtocol] = []
+    @ObservationIgnored private var windowObservers: [NSObjectProtocol] = []
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         launchIntegration = IntegrationCatalog.current(environment: environment)
@@ -224,6 +227,20 @@ final class AppModel {
         connect(primary)
         priceControl.afterChange = { [weak self] in await self?.afterPriceControl() }
         observeSleep()
+        observeWindows()
+    }
+
+    /// A window closing (checked once it is gone) or coming forward decides the Dock icon.
+    private func observeWindows() {
+        let center = NotificationCenter.default
+        windowObservers = [
+            center.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.updateDockIcon() }
+            },
+            center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateDockIcon() }
+            },
+        ]
     }
 
     /// Live power pauses while the Mac sleeps and resumes after it wakes (while polling).
@@ -448,13 +465,17 @@ final class AppModel {
             if let self, !self.isAsleep { for meter in self.meters { meter.startLive() } }
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.syncDevices()
-                await self.refresh(force: false)
-                // New devices on an account (at most daily per integration, mostly from listings
-                // the integration fetched anyway).
-                if let hub = self.hub, (try? await hub.discoverDevices()) == true {
+                // Nothing while the Mac sleeps (a dark wake can run the loop): price control has
+                // set the temperature back and live power is paused until it wakes.
+                if !self.isAsleep {
                     await self.syncDevices()
-                    await self.reloadLocal()
+                    await self.refresh(force: false)
+                    // New devices on an account (at most daily per integration, mostly from listings
+                    // the integration fetched anyway).
+                    if let hub = self.hub, (try? await hub.discoverDevices()) == true {
+                        await self.syncDevices()
+                        await self.reloadLocal()
+                    }
                 }
                 do {
                     try await Task.sleep(for: .seconds(60))
@@ -465,11 +486,28 @@ final class AppModel {
         }
     }
 
-    /// True while price control is on: closing the window keeps the app and its polling running.
-    var keepsRunningInBackground: Bool { priceControl.enabled }
+    /// True while price control or the menu bar item is on: closing the window keeps the app and
+    /// its polling running.
+    var keepsRunningInBackground: Bool { priceControl.enabled || menuBar.enabled }
+
+    /// With the menu bar item on, the app has no Dock icon while none of its windows is open (a
+    /// menu bar app, as macOS expects); it comes back with the window. Without it the Dock icon
+    /// stays, also while price control keeps the app running.
+    func updateDockIcon() {
+        let hasWindow = NSApp.windows.contains { $0.isVisible && $0.canBecomeMain }
+        let policy: NSApplication.ActivationPolicy = menuBar.enabled && !hasWindow ? .accessory : .regular
+        if NSApp.activationPolicy() != policy { NSApp.setActivationPolicy(policy) }
+    }
+
+    /// Settings → General → Menu bar. Turned off with no window open, the app goes back to
+    /// quitting when its last window closes; the Dock icon returns at once.
+    func setMenuBarEnabled(_ on: Bool) {
+        menuBar.setEnabled(on)
+        updateDockIcon()
+    }
 
     /// Stops polling (window closed / app quitting). The app only polls while open, unless price
-    /// control is on.
+    /// control or the menu bar item is on.
     func stop() {
         pollTask?.cancel()
         pollTask = nil
@@ -564,6 +602,45 @@ final class AppModel {
         let start = Calendar.current.dateInterval(of: .hour, for: Date())?.start ?? Date()
         return (try? await service.weatherForecast(from: start, to: end).hours) ?? []
     }
+
+    // MARK: Menu bar
+
+    /// The device the menu bar shows: the one last chosen in the panel, else the primary one.
+    var menuBarDevice: any DeviceModel {
+        let key = MenuBarLayout.shownDevice(chosen: menuBar.chosenDevice, devices: devices.compactMap(\.key))
+        return devices.first { $0.key != nil && $0.key == key } ?? devices[0]
+    }
+
+    /// The price of the current hour (shared by every device).
+    var currentPrice: PriceBreakdown? {
+        let now = Date()
+        return todayPrices.first { $0.hour <= now && now < $0.hour.addingTimeInterval(3600) }
+    }
+
+    /// What the menu bar title can show for `device` right now (missing values stay nil).
+    func menuBarValues(for device: any DeviceModel) -> MenuBarValues {
+        var values = MenuBarValues(
+            outdoor: forecast.first?.temperature, priceNowOre: currentPrice?.totalOre, priceLevel: currentPrice?.level)
+        if let pump = device as? HeatPumpDeviceModel, let state = pump.state {
+            let shown = pump.debouncer?.displayed ?? ControlSettings(state)
+            let mode = pump.debouncer?.displayedMode ?? state.mode
+            values.symbol = !shown.power ? .off : mode.map { .mode($0) }
+            values.indoor = pump.newerLocalSample?.roomTemperature ?? state.roomTemperature
+            values.target = state.setTemperature == nil ? nil : shown.setTemperature
+            values.outdoor = pump.newerLocalSample?.outdoorTemperature ?? state.outdoorTemperature ?? values.outdoor
+            values.powerW = pump.liveSample?.powerW.map(Double.init) ?? pump.estimatedPowerW
+            values.todayCostNok = pump.today?.costNok
+            values.health = pump.health?.overall
+        } else if let meter = device as? EnergyMeterDeviceModel {
+            values.symbol = .meter
+            values.powerW = meter.powerNowW
+            values.todayCostNok = meter.status?.today.cost?.totalNok
+            values.priceNowOre = values.priceNowOre ?? meter.status?.priceNowOre
+        }
+        return values
+    }
+
+    var menuBarSegments: [MenuBarSegment] { menuBar.layout.segments(for: menuBarValues(for: menuBarDevice)) }
 
     // MARK: Weather settings
 

@@ -144,7 +144,7 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   (`@Environment(HeatPumpDeviceModel.self)`, `@Environment(EnergyMeterDeviceModel.self)`) and
   app-wide data from `AppModel`. The meter's screens are `MeterOverviewView` and
   `MeterHistoryView`, its Home card `MeterHomeCard`.
-- **Polling**: one loop, every 60 s. Devices are polled stalest first (`pollState`), then the
+- **Polling**: one loop, every 60 s, skipped while the Mac sleeps. Devices are polled stalest first (`pollState`), then the
   shared syncs, then each device's slower reads (`pollDetails`), price control, the reloads and
   notifications (per device; with two or more the title names the device). An integration allows
   one state fetch a minute for its account, so devices sharing one take turns. After each poll
@@ -165,6 +165,13 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   are never offered); for Tibber the token saved for prices is filled in. Turning off (or
   removing the integration of) price control's device first turns price control off, which sets
   its temperature back (`DeviceHub.setEnabled`).
+
+- **Menu bar** (`MenuBarSettings.swift`, `MenuBarPanel.swift`): an optional `MenuBarExtra`
+  (window style) for the device last chosen in its panel, else the primary one. The title's
+  rules are the kit's `MenuBarLayout` (tested); the preferences are app-only (UserDefaults).
+  With it on, `AppModel.keepsRunningInBackground` is true and `updateDockIcon()` drops the Dock
+  icon while no window is open; price control's own item (`PriceControlMenu`) shows only while
+  the menu bar item is off.
 
 **Adding a device kind** (done for the energy meter, phase 5): a driver protocol and a service in
 the kit (`EnergyMeterDriver`, `EnergyMeterService`) and a `DeviceService` case the hub builds from
@@ -236,7 +243,7 @@ demo). Check with `scripts/parity.sh` plus a manual pass.
 - [ ] Claude activity: change log list
 - [ ] Onboarding / sign-in when no credentials; status banner for stale, blocked and failed data; demo badge
 
-**Settings tabs**: General (language, appearance, updates, background), Account (MELCloud sign-in,
+**Settings tabs**: General (language, appearance, menu bar, updates), Account (MELCloud sign-in,
 heat pump, security), Electricity price (agreement, area, grid tariff, subsidy, Tibber token),
 Local connection, Weather (location search, map, contact), Claude (connection instructions),
 Data (database, fetch status, blocks)
@@ -245,6 +252,10 @@ Data (database, fetch status, blocks)
 **App shell**
 - [ ] Menu: Check for Updates…, Refresh Now (⌘R), Appearance picker and Toggle Appearance (⌘⇧L)
 - [ ] Menu bar extra while price control is on; temperature restored on quit and sleep
+- [ ] Menu bar item (Settings → General → Menu bar, off by default): the title the user designed
+  (`MenuBarLayout`, missing values hidden), the panel with status, insight, controls through the
+  debouncer, price control and a device picker; with it on, closing the window keeps the app
+  running without a Dock icon; with it off, today's price-control item
 - [ ] Notifications: new errors, filter reminders
 - [ ] Auto-update (download, verify, install on quit or restart)
 - [ ] Language switch with Restart Now
@@ -265,5 +276,5 @@ Data (database, fetch status, blocks)
 - [ ] `VARMEPUMPE_BACKEND`, `VARMEPUMPE_DB_PATH`, `MELCLOUD_EMAIL`/`MELCLOUD_PASSWORD`,
   `VARMEPUMPE_APPROVAL`, `VARMEPUMPE_SCREEN`, `VARMEPUMPE_HISTORY_TAB`, `VARMEPUMPE_HISTORY_RANGE`,
   `VARMEPUMPE_SCROLL_TO`, `VARMEPUMPE_APPEARANCE`, `VARMEPUMPE_LANGUAGE`, `VARMEPUMPE_SETTINGS_TAB`,
-  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`, `VARMEPUMPE_SETTINGS_SHEET`
+  `VARMEPUMPE_MOCK_CYCLING`, `VARMEPUMPE_DEMO_DEVICES`, `VARMEPUMPE_SETTINGS_SHEET`, `VARMEPUMPE_MENU_BAR`
 - [ ] `make demo`, `make l10n`, `make release`; CI and release workflows

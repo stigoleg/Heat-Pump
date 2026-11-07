@@ -23,6 +23,11 @@ The app holds no business rules. Rules, network, storage and validation live in 
 - **Integration-specific** (only one vendor has it, e.g. MELCloud's local Wi-Fi adapter or its
   health rules): inside that integration's target, exposed through a vendor-neutral protocol
   (`HealthCheckProviding`, `LocalAccess`, a driver). The core and app texts never name the vendor.
+- **App shell** (menu bar, Dock, windows, app-only preferences): no service and no MCP tool;
+  `AppModel`, the app scene in `VarmepumpeApp.swift` and a Settings section. The app has no test
+  target, so any rule worth a test (ordering, hiding, fallbacks, which device is shown) goes into
+  the kit as a pure type next to `DeviceNavigation` (example: `Devices/MenuBarTitle.swift`,
+  `MenuBarLayout`, tested in `MenuBarTitleTests`); the app only formats and draws it.
 - **A new device or vendor**: the `add-integration` skill instead.
 
 ## 2. The path, traced for Away (frost protection and holiday mode)
@@ -53,7 +58,8 @@ Follow the same files for a new device feature; read each one before writing you
    `screens(kind:capabilities:)` only with `.awayModes`; app `DeviceUIRegistry.heatPumpScreen`
    maps it to `AwayView()`; `Screen.away` in `AppModel.swift` gives title, icon and badge colour.
    A section on an existing screen needs none of this: check the capability in the view
-   (`model.descriptor?.capabilities`).
+   (`model.descriptor?.capabilities`); a nil descriptor (before the first sign-in) means every
+   heat pump capability, as `DeviceNavigation.screens(for: nil)` does.
 8. **MCP** — `varmepumpe-mcp/Tools.swift`: `get_away_settings` (read-only annotations) and
    `set_frost_protection`/`set_holiday_mode` (with `reasonProperty` and `writeWarning`);
    `ToolCatalog.requiredCapability` maps each to `.awayModes`, so the tool exists only when some
@@ -101,13 +107,22 @@ or the helper, never add a retry loop around a refused call.
 - Per device: `HistoryStore.deviceSetting(_:name:device:)`/`saveDeviceSetting(_:name:device:)`
   (key `<name>@<device key>`). `HistoryStore.deviceSettingNames` lists only the caches migration
   v13 moved; a new name needs no entry there.
-- UserDefaults only for app-only preferences (appearance, notification memory).
+- UserDefaults only for app-only preferences (appearance, menu bar, notification memory). Demo
+  runs (`make demo`, `scripts/screenshot.sh`) use the real app's defaults domain, so give a
+  preference a dev variable that overrides it without saving (`VARMEPUMPE_APPEARANCE`,
+  `VARMEPUMPE_MENU_BAR`); for a one-off screenshot pass a value in the argument domain
+  (`… Varmepumpe -menuBarItems "indoor,power"`), which is never saved either.
 - UI: a section in an existing tab of `App/Sources/SettingsView.swift`, or a new
   `Tab("…", systemImage:, value: "<tag>")` with a lowercase tag (Norwegian tags like
   `strompris` are identifiers, never translated). Form pattern: `LocalSettingsView.swift`.
   Settings about one device use `selectedHeatPump`; with two or more devices add a device
   picker as Local connection does (`IntegrationSettings.swift`).
-- Add the tag to `VARMEPUMPE_SETTINGS_TAB` in the `screenshots` skill and the README env tables.
+- Add the tag to `VARMEPUMPE_SETTINGS_TAB` in the `screenshots` skill and the README env tables;
+  a new `VARMEPUMPE_*` hook goes into both READMEs, the `screenshots` skill and the developer
+  hooks in the `docs/architecture.md` checklist.
+- A section further down a tab cannot be screenshotted without scrolling: give it an `.id` and
+  wrap the tab's `Form` in a `ScrollViewReader` with `.devScrollTarget(proxy)` (General does),
+  then use `VARMEPUMPE_SCROLL_TO`.
 
 ## 5. One device and several
 
@@ -123,12 +138,23 @@ or the helper, never add a retry loop around a refused call.
 
 ## 6. Background and menu bar
 
-The app quits when the window closes unless `AppModel.keepsRunningInBackground` is true (today:
-price control on), and then lives in the menu bar (`MenuBarExtra` in `VarmepumpeApp.swift`,
-`PriceControlMenu`). A feature that must act while the window is closed extends that property,
-restores anything it changed on quit and sleep (as price control does), and stops its work when
-the Mac sleeps. Polling is one loop (`AppModel.refresh`); add slow reads to the device model's
-`pollDetails()`, never a second timer that calls the network.
+The app quits when the window closes unless `AppModel.keepsRunningInBackground` is true (price
+control on, or the menu bar item on: `AppModel.menuBar`, `MenuBarPreferences`). There is one
+menu bar item at a time (`VarmepumpeApp.swift`): the menu bar panel (`MenuBarPanel`, window
+style) while the user turned it on, else price control's menu (`PriceControlMenu`) while price
+control is on. Add a feature's status to the panel, not a second `MenuBarExtra`. With the menu
+bar item on, `AppModel.updateDockIcon()` drops the Dock icon while no window is open.
+
+A feature that must act while the window is closed extends `keepsRunningInBackground`, restores
+anything it changed on quit and sleep (as price control does), and stops its work when the Mac
+sleeps (the poll loop already skips while `isAsleep`; live streams stop in `observeSleep`).
+Polling is one loop (`AppModel.refresh`); add slow reads to the device model's `pollDetails()`,
+never a second timer that calls the network. Something that must keep the poll on time while no
+window is visible begins a `ProcessInfo` activity (App Nap), as price control and the menu bar do.
+
+A `MenuBarExtra` label shows one image and one text; to show several values, draw a SwiftUI view
+into a template `NSImage` with `ImageRenderer` (`MenuBarLabel`), so the menu bar tints it.
+Screenshot the panel with `WINDOW=panel` and `VARMEPUMPE_MENU_BAR=open` (`screenshots` skill).
 
 ## 7. Checklist
 
@@ -137,7 +163,11 @@ the Mac sleeps. Polling is one loop (`AppModel.refresh`); add slow reads to the 
 - [ ] Reads cached and spaced; writes validated, approved (Claude), budgeted, logged, `ChangeOutcome`
 - [ ] Tests with `TestClock`, `CountingBackend`/`StubTransport`, `temporaryDatabasePath()`
 - [ ] Every text localized with Norwegian; glossary updated for new terms
-- [ ] One-device look unchanged (`scripts/parity.sh`), multi-device checked (`capture-multi`)
-- [ ] New screens screenshotted in en and nb and looked at (`screenshots` skill)
+- [ ] One-device look unchanged (`scripts/parity.sh`; capture the baseline before the first
+  edit, and do not run `make debug` while a capture runs, it uses the built app),
+  multi-device checked (`capture-multi`)
+- [ ] New screens screenshotted in en and nb and looked at (`screenshots` skill), after a
+  `make debug` that follows the last `make l10n` (it builds before it syncs, so the app it built
+  still lacks the new translations)
 - [ ] README (both languages), CHANGELOG, knowledge documents, `docs/architecture.md` checklist
 - [ ] `make check` and `python3 scripts/l10n.py check` green

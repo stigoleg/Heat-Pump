@@ -15,7 +15,8 @@ scripts/screenshot.sh <out.png> [VARMEPUMPE_…=value …]
 ```
 
 Script options (environment): `LANG_CODE=en|nb` (default en), `SIZE=1413x1049` (window points;
-the README size), `WINDOW=settings` (capture the Settings window), `WAIT=9` (seconds before the
+the README size), `WINDOW=settings` (capture the Settings window), `WINDOW=panel` (capture the menu bar panel;
+with `VARMEPUMPE_MENU_BAR=open`), `WAIT=9` (seconds before the
 capture), `MAXPX=2000` (longest side of the saved PNG).
 
 App hooks you can pass after the file name:
@@ -26,11 +27,12 @@ App hooks you can pass after the file name:
 | `VARMEPUMPE_HISTORY_TAB` | temperature, energy, energy-kr, operation, power |
 | `VARMEPUMPE_HISTORY_RANGE` | day, week, month, year |
 | `VARMEPUMPE_SETTINGS_TAB` | generelt, konto, strompris, lokal, vaer, claude, data (opens Settings; use `WINDOW=settings`) |
-| `VARMEPUMPE_SCROLL_TO` | a section `.id(…)` on the screen; scrolls there after 3 s |
+| `VARMEPUMPE_SCROLL_TO` | a section `.id(…)` on the screen; scrolls there after 3 s (also `menubar` on Settings → General) |
 | `VARMEPUMPE_APPEARANCE` | light, dark, system (not saved) |
 | `VARMEPUMPE_MOCK_CYCLING` | short (simulated short cycling, for Health) |
 | `VARMEPUMPE_DEMO_DEVICES` | heatpump (default), heatpump,heatpump (adds “Bedroom (simulated)”, for multi-device screens), heatpump,meter (adds the simulated Tibber home `demo-meter:home`: screens `demo-meter:home/overview` and `/history`) |
 | `VARMEPUMPE_SETTINGS_SHEET` | add-integration (opens Add Integration on Account; with `VARMEPUMPE_SETTINGS_TAB=konto` and `WINDOW=settings`) |
+| `VARMEPUMPE_MENU_BAR` | on, off (overrides Settings → General → Menu bar without saving), open (also opens the panel; with `WINDOW=panel`). A full menu bar hides the item; the dev hook then moves the panel on screen |
 
 The window size is passed as an argument-domain default, so the real app's saved window frame is
 not changed. The script compiles `scripts/tools/window-id.swift` into `build/tools/` on first use.

@@ -56,6 +56,7 @@ Built and tested with an **MSZ-RW25VG** with built-in Wi-Fi. Other air-to-air mo
 - **Household electricity use** – from Tibber, with the heat pump's share.
 - **Energy meter (Tibber)** – optional: add Tibber under Settings → Account → Add Integration… and your Tibber home appears as a device with live power (with Tibber Pulse or Watty), today's use and cost, and history per hour and day. It uses the same token as the Tibber prices.
 - **Claude** – a built-in MCP server with 25 tools, a health check and knowledge documents about maintenance and error codes.
+- **Menu bar** – optional (Settings → General → Menu bar): the mode, temperatures, power, cost or price in the menu bar, as you choose, and a panel with status, today's numbers, health and the controls. The app then keeps running when the window is closed.
 - **Light and dark mode** – one click in the toolbar or ⌘⇧L.
 - **English and Norwegian** – follows the macOS language, or choose under Settings → General → Language.
 
@@ -98,7 +99,7 @@ From version 1.1.5 the app updates itself. It checks GitHub for new versions onc
 
 **Language.** The app uses the macOS language: Norwegian on a Norwegian Mac, English otherwise. Under Settings → General → Language you can choose English or Norwegian regardless; the change takes effect when the app restarts. The Claude helper follows the same choice, so the approval window and health texts appear in that language too. Text that is already stored, such as reasons in the change log, stays in the language it was written in.
 
-The app fetches data only while its window is open, and quits when you close it. The exception is price control: while it is on, the app keeps running in the menu bar. Claude can still read when the app is closed.
+The app fetches data only while its window is open, and quits when you close it. The exceptions are the menu bar item (Settings → General → Menu bar) and price control: while either is on, the app keeps running in the menu bar, without a Dock icon while the window is closed when the menu bar item is on. Polling pauses while the Mac sleeps. Claude can still read when the app is closed.
 
 ## Connect Claude
 
@@ -197,7 +198,7 @@ Turned on under Forecast. In hours that Tibber (or the app, against the average 
 - At most one change per hour and four within an hour, and only when the plan shifts. If a change fails, it is tried once more later in the same period. It holds back while holiday mode is on, while the heat pump is off, while MELCloud has blocked traffic, and for ten minutes around weekly schedule events.
 - If you change the temperature yourself (in the app, with the remote or in MELCloud), it pauses until the next shift, and your temperature becomes the new base temperature. Changes made by the weekly schedule do not count as yours.
 - When it is turned off, before the Mac sleeps and when the app quits, the temperature is set back first. If that does not happen (power cut, crash), the temperature stays where it was, but never below the lowest temperature. The next time the app starts, it follows the plan again.
-- With price control on, the app does not quit when the window is closed. It stays in the menu bar with the price now, temperature, status and next step, and from there you can open the window, turn price control off or quit.
+- With price control on, the app does not quit when the window is closed. It stays in the menu bar with the price now, temperature, status and next step, and from there you can open the window, turn price control off or quit. With the menu bar item on (Settings → General → Menu bar), price control's status is in its panel instead.
 - Changes are logged with the source “Price control” and count toward the 12 changes per hour. Claude can read the status and plan (`get_prices`), but cannot change them.
 
 </details>
@@ -264,6 +265,7 @@ Local builds are signed with “Apple Development” (team `49P95434EE`), with h
 | `VARMEPUMPE_MOCK_CYCLING=short` | The simulated compressor runs in short cycles |
 | `VARMEPUMPE_DEMO_DEVICES` | Simulated devices, comma-separated (default `heatpump`); `heatpump,heatpump` adds a second heat pump (“Bedroom (simulated)”), `heatpump,meter` a simulated Tibber home (“Home (simulated)”, key `demo-meter:home`) |
 | `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Opens Add Integration on the Account tab (screenshots; with `VARMEPUMPE_SETTINGS_TAB=konto`) |
+| `VARMEPUMPE_MENU_BAR` | `on` or `off` overrides Settings → General → Menu bar without saving; `open` also opens its panel (screenshots) |
 
 </details>
 

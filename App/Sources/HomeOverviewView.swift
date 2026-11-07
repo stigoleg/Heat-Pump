@@ -106,7 +106,7 @@ struct HeatPumpHomeCard: View {
                     } else {
                         Text("No status yet").foregroundStyle(.secondary)
                     }
-                    if let problem {
+                    if let problem = device.dataProblem {
                         Label(problem, systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
                             .foregroundStyle(Theme.Status.caution)
@@ -190,13 +190,16 @@ struct HeatPumpHomeCard: View {
         let kr = today.costNok.map { " · " + Format.kroner($0) } ?? ""
         return Format.kWh(today.totalKWh) + kr
     }
+}
 
-    /// Why the card's data may be old: a sign-in problem, a block or a failed fetch.
-    private var problem: String? {
-        guard let result = device.stateResult else { return nil }
-        if result.needsLogin { return result.blockMessage ?? result.error ?? String(localized: "Log in to \(device.serviceName) in Settings.") }
+extension HeatPumpDeviceModel {
+    /// Why the device's data may be old: a sign-in problem, a block or a failed fetch (Home's
+    /// card and the menu bar panel).
+    var dataProblem: String? {
+        guard let result = stateResult else { return nil }
+        if result.needsLogin { return result.blockMessage ?? result.error ?? String(localized: "Log in to \(serviceName) in Settings.") }
         if let until = result.blockedUntil, until > Date() {
-            return result.blockMessage ?? BlockReason.rateLimited.message(until: until, serviceName: device.serviceName)
+            return result.blockMessage ?? BlockReason.rateLimited.message(until: until, serviceName: serviceName)
         }
         return result.error
     }

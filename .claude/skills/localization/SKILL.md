@@ -81,7 +81,8 @@ Translations file:
 App keys are the compiler's form: interpolations become `%@` (String and most types), `%lld` (Int),
 `%lf` (Double without format). Do not guess keys: run `make l10n` and copy them from `missing`.
 `sync` drops keys no longer in the sources (use `--keep-unused` to keep them) and never hand-edit
-the `.xcstrings` files.
+the `.xcstrings` files. `make l10n` builds before it syncs: run `make debug` again before you
+screenshot the translations.
 
 Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.md`, today
 `MELCloudIntegration`) are separate: edit both languages, then
@@ -130,5 +131,6 @@ Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.
 | integration, device, energy meter, water heater | integrasjon, enhet, strømmåler, varmtvannsbereder |
 | live power (meter), real-time meter reader, token (Tibber) | effekt nå, sanntidsmåler, nøkkel |
 | Home (sidebar group with two or more devices), Devices, Add Integration…, Refresh Device List | Hjem, Enheter, Legg til integrasjon …, Oppdater enhetslisten |
+| menu bar, Show in the menu bar, health warning | menylinjen, Vis i menylinjen, helsevarsel |
 
 Add new terms here when you introduce them.

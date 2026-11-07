@@ -3,8 +3,9 @@ import HeatPumpKit
 import SwiftUI
 
 /// Quits when the last window closes (normal window app, polling only while open) and stops
-/// the poll task on the way out. While price control is on, the app keeps running with a
-/// menu-bar item and keeps polling, and it sets the temperature back before quitting.
+/// the poll task on the way out. While price control or the menu bar item is on, the app keeps
+/// running with a menu-bar item and keeps polling; price control sets the temperature back before
+/// quitting. With the menu bar item on, the Dock icon is shown only while a window is open.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor let model = AppModel()
 
@@ -19,6 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Polling belongs to the app, so it can outlive the window while price control is on.
             model.start()
             model.updater.start()
+            // Dev only (screenshots): open the panel once the item is in the menu bar.
+            if model.menuBar.opensPanelAtLaunch {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3))
+                    MenuBarDev.openPanel()
+                }
+            }
         }
     }
 
@@ -95,8 +103,19 @@ struct VarmepumpeApp: App {
         .defaultSize(width: 700, height: 600)
         .windowResizability(.contentMinSize)
 
-        // Only while price control is on.
-        MenuBarExtra(isInserted: Binding(get: { model.priceControl.enabled }, set: { _ in })) {
+        // The menu bar item (Settings → General → Menu bar): status, insight and controls, and
+        // price control while it is on.
+        MenuBarExtra(isInserted: Binding(get: { model.menuBar.enabled }, set: { _ in })) {
+            MenuBarPanel()
+                .environment(model)
+                .environment(\.locale, L10n.locale)
+        } label: {
+            MenuBarLabel(model: model)
+        }
+        .menuBarExtraStyle(.window)
+
+        // Without the menu bar item, only while price control is on.
+        MenuBarExtra(isInserted: Binding(get: { !model.menuBar.enabled && model.priceControl.enabled }, set: { _ in })) {
             PriceControlMenu()
                 .environment(model)
                 .environment(\.locale, L10n.locale)

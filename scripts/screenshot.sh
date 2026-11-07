@@ -7,6 +7,7 @@
 #   LANG_CODE=en|nb     app language (default en)
 #   SIZE=1413x1049      main window size in points (default 1413x1049, the README size)
 #   WINDOW=settings     capture the Settings window instead (use with VARMEPUMPE_SETTINGS_TAB)
+#   WINDOW=panel        capture the menu bar panel instead (use with VARMEPUMPE_MENU_BAR=open)
 #   WAIT=9              seconds to wait before capturing (demo data and charts settle)
 #   MAXPX=2000          longest side of the saved PNG in pixels
 #
@@ -46,7 +47,7 @@ sleep ${WAIT:-9}
 # The window can take a moment to appear on a busy machine.
 id=""
 for attempt in 1 2 3 4 5; do
-    id=$($tool $pid ${WINDOW:+smallest}) && break
+    id=$($tool $pid ${WINDOW:+$([[ $WINDOW == panel ]] && echo panel || echo smallest)}) && break
     sleep 2
 done
 [[ -n $id ]] || { echo "No window found for $out" >&2; exit 1; }

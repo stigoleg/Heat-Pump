@@ -84,6 +84,7 @@ struct AppearancePicker: View {
 /// Settings → General.
 struct GeneralSettings: View {
     var body: some View {
+        ScrollViewReader { proxy in
         Form {
             LanguageSection()
             Section {
@@ -93,8 +94,11 @@ struct GeneralSettings: View {
             } footer: {
                 Text("System follows the setting in macOS. You can also switch with the button in the toolbar, or with ⌘⇧L (View → Appearance).")
             }
+            MenuBarSection().id("menubar")
             UpdateSection()
         }
         .formStyle(.grouped)
+        .devScrollTarget(proxy)
+        }
     }
 }

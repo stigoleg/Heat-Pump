@@ -48,6 +48,7 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 - **Ukeplan** – lag og endre ukeplanen i MELCloud: hendelser per ukedag med tid, av/på, modus, temperatur, vifte og luftretning, kopiering av en dag og ferdige maler (nattsenking, borte på dagtid). Planen kjører i MELCloud, også når Macen er av.
 - **Historikk** – temperatur, energi og kostnad, drift og effekt, for 24 timer, 7 dager, 30 dager eller ett år.
 - **Prognose** – været de neste 48 timene og ni dager fram, strømpris en uke fram (publiserte priser og et tydelig merket anslag for dagene etter), forventet forbruk og kostnad per dag, og prisstyring.
+- **Menylinjen** – valgfritt (Innstillinger → Generelt → Menylinjen): modus, temperaturer, effekt, kostnad eller pris i menylinjen, slik du velger, og et panel med status, dagens tall, helse og kontrollene. Appen fortsetter da når vinduet lukkes.
 - **Prisstyring** – senker ønsket temperatur i dyre timer og setter den tilbake etterpå. Virker bare mens appen kjører og Macen er på og våken; med prisstyring på fortsetter appen i menylinjen når vinduet lukkes.
 - **Strømkostnad** – Norgespris, spotpris via Tibber eller spotpris fra hvakosterstrommen.no, med nettleie og strømstøtte. Prisene farges fra svært billig til svært dyr.
 - **Helse** – feillogg med forklaringer, påminnelser om filterrengjøring og varsler om korte sykluser, uvanlig høyt forbruk, hyppig avriming, svakt Wi-Fi og fastvare. Fastvareoppdateringer av Wi-Fi-modulen kan startes og følges her.
@@ -98,7 +99,7 @@ Fra versjon 1.1.5 oppdaterer appen seg selv. Den ser etter nye versjoner på Git
 
 **Språk.** Appen bruker språket i macOS: norsk på en norsk Mac, ellers engelsk. Under Innstillinger → Generelt → Språk kan du velge norsk eller engelsk uansett; endringen gjelder etter omstart av appen. Claude-hjelperen følger samme valg, så godkjenningsvinduet og helsetekstene kommer på samme språk. Tekst som allerede er lagret, som begrunnelser i endringsloggen, står på språket den ble skrevet på.
 
-Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. Unntaket er prisstyring: når den er på, fortsetter appen i menylinjen. Claude kan likevel lese når appen er lukket.
+Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. Unntakene er menylinjen (Innstillinger → Generelt → Menylinjen) og prisstyring: når en av dem er på, fortsetter appen i menylinjen, og med menylinjen på uten ikon i Dock mens vinduet er lukket. Hentingen tar pause mens Macen sover. Claude kan likevel lese når appen er lukket.
 
 ## Koble til Claude
 
@@ -197,7 +198,7 @@ Slås på under Prognose. I timer Tibber (eller appen, mot snittet siste 72 time
 - Høyst én endring i timen og fire i løpet av en time, og bare ved skifte i planen. Går en endring ikke gjennom, prøver den én gang til senere i samme periode. Den står over når feriemodus er på, når pumpen er av, ved sperre fra MELCloud og ti minutter rundt hendelser i ukeplanen.
 - Endrer du temperaturen selv (i appen, med fjernkontrollen eller i MELCloud), tar den pause til neste skifte, og din temperatur blir den nye grunntemperaturen. Endringer fra ukeplanen regnes ikke som dine.
 - Når den slås av, før Macen sover og når appen avsluttes, settes temperaturen tilbake først. Skjer ikke det (strømbrudd, krasj), blir temperaturen stående, men aldri lavere enn laveste temperatur. Neste gang appen starter, retter den seg etter planen.
-- Med prisstyring på lukkes ikke appen når vinduet lukkes. Den ligger i menylinjen med pris nå, temperatur, status og neste steg, og der kan du åpne vinduet, slå av prisstyringen eller avslutte.
+- Med prisstyring på lukkes ikke appen når vinduet lukkes. Den ligger i menylinjen med pris nå, temperatur, status og neste steg, og der kan du åpne vinduet, slå av prisstyringen eller avslutte. Med menylinjen på (Innstillinger → Generelt → Menylinjen) står prisstyringens status i panelet der i stedet.
 - Endringene logges med kilde «Prisstyring» og teller i de 12 endringene per time. Claude kan lese status og plan (`get_prices`), men ikke endre dem.
 
 </details>
@@ -263,6 +264,7 @@ Lokale bygg signeres med «Apple Development» (team `49P95434EE`), med hardened
 | `VARMEPUMPE_MOCK_CYCLING=short` | Simulert kompressor går i korte runder |
 | `VARMEPUMPE_DEMO_DEVICES` | Simulerte enheter, kommaseparert (standard `heatpump`); `heatpump,heatpump` gir en varmepumpe til («Soverom (simulert)»), `heatpump,meter` et simulert Tibber-hjem («Hjemme (simulert)», nøkkel `demo-meter:home`) |
 | `VARMEPUMPE_SETTINGS_SHEET=add-integration` | Åpner Legg til integrasjon på Konto-fanen (skjermbilder; med `VARMEPUMPE_SETTINGS_TAB=konto`) |
+| `VARMEPUMPE_MENU_BAR` | `on` eller `off` overstyrer Innstillinger → Generelt → Menylinjen uten å lagre; `open` åpner også panelet (skjermbilder) |
 
 </details>
 
