@@ -2,9 +2,18 @@
 
 New entries are in English. Entries up to 1.1.5 are in Norwegian.
 
-## [Unreleased]
+## [2.0.0] – 2026-11-07
 
-- **Menu bar**: turn on Settings → General → Menu bar to keep the heat pump in the menu bar. The title shows the mode, indoor temperature and power by default, and you choose what it shows and in which order (target and outdoor temperature, today's cost, the price now, a health warning). Click it for status, today's numbers, health and the controls (power, mode, temperature, fan and airflow direction), sent the same way as on Control. With several devices you pick which one it shows; an energy meter shows its power and today's use, an air quality sensor its readings with their levels (radon, CO₂, humidity and temperature can also go in the title). While it is on, the app keeps running without a Dock icon when you close the window.
+- **New name: Husly.** The app now covers more than the heat pump, so it is called Husly in every language. Nothing else changes for you: updates, your sign-in, history and the Claude setup carry over.
+- **Several devices**: the app shows several devices side by side, also of different kinds and brands. With two or more, the sidebar has Home (an overview of every device, the forecast and Claude activity) and a group per device. With one heat pump the app looks as before.
+- **Add Device**: one place to connect a service: Add Device… in the sidebar, File → Add Device… (⇧⌘N) or Settings → Devices. Choose MELCloud, Tibber or Airthings, sign in once, and every device on the account shows up. Settings → Devices lists your services and devices, where you can rename them or turn them off.
+- **Energy meter (Tibber)**: your Tibber home as a device, with live power (with Tibber Pulse or Watty), today's use and cost, and history per hour and day. It uses the token you already saved for Tibber prices.
+- **Indoor air (Airthings)**: Airthings sensors as devices, with radon (short- and long-term average), CO₂, VOC, particles, humidity, temperature and air pressure, levels and advice, history up to two years, and an optional notification when the long-term radon average reaches 100 Bq/m³. Read-only.
+- **Menu bar**: turn on Settings → General → Menu bar to keep the heat pump in the menu bar. The title shows the mode, indoor temperature and power by default, and you choose what it shows and in which order (target and outdoor temperature, today's cost, the price now, a health warning). Click it for status, today's numbers, health and the controls (power, mode, temperature, fan and airflow direction), sent the same way as on Control. With several devices you pick which one it shows; an energy meter shows its power and today's use, an air quality sensor its readings with their levels. While it is on, the app keeps running without a Dock icon when you close the window.
+- **Control**: only the active mode is coloured, so you see at a glance which one is on.
+- **Claude**: with more than one device, Claude can list them and every tool takes an optional device. Claude can also read energy meters and air quality. With one heat pump the tools work as before.
+- **Download as a disk image**: new versions come as a `.dmg` you open and drag to Applications.
+- **Upgrading**: the database is upgraded once, with a backup next to it. If Claude Desktop is running during the update, restart it so the Claude helper uses the new version.
 
 ## [1.2.0] – 2026-11-06
 

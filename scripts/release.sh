@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds a Developer ID signed, notarized and stapled Varmepumpe.app and packs it twice: a disk
+# Builds Husly: a Developer ID signed, notarized and stapled Varmepumpe.app and packs it twice: a disk
 # image for people to download, and a zip for the in-app updater (it only reads .zip assets, so
 # installed versions keep updating).
 #
@@ -15,7 +15,9 @@
 #     NOTARY_APPLE_ID, NOTARY_PASSWORD, NOTARY_TEAM_ID   Apple ID + app-specific password
 #   SKIP_NOTARIZE=1      sign only (local smoke test; the result will not pass Gatekeeper)
 #
-# Output: build/release/Varmepumpe-<version>.dmg and Varmepumpe-<version>.zip, each with a .sha256.
+# Output: build/release/Husly-<version>.dmg and Varmepumpe-<version>.zip, each with a .sha256.
+# The zip holds Varmepumpe.app (the name installed versions' updater looks for); the disk image
+# holds the same signed bundle named Husly.app. The updater swaps whatever path the app runs from.
 set -euo pipefail
 
 VERSION=${1:?usage: scripts/release.sh <version>}
@@ -29,7 +31,8 @@ DERIVED=build/release/DerivedData
 APP=$DERIVED/Build/Products/Release/Varmepumpe.app
 OUT=build/release
 ZIP=$OUT/Varmepumpe-$VERSION.zip
-DMG=$OUT/Varmepumpe-$VERSION.dmg
+# The download carries the app's name; the zip keeps the old one, which installed versions look for.
+DMG=$OUT/Husly-$VERSION.dmg
 
 sign_flags="--timestamp"
 [[ -n ${SIGN_KEYCHAIN:-} ]] && sign_flags="$sign_flags --keychain $SIGN_KEYCHAIN"
@@ -103,9 +106,9 @@ echo "==> Building the disk image"
 stage=$OUT/dmg-root
 rm -rf "$stage"
 mkdir -p "$stage"
-ditto "$APP" "$stage/Varmepumpe.app"
+ditto "$APP" "$stage/Husly.app"
 ln -s /Applications "$stage/Applications"
-hdiutil create -volname Varmepumpe -srcfolder "$stage" -fs HFS+ -format UDZO -imagekey zlib-level=9 -ov "$DMG" -quiet
+hdiutil create -volname Husly -srcfolder "$stage" -fs HFS+ -format UDZO -imagekey zlib-level=9 -ov "$DMG" -quiet
 rm -rf "$stage"
 dmg_flags=(--sign "$SIGN_IDENTITY" --timestamp)
 [[ -n ${SIGN_KEYCHAIN:-} ]] && dmg_flags+=(--keychain "$SIGN_KEYCHAIN")

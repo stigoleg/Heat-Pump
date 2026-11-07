@@ -2811,36 +2811,6 @@
         }
       }
     },
-    "Heat Pump" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe"
-          }
-        }
-      }
-    },
-    "Heat Pump %@ is ready" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe %@ er klar"
-          }
-        }
-      }
-    },
-    "Heat Pump – price control" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe – prisstyring"
-          }
-        }
-      }
-    },
     "Heat is the right choice in winter" : {
       "localizations" : {
         "nb" : {
@@ -3047,6 +3017,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Slik er Claude koblet til"
+          }
+        }
+      }
+    },
+    "Husly %@ is ready" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husly %@ er klar"
+          }
+        }
+      }
+    },
+    "Husly – price control" : {
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husly – prisstyring"
           }
         }
       }
@@ -4651,12 +4641,12 @@
         }
       }
     },
-    "Open Heat Pump" : {
+    "Open Husly" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Åpne Varmepumpe"
+            "value" : "Åpne Husly"
           }
         }
       }
@@ -5081,12 +5071,12 @@
         }
       }
     },
-    "Quit Heat Pump" : {
+    "Quit Husly" : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avslutt Varmepumpe"
+            "value" : "Avslutt Husly"
           }
         }
       }
@@ -6621,12 +6611,12 @@
         }
       }
     },
-    "The download is not a valid Heat Pump version: %@." : {
+    "The download is not a valid Husly version: %@." : {
       "localizations" : {
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nedlastingen er ikke en gyldig Varmepumpe-versjon: %@."
+            "value" : "Nedlastingen er ikke en gyldig Husly-versjon: %@."
           }
         }
       }

@@ -91,7 +91,7 @@ func runServer(hub: DeviceHub, approver: any ChangeApprover) async throws {
     let server = Server(
         name: "varmepumpe",
         version: "0.2.0",
-        title: L10n.tr("Heat Pump"),
+        title: "Husly",
         instructions: instructions(for: service.integration, devices: try await hub.devices(), hub: hub),
         capabilities: .init(
             prompts: .init(listChanged: false),

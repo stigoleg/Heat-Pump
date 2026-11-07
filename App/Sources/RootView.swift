@@ -113,8 +113,8 @@ struct RootView: View {
     private var subtitle: String {
         guard model.isGrouped else { return model.primaryHeatPump.deviceName }
         switch model.currentRoute {
-        case .home: return String(localized: "Heat Pump")
-        case .device(let key, _): return model.device(for: key)?.displayName ?? String(localized: "Heat Pump")
+        case .home: return "Husly"
+        case .device(let key, _): return model.device(for: key)?.displayName ?? "Husly"
         }
     }
 

@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" alt="Varmepumpe-ikonet">
+  <img src="docs/icon.png" width="128" alt="Husly-ikonet">
 </p>
 
-<h1 align="center">Varmepumpe</h1>
+<h1 align="center">Husly</h1>
 
 <p align="center">
-  En Mac-app for styring og helseovervåking av en Mitsubishi Electric-varmepumpe (luft-til-luft) via MELCloud, med Claude som rådgiver.
+  En Mac-app for klima og energi i hjemmet: styr og overvåk en Mitsubishi Electric-varmepumpe via MELCloud, følg strømforbruket med Tibber og inneluften med Airthings, med Claude som rådgiver.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
   <img src="docs/screenshots/nb/oversikt-mork.png" width="49%" alt="Oversikt i mørk modus">
 </p>
 
-Den offisielle MELCloud-appen gir lite oversikt. Varmepumpe samler status, styring, historikk, strømkostnad og helse i ett ryddig vindu, skrevet for folk som ikke kan noe om varmepumper. Claude kan lese alt appen ser og foreslå tiltak, men hver endring på pumpen må godkjennes av deg.
+Husly (tidligere Varmepumpe) startet som en bedre MELCloud-app og dekker nå klima og energi i hjemmet. Den samler status, styring, historikk, strømkostnad, helse, strømmålere og inneluft i ett ryddig vindu, skrevet for folk som ikke kan noe om varmepumper. Claude kan lese alt appen ser og foreslå tiltak, men hver endring på pumpen må godkjennes av deg.
 
 Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-modeller i klassisk MELCloud bør også virke, men er ikke testet. Appen finnes på norsk og engelsk.
 
@@ -63,6 +63,20 @@ Laget og testet for en **MSZ-RW25VG** med innebygd Wi-Fi. Andre luft-til-luft-mo
 
 ## Skjermbilder
 
+| Hjem med flere enheter | Inneluft (Airthings) |
+|---|---|
+| <img src="docs/screenshots/nb/hjem-enheter.png" alt="Hjem-oversikt med varmepumpe, strømmåler og luftkvalitetsmåler"> | <img src="docs/screenshots/nb/inneluft.png" alt="Oversikt for luftkvalitetsmåler"> |
+
+**Menylinjen.** Oppføringen viser det du velger (her modus, innetemperatur og effekt): <img src="docs/screenshots/nb/menylinje-tittel.png" height="22" alt="Oppføringen i menylinjen">
+
+| Menylinjepanel, lyst | Menylinjepanel, mørkt |
+|---|---|
+| <img src="docs/screenshots/nb/menylinje-panel-lys.png" width="360" alt="Menylinjepanel i lys modus"> | <img src="docs/screenshots/nb/menylinje-panel-mork.png" width="360" alt="Menylinjepanel i mørk modus"> |
+
+**Legg til enhet** (sidepanelet, Arkiv-menyen eller Innstillinger → Enheter):
+
+<img src="docs/screenshots/nb/legg-til-enhet.png" width="70%" alt="Legg til enhet: MELCloud, Tibber og Airthings">
+
 | Kontroll | Helse |
 |---|---|
 | <img src="docs/screenshots/nb/kontroll.png" alt="Kontroll"> | <img src="docs/screenshots/nb/helse.png" alt="Helse"> |
@@ -83,13 +97,15 @@ Skjermbildene er tatt i demo-modus med simulerte data.
 
 ## Installer
 
-1. Last ned `Varmepumpe-<versjon>.dmg` fra [siste versjon](https://github.com/stigoleg/Heat-Pump/releases/latest).
-2. Åpne den og dra `Varmepumpe.app` til Programmer.
+1. Last ned `Husly-<versjon>.dmg` fra [siste versjon](https://github.com/stigoleg/Heat-Pump/releases/latest).
+2. Åpne den og dra Husly til Programmer.
+
+Har du allerede Varmepumpe 1.1.5 eller nyere? Den oppdaterer seg selv til Husly der den ligger (`Varmepumpe.app`) og beholder innlogging, historikk og Claude-oppsett, så du trenger ikke diskbildet.
 3. Åpne appen. Den er signert med Developer ID og notarisert av Apple, så den åpnes uten advarsel.
 
 Krever macOS 26 eller nyere, på Apple Silicon eller Intel.
 
-Fra versjon 1.1.5 oppdaterer appen seg selv. Den ser etter nye versjoner på GitHub én gang i døgnet, laster dem ned og installerer dem når du avslutter appen. Du kan også velge «Installer og start på nytt». En nedlasting tas bare i bruk når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Valget og knappen «Se etter nå» ligger under Innstillinger → Generelt, og menyen Varmepumpe har «Se etter oppdateringer …».
+Fra versjon 1.1.5 oppdaterer appen seg selv. Den ser etter nye versjoner på GitHub én gang i døgnet, laster dem ned og installerer dem når du avslutter appen. Du kan også velge «Installer og start på nytt». En nedlasting tas bare i bruk når sjekksummen stemmer og appen er signert og notarisert av samme utvikler. Valget og knappen «Se etter nå» ligger under Innstillinger → Generelt, og menyen Husly har «Se etter oppdateringer …».
 
 ## Kom i gang
 
@@ -107,8 +123,10 @@ Appen henter data bare mens vinduet er åpent, og avsluttes når du lukker det. 
 Innstillinger → Claude viser kommandoen med riktig sti og en kopier-knapp:
 
 ```sh
-claude mcp add varmepumpe --scope user -- "/Applications/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp"
+claude mcp add varmepumpe --scope user -- "/Applications/Husly.app/Contents/Helpers/varmepumpe-mcp"
 ```
+
+Har du oppdatert fra Varmepumpe, ligger appen fortsatt i `/Applications/Varmepumpe.app`, og kommandoen du allerede har lagt til virker videre.
 
 Start Claude Code på nytt og spør for eksempel «Kjør helsesjekk på varmepumpa». Første gang spør macOS om MCP-serveren får lese innloggingen i nøkkelringen; velg **Tillat alltid**.
 
@@ -127,7 +145,7 @@ Når Claude vil endre noe, viser Macen et eget vindu, «Claude vil endre varmepu
 ## Slik virker det
 
 ```
-Varmepumpe.app (SwiftUI)          varmepumpe-mcp (stdio, i Contents/Helpers)
+Husly.app (SwiftUI)               varmepumpe-mcp (stdio, i Contents/Helpers)
         \                                  /
          HeatPumpKit (Swift-pakke)
            HeatPumpService – hurtigbuffer, grenser for trafikk, revisjonslogg
@@ -219,7 +237,7 @@ Endringer i Kontroll og på termostaten sendes omtrent 2 sekunder etter siste ju
 - **Andre tjenester:** MET Norway (vær), Tibber (priser og forbruk, bare med nøkkel; effekt nå over én tilkobling mens appen kjører, bare med strømmåleren slått på), Airthings (bare når den er lagt til: en tilgangsnøkkel fra accounts-api.airthings.com med klient-ID og hemmelighet, deretter de nyeste verdiene for alle målere høyst hvert 5. minutt, hver målers timehistorikk høyst hver time og grensene én gang i døgnet, fra consumer-api.airthings.com), hvakosterstrommen.no (priser), Apple Kart (stedssøk i innstillingene) og GitHub (nye versjoner, én gang i døgnet). Ingen analyse eller sporing.
 - **Ingen offisiell feilkodetabell** for MSZ-RW er offentlig. Forklaringene av feilkoder er derfor merket med usikkerhet.
 
-Varmepumpe er ikke laget av eller tilknyttet Mitsubishi Electric. MELCloud er et varemerke for Mitsubishi Electric.
+Husly er ikke laget av eller tilknyttet Mitsubishi Electric, Tibber eller Airthings. MELCloud er et varemerke for Mitsubishi Electric.
 
 ## Utvikling
 
@@ -280,7 +298,7 @@ git tag v1.2.3
 git push origin main v1.2.3
 ```
 
-Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Varmepumpe-1.2.3.dmg` (nedlastingen) og `Varmepumpe-1.2.3.zip` (det installerte apper oppdaterer seg fra), hver med SHA-256, under Releases. Teksten hentes fra CHANGELOG.md. Installerte apper finner versjonen via GitHubs «latest release». Den må derfor ikke merkes som forhåndsversjon, og zip-filen må hete `Varmepumpe-<versjon>.zip`.
+Arbeidsflyten kjører testene, bygger en universell app (Apple Silicon og Intel), notariserer og stifter den, og legger `Husly-1.2.3.dmg` (nedlastingen) og `Varmepumpe-1.2.3.zip` (det installerte apper oppdaterer seg fra), hver med SHA-256, under Releases. Teksten hentes fra CHANGELOG.md. Installerte apper finner versjonen via GitHubs «latest release». Den må derfor ikke merkes som forhåndsversjon, og zip-filen må hete `Varmepumpe-<versjon>.zip`.
 
 Den trenger disse hemmelighetene i repoet:
 

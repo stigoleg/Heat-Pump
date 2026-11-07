@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" alt="The Heat Pump app icon">
+  <img src="docs/icon.png" width="128" alt="The Husly app icon">
 </p>
 
-<h1 align="center">Heat Pump</h1>
+<h1 align="center">Husly</h1>
 
 <p align="center">
-  A Mac app for controlling and monitoring the health of a Mitsubishi Electric air-to-air heat pump through MELCloud, with Claude as an advisor.
+  A Mac app for the home's climate and energy: control and monitor a Mitsubishi Electric heat pump through MELCloud, follow electricity use with Tibber and indoor air with Airthings, with Claude as an advisor.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
   <img src="docs/screenshots/en/overview-dark.png" width="49%" alt="Overview in dark mode">
 </p>
 
-The official MELCloud app shows little. Heat Pump puts status, control, history, electricity cost and health in one tidy window, written for people who know nothing about heat pumps. Claude can read everything the app sees and suggest what to do, but you approve every change to the heat pump.
+Husly (formerly Heat Pump / Varmepumpe) started as a better MELCloud app and now covers the home's climate and energy. It puts status, control, history, electricity cost, health, energy meters and indoor air in one tidy window, written for people who know nothing about heat pumps. Claude can read everything the app sees and suggest what to do, but you approve every change to the heat pump.
 
 Built and tested with an **MSZ-RW25VG** with built-in Wi-Fi. Other air-to-air models in classic MELCloud should work too, but are untested. The app is in English and Norwegian. Electricity prices, grid tariffs and the weather forecast are for Norway.
 
@@ -63,6 +63,20 @@ Built and tested with an **MSZ-RW25VG** with built-in Wi-Fi. Other air-to-air mo
 
 ## Screenshots
 
+| Home with several devices | Indoor air (Airthings) |
+|---|---|
+| <img src="docs/screenshots/en/home-devices.png" alt="Home overview with a heat pump, an energy meter and an air quality sensor"> | <img src="docs/screenshots/en/air-quality.png" alt="Air quality sensor overview"> |
+
+**Menu bar.** The item shows what you choose (here mode, indoor temperature and power): <img src="docs/screenshots/en/menubar-title.png" height="22" alt="The menu bar item">
+
+| Menu bar panel, light | Menu bar panel, dark |
+|---|---|
+| <img src="docs/screenshots/en/menubar-panel-light.png" width="360" alt="Menu bar panel in light mode"> | <img src="docs/screenshots/en/menubar-panel-dark.png" width="360" alt="Menu bar panel in dark mode"> |
+
+**Add Device** (sidebar, File menu or Settings → Devices):
+
+<img src="docs/screenshots/en/add-device.png" width="70%" alt="Add Device: MELCloud, Tibber and Airthings">
+
 | Control | Health |
 |---|---|
 | <img src="docs/screenshots/en/control.png" alt="Control"> | <img src="docs/screenshots/en/health.png" alt="Health"> |
@@ -83,13 +97,15 @@ The screenshots are taken in demo mode with simulated data.
 
 ## Install
 
-1. Download `Varmepumpe-<version>.dmg` from the [latest release](https://github.com/stigoleg/Heat-Pump/releases/latest).
-2. Open it and drag `Varmepumpe.app` to Applications. It shows up as Heat Pump on an English Mac.
+1. Download `Husly-<version>.dmg` from the [latest release](https://github.com/stigoleg/Heat-Pump/releases/latest).
+2. Open it and drag Husly to Applications.
+
+Already have Heat Pump (Varmepumpe) 1.1.5 or later? It updates itself to Husly in place and keeps its location (`Varmepumpe.app`), sign-in, history and Claude setup, so you do not need the disk image.
 3. Open the app. It is signed with a Developer ID and notarized by Apple, so it opens without a warning.
 
 Requires macOS 26 or later, on Apple silicon or Intel.
 
-From version 1.1.5 the app updates itself. It checks GitHub for new versions once a day, downloads them and installs them when you quit the app. You can also choose “Install and Restart”. A download is only used when its checksum matches and the app is signed and notarized by the same developer. The setting and the “Check Now” button are under Settings → General, and the Heat Pump menu has “Check for Updates…”.
+From version 1.1.5 the app updates itself. It checks GitHub for new versions once a day, downloads them and installs them when you quit the app. You can also choose “Install and Restart”. A download is only used when its checksum matches and the app is signed and notarized by the same developer. The setting and the “Check Now” button are under Settings → General, and the Husly menu has “Check for Updates…”.
 
 ## Getting started
 
@@ -107,8 +123,10 @@ The app fetches data only while its window is open, and quits when you close it.
 Settings → Claude shows the command with the right path and a copy button:
 
 ```sh
-claude mcp add varmepumpe --scope user -- "/Applications/Varmepumpe.app/Contents/Helpers/varmepumpe-mcp"
+claude mcp add varmepumpe --scope user -- "/Applications/Husly.app/Contents/Helpers/varmepumpe-mcp"
 ```
+
+If you updated from Heat Pump (Varmepumpe), the app is still at `/Applications/Varmepumpe.app` and the command you already added keeps working.
 
 Restart Claude Code and ask, for example, “Run a health check on the heat pump”. The first time, macOS asks whether the MCP server may read the sign-in in the keychain; choose **Always Allow**.
 
@@ -127,7 +145,7 @@ When Claude wants to change something, your Mac shows a separate window, “Clau
 ## How it works
 
 ```
-Varmepumpe.app (SwiftUI)          varmepumpe-mcp (stdio, in Contents/Helpers)
+Husly.app (SwiftUI)               varmepumpe-mcp (stdio, in Contents/Helpers)
         \                                  /
          HeatPumpKit (Swift package)
            HeatPumpService – cache, traffic limits, audit log
@@ -219,7 +237,7 @@ Changes in Control and on the thermostat are sent about 2 seconds after the last
 - **Other services:** MET Norway (weather), Tibber (prices and consumption, only with a token; live power over one connection while the app runs, only with the energy meter turned on), Airthings (only when added: a token from accounts-api.airthings.com with your client ID and secret, then the newest values of all sensors at most every 5 minutes, each sensor's hourly history at most hourly and its thresholds daily, from consumer-api.airthings.com), hvakosterstrommen.no (prices), Apple Maps (place search in the settings) and GitHub (new versions, once a day). No analytics or tracking.
 - **No official error-code table** for the MSZ-RW is public. The explanations of error codes are therefore marked with how certain they are.
 
-Heat Pump is not made by or affiliated with Mitsubishi Electric. MELCloud is a trademark of Mitsubishi Electric.
+Husly is not made by or affiliated with Mitsubishi Electric, Tibber or Airthings. MELCloud is a trademark of Mitsubishi Electric.
 
 ## Development
 
@@ -281,7 +299,7 @@ git tag v1.2.3
 git push origin main v1.2.3
 ```
 
-The workflow runs the tests, builds a universal app (Apple silicon and Intel), notarizes and staples it, and puts `Varmepumpe-1.2.3.dmg` (the download) and `Varmepumpe-1.2.3.zip` (what installed apps update from), each with its SHA-256, under Releases. The release notes come from CHANGELOG.md. Installed apps find the version through GitHub's “latest release”, so it must not be marked as a pre-release, and the zip file must be named `Varmepumpe-<version>.zip`.
+The workflow runs the tests, builds a universal app (Apple silicon and Intel), notarizes and staples it, and puts `Husly-1.2.3.dmg` (the download) and `Varmepumpe-1.2.3.zip` (what installed apps update from), each with its SHA-256, under Releases. The release notes come from CHANGELOG.md. Installed apps find the version through GitHub's “latest release”, so it must not be marked as a pre-release, and the zip file must be named `Varmepumpe-<version>.zip`.
 
 It needs these secrets in the repository:
 

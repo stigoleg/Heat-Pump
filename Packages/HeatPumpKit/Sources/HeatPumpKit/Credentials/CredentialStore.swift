@@ -269,9 +269,9 @@ public struct KeychainCredentialStore: CredentialProviding {
     }
 
     // Labels shown in Keychain Access (the service and account names stay fixed).
-    static func loginLabel(_ mapping: CredentialMapping) -> String { L10n.format("Heat Pump – %@ login", mapping.serviceName) }
-    static func sessionLabel(_ mapping: CredentialMapping) -> String { L10n.format("Heat Pump – %@ session", mapping.serviceName) }
-    static let tibberLabel = L10n.tr("Heat Pump – Tibber token")
+    static func loginLabel(_ mapping: CredentialMapping) -> String { L10n.format("Husly – %@ login", mapping.serviceName) }
+    static func sessionLabel(_ mapping: CredentialMapping) -> String { L10n.format("Husly – %@ session", mapping.serviceName) }
+    static let tibberLabel = L10n.tr("Husly – Tibber token")
 
     // MARK: Access migration
 

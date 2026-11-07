@@ -1,8 +1,12 @@
-# Varmepumpe (Heat Pump)
+# Husly (formerly Varmepumpe / Heat Pump)
 
 A macOS 26 SwiftUI app that monitors and controls home energy equipment, today a Mitsubishi
 air-to-air heat pump through MELCloud, plus an embedded MCP server (`varmepumpe-mcp`) that lets
-Claude read the data and propose changes the user approves on the Mac. Published on GitHub
+Claude read the data and propose changes the user approves on the Mac. The app is shown as
+**Husly** (display name in every language; the disk image holds `Husly.app`); the executable,
+bundle id, database folder, keychain items, MCP helper and the release zip (`Varmepumpe.app`
+inside, which the updater of installed versions looks for) keep the name Varmepumpe, so upgrades
+and existing Claude setups keep working. Published on GitHub
 (`stigoleg/Heat-Pump`), GPL-3.0, English UI with a full Norwegian bokmål translation.
 
 Architecture, concepts and the feature parity checklist: [docs/architecture.md](docs/architecture.md).

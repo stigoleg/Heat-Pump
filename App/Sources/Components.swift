@@ -86,6 +86,26 @@ struct ResizableWindow: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
+/// Dev only (`VARMEPUMPE_WINDOW_FRAME="x y width height"`, AppKit coordinates; screenshots): puts
+/// the hosting window there. Launch restores the window's saved size after it appears, so the
+/// frame is set again every half second for the first ten seconds.
+struct DevWindowFrame: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let values = ProcessInfo.processInfo.environment["VARMEPUMPE_WINDOW_FRAME"]?.split(separator: " ").compactMap { Double($0) }
+        guard let values, values.count == 4 else { return view }
+        let frame = NSRect(x: values[0], y: values[1], width: values[2], height: values[3])
+        for step in 1...20 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(step) * 0.5) {
+                if let window = view.window, window.frame != frame { window.setFrame(frame, display: true) }
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 /// Dev only (`VARMEPUMPE_SCROLL_TO`): scrolls a screen to the section with that id once, a moment
 /// after it appears, so screenshots can show sections below the fold without input events.
 struct DevScrollTarget: ViewModifier {

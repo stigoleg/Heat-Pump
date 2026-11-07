@@ -64,11 +64,12 @@ struct VarmepumpeApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Heat Pump", id: "main") {
+        WindowGroup(Text(verbatim: "Husly"), id: "main") {
             RootView()
                 .environment(model)
                 .environment(\.locale, L10n.locale)
                 .frame(minWidth: 620, minHeight: 580)
+                .background(DevWindowFrame())
                 .task { model.start() }
                 .onDisappear { if !model.keepsRunningInBackground { model.stop() } }
         }
@@ -123,7 +124,7 @@ struct VarmepumpeApp: App {
                 .environment(model)
                 .environment(\.locale, L10n.locale)
         } label: {
-            Label("Heat Pump – price control", systemImage: "bolt.badge.clock")
+            Label("Husly – price control", systemImage: "bolt.badge.clock")
         }
     }
 }

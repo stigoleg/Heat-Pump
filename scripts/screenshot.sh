@@ -6,6 +6,8 @@
 # Options (environment variables of this script):
 #   LANG_CODE=en|nb     app language (default en)
 #   SIZE=1413x1049      main window size in points (default 1413x1049, the README size)
+#   SCREEN=retina       put the window (and the menu bar panel) on the first 2x display, so the
+#                       capture is sharp while a 1x monitor is the main display (SIZE must fit it)
 #   WINDOW=settings     capture the Settings window instead (use with VARMEPUMPE_SETTINGS_TAB)
 #   WINDOW=panel        capture the menu bar panel instead (use with VARMEPUMPE_MENU_BAR=open)
 #   WINDOW=menubar      capture the menu bar item with a strip of the menu bar around it (use
@@ -17,8 +19,8 @@
 #   scripts/screenshot.sh docs/screenshots/en/history-energy.png \
 #       VARMEPUMPE_SCREEN=history VARMEPUMPE_HISTORY_TAB=energy VARMEPUMPE_APPEARANCE=light
 #
-# Requires `make debug` first. The window size is passed in the argument domain, so the saved
-# window frame of the real app is not changed.
+# Requires `make debug` first. The window frame is a dev variable (VARMEPUMPE_WINDOW_FRAME) and
+# saved window state is ignored, so the real app's window frame is neither used nor changed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,15 +38,31 @@ fi
 size=${SIZE:-1413x1049}
 width=${size%x*}
 height=${size#*x}
-screen=$($tool --screen)
+screen=$($tool --screen ${SCREEN:-})
+read -r sx sy _ _ <<< "$screen"
 [[ ${WINDOW:-} == menubar ]] && items_before=$($tool --status-items | cut -d' ' -f1)
+# One demo database per language: simulated device names are stored when first seen.
 mkdir -p build/demo "$(dirname "$out")"
 
-env VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=$PWD/build/demo/varmepumpe.sqlite \
-    VARMEPUMPE_LANGUAGE=${LANG_CODE:-en} "$@" \
-    $app -"NSWindow Frame main-AppWindow-1" "200 40 $width $height $screen " >/dev/null 2>&1 &
+env VARMEPUMPE_BACKEND=mock VARMEPUMPE_DB_PATH=$PWD/build/demo/varmepumpe-${LANG_CODE:-en}.sqlite \
+    VARMEPUMPE_LANGUAGE=${LANG_CODE:-en} ${SCREEN:+VARMEPUMPE_SCREENSHOT_SCREEN=$SCREEN} \
+    VARMEPUMPE_WINDOW_FRAME="$((sx + 40)) $((sy + 20)) $width $height" "$@" \
+    $app -ApplePersistenceIgnoreState YES >/dev/null 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
+# A tiling window manager (AeroSpace) would size the window itself: float the demo window.
+if command -v aerospace >/dev/null; then
+    for attempt in 1 2 3 4 5 6; do
+        sleep 1
+        wid=$(aerospace list-windows --all --format '%{window-id} %{app-pid}' 2>/dev/null | awk -v p=$pid '$2 == p { print $1; exit }')
+        if [[ -n $wid ]]; then
+            # Its workspace's monitor wins over the window's frame: move it to the Retina one.
+            [[ ${SCREEN:-} == retina ]] && { aerospace move-node-to-monitor --window-id $wid 'Retina' 2>/dev/null || true; }
+            aerospace layout floating --window-id $wid 2>/dev/null || true
+            break
+        fi
+    done
+fi
 sleep ${WAIT:-9}
 
 if [[ ${WINDOW:-} == menubar ]]; then

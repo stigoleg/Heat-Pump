@@ -58,8 +58,8 @@ enum ApprovalAlert {
     static func present(_ request: ApprovalRequest, timeout: TimeInterval) -> ApprovalDecision {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        if let icon = NSImage(systemSymbolName: "thermometer.and.liquid.waves", accessibilityDescription: L10n.tr("Heat Pump"))
-            ?? NSImage(systemSymbolName: "thermometer.medium", accessibilityDescription: L10n.tr("Heat Pump"))
+        if let icon = NSImage(systemSymbolName: "thermometer.and.liquid.waves", accessibilityDescription: "Husly")
+            ?? NSImage(systemSymbolName: "thermometer.medium", accessibilityDescription: "Husly")
         {
             alert.icon = icon.withSymbolConfiguration(.init(pointSize: 48, weight: .regular))
         }

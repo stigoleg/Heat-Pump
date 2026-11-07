@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 // Usage: window-id <pid> [smallest|panel]
-//        window-id --screen
+//        window-id --screen [retina]
 //        window-id --status-items
 // Prints the CoreGraphics window number of the largest (or smallest) normal window owned by
 // the process, for `screencapture -l`; `panel` picks the largest window above the normal layer
@@ -12,8 +12,23 @@ import Foundation
 // those windows, so a script finds the app's item as the one that appeared after launch.
 let args = CommandLine.arguments
 if args.count > 1, args[1] == "--screen" {
-    let b = CGDisplayBounds(CGMainDisplayID())
-    print("\(Int(b.origin.x)) \(Int(b.origin.y)) \(Int(b.width)) \(Int(b.height))")
+    // `retina`: the first 2x display (a laptop's own screen next to a 1x monitor), in AppKit
+    // coordinates (origin at the bottom left of the main display); else the main display.
+    var display = CGMainDisplayID()
+    if args.count > 2, args[2] == "retina" {
+        var ids = [CGDirectDisplayID](repeating: 0, count: 16)
+        var count: UInt32 = 0
+        CGGetActiveDisplayList(16, &ids, &count)
+        if let found = ids.prefix(Int(count)).first(where: { id in
+            guard let mode = CGDisplayCopyDisplayMode(id) else { return false }
+            return mode.pixelWidth >= 2 * mode.width
+        }) {
+            display = found
+        }
+    }
+    let b = CGDisplayBounds(display)
+    let mainHeight = CGDisplayBounds(CGMainDisplayID()).height
+    print("\(Int(b.origin.x)) \(Int(mainHeight - b.origin.y - b.height)) \(Int(b.width)) \(Int(b.height))")
     exit(0)
 }
 if args.count > 1, args[1] == "--status-items" {

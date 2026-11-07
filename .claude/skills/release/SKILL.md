@@ -44,11 +44,11 @@ before pushing a tag**, every time.
    ```
 9. **Follow the workflow**: `gh run list --workflow release.yml --limit 1`, then
    `gh run watch <id>`. When it finishes, check `gh release view vX.Y.Z`: the assets must be
-   `Varmepumpe-X.Y.Z.dmg` (the download) and `Varmepumpe-X.Y.Z.zip` (the in-app updater reads only
+   `Husly-X.Y.Z.dmg` (the download, holding `Husly.app`) and `Varmepumpe-X.Y.Z.zip` (the in-app updater reads only
    `.zip` assets; never drop it), each with a `.sha256`, and the release must not be a pre-release or
    draft (the updater ignores those).
 10. Report the release URL and the download link
-    `https://github.com/stigoleg/Heat-Pump/releases/latest/download/Varmepumpe-X.Y.Z.dmg`.
+    `https://github.com/stigoleg/Heat-Pump/releases/latest/download/Husly-X.Y.Z.dmg`.
 
 ## If it fails
 

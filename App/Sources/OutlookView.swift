@@ -605,7 +605,7 @@ struct PriceControlMenu: View {
             Text("Next: \(next.summary(now: now, timeZone: .current))")
         }
         Divider()
-        Button("Open Heat Pump") { showWindow() }
+        Button("Open Husly") { showWindow() }
         Button("Turn Off Price Control") {
             Task {
                 await model.priceControl.setEnabled(false)
@@ -615,7 +615,7 @@ struct PriceControlMenu: View {
         }
         .disabled(model.priceControl.isBusy)
         Divider()
-        Button("Quit Heat Pump") { NSApp.terminate(nil) }
+        Button("Quit Husly") { NSApp.terminate(nil) }
     }
 
     private func showWindow() {

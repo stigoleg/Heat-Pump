@@ -116,7 +116,7 @@ public enum AppUpdate {
         let published = (object["published_at"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) }
         return AppRelease(
             version: version,
-            title: (object["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? L10n.format("Heat Pump %@", "\(version)"),
+            title: (object["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Husly \(version)",
             notes: (object["body"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
             publishedAt: published,
             pageURL: (object["html_url"] as? String).flatMap(URL.init(string:)),

@@ -74,7 +74,7 @@ struct CredentialMappingTests {
         let login = try #require(items.items["melcloud-credentials"])
         #expect(try JSONDecoder().decode([String: String].self, from: login.data) == ["email": "a@b.no", "password": "pw"])
         #expect(login.generic == Data("a@b.no".utf8))
-        #expect(login.label == "Heat Pump – MELCloud login")
+        #expect(login.label == "Husly – MELCloud login")
 
         // New credentials update the same item and empty (not delete) the session.
         try store.saveValues(MELCloudCredentials(email: "c@d.no", password: "pw2").values, for: mapping)
@@ -113,7 +113,7 @@ struct CredentialMappingTests {
         #expect(items.items["acme-cloud/email"]?.generic == Data("x@y.no".utf8))
         #expect(items.items["acme-cloud/token"]?.data == Data("T".utf8))
         #expect(items.items["acme-cloud/token"]?.generic == nil)
-        #expect(items.items["acme-cloud/token"]?.label == "Heat Pump – Acme login")
+        #expect(items.items["acme-cloud/token"]?.label == "Husly – Acme login")
         #expect(try store.loadValues(for: other) == CredentialValues(["email": "x@y.no", "token": "T"]))
         #expect(store.loadSessionKey(for: other) == "S")
         // MELCloud's items are untouched and still absent.

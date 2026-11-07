@@ -180,7 +180,7 @@ final class Updater {
             case .noChecksum: String(localized: "The release has no checksum, so the download cannot be verified.")
             case .checksumMismatch: String(localized: "The download was corrupt (the checksum did not match). Try again.")
             case .unpackFailed: String(localized: "Could not unpack the update.")
-            case .wrongApp(let detail): String(localized: "The download is not a valid Heat Pump version: \(detail).")
+            case .wrongApp(let detail): String(localized: "The download is not a valid Husly version: \(detail).")
             case .notTrusted(let status):
                 String(localized: "The update is not signed and notarized by the same developer (code \(status)), so it will not be installed.")
             case .swapFailed(let code): String(localized: "Could not replace the app (error \(code)).")
@@ -313,7 +313,7 @@ final class Updater {
 
     private func notifyReady(_ version: AppVersion) async {
         let content = UNMutableNotificationContent()
-        content.title = String(localized: "Heat Pump \(version.description) is ready")
+        content.title = String(localized: "Husly \(version.description) is ready")
         content.body = String(localized: "It will be installed when you quit the app. You can also install it now under Settings → General.")
         let request = UNNotificationRequest(identifier: "update-\(version)", content: content, trigger: nil)
         try? await UNUserNotificationCenter.current().add(request)

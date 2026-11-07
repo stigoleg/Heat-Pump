@@ -2166,61 +2166,6 @@
         }
       }
     },
-    "Heat Pump" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe"
-          }
-        }
-      }
-    },
-    "Heat Pump %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe %@"
-          }
-        }
-      }
-    },
-    "Heat Pump – %@ login" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe – %@-innlogging"
-          }
-        }
-      }
-    },
-    "Heat Pump – %@ session" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe – %@-økt"
-          }
-        }
-      }
-    },
-    "Heat Pump – Tibber token" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Varmepumpe – Tibber-nøkkel"
-          }
-        }
-      }
-    },
     "Heat pump %lld (simulated)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2393,6 +2338,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Luftfuktigheten er %@. Svært tørr luft kan irritere øyne, hud og luftveier."
+          }
+        }
+      }
+    },
+    "Husly – %@ login" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husly – %@-innlogging"
+          }
+        }
+      }
+    },
+    "Husly – %@ session" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husly – %@-økt"
+          }
+        }
+      }
+    },
+    "Husly – Tibber token" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Husly – Tibber-nøkkel"
           }
         }
       }

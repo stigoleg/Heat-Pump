@@ -12,7 +12,7 @@ struct MenuBarLabel: View {
 
     var body: some View {
         Label {
-            Text("Heat Pump")
+            Text(verbatim: "Husly")
         } icon: {
             Image(nsImage: Self.image(segments: model.menuBarSegments))
         }
@@ -20,7 +20,8 @@ struct MenuBarLabel: View {
 
     static func image(segments: [MenuBarSegment]) -> NSImage {
         let renderer = ImageRenderer(content: MenuBarTitleView(segments: segments).foregroundStyle(.black))
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        // The sharpest screen's scale: the item shows on every display's menu bar.
+        renderer.scale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
         let image = renderer.nsImage ?? NSImage()
         image.isTemplate = true
         return image
@@ -163,7 +164,7 @@ struct MenuBarPanel: View {
 
     private var footer: some View {
         HStack(spacing: Theme.Space.m) {
-            Button("Open Heat Pump") { showWindow() }
+            Button("Open Husly") { showWindow() }
                 .keyboardShortcut("o")
             Spacer(minLength: 0)
             Button("Refresh") { Task { await app.refresh(force: true) } }
@@ -769,7 +770,11 @@ enum MenuBarDev {
     @MainActor private static var observers: [NSObjectProtocol] = []
 
     @MainActor private static func keepOnScreen(_ window: NSWindow) {
-        guard let screen = NSScreen.main, !screen.visibleFrame.contains(window.frame) else { return }
+        // `VARMEPUMPE_SCREENSHOT_SCREEN=retina` (scripts/screenshot.sh SCREEN=retina): on the first
+        // 2x display, so the capture is sharp next to a 1x main display.
+        let retina = ProcessInfo.processInfo.environment["VARMEPUMPE_SCREENSHOT_SCREEN"] == "retina"
+        let target = retina ? NSScreen.screens.first { $0.backingScaleFactor >= 2 } : nil
+        guard let screen = target ?? NSScreen.main, !screen.visibleFrame.contains(window.frame) else { return }
         window.setFrameTopLeftPoint(NSPoint(x: screen.visibleFrame.maxX - window.frame.width - 80, y: screen.visibleFrame.maxY))
     }
 
