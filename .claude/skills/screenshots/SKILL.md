@@ -15,7 +15,9 @@ scripts/screenshot.sh <out.png> [VARMEPUMPE_…=value …]
 ```
 
 Script options (environment): `LANG_CODE=en|nb` (default en), `SIZE=1413x1049` (window points;
-the README size), `WINDOW=settings` (capture the Settings window), `WINDOW=panel` (capture the menu bar panel;
+the README size), `WINDOW=settings` (capture the Settings window), `WINDOW=menubar` (the menu bar item itself with `PAD` points of menu bar each side; use
+`VARMEPUMPE_MENU_BAR=on`; since macOS 26 Control Center owns the item, so the script finds it as the
+item that appeared after launch), `WINDOW=panel` (capture the menu bar panel;
 with `VARMEPUMPE_MENU_BAR=open`), `WAIT=9` (seconds before the
 capture), `MAXPX=2000` (longest side of the saved PNG).
 
@@ -79,3 +81,9 @@ Demo data follows the clock: chart edges, "just now"/"x minutes ago" and the dat
 between runs. Read each diff image and decide whether the difference is data drift or a real
 change; a real change in layout, text, colour or a missing element is a regression to fix unless
 the task asked for it. Capture the baseline and the after set close in time.
+
+## Resolution
+
+Captures have the pixel density of the display the window is on. The README images are 2x: take
+them with a Retina display as the main display (or the only one). The script never upscales; a
+1x capture stays small.
