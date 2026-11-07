@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/stigoleg/Heat-Pump/actions/workflows/ci.yml"><img src="https://github.com/stigoleg/Heat-Pump/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/stigoleg/Heat-Pump/releases/latest"><img src="https://img.shields.io/github/v/release/stigoleg/Heat-Pump" alt="Latest release"></a>
+  <a href="https://github.com/stigoleg/Husly/actions/workflows/ci.yml"><img src="https://github.com/stigoleg/Husly/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/stigoleg/Husly/releases/latest"><img src="https://img.shields.io/github/v/release/stigoleg/Husly" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-blue" alt="macOS 26+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0"></a>
 </p>
@@ -97,7 +97,7 @@ The screenshots are taken in demo mode with simulated data.
 
 ## Install
 
-1. Download `Husly-<version>.dmg` from the [latest release](https://github.com/stigoleg/Heat-Pump/releases/latest).
+1. Download `Husly-<version>.dmg` from the [latest release](https://github.com/stigoleg/Husly/releases/latest).
 2. Open it and drag Husly to Applications.
 
 Already have Heat Pump (Varmepumpe) 1.1.5 or later? It updates itself to Husly in place and keeps its location (`Varmepumpe.app`), sign-in, history and Claude setup, so you do not need the disk image.

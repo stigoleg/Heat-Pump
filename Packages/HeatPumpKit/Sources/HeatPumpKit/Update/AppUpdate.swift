@@ -70,7 +70,9 @@ public struct AppRelease: Equatable, Sendable {
 }
 
 public enum AppUpdate {
-    public static let repository = "stigoleg/Heat-Pump"
+    /// Renamed from `stigoleg/Heat-Pump` in 2.0.0; GitHub redirects the old name, which versions
+    /// before 2.0.1 still ask.
+    public static let repository = "stigoleg/Husly"
     public static let latestReleaseURL = URL(string: "https://api.github.com/repos/\(repository)/releases/latest")!
     public static let releasesPageURL = URL(string: "https://github.com/\(repository)/releases")!
     /// Developer ID team that signs releases.

@@ -48,7 +48,7 @@ before pushing a tag**, every time.
    `.zip` assets; never drop it), each with a `.sha256`, and the release must not be a pre-release or
    draft (the updater ignores those).
 10. Report the release URL and the download link
-    `https://github.com/stigoleg/Heat-Pump/releases/latest/download/Husly-X.Y.Z.dmg`.
+    `https://github.com/stigoleg/Husly/releases/latest/download/Husly-X.Y.Z.dmg`.
 
 ## If it fails
 

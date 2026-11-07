@@ -21,14 +21,14 @@ struct AppUpdateTests {
         let names = assets ?? ["Varmepumpe-1.1.5.zip", "Varmepumpe-1.1.5.zip.sha256"]
         let list = names.map { name -> [String: Any] in
             var asset: [String: Any] = [
-                "name": name, "browser_download_url": "https://github.com/stigoleg/Heat-Pump/releases/download/\(tag)/\(name)",
+                "name": name, "browser_download_url": "https://github.com/stigoleg/Husly/releases/download/\(tag)/\(name)",
             ]
             if name.hasSuffix(".zip"), let digest { asset["digest"] = "sha256:\(digest)" }
             return asset
         }
         let object: [String: Any] = [
             "tag_name": tag, "name": "Varmepumpe 1.1.5", "draft": draft, "prerelease": false,
-            "published_at": "2026-11-05T21:21:08Z", "html_url": "https://github.com/stigoleg/Heat-Pump/releases/tag/\(tag)",
+            "published_at": "2026-11-05T21:21:08Z", "html_url": "https://github.com/stigoleg/Husly/releases/tag/\(tag)",
             "body": "- **Oppdateringer**: ny\n", "assets": list,
         ]
         return try! JSONSerialization.data(withJSONObject: object)
