@@ -26,27 +26,36 @@ enum ToolCatalog {
         "get_device_info": .thermostat, "refresh": .thermostat, "set_power": .thermostat, "set_mode": .thermostat,
         "set_temperature": .thermostat, "set_fan_speed": .fanSpeed, "set_vanes": .airflow, "set_frost_protection": .awayModes,
         "set_holiday_mode": .awayModes, "start_firmware_update": .firmwareUpdates, "record_maintenance": .thermostat,
-        "get_meter_status": .energyLog,
+        "get_meter_status": .energyLog, "get_air_quality": .airQuality, "get_air_quality_history": .airQualityLog,
     ]
 
-    /// Tools about an energy meter (`MeterTools`); the other device tools are about a heat pump.
-    static let meterTools: Set<String> = ["get_meter_status"]
+    /// The tools of each kind other than the heat pump, in catalog order. A new kind adds its
+    /// tools file here; `ToolRouter` hands its calls to that kind's handler.
+    static let kindTools: [(kind: DeviceKind, tools: [Tool])] = [
+        (.energyMeter, MeterTools.tools), (.airQualitySensor, AirQualityTools.tools),
+    ]
+
+    /// The kind each of `kindTools` is about.
+    static let toolKinds: [String: DeviceKind] = Dictionary(
+        uniqueKeysWithValues: kindTools.flatMap { entry in entry.tools.map { ($0.name, entry.kind) } })
+
+    /// The kind the device tool `name` is about: its entry in `kindTools`, else the heat pump.
+    static func kind(of name: String) -> DeviceKind { toolKinds[name] ?? .airToAirHeatPump }
 
     /// Whether `device` can answer the device tool `name`: the right kind and the capability.
     static func canAnswer(_ name: String, _ device: DeviceDescriptor) -> Bool {
         guard let capability = requiredCapability[name] else { return true }
-        let isMeter = device.kind == .energyMeter
-        return meterTools.contains(name) == isMeter && device.capabilities.contains(capability)
+        return kind(of: name) == device.kind && device.capabilities.contains(capability)
     }
 
     /// The tools for these enabled devices. Before any device is known, and with one device, the
     /// catalog is `all(service:)` minus tools no device can answer (with one heat pump: all of it),
-    /// plus the meter tools when a meter is enabled. With two or more, every device tool takes an
-    /// optional `device` and `list_devices` is added.
+    /// plus another kind's tools while such a device is enabled. With two or more, every device
+    /// tool takes an optional `device` and `list_devices` is added.
     static func tools(for devices: [DeviceDescriptor], service: String) -> [Tool] {
         let all = all(service: service)
         guard !devices.isEmpty else { return all }
-        let available = (all + MeterTools.tools).filter { tool in devices.contains { canAnswer(tool.name, $0) } }
+        let available = (all + kindTools.flatMap(\.tools)).filter { tool in devices.contains { canAnswer(tool.name, $0) } }
         guard devices.count >= 2 else { return available }
         return [listDevicesTool] + available.map { requiredCapability[$0.name] == nil ? $0 : withDeviceArgument($0) }
     }

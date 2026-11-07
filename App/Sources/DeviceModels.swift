@@ -590,3 +590,86 @@ final class EnergyMeterDeviceModel: DeviceModel {
         (try? await service.daily(from: from, to: to)) ?? []
     }
 }
+
+/// One air quality sensor: its newest values with levels and findings, the history for its
+/// charts and whether a high long-term radon average is notified. All rules (spacing, levels,
+/// findings) live in HeatPumpKit (`AirQualityService`).
+@MainActor
+@Observable
+final class AirQualityDeviceModel: DeviceModel {
+    let service: AirQualityService
+    var descriptor: DeviceDescriptor?
+    var kind: DeviceKind { .airQualitySensor }
+    /// The sensor's service as texts name it.
+    var serviceName: String { service.serviceName }
+    var displayName: String { descriptor?.name ?? serviceName }
+    /// The integration's knowledge documents.
+    var knowledge: Knowledge { Knowledge(integration: service.integration) }
+
+    var status: AirQualityStatus?
+    var hasCredentials = true
+    /// Why the values could not be fetched (named after the service), or nil.
+    var syncProblem: String?
+    var lastSync: Date?
+    var radonAlerts = false
+    /// Bumped after every reload so views can refetch derived data (charts).
+    var revision = 0
+
+    init(service: AirQualityService, descriptor: DeviceDescriptor?) {
+        self.service = service
+        self.descriptor = descriptor
+    }
+
+    var lastFetched: Date? { lastSync }
+
+    // MARK: Polling
+
+    /// The newest values of every sensor of the integration (at most every 5 minutes; the
+    /// service enforces it, so the integration's other sensors find them fetched).
+    func pollState(force: Bool) async {
+        hasCredentials = await service.hasCredentials()
+        guard hasCredentials else { return }
+        do {
+            let sync = try await service.syncLatest()
+            syncProblem = sync.status == .failed ? sync.message : nil
+        } catch {
+            syncProblem = service.describe(error)
+        }
+    }
+
+    /// Thresholds (daily) and the hourly history (hourly).
+    func pollDetails() async {
+        guard hasCredentials else { return }
+        _ = try? await service.syncThresholds()
+        _ = try? await service.syncHistory()
+    }
+
+    func afterPoll() async {}
+
+    func reloadLocal() async {
+        status = (try? await service.status()) ?? status
+        lastSync = (try? await service.lastSync()) ?? lastSync
+        radonAlerts = (try? await service.radonAlertsEnabled()) ?? radonAlerts
+        if (try? await service.credentialsRejected()) == true {
+            syncProblem = service.describe(HeatPumpError.credentialsRejected)
+        }
+        revision += 1
+    }
+
+    // MARK: Actions
+
+    func setRadonAlerts(_ enabled: Bool) async {
+        radonAlerts = enabled
+        try? await service.setRadonAlerts(enabled)
+    }
+
+    // MARK: Data for views
+
+    func hours(from: Date, to: Date) async -> [AirQualityHour] {
+        (try? await service.hours(from: from, to: to)) ?? []
+    }
+
+    func thresholds() async -> AirQualityThresholds {
+        (try? await service.thresholds()) ?? .standard
+    }
+}

@@ -18,6 +18,16 @@ enum DeviceUIRegistry {
             heatPumpScreen(screen).environment(heatPump)
         } else if let meter = device as? EnergyMeterDeviceModel {
             meterScreen(screen).environment(meter)
+        } else if let sensor = device as? AirQualityDeviceModel {
+            sensorScreen(screen).environment(sensor)
+        }
+    }
+
+    /// A sensor has Overview and History (`DeviceNavigation`); any other screen shows its overview.
+    @ViewBuilder private static func sensorScreen(_ screen: DeviceScreen) -> some View {
+        switch screen {
+        case .history: AirQualityHistoryView()
+        default: AirQualityOverviewView()
         }
     }
 
@@ -46,6 +56,8 @@ enum DeviceUIRegistry {
             HeatPumpHomeCard(device: heatPump)
         } else if let meter = device as? EnergyMeterDeviceModel {
             MeterHomeCard(device: meter)
+        } else if let sensor = device as? AirQualityDeviceModel {
+            AirQualityHomeCard(device: sensor)
         }
     }
 

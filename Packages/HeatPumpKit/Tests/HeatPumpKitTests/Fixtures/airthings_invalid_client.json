@@ -1,0 +1,5 @@
+{
+  "error": "invalid_grant",
+  "error_description": "invalid grant_type: client_credentials for client.",
+  "error_code": 2930
+}

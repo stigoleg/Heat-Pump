@@ -32,7 +32,8 @@ public struct DemoUnit: Sendable, Equatable {
 
     /// The units `VARMEPUMPE_DEMO_DEVICES` asks for: a comma list of device kinds, `heatpump` by
     /// default (`heatpump,heatpump` adds a bedroom unit; `meter` is the simulated Tibber home,
-    /// `wantsMeter`). Unknown entries are skipped; at least one unit is always simulated.
+    /// `wantsMeter`; `airthings` the simulated Airthings sensor, `wantsAirQuality`). Unknown entries
+    /// are skipped; at least one unit is always simulated.
     public static func units(environment: [String: String]) -> [DemoUnit] {
         let kinds = (environment["VARMEPUMPE_DEMO_DEVICES"] ?? "heatpump").split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
@@ -41,9 +42,14 @@ public struct DemoUnit: Sendable, Equatable {
     }
 
     /// Whether `VARMEPUMPE_DEMO_DEVICES` asks for the simulated Tibber home (`meter`).
-    public static func wantsMeter(environment: [String: String]) -> Bool {
+    public static func wantsMeter(environment: [String: String]) -> Bool { wants("meter", environment: environment) }
+
+    /// Whether `VARMEPUMPE_DEMO_DEVICES` asks for the simulated Airthings sensor (`airthings`).
+    public static func wantsAirQuality(environment: [String: String]) -> Bool { wants("airthings", environment: environment) }
+
+    static func wants(_ token: String, environment: [String: String]) -> Bool {
         (environment["VARMEPUMPE_DEMO_DEVICES"] ?? "").split(separator: ",")
-            .contains { $0.trimmingCharacters(in: .whitespaces).lowercased() == "meter" }
+            .contains { $0.trimmingCharacters(in: .whitespaces).lowercased() == token }
     }
 }
 

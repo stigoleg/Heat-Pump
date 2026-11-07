@@ -21,8 +21,9 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 ```
 
 - **One entry point.** `DeviceHub` (`Packages/HeatPumpKit/Sources/HeatPumpKit/Hub`) holds one
-  `HeatPumpService` per enabled heat pump and one `EnergyMeterService` per enabled energy meter
-  (`Service/`), one connection per active integration and one
+  `HeatPumpService` per enabled heat pump, one `EnergyMeterService` per enabled energy meter and
+  one `AirQualityService` per enabled air quality sensor (`Service/`), one connection per active
+  integration and one
   `EnergyContextService` (prices, weather, house consumption, price outlook) shared by all devices.
   The services are the only thing that talks to the network. The app and the MCP helper each build
   a hub (`IntegrationCatalog.makeHub`) and share the SQLite database and keychain, so rate limits,
@@ -53,7 +54,9 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   consumption per meter (`meter_hourly`, keyed by the meter; hours fetched with the price token
   alone wait under the placeholder `house:meter` until the first meter adopts them, so the
   numbers never change) and added `meter_live` (live power per minute, 48 hours), after copying
-  the file to `<name>-pre-v14.sqlite`. Migration v12 converted older files (rows keyed by the
+  the file to `<name>-pre-v14.sqlite`. Migration v16 added `air_quality_latest` (newest value per
+  sensor and metric) and `air_quality_hourly` (hourly averages, two years) after copying the file
+  to `<name>-pre-v16.sqlite`. Migration v12 converted older files (rows keyed by the
   integration that opened the store, `IntegrationCatalog.makeService`) after copying the file to
   `<name>-pre-v12.sqlite` with SQLite's backup API. When the app and the helper open an
   unmigrated file at the same moment, the one that loses the race runs the migrator again once
@@ -87,8 +90,8 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   read-only, for power, compressor and defrost data.
 - **Localization**: `L10n` resolves the language from the app's `AppleLanguages` (shared with the
   helper, which reads the strings from the app bundle around it).
-- **Knowledge documents** (`Sources/<Target>/Knowledge/{en,nb}/*.md`, today only
-  `MELCloudIntegration`) are compiled into each target's `KnowledgeContent.generated.swift` by
+- **Knowledge documents** (`Sources/<Target>/Knowledge/{en,nb}/*.md`: `MELCloudIntegration`,
+  `TibberIntegration`, `AirthingsIntegration`) are compiled into each target's `KnowledgeContent.generated.swift` by
   `scripts/generate-knowledge.py` so the helper needs no resource bundle; `Knowledge` combines the
   core's (none yet) with the active integration's, and the MCP server exposes them as resources.
 
@@ -99,7 +102,8 @@ agents is in [CLAUDE.md](../CLAUDE.md).
 | `HeatPumpKit` | The vendor-neutral core: service, store, models, health engine, pricing, weather, L10n. Names no vendor outside comments (`BoundaryTests`). |
 | `MELCloudIntegration` | `MELCloudIntegration: Integration`, the MELCloud Classic backend and parsers, the local adapter client (CN105), `ErrorCatalog`, `MELCloudHealthChecks` and the knowledge documents. |
 | `TibberIntegration` | Tibber homes as energy meters: `TibberConnection` (`EnergyMeterDriver`, `LivePowerDriver`), the GraphQL API (`TibberAPI`), the live socket client (`TibberLiveClient`, `graphql-transport-ws`, one socket for the app, never in the helper), the token-only house provider and the `energy-meter` knowledge document. The reference example for a new integration. |
-| `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents; `DemoMeterIntegration` (`demo-meter`, `MockMeter`) simulates a Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`. |
+| `AirthingsIntegration` | Airthings sensors as air quality sensors over the Consumer API: `AirthingsConnection` (`AirQualityDriver`, `AirQualityLogReporting`, `RequestBudgetReporting`; OAuth client credentials, token and account id in memory), `AirthingsAPI` (endpoints, parsing, error mapping, rate limit headers) and the `air-quality` knowledge document. Read-only. |
+| `DemoIntegration` | Simulated data (`MockBackend`, mock providers). Simulates a MELCloud unit, so it reuses MELCloud's wire formats, texts, error codes, health rules and documents; `DemoMeterIntegration` (`demo-meter`, `MockMeter`) simulates a Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`, `DemoAirQualityIntegration` (`demo-airquality`, `MockAirQualitySensor`) an Airthings Wave Plus for `…,airthings`. |
 | `Integrations` | `IntegrationCatalog`: the list of integrations, `current(environment:)` and `makeHub` (`makeService` is its primary service). |
 | `varmepumpe-mcp` | The MCP helper. |
 
@@ -119,10 +123,13 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   and their intervals.
 - **Connection**: `makeConnection` returns `any DeviceConnection`; its conformances decide what
   the hub serves (`ThermostatDriver`: a `HeatPumpService` per heat pump; `EnergyMeterDriver`: an
-  `EnergyMeterService` per meter, `LivePowerDriver` for live power). `capabilities(of:)` gives a
+  `EnergyMeterService` per meter, `LivePowerDriver` for live power; `AirQualityDriver`: an
+  `AirQualityService` per sensor, `AirQualityLogReporting` for its history, `RequestBudgetReporting`
+  when the vendor reports its request budget). `capabilities(of:)` gives a
   device's own capabilities (live power only where Tibber reports a real-time reader), and
   `recentListing()` lets the hub's daily discovery reuse a listing the connection fetched anyway.
-- **Credentials**: `credentialFields` (a field may carry a `helpURL`) and `credentialMapping`
+- **Credentials**: `credentialFields` (`.email`, `.password`, `.token`, `.clientId`,
+  `.clientSecret`; a field may carry a `helpURL` and a `help` text) and `credentialMapping`
   (keychain items, session item, dev environment variables, `isShared`). `HealthEngine` runs the generic
   rules and asks the integration at fixed points, so findings keep their order.
 - **Knowledge**: `knowledge: KnowledgeSource`.
@@ -140,10 +147,12 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   one heat pump's state, history, health, away modes, weekly timer, firmware, local connection,
   debouncer and actions; `EnergyMeterDeviceModel` one meter's status, today, the last hour's live
   minutes and its live stream (started while the app polls, stopped when the Mac sleeps or the
-  meter is turned off). Device screens read their model from the environment
+  meter is turned off); `AirQualityDeviceModel` one sensor's status (values, levels, findings), its
+  history for the charts and its radon notification switch. Device screens read their model from the environment
   (`@Environment(HeatPumpDeviceModel.self)`, `@Environment(EnergyMeterDeviceModel.self)`) and
   app-wide data from `AppModel`. The meter's screens are `MeterOverviewView` and
-  `MeterHistoryView`, its Home card `MeterHomeCard`.
+  `MeterHistoryView`, its Home card `MeterHomeCard`; a sensor's `AirQualityOverviewView`,
+  `AirQualityHistoryView` and `AirQualityHomeCard`.
 - **Polling**: one loop, every 60 s. Devices are polled stalest first (`pollState`), then the
   shared syncs, then each device's slower reads (`pollDetails`), price control, the reloads and
   notifications (per device; with two or more the title names the device). An integration allows
@@ -166,13 +175,15 @@ agents is in [CLAUDE.md](../CLAUDE.md).
   removing the integration of) price control's device first turns price control off, which sets
   its temperature back (`DeviceHub.setEnabled`).
 
-**Adding a device kind** (done for the energy meter, phase 5): a driver protocol and a service in
+**Adding a device kind** (done for the energy meter, phase 5, and the air quality sensor, phase 9): a driver protocol and a service in
 the kit (`EnergyMeterDriver`, `EnergyMeterService`) and a `DeviceService` case the hub builds from
 the connection's conformance; its screens in `DeviceNavigation.screens(kind:capabilities:)`; a
 `final class …DeviceModel: DeviceModel` in the app, created in `AppModel.syncDevices()` from its
 `DeviceService` case; its screen views and Home card in `DeviceUIRegistry`; its MCP tools in the
-helper (`MeterTools`, kept apart from the heat pump's by `ToolCatalog.canAnswer`, which checks
-kind and capability). The compiler points at each switch over `DeviceService`, `DeviceKind` and
+helper (`MeterTools`, `AirQualityTools`: one entry each in `ToolCatalog.kindTools`, which maps
+every tool to its kind; `ToolCatalog.canAnswer` checks kind and capability, and `ToolRouter`
+hands a kind's tools to its handler). Services whose sign-in is a listing share
+`DeviceListing`. The compiler points at each switch over `DeviceService`, `DeviceKind` and
 `DeviceScreen` that needs a case.
 
 ### Extending
@@ -259,7 +270,7 @@ Data (database, fetch status, blocks)
 - [ ] Prompt `helsesjekk`; resources `varmepumpe://knowledge/…` in the chosen language
 - [ ] With one device no `device` argument and no `list_devices` (catalog golden test); with two
   or more, both, and an error listing the choices when `device` is needed
-- [ ] `get_meter_status` only with an enabled energy meter; heat pump tools never ask to choose the meter
+- [ ] `get_meter_status` only with an enabled energy meter, `get_air_quality`/`get_air_quality_history` only with an enabled air quality sensor; heat pump tools never ask to choose the meter or a sensor
 
 **Developer hooks**
 - [ ] `VARMEPUMPE_BACKEND`, `VARMEPUMPE_DB_PATH`, `MELCLOUD_EMAIL`/`MELCLOUD_PASSWORD`,

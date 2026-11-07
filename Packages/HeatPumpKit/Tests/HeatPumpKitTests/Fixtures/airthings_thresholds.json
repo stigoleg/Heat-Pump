@@ -1,0 +1,28 @@
+{
+  "sensorThresholds": [
+    {
+      "sensorType": "radonShortTermAvg",
+      "unit": "bq",
+      "ranges": [
+        { "from": null, "to": 100, "rating": "GOOD" },
+        { "from": 100, "to": 200, "rating": "FAIR" },
+        { "from": 200, "to": null, "rating": "POOR" }
+      ]
+    },
+    {
+      "sensorType": "co2",
+      "unit": "ppm",
+      "ranges": [
+        { "from": null, "to": 800, "rating": "GOOD" },
+        { "from": 800, "to": 1200, "rating": "FAIR" },
+        { "from": 1200, "to": null, "rating": "POOR" },
+        { "from": 5000, "to": null, "rating": "SEVERE" }
+      ]
+    },
+    {
+      "sensorType": "noise",
+      "unit": "db",
+      "ranges": [{ "from": null, "to": 40, "rating": "GOOD" }]
+    }
+  ]
+}

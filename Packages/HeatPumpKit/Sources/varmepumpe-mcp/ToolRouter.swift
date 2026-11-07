@@ -21,12 +21,8 @@ struct ToolRouter: Sendable {
     func handle(_ params: CallTool.Parameters) async -> CallTool.Result {
         do {
             let devices = try await hub.devices()
-            if ToolCatalog.meterTools.contains(params.name) {
-                let meter = try choose(devices, tool: params.name, argument: Arguments(params.arguments).string("device"))
-                guard let service = try await hub.meterService(for: meter.key) else {
-                    return ToolOutput.failure(L10n.format("Unknown device: %@. Choose one of: %@.", meter.name, choices(devices)))
-                }
-                return await MeterToolHandler(service: service, name: meter.name).handle(params)
+            if let kind = ToolCatalog.toolKinds[params.name] {
+                return try await handle(params, kind: kind, devices: devices)
             }
             guard let primary = try await hub.primaryService() else {
                 return ToolOutput.failure(L10n.tr("No heat pump service is set up. Sign in in the app."))
@@ -60,6 +56,32 @@ struct ToolRouter: Sendable {
         } catch {
             Log.error("\(params.name): \(error)")
             return ToolOutput.failure((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    /// A tool of another kind than the heat pump (`ToolCatalog.kindTools`), for the device it picks.
+    private func handle(_ params: CallTool.Parameters, kind: DeviceKind, devices: [DeviceDescriptor]) async throws -> CallTool.Result {
+        let argument = Arguments(params.arguments).string("device")
+        if kind == .airQualitySensor, params.name == "get_air_quality", argument?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+            // Every sensor's newest values at once.
+            var sensors: [(service: AirQualityService, name: String)] = []
+            for device in devices where ToolCatalog.canAnswer(params.name, device) {
+                if let service = try await hub.airQualityService(for: device.key) { sensors.append((service, device.name)) }
+            }
+            guard !sensors.isEmpty else { return ToolOutput.failure(L10n.tr("None of the devices can answer this.")) }
+            return await AirQualityToolHandler(sensors: sensors).handle(params)
+        }
+        let device = try choose(devices, tool: params.name, argument: argument)
+        let unknown = ToolOutput.failure(L10n.format("Unknown device: %@. Choose one of: %@.", device.name, choices(devices)))
+        switch kind {
+        case .energyMeter:
+            guard let service = try await hub.meterService(for: device.key) else { return unknown }
+            return await MeterToolHandler(service: service, name: device.name).handle(params)
+        case .airQualitySensor:
+            guard let service = try await hub.airQualityService(for: device.key) else { return unknown }
+            return await AirQualityToolHandler(sensors: [(service, device.name)]).handle(params)
+        case .airToAirHeatPump:
+            return unknown
         }
     }
 
@@ -111,7 +133,7 @@ struct ToolRouter: Sendable {
     /// The service names the descriptions use: the heat pumps' integrations' (one name with one).
     private func serviceNames(_ devices: [DeviceDescriptor]) async -> String {
         var names: [String] = []
-        for device in devices where device.kind != .energyMeter {
+        for device in devices where device.kind == .airToAirHeatPump {
             guard let name = hub.integration(for: device.key)?.displayName, !names.contains(name) else { continue }
             names.append(name)
         }

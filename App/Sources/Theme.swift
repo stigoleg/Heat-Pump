@@ -145,6 +145,51 @@ extension HealthSeverity {
     }
 }
 
+extension AirQualityLevel {
+    var color: Color {
+        switch self {
+        case .good: Theme.Status.good
+        case .fair: Theme.Status.caution
+        case .poor: Theme.Status.bad
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .good: "checkmark.circle.fill"
+        case .fair: "exclamationmark.circle.fill"
+        case .poor: "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+extension AirQualityMetric {
+    var systemImage: String {
+        switch self {
+        case .radonShortTerm, .radonLongTerm: "atom"
+        case .co2: "carbon.dioxide.cloud.fill"
+        case .voc: "aqi.medium"
+        case .pm25, .pm1: "aqi.low"
+        case .humidity: "humidity.fill"
+        case .temperature: "thermometer.medium"
+        case .pressure: "gauge.with.dots.needle.50percent"
+        case .battery: "battery.75percent"
+        }
+    }
+
+    /// The chart colour; temperature keeps the indoor colour.
+    var tint: Color {
+        switch self {
+        case .radonShortTerm, .radonLongTerm: Theme.Data.purple
+        case .co2: Theme.Data.energy
+        case .voc, .pm25, .pm1: Theme.Data.green
+        case .humidity: Theme.Data.blue
+        case .temperature: Theme.Data.inside
+        case .pressure, .battery: .secondary
+        }
+    }
+}
+
 enum Format {
     static func temperature(_ value: Double?) -> String {
         guard let value else { return "–" }

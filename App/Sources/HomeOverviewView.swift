@@ -262,3 +262,79 @@ struct MeterHomeCard: View {
         return Format.kWh(today.kWh) + kr
     }
 }
+
+/// An air quality sensor on Home: radon, CO2 and temperature with the worst level, and any problem.
+struct AirQualityHomeCard: View {
+    @Environment(AppModel.self) private var app
+    let device: AirQualityDeviceModel
+
+    var body: some View {
+        Button {
+            app.route = .device(device.key, .overview)
+        } label: {
+            CardSurface {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(spacing: Theme.Space.s) {
+                        IconBadge(systemImage: DeviceKind.airQualitySensor.systemImage, color: .teal, size: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(device.displayName).font(.headline)
+                            Text(DeviceKind.airQualitySensor.title).font(.callout).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if let level = device.status?.worstLevel {
+                            Label(level.title, systemImage: level.systemImage)
+                                .font(.callout)
+                                .foregroundStyle(level.color)
+                        }
+                    }
+                    if let status = device.status {
+                        if let radon = status.value(.radonShortTerm) ?? status.value(.radonLongTerm) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                                Text(Display.format("%.0f", radon.value))
+                                    .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                                    .monospacedDigit()
+                                Text("Bq/m³ radon").font(.callout).foregroundStyle(.secondary)
+                            }
+                        }
+                        Divider()
+                        HStack(alignment: .top, spacing: Theme.Space.l) {
+                            figure(status.value(.co2))
+                            figure(status.value(.temperature))
+                            figure(status.value(.humidity))
+                        }
+                    } else {
+                        Text("No readings yet").foregroundStyle(.secondary)
+                    }
+                    if let problem = device.syncProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Status.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        }
+        .buttonStyle(.plain)
+        .help("Open \(device.displayName)")
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func figure(_ value: AirQualityValue?) -> some View {
+        if let value {
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    Text(value.metric.title).foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: value.metric.systemImage).foregroundStyle(value.level?.color ?? value.metric.tint)
+                }
+                .font(.callout)
+                .lineLimit(1)
+                Text(value.metric.formatted(value.value))
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}

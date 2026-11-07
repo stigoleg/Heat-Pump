@@ -271,6 +271,8 @@ final class AppModel {
 
     var meters: [EnergyMeterDeviceModel] { devices.compactMap { $0 as? EnergyMeterDeviceModel } }
 
+    var sensors: [AirQualityDeviceModel] { devices.compactMap { $0 as? AirQualityDeviceModel } }
+
     /// The first heat pump: what the app shows with one device, and the screens of Home use.
     var primaryHeatPump: HeatPumpDeviceModel { heatPumps.first ?? fallbackHeatPump }
 
@@ -313,6 +315,10 @@ final class AppModel {
                     next.append(model)
                 case .energyMeter(let service):
                     let model = meters.first { $0.service === service } ?? EnergyMeterDeviceModel(service: service, descriptor: descriptor)
+                    if model.descriptor != descriptor { model.descriptor = descriptor }
+                    next.append(model)
+                case .airQuality(let service):
+                    let model = sensors.first { $0.service === service } ?? AirQualityDeviceModel(service: service, descriptor: descriptor)
                     if model.descriptor != descriptor { model.descriptor = descriptor }
                     next.append(model)
                 case nil: continue
@@ -534,7 +540,8 @@ final class AppModel {
     }
 
     /// Per heat pump; with two or more the title names the device. The first device keeps the
-    /// memory it had before devices, the others get their own.
+    /// memory it had before devices, the others get their own. Air quality sensors always name
+    /// the sensor and keep their own memory.
     private func deliverNotifications() async {
         let named = isGrouped
         for (index, device) in heatPumps.enumerated() {
@@ -547,6 +554,15 @@ final class AppModel {
             for notification in planned.notifications {
                 await notifier.deliver(notification)
             }
+        }
+        // Air quality sensors: a high long-term radon average, when turned on for the sensor.
+        for device in sensors {
+            guard let key = device.key else { continue }
+            let planned = NotificationPlanner.planAirQuality(
+                status: device.status, enabled: device.radonAlerts, memory: notifier.memory(for: key), now: Date(),
+                device: (key, device.displayName))
+            notifier.setMemory(planned.memory, for: key)
+            for notification in planned.notifications { await notifier.deliver(notification) }
         }
     }
 
@@ -700,10 +716,12 @@ final class AppModel {
         return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) }
     }
 
-    /// Dev only (`VARMEPUMPE_SETTINGS_SHEET=add-integration`, screenshots): the integrations the
-    /// sheet would offer outside demo mode.
+    /// Dev only (`VARMEPUMPE_SETTINGS_SHEET=add-integration`, or `add-integration/<id>` to choose
+    /// one; screenshots): the integrations the sheet would offer outside demo mode.
     var devAddableIntegrations: [any Integration] {
-        guard let hub, ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_SHEET"] == "add-integration" else { return [] }
+        guard let hub, let sheet = ProcessInfo.processInfo.environment["VARMEPUMPE_SETTINGS_SHEET"],
+            sheet == "add-integration" || sheet.hasPrefix("add-integration/")
+        else { return [] }
         let active = Set(activeIntegrations.map(\.id))
         return hub.catalog.filter { !active.contains($0.id) && !IntegrationCatalog.simulated.contains($0.id) && $0.id != IntegrationCatalog.melcloud.id }
     }

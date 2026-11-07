@@ -1,3 +1,4 @@
+import AirthingsIntegration
 import DemoIntegration
 import Foundation
 import HeatPumpKit
@@ -8,13 +9,15 @@ import TibberIntegration
 public enum IntegrationCatalog {
     public static let melcloud = MELCloudIntegration()
     public static let tibber = TibberIntegration()
+    public static let airthings = AirthingsIntegration()
     public static let demo = DemoIntegration()
     public static let demoMeter = DemoMeterIntegration()
+    public static let demoAirQuality = DemoAirQualityIntegration()
 
-    public static let all: [any Integration] = [melcloud, tibber, demo, demoMeter]
+    public static let all: [any Integration] = [melcloud, tibber, airthings, demo, demoMeter, demoAirQuality]
 
     /// The simulated integrations (demo mode only; never offered to add).
-    public static let simulated: Set<String> = [demo.id, demoMeter.id]
+    public static let simulated: Set<String> = [demo.id, demoMeter.id, demoAirQuality.id]
 
     /// True when `VARMEPUMPE_BACKEND=mock` selects the demo integration.
     public static func isDemo(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
@@ -27,7 +30,8 @@ public enum IntegrationCatalog {
     }
 
     /// The hub for this process. Demo mode (`VARMEPUMPE_BACKEND=mock`): the demo integration (and
-    /// the simulated Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`) only, with simulated
+    /// the simulated Tibber home for `VARMEPUMPE_DEMO_DEVICES=…,meter`, the simulated Airthings
+    /// sensor for `…,airthings`) only, with simulated
     /// providers and the units `VARMEPUMPE_DEMO_DEVICES` asks for (registered at once, no network). Otherwise the active integrations the user chose (`integrations` in
     /// `app_settings`; MELCloud until then) with keychain credentials, real price, weather and house
     /// providers and the local adapter on the network. The database comes from
@@ -49,8 +53,15 @@ public enum IntegrationCatalog {
             } else if try store.devices().contains(where: { $0.key == MockMeter.device }) {
                 try store.setDeviceEnabled(false, device: MockMeter.device)
             }
+            let air = DemoUnit.wantsAirQuality(environment: environment)
+            if air {
+                try store.syncDevices(MockAirQualitySensor.listing, integration: demoAirQuality.id)
+                try store.setDeviceEnabled(true, device: MockAirQualitySensor.device)
+            } else if try store.devices().contains(where: { $0.key == MockAirQualitySensor.device }) {
+                try store.setDeviceEnabled(false, device: MockAirQualitySensor.device)
+            }
             let local = LocalAccess.simulated(shortCycling: environment["VARMEPUMPE_MOCK_CYCLING"] == "short")
-            let simulated = [demo.id] + (meter ? [demoMeter.id] : [])
+            let simulated = [demo.id] + (meter ? [demoMeter.id] : []) + (air ? [demoAirQuality.id] : [])
             return try DeviceHub(
                 store: store, catalog: all, fixedIntegrations: simulated, defaultIntegrations: simulated, isDemo: true,
                 priceProvider: { _ in MockPriceProvider() }, weatherProvider: { _ in MockWeatherProvider() },

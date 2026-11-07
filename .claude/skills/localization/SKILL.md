@@ -130,5 +130,8 @@ Knowledge documents (`Packages/HeatPumpKit/Sources/<Target>/Knowledge/{en,nb}/*.
 | integration, device, energy meter, water heater | integrasjon, enhet, strømmåler, varmtvannsbereder |
 | live power (meter), real-time meter reader, token (Tibber) | effekt nå, sanntidsmåler, nøkkel |
 | Home (sidebar group with two or more devices), Devices, Add Integration…, Refresh Device List | Hjem, Enheter, Legg til integrasjon …, Oppdater enhetslisten |
+| air quality sensor, radon, short-term / long-term average, action level, limit value, annual average | luftkvalitetsmåler, radon, korttidssnitt / langtidssnitt, tiltaksnivå, grenseverdi, årsmiddelverdi |
+| humidity, air pressure, level Good / Fair / Poor | luftfuktighet, lufttrykk, nivå Bra / Middels / Dårlig |
+| client ID, client secret (OAuth) | klient-ID, klienthemmelighet |
 
 Add new terms here when you introduce them.

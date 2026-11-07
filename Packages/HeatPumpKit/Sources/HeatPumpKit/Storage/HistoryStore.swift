@@ -122,7 +122,8 @@ public final class HistoryStore: Sendable {
     /// migration builds their keys and namespaces their `fetch_state` keys with it. Opening a file
     /// that has such rows without it fails rather than guess. Before that migration runs on an
     /// existing file, a copy is kept next to it (`backupPath(for:)`), and likewise before house
-    /// consumption became per meter (v14, `backupPath(for:before:)`). `legacyKeyMirror`: see the
+    /// consumption became per meter (v14, `backupPath(for:before:)`) and before the air quality
+    /// tables (v16). `legacyKeyMirror`: see the
     /// property.
     public init(path: String, legacyIntegration: String? = nil, legacyKeyMirror: String? = nil) throws {
         self.path = path
@@ -136,6 +137,7 @@ public final class HistoryStore: Sendable {
         let migrator = Self.migrator(legacyIntegration: legacyIntegration)
         try backUpBeforeDeviceKeysIfNeeded(migrator)
         try backUpBeforeMetersIfNeeded(migrator)
+        try backUpBeforeAirQualityIfNeeded(migrator)
         try migrate(with: migrator)
     }
 
@@ -396,6 +398,10 @@ public final class HistoryStore: Sendable {
             // memory per device.
             try Self.restoreLegacyFetchKeys(db, integration: legacyIntegration)
             try Self.movePriceControlRuntimeToDevice(db)
+        }
+        migrator.registerMigration(Self.airQualityMigration) { db in
+            // Air quality sensors: newest values and hourly averages.
+            try Self.createAirQualityTables(db)
         }
         return migrator
     }

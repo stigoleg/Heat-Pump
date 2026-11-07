@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+@testable import AirthingsIntegration
 @testable import HeatPumpKit
 @testable import DemoIntegration
 @testable import MELCloudIntegration
@@ -300,6 +301,7 @@ struct CompiledKnowledgeTests {
     /// documents must be added here.
     static let compiled: [String: KnowledgeSource] = [
         "MELCloudIntegration": MELCloudIntegration().knowledge, "TibberIntegration": TibberIntegration().knowledge,
+        "AirthingsIntegration": AirthingsIntegration().knowledge,
     ]
 
     static let sources = URL(fileURLWithPath: #filePath)

@@ -13,8 +13,8 @@ Architecture, concepts and the feature parity checklist: [docs/architecture.md](
 |---|---|
 | `App/Sources` | SwiftUI app: `AppModel` (`@MainActor @Observable`, app-wide) with a model per device (`DeviceModels.swift`) and `DeviceUIRegistry`, one `XView.swift` per screen, Settings tabs, design system (`Theme.swift`, `DesignSystem.swift`, `ChartKit.swift`, `Components.swift`) |
 | `App/Resources` | String catalogs: `Localizable.xcstrings` (app), `HeatPumpKit.xcstrings` (package), `InfoPlist.xcstrings` |
-| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), `EnergyMeterService` per energy meter, SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
-| `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `TibberIntegration`, `DemoIntegration`, `Integrations` | Integrations (connection, error codes, health rules, knowledge docs) and `IntegrationCatalog`; Tibber (homes as energy meters) is the reference example; see the module map in docs/architecture.md |
+| `Packages/HeatPumpKit/Sources/HeatPumpKit` | Vendor-neutral core, all rules and data: capability protocols, models, `DeviceHub` (the entry point; one `HeatPumpService` actor per device, a shared `EnergyContextService`), `EnergyMeterService` per energy meter, `AirQualityService` per air quality sensor, SQLite `HistoryStore` (GRDB), pricing, weather, health engine, local access, L10n |
+| `Packages/HeatPumpKit/Sources/MELCloudIntegration`, `TibberIntegration`, `AirthingsIntegration`, `DemoIntegration`, `Integrations` | Integrations (connection, error codes, health rules, knowledge docs) and `IntegrationCatalog`; Tibber (homes as energy meters) and Airthings (air quality sensors) are the reference examples; see the module map in docs/architecture.md |
 | `Packages/HeatPumpKit/Sources/varmepumpe-mcp` | MCP server embedded in the app bundle (`Contents/Helpers`); tools in `Tools.swift`, handlers in `ToolHandler.swift` |
 | `Packages/HeatPumpKit/Tests/HeatPumpKitTests` | Swift Testing suites, JSON fixtures, `TestSupport.swift` helpers |
 | `project.yml` | XcodeGen source of truth; `.xcodeproj` is generated and not checked in |
@@ -44,8 +44,12 @@ New Swift files in `App/Sources` are picked up by `make debug`/`make check` (the
   reports hourly, 12 writes per rolling hour with 5 s spacing, and a block after 429/login
   throttle stops all calls. Tibber allows about 100 requests per 5 minutes and two open
   sockets: homes and hours at most hourly, one live socket for the whole app, none in the
-  helper, and a refused token is never retried. All network access goes through the device's
-  service (`HeatPumpService`, `EnergyMeterService`), which enforces this via
+  helper, and a refused token is never retried. Airthings allows an undocumented hourly budget
+  per API client (120 assumed; read from `X-RateLimit-*`): newest values of every sensor in one
+  request at most every 5 minutes, history per sensor hourly, thresholds daily, and every request
+  stops while less than a tenth of the budget is left or after 429. All network access goes
+  through the device's service (`HeatPumpService`, `EnergyMeterService`, `AirQualityService`),
+  which enforces this via
   `HistoryStore.reserveFetch`/`reserveChange`. Never call a backend directly from the app or MCP
   code, and never add a retry loop around a refused call.
 - **Every write** is validated, budgeted, logged in `change_log`, and when it comes from Claude

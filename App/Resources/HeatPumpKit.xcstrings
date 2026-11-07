@@ -298,6 +298,17 @@
         }
       }
     },
+    "%@ is %@, which the sensor rates as poor." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ er %2$@, som måleren regner som dårlig."
+          }
+        }
+      }
+    },
     "%@ is carrying out a required update." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -811,6 +822,61 @@
         }
       }
     },
+    "Air out and keep an eye on the long-term average over the coming weeks." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luft ut, og følg med på langtidssnittet de neste ukene."
+          }
+        }
+      }
+    },
+    "Air out and look for sources such as new furniture, paint, cleaning products or cooking." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luft ut, og se etter kilder som nye møbler, maling, rengjøringsmidler eller matlaging."
+          }
+        }
+      }
+    },
+    "Air out when the outdoor air is clean, and look for sources such as candles, a wood stove or cooking." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luft ut når uteluften er ren, og se etter kilder som stearinlys, vedovn eller matlaging."
+          }
+        }
+      }
+    },
+    "Air out, open a vent or turn up the ventilation, especially in bedrooms at night." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luft ut, åpne en ventil eller skru opp ventilasjonen, særlig på soverom om natten."
+          }
+        }
+      }
+    },
+    "Air pressure" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lufttrykk"
+          }
+        }
+      }
+    },
     "An unknown error occurred while saving the weekly schedule." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -899,6 +965,28 @@
         }
       }
     },
+    "Basement (simulated)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjeller (simulert)"
+          }
+        }
+      }
+    },
+    "Battery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batteri"
+          }
+        }
+      }
+    },
     "Bedroom (simulated)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -917,6 +1005,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blinker jevnt: %@"
+          }
+        }
+      }
+    },
+    "CO₂" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CO₂"
+          }
+        }
+      }
+    },
+    "CO₂ is %@: the air is stale, which can make you tired and give headaches." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CO₂ er %@: luften er innestengt, og det kan gjøre deg trøtt og gi hodepine."
           }
         }
       }
@@ -950,6 +1060,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Endre ønsket temperatur til %.1f °C"
+          }
+        }
+      }
+    },
+    "Change the batteries soon, or the sensor stops measuring." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bytt batteriene snart, ellers slutter måleren å måle."
           }
         }
       }
@@ -1038,6 +1159,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sjekk at ruteren og internett virker, og at varmepumpen har strøm. Hjelper ikke det, slå av sikringen til varmepumpen i ett minutt og slå den på igjen."
+          }
+        }
+      }
+    },
+    "Check the sensor's batteries and its connection to %@ (through a hub, or by syncing it with the phone app)." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sjekk målerens batterier og forbindelsen til %@ (gjennom en hub, eller ved å synkronisere med appen på telefonen)."
           }
         }
       }
@@ -1655,6 +1787,17 @@
         }
       }
     },
+    "Fair" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Middels"
+          }
+        }
+      }
+    },
     "Fair Wi-Fi signal" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1968,6 +2111,17 @@
         }
       }
     },
+    "Good" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bra"
+          }
+        }
+      }
+    },
     "Has not received the update list from %@ yet. Refresh the status and try again." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2089,6 +2243,39 @@
         }
       }
     },
+    "High %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høy %@"
+          }
+        }
+      }
+    },
+    "High CO₂" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høy CO₂"
+          }
+        }
+      }
+    },
+    "High radon level" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høyt radonnivå"
+          }
+        }
+      }
+    },
     "Holiday mode can last at most one year." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2173,6 +2360,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Horisontalt spjeld"
+          }
+        }
+      }
+    },
+    "Humidity" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfuktighet"
+          }
+        }
+      }
+    },
+    "Humidity is %@. Humid air over time gives a risk of mould and dust mites." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfuktigheten er %@. Fuktig luft over tid gir fare for mugg og husstøvmidd."
+          }
+        }
+      }
+    },
+    "Humidity is %@. Very dry air can irritate eyes, skin and airways." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luftfuktigheten er %@. Svært tørr luft kan irritere øyne, hud og luftveier."
           }
         }
       }
@@ -2572,6 +2792,17 @@
         }
       }
     },
+    "Keep measuring through the winter half-year (at least two months) to find the annual average, and consider simple measures such as better ventilation. See the air quality document." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortsett å måle gjennom vinterhalvåret (minst to måneder) for å finne årsmiddelverdien, og vurder enkle tiltak som bedre ventilasjon. Se dokumentet om inneluft."
+          }
+        }
+      }
+    },
     "Keychain error %@: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2649,6 +2880,17 @@
         }
       }
     },
+    "Lower the indoor temperature a little and avoid airing out for long in frost." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senk innetemperaturen litt, og unngå lang utlufting i kulda."
+          }
+        }
+      }
+    },
     "Lowered to %@ – %@." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2722,6 +2964,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sørg for stabilt Wi-Fi og prøv igjen under Helse → Fastvare. Prøv eventuelt å starte varmepumpen på nytt via sikringen først. Vedvarer det, kontakt forhandleren."
+          }
+        }
+      }
+    },
+    "Measure for at least two months in the winter half-year to find the annual average, and plan radon measures (better ventilation, sealing, a radon sump). See the air quality document." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mål i minst to måneder i vinterhalvåret for å finne årsmiddelverdien, og planlegg radontiltak (bedre ventilasjon, tetting, radonbrønn). Se dokumentet om inneluft."
           }
         }
       }
@@ -3151,6 +3404,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen kjente strømpriser for de neste timene ennå."
+          }
+        }
+      }
+    },
+    "No new readings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen nye målinger"
           }
         }
       }
@@ -3688,6 +3952,28 @@
         }
       }
     },
+    "PM1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PM1"
+          }
+        }
+      }
+    },
+    "PM2.5" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PM2,5"
+          }
+        }
+      }
+    },
     "Paused – you changed the temperature. Resumes at %@." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3695,6 +3981,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pause – du endret temperaturen. Fortsetter kl. %@."
+          }
+        }
+      }
+    },
+    "Poor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dårlig"
           }
         }
       }
@@ -3897,6 +4194,61 @@
         }
       }
     },
+    "Radon (long-term average)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon (langtidssnitt)"
+          }
+        }
+      }
+    },
+    "Radon (short-term average)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon (korttidssnitt)"
+          }
+        }
+      }
+    },
+    "Radon above the action level" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon over tiltaksnivået"
+          }
+        }
+      }
+    },
+    "Radon above the limit value" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon over grenseverdien"
+          }
+        }
+      }
+    },
+    "Radon is judged by the annual average: measures are recommended from 100 Bq/m³ and the limit is 200 Bq/m³. Short-term values swing with weather and ventilation." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radon vurderes ut fra årsmiddelverdien: tiltak anbefales fra 100 Bq/m³, og grenseverdien er 200 Bq/m³. Korttidsverdier svinger med vær og ventilasjon."
+          }
+        }
+      }
+    },
     "Read locally from the Wi-Fi adapter (read-only). The power applies to the whole heat pump. Compressor starts and defrosts are only counted when the app or Claude has read at least every 5 minutes; observedHoursLast24 says how much of the day is covered. Error code 0x8000 means no error. phase: off/defrost/preheat/warmup/standby/resting/heating/cooling/drying/fan/running. Defrosting is normal in damp cold, typically 3–10 minutes every 40–90 minutes of running. stage and autoSubMode are raw values with uncertain meaning. runtimeHoursIndoorUnit is the indoor unit's own counter (probably total running time), not verified against the manufacturer." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4073,6 +4425,17 @@
         }
       }
     },
+    "Sensor battery low" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lavt batteri i måleren"
+          }
+        }
+      }
+    },
     "Sent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4190,6 +4553,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sett vertikalt spjeld til %@"
+          }
+        }
+      }
+    },
+    "Short-term radon is high" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Høy korttidsverdi for radon"
+          }
+        }
+      }
+    },
+    "Sign in at the link below with your %@ account, open My Applications and create an application (client credentials). Copy its client ID and secret here." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logg inn via lenken under med %@-kontoen din, åpne My Applications og opprett en applikasjon (client credentials). Kopier klient-ID og hemmelighet hit."
           }
         }
       }
@@ -4355,6 +4740,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ønsket: %.1f °C."
+          }
+        }
+      }
+    },
+    "Temperature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temperatur"
           }
         }
       }
@@ -4586,6 +4982,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Appen endrer aldri denne innstillingen. Start varmepumpen på nytt via sikringen, og sjekk MELCloud-appen. Er tilkoblingen fortsatt av, kontakt forhandleren eller Mitsubishi-support."
+          }
+        }
+      }
+    },
+    "The battery is at %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batteriet står på %@."
           }
         }
       }
@@ -5206,6 +5613,50 @@
         }
       }
     },
+    "The long-term radon average is %@, above the limit value of 200 Bq/m³. See the sensor in the app for what to do." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langtidssnittet for radon er %@, over grenseverdien på 200 Bq/m³. Se måleren i appen for hva du bør gjøre."
+          }
+        }
+      }
+    },
+    "The long-term radon average is %@. Measures are recommended from 100 Bq/m³. See the sensor in the app for what to do." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langtidssnittet for radon er %@. Tiltak anbefales fra 100 Bq/m³. Se måleren i appen for hva du bør gjøre."
+          }
+        }
+      }
+    },
+    "The long-term radon average is %@. Measures are recommended when the annual average is 100 Bq/m³ or more." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langtidssnittet for radon er %@. Tiltak anbefales når årsmiddelverdien er 100 Bq/m³ eller mer."
+          }
+        }
+      }
+    },
+    "The long-term radon average is %@. The limit value for the annual average is 200 Bq/m³." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langtidssnittet for radon er %@. Grenseverdien for årsmiddelverdien er 200 Bq/m³."
+          }
+        }
+      }
+    },
     "The lowest frost protection temperature must be 4–14 °C." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5224,6 +5675,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Laveste temperatur må være 16–22 °C."
+          }
+        }
+      }
+    },
+    "The newest values are from %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De nyeste verdiene er fra %@."
           }
         }
       }
@@ -5356,6 +5818,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Andelen regnes bare over timer der både huset og varmepumpen har tall (minst 20 timer for et døgn). houseCostNokFromTibber er Tibbers egen kostnad for hele huset (kontrolltall); appens egen kostnadsberegning for varmepumpen (get_energy) er uendret."
+          }
+        }
+      }
+    },
+    "The short-term radon value is %@. It swings with weather and ventilation; the long-term average is what counts." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korttidsverdien for radon er %@. Den svinger med vær og ventilasjon; det er langtidssnittet som teller."
           }
         }
       }
@@ -6193,6 +6666,17 @@
         }
       }
     },
+    "VOC" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VOC"
+          }
+        }
+      }
+    },
     "Vacuum the filter, or rinse it in lukewarm water and dry it in the shade. Spare part: MAC-2490FT-E." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6211,6 +6695,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Støvsug filtrene (luktfilteret kan bløtlegges i lunkent vann 30–40 °C i ca. 15 minutter), tørk i skyggen. Reservedel ved behov: MAC-3010FT-E."
+          }
+        }
+      }
+    },
+    "Ventilate more, use the extractor fan when cooking and showering, and dry clothes outdoors." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventiler mer, bruk avtrekksviften når du lager mat og dusjer, og tørk klær ute."
           }
         }
       }
@@ -6248,6 +6743,17 @@
         }
       }
     },
+    "Very dry air" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært tørr luft"
+          }
+        }
+      }
+    },
     "Very expensive" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6266,6 +6772,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Svært dyrt"
+          }
+        }
+      }
+    },
+    "Very humid air" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svært fuktig luft"
           }
         }
       }
@@ -6663,6 +7180,17 @@
         }
       }
     },
+    "from must be before to." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "from må være før to."
+          }
+        }
+      }
+    },
     "heat" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6740,6 +7268,17 @@
         }
       }
     },
+    "metric must be one of: %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "metric må være én av: %@."
+          }
+        }
+      }
+    },
     "missing <ESV>" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6758,6 +7297,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mode må være heat, dry, cool, fan eller auto"
+          }
+        }
+      }
+    },
+    "no access token" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ingen tilgangsnøkkel"
           }
         }
       }
